@@ -1,18 +1,18 @@
 {
   "preRequisites:9": {
     "0:10": {
-      "questIDHigh:4": 4197958764756753924,
-      "questIDLow:4": -9077114435719678624
+      "questIDHigh:4": 3170890069590955045,
+      "questIDLow:4": -5225572181636670067
     }
   },
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "进入电力时代：每 2.5 秒 1 块（1440 块 / 小时），24 EU/t。\n\n• 能放 2 张印记（印记槽 + 一个输入槽），两条矿脉轮流产出——是分享，不是叠加；\n• 开孔头：钢钻头或更好；\n• 用扳手设一个输出面，就能自动把矿石推出去。\n\n[note]可以用 FluxLite 连接器从无线电网给它供电。[/note]",
+      "desc:8": "往核心槽放一块 GT 电路板，采集器就按那一级运行，随时可以换：\n\n• §7LV§r：32 V，24 EU/t，2.5 秒 1 块（每分钟 24），2 张印记；\n• §bMV§r：128 V，96 EU/t，1.65 秒 1 块（36），2 张印记；\n• §6HV§r：512 V，384 EU/t，1.25 秒 1 块（48），3 张印记；\n• §5EV§r：2048 V，1536 EU/t，0.9 秒 1 块（67），3 张印记；\n• §9IV§r：8192 V，6144 EU/t，0.65 秒 1 块（92），4 张印记；\n• §dLuV§r：32768 V，24576 EU/t，0.55 秒 1 块（109），4 张印记。\n\n多张印记轮流产出，是分享速度，不是叠加。两侧灯条会变成电路的颜色。\n\n[warn]和 GT 机器一样，电压高于核心等级会爆炸。换成低级电路之前先把高压线断开。[/warn]\n\n[note]可以用 FluxLite 连接器从无线电网给它供电。[/note]",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
-        "Damage:2": 24522,
+        "Damage:2": 24520,
         "OreDict:8": "",
         "id:8": "gregtech:gt.blockmachines"
       },
@@ -20,7 +20,7 @@
       "isMain:1": 1,
       "isSilent:1": 0,
       "lockedProgress:1": 0,
-      "name:8": "§7基础碎片采集器（LV）",
+      "name:8": "§b核心电路",
       "partySingleReward:1": 0,
       "questLogic:8": "AND",
       "repeatTime:3": -1,
@@ -37,20 +37,7 @@
   "rewards:9": {},
   "tasks:9": {
     "0:10": {
-      "autoConsume:1": 0,
-      "consume:1": 0,
-      "groupDetect:1": 0,
-      "ignoreNBT:1": 0,
-      "partialMatch:1": 1,
-      "requiredItems:9": {
-        "0:10": {
-          "Count:3": 1,
-          "Damage:2": 24522,
-          "OreDict:8": "",
-          "id:8": "gregtech:gt.blockmachines"
-        }
-      },
-      "taskID:8": "bq_standard:retrieval",
+      "taskID:8": "bq_standard:checkbox",
       "index:3": 0
     }
   }
