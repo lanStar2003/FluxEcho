@@ -2,6 +2,7 @@ package com.fluxecho.thaumcraft;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -42,6 +43,16 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     private boolean charging;
     private boolean chargedThisTick;
     private int flowTicks;
+    /** EU that came in during the current second, and the average EU/t of the last one. */
+    private long inputAcc, avgInput;
+    /** What the hologram says: {@link #IDLE} ... {@link #NO_POWER}. */
+    private byte state;
+    /** Shown on the client as the server had them at the last sync. */
+    private long shownCapacity;
+    private int shownRate;
+    private int lastSync = Integer.MIN_VALUE;
+
+    public static final byte IDLE = 0, CHARGING = 1, FULL = 2, NO_POWER = 3;
 
     // ---- state
 
@@ -59,6 +70,43 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
 
     public static long capacity() {
         return Config.visPedestalBuffer;
+    }
+
+    /** As the server last told (the client's own config may differ). */
+    public long shownCapacity() {
+        return shownCapacity > 0 ? shownCapacity : capacity();
+    }
+
+    public int shownRate() {
+        return shownRate > 0 ? shownRate : rate();
+    }
+
+    /** Average EU/t that came in over the last second. */
+    public long averageInput() {
+        return avgInput;
+    }
+
+    public byte state() {
+        return state;
+    }
+
+    // What the pedestal takes, read by FluxLite's connectors (GT's own names, see FluxLite's ProbeSinkAdapter): any
+    // voltage is safe, so packets are big; the buffer is topped up to exactly full.
+
+    public long getInputVoltage() {
+        return 8192;
+    }
+
+    public long getInputAmperage() {
+        return 16;
+    }
+
+    public long getStoredEU() {
+        return energy;
+    }
+
+    public long getEUCapacity() {
+        return capacity();
     }
 
     public int count(ItemVisModule.Kind k) {
@@ -159,10 +207,31 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         if (chargedThisTick) flowTicks = 20;
         else if (flowTicks > 0) flowTicks--;
         chargedThisTick = false;
-        if (t % SYNC_PERIOD == 0 && charging != (flowTicks > 0)) {
-            charging = flowTicks > 0;
-            changed();
+        if (t % 20 == 0) {
+            avgInput = inputAcc / 20;
+            inputAcc = 0;
         }
+        if (t % SYNC_PERIOD == 0) {
+            charging = flowTicks > 0;
+            // a wand that is neither full nor filling lacks power: with EU in the buffer it would fill
+            state = wand == null ? IDLE : full(wand) ? FULL : charging ? CHARGING : NO_POWER;
+            int key = Objects.hash(
+                charging,
+                state,
+                energy / Math.max(1, capacity() / 200),
+                avgInput,
+                rate(),
+                wand == null ? -1 : VisItems.total(wand));
+            if (key != lastSync) {
+                lastSync = key;
+                changed();
+            }
+        }
+    }
+
+    private static boolean full(ItemStack s) {
+        for (int r : VisItems.room(s)) if (r > 0) return false;
+        return true;
     }
 
     private void chargeOne(ItemStack s, int rate) {
@@ -197,6 +266,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
                 .longValue();
             if (have > 0 && WirelessNetworkManager.addEUToGlobalEnergyMap(owner, -have)) {
                 energy += have;
+                inputAcc += have;
                 markDirty();
             }
         } catch (RuntimeException ignored) {
@@ -212,6 +282,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         long amps = Math.min(amperage, (capacity() - energy) / voltage);
         if (amps <= 0) return 0;
         energy += amps * voltage;
+        inputAcc += amps * voltage;
         markDirty();
         return amps;
     }
@@ -257,7 +328,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         readShown(t);
     }
 
-    /** What the client needs: the wand, the modules and whether it is charging. */
+    /** What the client needs: the wand, the modules, the animation and what the hologram shows. */
     private void writeShown(NBTTagCompound t) {
         if (wand != null) t.setTag("Wand", wand.writeToNBT(new NBTTagCompound()));
         NBTTagList list = new NBTTagList();
@@ -268,6 +339,11 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         }
         t.setTag("Modules", list);
         t.setBoolean("Charging", charging);
+        t.setLong("Energy", energy);
+        t.setLong("Cap", capacity());
+        t.setLong("In", avgInput);
+        t.setInteger("Rate", rate());
+        t.setByte("State", state);
     }
 
     private void readShown(NBTTagCompound t) {
@@ -280,6 +356,11 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
             if (slot >= 0 && slot < modules.length) modules[slot] = ItemStack.loadItemStackFromNBT(m);
         }
         charging = t.getBoolean("Charging");
+        energy = Math.max(0, t.getLong("Energy"));
+        shownCapacity = t.getLong("Cap");
+        avgInput = t.getLong("In");
+        shownRate = t.getInteger("Rate");
+        state = t.getByte("State");
     }
 
     @Override

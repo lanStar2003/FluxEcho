@@ -31,6 +31,27 @@ public final class VisItems {
         else if (s.getItem() instanceof ItemAmuletVis v) v.addRealVis(s, a, cv, true);
     }
 
+    /** Centivis of one primal in the item. */
+    public static int vis(ItemStack s, Aspect a) {
+        if (s.getItem() instanceof ItemWandCasting w) return w.getVis(s, a);
+        if (s.getItem() instanceof ItemAmuletVis v) return v.getVis(s, a);
+        return 0;
+    }
+
+    /** Centivis one primal holds at most. */
+    public static int max(ItemStack s) {
+        if (s.getItem() instanceof ItemWandCasting w) return w.getMaxVis(s);
+        if (s.getItem() instanceof ItemAmuletVis v) return v.getMaxVis(s);
+        return 0;
+    }
+
+    /** Centivis of all primals together. */
+    public static long total(ItemStack s) {
+        long t = 0;
+        for (Aspect a : Aspect.getPrimalAspects()) t += vis(s, a);
+        return t;
+    }
+
     /** Centivis each primal still takes, in {@link Aspect#getPrimalAspects()} order. */
     public static int[] room(ItemStack s) {
         List<Aspect> primals = Aspect.getPrimalAspects();

@@ -33,7 +33,8 @@ public final class Config {
     public static boolean thaumEnabled = true;
     public static int essentiaEuPerUnit = 128, essentiaPerShard = 64;
     public static int visEuPerCentiVis = 1, visPerShard = 200, visMaxTicks = 2400;
-    public static int visPedestalRate = 25, visModuleRate = 50, visWirelessRange = 32, visLinkEut = 8192;
+    public static int visPedestalRate = 25, visModuleRate = 50, visWirelessRange = 32, visLinkEut = 8192,
+        visHologramRange = 12;
     public static long visPedestalBuffer = 400_000;
     public static int insightTicks = 200, insightEut = 16;
 
@@ -206,6 +207,13 @@ public final class Config {
             1,
             Integer.MAX_VALUE,
             "Most EU/t the link module draws from the team's GT wireless network (FluxLite's network) into the pedestal.");
+        visHologramRange = c.getInt(
+            "hologramRange",
+            THAUM,
+            visHologramRange,
+            0,
+            64,
+            "Blocks within which the Flux Vis Pedestal shows its status hologram (power, modules, the wand's vis). Client side; 0 turns it off.");
         visPerShard = c.getInt(
             "visPerShard",
             THAUM,
