@@ -1,0 +1,58 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 283478482513318033,
+      "questIDLow:4": -6878835159957431049
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "汲取台最多装 4 个模块，拿着模块右键装上，空手潜行右键取下最后装的那个。\n\n• §d汲取模块§r：每种要素每秒多 10 点灵气，可以叠加，装满 4 个是每秒 45 点；\n• §b无线充能模块§r：32 格内团队成员背包里的法杖、权杖、长杖、灵气护符一起充，人在旁边干活也不断灵气；\n• §e通量链接模块§r：接入团队的 GT 无线电网（就是 FluxLite 的通量网络），电量低于一半时自动取电，不用拉线。\n\n[note]无线充能模块和通量链接模块各只装 1 个。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:vis_module"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§5汲取台模块",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 544788287598385503,
+  "questIDLow:4": -7720672721114839109,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxecho:vis_module"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

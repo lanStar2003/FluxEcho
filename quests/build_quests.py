@@ -478,15 +478,27 @@ def echo_thaum():
         [retrieval(item("fluxecho:essentia_outlet"))],
         pre=["echo_thaum/essentia_echo"])
     charger = quest(
-        "echo_thaum/vis_charger", "§5灵气充能器",
-        "一台 MV 机器，用法杖充能台做成。\n\n"
-        "• 法杖、权杖、长杖或灵气护符放进输入槽，按团队学会过的初始要素充灵气，充满了自动移到输出槽；\n"
-        "• 学初始要素：把对应的魔力碎片放进输入槽或拿着右键；\n"
-        "• 每点灵气 100 EU，1 块魔力碎片顶 200 点灵气（六种加起来算）。一轮最多 2 分钟，装得多的长杖会多充几轮。\n\n"
-        "[note]和 EMT 的工业充能台比：那个要 EV、每点灵气 5 万 EU。[/note]",
-        echo_machine(3),
-        [retrieval(echo_machine(3))],
+        "echo_thaum/vis_charger", "§5通量灵气汲取台",
+        "通量层深处沉着大量的要素。汲取台用电把六种初始要素实时抽上来，灌进悬浮在它上方的法杖：不用节点，不用等。\n\n"
+        "• 拿着法杖、权杖、长杖或灵气护符右键放上去，它会浮起来转着充；空手右键取回；\n"
+        "• 每种要素每秒 5 点灵气，每点灵气 100 EU（六种一起充约 150 EU/t）；\n"
+        "• 电从 GT 线缆来，除了顶面哪一面都行，什么电压都收；内置 40 万 EU 电池；\n"
+        "• 台上没东西时空手右键，看电量、速度和模块。\n\n"
+        "[note]用法杖充能台做成：你亲手给法杖充过灵气。旧的 GT 灵气充能器放在工作台里就能换成汲取台。[/note]",
+        item("fluxecho:vis_pedestal"),
+        [retrieval(item("fluxecho:vis_pedestal"))],
         pre=["echo_thaum/memory"])
+    modules = quest(
+        "echo_thaum/vis_modules", "§5汲取台模块",
+        "汲取台最多装 4 个模块，拿着模块右键装上，空手潜行右键取下最后装的那个。\n\n"
+        "• §d汲取模块§r：每种要素每秒多 10 点灵气，可以叠加，装满 4 个是每秒 45 点；\n"
+        "• §b无线充能模块§r：32 格内团队成员背包里的法杖、权杖、长杖、灵气护符一起充，人在旁边干活也不断灵气；\n"
+        "• §e通量链接模块§r：接入团队的 GT 无线电网（就是 FluxLite 的通量网络），电量低于一半时自动取电，不用拉线。\n\n"
+        "[note]无线充能模块和通量链接模块各只装 1 个。[/note]",
+        item("fluxecho:vis_module", 0),
+        [checkbox()],
+        [give(item("fluxecho:vis_module", 0, 1))],
+        pre=["echo_thaum/vis_charger"], main=False)
     insight = quest(
         "echo_thaum/insight_echo", "§5灵感回响仪",
         "研究点不够买研究？一台 LV 机器，用桌子、书写工具和神秘透镜做成（研究台本身没有物品形态）。\n\n"
@@ -519,7 +531,7 @@ def echo_thaum():
         [retrieval(echo_machine(8))],
         pre=["echo_thaum/crucible_echo"])
     placed = [(lore, (0, 24)), (memory, (48, 24)), (echo, (96, 0)), (outlet, (144, 0)), (charger, (96, 48)),
-              (crucible, (144, 48)), (insight, (48, 72)), (infusion, (192, 48))]
+              (crucible, (144, 48)), (insight, (48, 72)), (infusion, (192, 48)), (modules, (96, 96))]
     return write_line(
         "line/echo_thaum", "FluxEchoThaum", "§5通量回响 · 神秘",
         "每种要素亲手炼一次，以后用电现合成；初始要素认识一次，以后用电充法杖。注魔不再炼要素，法杖不再找节点。",

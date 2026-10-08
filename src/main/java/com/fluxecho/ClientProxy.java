@@ -6,6 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
+import com.fluxecho.thaumcraft.TCClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 
@@ -18,6 +19,7 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance()
             .bus()
             .register(tips);
+        if (Mods.thaumcraft) TCClient.init();
     }
 
     @Override

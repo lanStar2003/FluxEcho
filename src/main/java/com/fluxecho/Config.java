@@ -33,6 +33,8 @@ public final class Config {
     public static boolean thaumEnabled = true;
     public static int essentiaEuPerUnit = 128, essentiaPerShard = 64;
     public static int visEuPerCentiVis = 1, visPerShard = 200, visMaxTicks = 2400;
+    public static int visPedestalRate = 25, visModuleRate = 50, visWirelessRange = 32, visLinkEut = 8192;
+    public static long visPedestalBuffer = 400_000;
     public static int insightTicks = 200, insightEut = 16;
 
     public static boolean bloodEnabled = true;
@@ -168,7 +170,42 @@ public final class Config {
             visEuPerCentiVis,
             1,
             10_000,
-            "EU per centivis the Vis Charger puts into a wand (100 centivis = 1 vis).");
+            "EU per centivis the Flux Vis Pedestal (and the old Vis Charger) puts into a wand (100 centivis = 1 vis).");
+        visPedestalRate = c.getInt(
+            "pedestalCentivisPerTick",
+            THAUM,
+            visPedestalRate,
+            1,
+            100_000,
+            "Centivis per primal per tick the Flux Vis Pedestal draws with no extraction module (25 = 5 vis a second).");
+        visModuleRate = c.getInt(
+            "extractionModuleCentivisPerTick",
+            THAUM,
+            visModuleRate,
+            0,
+            100_000,
+            "Centivis per primal per tick each extraction module adds (they add up, up to 4).");
+        visPedestalBuffer = parseLong(
+            c.getString(
+                "pedestalBufferEU",
+                THAUM,
+                String.valueOf(visPedestalBuffer),
+                "EU the Flux Vis Pedestal stores."),
+            visPedestalBuffer);
+        visWirelessRange = c.getInt(
+            "wirelessModuleRange",
+            THAUM,
+            visWirelessRange,
+            1,
+            512,
+            "Blocks within which the wireless module fills the wands, sceptres, staves and vis amulets the team carries.");
+        visLinkEut = c.getInt(
+            "linkModuleEuPerTick",
+            THAUM,
+            visLinkEut,
+            1,
+            Integer.MAX_VALUE,
+            "Most EU/t the link module draws from the team's GT wireless network (FluxLite's network) into the pedestal.");
         visPerShard = c.getInt(
             "visPerShard",
             THAUM,
@@ -320,5 +357,13 @@ public final class Config {
             "Switch the Echo ME Provider off: no recipe, and placed ones offer no patterns.");
 
         if (c.hasChanged()) c.save();
+    }
+
+    private static long parseLong(String s, long fallback) {
+        try {
+            return Math.max(1, Long.parseLong(s.trim()));
+        } catch (NumberFormatException | NullPointerException e) {
+            return fallback;
+        }
     }
 }

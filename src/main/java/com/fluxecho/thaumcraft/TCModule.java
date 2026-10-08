@@ -1,6 +1,7 @@
 package com.fluxecho.thaumcraft;
 
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
@@ -19,7 +20,8 @@ import thaumcraft.api.aspects.Aspect;
  */
 public final class TCModule {
 
-    public static Block outlet;
+    public static Block outlet, visPedestal;
+    public static Item visModule;
 
     private TCModule() {}
 
@@ -27,6 +29,11 @@ public final class TCModule {
         outlet = new BlockEssentiaOutlet();
         GameRegistry.registerBlock(outlet, "essentia_outlet");
         GameRegistry.registerTileEntity(TileEssentiaOutlet.class, "fluxecho:essentia_outlet");
+        visPedestal = new BlockVisPedestal();
+        GameRegistry.registerBlock(visPedestal, ItemBlockVisPedestal.class, "vis_pedestal");
+        GameRegistry.registerTileEntity(TileVisPedestal.class, "fluxecho:vis_pedestal");
+        visModule = new ItemVisModule();
+        GameRegistry.registerItem(visModule, "vis_module");
     }
 
     public static void machines() {

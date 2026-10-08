@@ -40,6 +40,105 @@ public class Textures {
         item("blocks/echo_provider", Textures::provider);
         face("blocks/machines/gene_assembler/front", Textures::helixFrame);
         item("items/gene_sample", Textures::geneVial);
+        item("blocks/vis_pedestal_top", Textures::pedestalTop);
+        item("blocks/vis_pedestal_side", Textures::pedestalSide);
+        item("blocks/vis_pedestal_bottom", Textures::pedestalBottom);
+        item("items/vis_module_extraction", Textures::moduleExtraction);
+        item("items/vis_module_wireless", Textures::moduleWireless);
+        item("items/vis_module_link", Textures::moduleLink);
+    }
+
+    /** Thaumcraft's primal colours: aer, ignis, aqua, terra, ordo, perditio. */
+    static final int[] PRIMALS = { 0xFFF27A, 0xFF5A1F, 0x3CD4FC, 0x56C000, 0xE6E4F4, 0x6A5A7A };
+
+    /** Flux Vis Pedestal, top: a steel plate, a ring of the six primals around a violet lens. */
+    static int pedestalTop(int x, int y, boolean active, boolean[] glow) {
+        if (x == 0 || y == 0) return 0x8A929C;
+        if (x == 15 || y == 15) return 0x30353D;
+        if (x == 1 || y == 1 || x == 14 || y == 14) return 0x4A505A;
+        double d = dist(x, y);
+        double a = Math.atan2(y - 7.5, x - 7.5);
+        if (d >= 4.4 && d < 5.6) {
+            int sector = (int) Math.floor(((a + Math.PI) / (2 * Math.PI)) * 6 + 0.5) % 6;
+            double centre = sector * Math.PI / 3 - Math.PI;
+            double off = Math.abs(Math.atan2(Math.sin(a - centre), Math.cos(a - centre)));
+            return off < 0.3 ? PRIMALS[sector] : 0x23272E;
+        }
+        if (d >= 5.6 && d < 6.2) return 0x5A616D;
+        if (d < 1.3) return 0xF4EEFF;
+        if (d < 2.4) return 0xB48CFF;
+        if (d < 3.4) return 0x6A3CC4;
+        if (d < 4.4) return (x + y) % 2 == 0 ? 0x1A1D24 : 0x161920;
+        return 0x2A2F38;
+    }
+
+    /** Flux Vis Pedestal, side (the lower 12 rows show): a steel panel with glowing vis conduits. */
+    static int pedestalSide(int x, int y, boolean active, boolean[] glow) {
+        if (y == 4) return 0x8A929C;
+        if (y == 5) return 0x5A616D;
+        if (y == 15) return 0x2A2F38;
+        if (x == 0 || x == 15) return 0x4A505A;
+        boolean conduit = (x == 4 || x == 11) && y >= 7 && y <= 13;
+        if (conduit) return y % 3 == 0 ? 0xC8F6FF : 0x5FD6FF;
+        boolean core = x >= 6 && x <= 9 && y >= 8 && y <= 12;
+        if (core) {
+            if (x == 6 || x == 9 || y == 8 || y == 12) return 0x5A616D;
+            return (x + y) % 2 == 0 ? 0xB48CFF : 0x8F6CFF;
+        }
+        if (y == 14) return 0x3A404A;
+        return (x + y) % 7 == 0 ? 0x3E444E : 0x343941;
+    }
+
+    static int pedestalBottom(int x, int y, boolean active, boolean[] glow) {
+        if (x == 0 || y == 0 || x == 15 || y == 15) return 0x30353D;
+        return (x * 3 + y) % 9 == 0 ? 0x3E444E : 0x383D46;
+    }
+
+    /** A module card: steel with gold contacts; the emblem decides the rest. */
+    static int moduleCard(int x, int y) {
+        if (x < 2 || x > 13 || y < 2 || y > 13) return 0;
+        if (y == 13) return x % 2 == 0 && x > 2 && x < 13 ? 0xE6B84A : 0;
+        if (x == 2 || y == 2) return 0x8A929C;
+        if (x == 13 || y == 12) return 0x30353D;
+        return 0x3A404A;
+    }
+
+    /** Extraction module: a violet vortex with a stream rising out of it. */
+    static int moduleExtraction(int x, int y, boolean active, boolean[] glow) {
+        int c = moduleCard(x, y);
+        if (c == 0 || y >= 12 || x == 2 || y == 2 || x == 13) return c;
+        double d = Math.hypot(x - 7.5, (y - 9) * 1.6);
+        if (x >= 7 && x <= 8 && y >= 3 && y <= 8) return y <= 4 ? 0xF4EEFF : 0x7FF0D0;
+        if (y == 4 && (x == 6 || x == 9)) return 0x7FF0D0;
+        if (d < 1.5) return 0xF4EEFF;
+        if (d < 3.2) return 0xB48CFF;
+        if (d < 4.6 && y >= 8) return 0x6A3CC4;
+        return c;
+    }
+
+    /** Wireless charging module: waves going out from a vis node. */
+    static int moduleWireless(int x, int y, boolean active, boolean[] glow) {
+        int c = moduleCard(x, y);
+        if (c == 0 || y >= 12 || x == 2 || y == 2 || x == 13) return c;
+        double d = Math.hypot(x - 4.5, y - 10.5);
+        if (d < 1.6) return 0xB48CFF;
+        boolean upRight = x >= 4 && y <= 11;
+        if (upRight && ((d >= 3.2 && d < 4.1) || (d >= 5.6 && d < 6.5) || (d >= 8.0 && d < 8.9)))
+            return d < 5 ? 0x7FF0D0 : d < 7 ? 0x3CD4FC : 0x2FB3A0;
+        return c;
+    }
+
+    /** Flux link module: an ender eye with a bolt of power. */
+    static int moduleLink(int x, int y, boolean active, boolean[] glow) {
+        int c = moduleCard(x, y);
+        if (c == 0 || y >= 12 || x == 2 || y == 2 || x == 13) return c;
+        int[][] bolt = { { 9, 3 }, { 8, 4 }, { 8, 5 }, { 7, 6 }, { 6, 7 }, { 7, 7 }, { 8, 7 }, { 7, 8 }, { 6, 9 },
+            { 6, 10 }, { 5, 11 } };
+        for (int[] p : bolt) if (p[0] == x && p[1] == y) return 0xFFE14A;
+        double d = Math.hypot(x - 10.5, y - 9.5);
+        if (d < 0.9) return 0x0E3B2E;
+        if (d < 1.9) return 0x2FB3A0;
+        return c;
     }
 
     /** Which strand of a double helix runs through (x, y), going down the middle of the face: 1 or 2, 0 for none. */

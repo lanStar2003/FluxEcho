@@ -84,7 +84,7 @@ tile.fluxecho.essentia_outlet.name=Essentia Outlet
 fluxecho.recipe.essentia_echo=Essentia Echo
 fluxecho.recipe.vis_charger=Vis Charging
 fluxecho.essentia_echo.tip=§3Synthesizes, on demand, every aspect your team has held once: no alchemical furnace, no alembics§r\nNeeds an Essentia Outlet next to it: an infusion matrix within 12 blocks draws from the outlet, essentia tubes pull from it\nPer essentia: its primal units x %s EU (a primal is 1 unit, Lux 2, ...)\nPlus shard credit: one vis crystal shard pays for %s units; keep shards in the input\nLearn aspects: put a filled phial, jar or crystal into the input (it goes to the output), or right-click the machine with it\nTakes up to %3$s A
-fluxecho.vis_charger.tip=§3Charges wands, sceptres, staves and vis amulets from EU, no node needed§r\nOnly the primals your team has learned: put the matching shard into the input (or right-click with it)\nThe wand charges in the input and moves to the output once full\n%s EU per vis; one shard pays for %s vis (summed over the primals)
+fluxecho.vis_charger.tip=§cRetired: turn it into a Flux Vis Pedestal in a crafting grid§r\n§3Charges wands, sceptres, staves and vis amulets from EU, no node needed§r\nOnly the primals your team has learned: put the matching shard into the input (or right-click with it)\nThe wand charges in the input and moves to the output once full\n%s EU per vis; one shard pays for %s vis (summed over the primals)
 fluxecho.aspect.no_owner=This machine has no recorded owner and cannot learn aspects. Break it and place it again.
 fluxecho.aspect.learned=Learned: %s (your team knows %s aspects)
 fluxecho.aspect.known=Already known: %s (your team knows %s aspects)
@@ -233,3 +233,18 @@ fluxecho.seed_echo.type=Seed Breeding
 fluxecho.mana_echo.type=Mana Generation
 fluxecho.enchant_echo.type=Enchanted Book Copying
 fluxecho.gene_assembler.type=Gene Splicing
+
+# Flux Vis Pedestal
+tile.fluxecho.vis_pedestal.name=Flux Vis Pedestal
+fluxecho.vis_pedestal.type=Vis Charging
+fluxecho.vis_pedestal.tip=§3The aspects lie thick deep in the flux layer: the pedestal draws the six primals up with EU, live, into the wand floating above it§r\nRight-click with a wand, sceptre, staff or vis amulet to put it on; empty hand to take it back; empty hand on an empty pedestal for its status\n%s vis per primal per second, %s EU per vis; extraction modules make it faster\nPower from GT cables (any side but the top, any voltage) or the team's wireless network with a link module; holds %s EU\nUp to %s modules: right-click with one to install, sneak-right-click with an empty hand to take one out
+item.fluxecho.vis_module.extraction.name=Extraction Module
+item.fluxecho.vis_module.wireless.name=Wireless Charging Module
+item.fluxecho.vis_module.link.name=Flux Link Module
+fluxecho.vis_module.extraction.tip=§3Draws one more stream of primals up from the depths§r\n%s more vis per primal per second; they add up, up to 4
+fluxecho.vis_module.wireless.tip=§3Sends the vis straight to the team§r\nFills the wands, sceptres, staves and vis amulets team members carry within %s blocks, in this world
+fluxecho.vis_module.link.tip=§3Links the pedestal to the team's GT wireless network (FluxLite's flux network)§r\nDraws power when the pedestal is below half, up to %s EU/t; no cables needed
+fluxecho.vis_module.install=§8Right-click a Flux Vis Pedestal with it to install; sneak-right-click with an empty hand takes the last one out\n§8One wireless and one link module at most
+fluxecho.vis_pedestal.installed=Installed: %s (%s/%s)
+fluxecho.vis_pedestal.no_slot=No room: up to 4 modules, and one wireless and one link module at most
+fluxecho.vis_pedestal.status=Flux Vis Pedestal: %s / %s EU stored; %s vis per primal per second (about %s EU/s with all six charging); modules %s/%s

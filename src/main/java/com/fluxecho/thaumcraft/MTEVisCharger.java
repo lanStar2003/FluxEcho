@@ -16,11 +16,10 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import thaumcraft.api.aspects.Aspect;
-import thaumcraft.common.items.baubles.ItemAmuletVis;
-import thaumcraft.common.items.wands.ItemWandCasting;
 
 /**
- * Vis Charger (MV). Charges a wand, sceptre, staff or vis amulet from EU with every primal its team has learned,
+ * Vis Charger (MV), retired: the Flux Vis Pedestal replaced it, and its recipe now turns it into one. Placed ones
+ * keep working. Charges a wand, sceptre, staff or vis amulet from EU with every primal its team has learned,
  * no node needed. The wand stays in the input while it charges and goes to the output once full; a cycle is capped
  * (see {@link VisCharge}), so a big staff takes a few. Shards in the inputs pay the shard credit.
  */
@@ -59,24 +58,8 @@ public class MTEVisCharger extends MTEThaumMachine {
         return new Object[] { Config.visEuPerCentiVis * CV_PER_VIS, Config.visPerShard };
     }
 
-    static boolean chargeable(ItemStack s) {
-        return s != null && (s.getItem() instanceof ItemWandCasting || s.getItem() instanceof ItemAmuletVis);
-    }
-
-    private static int room(ItemStack s, Aspect a) {
-        if (s.getItem() instanceof ItemWandCasting w) return Math.max(0, w.getMaxVis(s) - w.getVis(s, a));
-        if (s.getItem() instanceof ItemAmuletVis v) return Math.max(0, v.getMaxVis(s) - v.getVis(s, a));
-        return 0;
-    }
-
-    private static void add(ItemStack s, Aspect a, int cv) {
-        if (cv <= 0) return;
-        if (s.getItem() instanceof ItemWandCasting w) w.addRealVis(s, a, cv, true);
-        else if (s.getItem() instanceof ItemAmuletVis v) v.addRealVis(s, a, cv, true);
-    }
-
     private int wandSlot() {
-        for (int i = 0; i < mInputSlotCount; i++) if (chargeable(input(i))) return i;
+        for (int i = 0; i < mInputSlotCount; i++) if (VisItems.chargeable(input(i))) return i;
         return -1;
     }
 
@@ -97,7 +80,7 @@ public class MTEVisCharger extends MTEThaumMachine {
             if (!AspectMemory.get()
                 .knows(team, primals.get(i))) continue;
             anyKnown = true;
-            room[i] = room(wand, primals.get(i));
+            room[i] = VisItems.room(wand, primals.get(i));
         }
         if (!anyKnown) return idle("no_primal_known");
 
@@ -126,7 +109,7 @@ public class MTEVisCharger extends MTEThaumMachine {
         if (add == null || slot < 0) return;
         ItemStack wand = input(slot);
         List<Aspect> primals = Aspect.getPrimalAspects();
-        for (int i = 0; i < add.length && i < primals.size(); i++) add(wand, primals.get(i), add[i]);
+        for (int i = 0; i < add.length && i < primals.size(); i++) VisItems.add(wand, primals.get(i), add[i]);
     }
 
     @Override

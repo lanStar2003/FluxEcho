@@ -8,19 +8,19 @@
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "一台 MV 机器，用法杖充能台做成。\n\n• 法杖、权杖、长杖或灵气护符放进输入槽，按团队学会过的初始要素充灵气，充满了自动移到输出槽；\n• 学初始要素：把对应的魔力碎片放进输入槽或拿着右键；\n• 每点灵气 100 EU，1 块魔力碎片顶 200 点灵气（六种加起来算）。一轮最多 2 分钟，装得多的长杖会多充几轮。\n\n[note]和 EMT 的工业充能台比：那个要 EV、每点灵气 5 万 EU。[/note]",
+      "desc:8": "通量层深处沉着大量的要素。汲取台用电把六种初始要素实时抽上来，灌进悬浮在它上方的法杖：不用节点，不用等。\n\n• 拿着法杖、权杖、长杖或灵气护符右键放上去，它会浮起来转着充；空手右键取回；\n• 每种要素每秒 5 点灵气，每点灵气 100 EU（六种一起充约 150 EU/t）；\n• 电从 GT 线缆来，除了顶面哪一面都行，什么电压都收；内置 40 万 EU 电池；\n• 台上没东西时空手右键，看电量、速度和模块。\n\n[note]用法杖充能台做成：你亲手给法杖充过灵气。旧的 GT 灵气充能器放在工作台里就能换成汲取台。[/note]",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
-        "Damage:2": 24533,
+        "Damage:2": 0,
         "OreDict:8": "",
-        "id:8": "gregtech:gt.blockmachines"
+        "id:8": "fluxecho:vis_pedestal"
       },
       "isGlobal:1": 0,
       "isMain:1": 1,
       "isSilent:1": 0,
       "lockedProgress:1": 0,
-      "name:8": "§5灵气充能器",
+      "name:8": "§5通量灵气汲取台",
       "partySingleReward:1": 0,
       "questLogic:8": "AND",
       "repeatTime:3": -1,
@@ -45,9 +45,9 @@
       "requiredItems:9": {
         "0:10": {
           "Count:3": 1,
-          "Damage:2": 24533,
+          "Damage:2": 0,
           "OreDict:8": "",
-          "id:8": "gregtech:gt.blockmachines"
+          "id:8": "fluxecho:vis_pedestal"
         }
       },
       "taskID:8": "bq_standard:retrieval",
