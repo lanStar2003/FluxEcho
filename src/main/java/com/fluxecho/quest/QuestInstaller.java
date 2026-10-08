@@ -2,9 +2,6 @@ package com.fluxecho.quest;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -22,72 +19,81 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 
-import org.apache.commons.io.IOUtils;
-
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
 import com.fluxecho.logic.QuestOrder;
 import com.fluxecho.logic.QuestPlan;
-import com.google.gson.Gson;
+import com.fluxecho.quest.bq.QuestInjector;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 
 /**
- * Installs the quest lines shipped in the jar ({@code assets/fluxecho/quests}, written by
- * {@code quests/build_quests.py}) into {@code config/betterquesting/DefaultQuests}, and lists them in
- * {@code QuestLinesOrder.txt}. Runs in preInit, before BetterQuesting loads a new world's quests and before the GTNH
- * core mod reloads them after a pack update.
- * <p>
- * Only the lines' own folders and order entries are touched: a file is written when its bytes differ, a file is
- * removed only from the line's own folder, and the order file only gets our lines replaced in place or appended.
- * A line whose mods are missing is skipped and its installed files are left alone. Nothing is created when the
- * instance has no DefaultQuests: then the pack does not use BetterQuesting's default quests.
+ * Installs the quest lines shipped in the jar ({@link QuestPack}) so that nobody has to run
+ * {@code /bq_admin default load}:
+ * <ul>
+ * <li>In preInit the files go into {@code config/betterquesting/DefaultQuests} and the lines into
+ * {@code QuestLinesOrder.txt}, so every later default load (by hand, or the GTNH core mod's after a pack update)
+ * keeps them.</li>
+ * <li>When a server has started, {@link QuestInjector} puts them straight into that world's quest database, so they
+ * show up in every world, old or new, with progress kept.</li>
+ * </ul>
+ * Only the lines' own folders, order rows and quests are touched. A line whose mods are missing is skipped and its
+ * installed files are left alone. No DefaultQuests folder is created when the instance has none: then the pack does
+ * not use BetterQuesting's default quests, and the lines are only put into the worlds.
  */
 public final class QuestInstaller {
 
-    private static final String ROOT = "/assets/fluxecho/quests/";
     /** Machine ids baked into the shipped quests (build_quests.py). */
     private static final int QUEST_FLUXDEPTHS_FIRST_ID = 24520;
 
+    private static final Notice NOTICE = new Notice();
+
     private QuestInstaller() {}
 
-    public static void run(File configDir) {
-        if (!Config.installQuests || !Mods.betterQuesting) return;
-        File defaults = new File(configDir, "betterquesting/DefaultQuests");
+    private static boolean enabled() {
+        return Config.installQuests && Mods.betterQuesting;
+    }
+
+    public static void preInit(File configDir) {
+        if (!enabled()) return;
+        FMLCommonHandler.instance()
+            .bus()
+            .register(NOTICE);
+        File defaults = new File(new File(configDir, "betterquesting"), "DefaultQuests");
         File order = new File(defaults, "QuestLinesOrder.txt");
         if (!order.isFile()) {
-            FluxEcho.LOG.info("No {}: quest lines not installed", order);
+            FluxEcho.LOG.info("No {}: the quest lines are only put into the worlds", order);
             return;
         }
         try {
-            if (install(configDir, defaults, order)) FMLCommonHandler.instance()
-                .bus()
-                .register(new Hint());
+            install(configDir, defaults, order);
         } catch (Exception e) {
-            FluxEcho.LOG.error("Failed to install the quest lines", e);
+            FluxEcho.LOG.error("Failed to install the quest files", e);
         }
     }
 
-    /** @return whether any file changed */
-    private static boolean install(File configDir, File defaults, File order) throws IOException {
-        Index index;
-        try (Reader r = new InputStreamReader(resource("index.json"), StandardCharsets.UTF_8)) {
-            index = new Gson().fromJson(r, Index.class);
+    public static void serverStarted() {
+        NOTICE.reset();
+        if (!enabled()) return;
+        try {
+            int[] changed = QuestInjector.inject(QuestPack.installable());
+            if (changed[0] + changed[1] > 0) NOTICE.set(changed[0], changed[1]);
+        } catch (Exception | LinkageError e) { // LinkageError: a BetterQuesting whose API changed
+            FluxEcho.LOG.error("Failed to put the quest lines into the world", e);
         }
+    }
+
+    private static void install(File configDir, File defaults, File order) throws IOException {
         List<String> entries = new ArrayList<>();
         int written = 0, removed = 0;
-        for (Line line : index.lines) {
-            if (!Mods.allLoaded(Arrays.asList(line.requires))) {
-                FluxEcho.LOG.info("Quest line {} skipped: needs {}", line.order, Arrays.toString(line.requires));
-                continue;
-            }
+        for (QuestPack.Line line : QuestPack.installable()) {
             if (Arrays.asList(line.requires)
                 .contains("fluxdepths")) checkFluxDepthsIds();
             for (String path : line.files) {
-                if (write(new File(defaults, path), readResource("DefaultQuests/" + path))) written++;
+                if (write(new File(defaults, path), QuestPack.read(path))) written++;
             }
             Set<String> shipped = new HashSet<>(Arrays.asList(line.files));
             for (String dir : line.dirs) {
@@ -114,14 +120,12 @@ public final class QuestInstaller {
             write(order, merged.getBytes(StandardCharsets.UTF_8));
         }
 
-        boolean changed = written > 0 || removed > 0 || orderChanged;
-        if (changed) FluxEcho.LOG.info(
-            "Quest lines installed: {} files written, {} removed, order file {}. Run /bq_admin default load to load them.",
+        if (written > 0 || removed > 0 || orderChanged) FluxEcho.LOG.info(
+            "Quest files installed: {} written, {} removed, order file {}",
             written,
             removed,
             orderChanged ? "updated" : "unchanged");
-        else FluxEcho.LOG.info("Quest lines up to date ({} lines)", entries.size());
-        return changed;
+        else FluxEcho.LOG.info("Quest files up to date ({} lines)", entries.size());
     }
 
     /** Writes the file when its content differs, through a temporary file next to it. */
@@ -133,18 +137,6 @@ public final class QuestInstaller {
         Files.write(tmp.toPath(), data);
         Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         return true;
-    }
-
-    private static InputStream resource(String path) throws IOException {
-        InputStream in = QuestInstaller.class.getResourceAsStream(ROOT + path);
-        if (in == null) throw new IOException("missing resource " + ROOT + path);
-        return in;
-    }
-
-    private static byte[] readResource(String path) throws IOException {
-        try (InputStream in = resource(path)) {
-            return IOUtils.toByteArray(in);
-        }
     }
 
     /** The shard collector quests name FluxDepths' machines by id; warn when its config moved them. */
@@ -162,32 +154,28 @@ public final class QuestInstaller {
         }
     }
 
-    /** Tells whoever can run {@code /bq_admin} once per launch that the quest files changed. */
-    public static final class Hint {
+    /** Tells each player once per server start that the quest book changed. */
+    public static final class Notice {
 
         private final Set<UUID> told = new HashSet<>();
+        private int added, updated;
+
+        void set(int added, int updated) {
+            this.added = added;
+            this.updated = updated;
+        }
+
+        void reset() {
+            told.clear();
+            added = updated = 0;
+        }
 
         @SubscribeEvent
         public void onLogin(PlayerEvent.PlayerLoggedInEvent e) {
-            if (!(e.player instanceof EntityPlayerMP p) || !p.canCommandSenderUseCommand(2, "bq_admin")) return;
-            if (!told.add(p.getUniqueID())) return;
+            if (added + updated == 0 || !(e.player instanceof EntityPlayerMP p) || !told.add(p.getUniqueID())) return;
             p.addChatMessage(
-                new ChatComponentTranslation("fluxecho.quests.updated")
+                new ChatComponentTranslation("fluxecho.quests.synced", added, updated)
                     .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.AQUA)));
         }
-    }
-
-    /** {@code index.json}. */
-    private static final class Index {
-
-        Line[] lines = new Line[0];
-    }
-
-    private static final class Line {
-
-        String order;
-        String[] requires = new String[0];
-        String[] dirs = new String[0];
-        String[] files = new String[0];
     }
 }

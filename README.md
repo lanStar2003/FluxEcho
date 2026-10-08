@@ -135,26 +135,21 @@ GTNH 里没有任何机器能直接用 EU 合成要素；EMT 的工业充能台�
 
 ## 任务书
 
-FluxEcho 带着这些任务线，启动时自动装进 `config/betterquesting/DefaultQuests`：
+FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导入，不用执行任何命令：
 
 | 任务线 | 需要 | 内容 |
 |---|---|---|
-| 私货 · 懒人AE | AE2、ae2fc | 开局勾选就送一整套 AE2（原来在 FluxDepths 里） |
+| 私货 · 懒人AE | AE2、ae2fc | 开局勾选就送一整套 AE2：自供能控制器加普通控制器、驱动器、物品元件和多重流体元件、终端、自动合成、线缆（原来在 FluxDepths 里） |
 | 通量深层 · 碎片采集器 | FluxDepths | 碎片采集器的世界观和逐级教程（原来在 FluxDepths 里） |
 | 通量回响 · 养蜂 | Forestry | 世界观、拓印、编辑基因、培育 |
 | 通量回响 · 神秘 | Thaumcraft | 要素记忆、回响仪和回响口、充能器、灵感回响仪、回响釜 |
 | 通量回响 · 血魔法 | Blood Magic | 第一颗宝珠、鲜血回响器、灵魂网络模式 |
 
-装好以后执行一次：
-
-```
-/bq_admin default load
-```
-
-- 只动自己的文件：每个文件和 jar 里的内容不同才写；只在自己的任务线目录里删除旧文件；`QuestLinesOrder.txt` 里只替换或追加自己的那几行，别人的行原样不动。顺序文件改动前会备份到 `config/fluxecho/backup/`。
-- 需要的模组没装，这条任务线就不装（已经装过的文件也不删）。
+- **进存档就有**：每次开服时（单人游戏就是进世界时），FluxEcho 把这几条任务线直接写进这个存档的任务数据库。缺的任务补上，内容变了的就地更新，已有进度和领奖记录都保留。新旧存档都一样，有改动时进游戏会在聊天栏提示一次。
+- **重新载入也不会丢**：启动时还会把同样的文件装进 `config/betterquesting/DefaultQuests`，并在 `QuestLinesOrder.txt` 里加上自己的那几行。以后不管是手动执行 `/bq_admin default load`，还是 GTNH 更新整合包后自动重新载入，这几条线都还在。
+- 只动自己的东西：存档里只改自己的任务线和任务，别人的一条不碰。文件和 jar 里的内容不同才写，只在自己的任务线目录里删除旧文件。顺序文件里只替换或追加自己的那几行，改动前会备份到 `config/fluxecho/backup/`。
+- 需要的模组没装，这条任务线就不导入（已经装过的文件也不删）。
 - 懒人AE 和碎片采集器的任务 ID 和以前一样，以前导入过的进度会保留。
-- 有文件改动时，OP 进游戏会收到一次提示。单人游戏要开局域网并允许作弊才能执行这个命令。
 - 不想让 FluxEcho 动任务书，把 `quests.install` 设为 `false`。
 
 ## 配置
@@ -165,7 +160,7 @@ FluxEcho 带着这些任务线，启动时自动装进 `config/betterquesting/De
 |---|---|---|
 | `general.firstMachineId` | 24530 | FluxEcho 的 GT 机器 ID 起点，一共预留 40 个（24530–24569）。只在新世界或 ID 冲突时修改 |
 | `general.enableDefaultRecipes` | true | 注册默认配方 |
-| `quests.install` | true | 启动时安装任务线 |
+| `quests.install` | true | 开服时把任务线导入存档，启动时装进 DefaultQuests |
 | `bees.enabled` | true | 关掉后不注册配方和 NEI 页面，已放下的机器停止工作（方块不会消失） |
 | `bees.imprintTicks` / `bees.imprintEuPerTick` | 100 / 16 | 拓印一次的时间和耗电 |
 | `bees.incubateTicks` / `bees.incubateEuPerTick` | 200 / 24 | 培育一批的时间和耗电 |
@@ -189,7 +184,7 @@ GT 机器 ID 24521–24575 在 GTNH 2.8.4 里除了 FluxDepths（24520–24526�
 ## 开发
 
 - 依赖：GT5-Unofficial 5.09.51.482；可选 Forestry 4.10.17、Thaumcraft 4.2.3.5、Blood Magic 1.7.52（都是 GTNH 2.8.4 自带的版本）。
-- 可选模组只在各自的模块包里使用（`com.fluxecho.bees`、`.thaumcraft`、`.blood`）。`IsolationTest` 会扫描编译出的类，模块包以外引用了它们就让构建失败。
+- 可选模组只在各自的模块包里使用（`com.fluxecho.bees`、`.thaumcraft`、`.blood`，BetterQuesting 在 `.quest.bq`）。`IsolationTest` 会扫描编译出的类，模块包以外引用了它们就让构建失败。
 - `./gradlew build`：编译、格式检查、单元测试。
 - 纹理由 `tools/Textures.java` 生成：`java tools/Textures.java`。
 - 任务书由 `quests/build_quests.py` 生成到 `src/main/resources/assets/fluxecho/quests/`：`python quests/build_quests.py`。任务 ID 由固定的键算出来，重新生成后 ID 不变，进度也不会丢。

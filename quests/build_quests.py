@@ -5,8 +5,10 @@ Output, shipped inside the jar:
   src/main/resources/assets/fluxecho/quests/DefaultQuests/{QuestLines,Quests}/<line>/...
   src/main/resources/assets/fluxecho/quests/index.json
 At startup FluxEcho's QuestInstaller copies each line whose mods are loaded into the instance's DefaultQuests and
-adds the line to QuestLinesOrder.txt (/bq_admin default load only loads the lines listed there). Other quest lines
-and the rest of the order file are never touched, so several mods can ship quest lines side by side.
+adds the line to QuestLinesOrder.txt (/bq_admin default load only loads the lines listed there); when a server has
+started, QuestInjector puts the same lines straight into that world's quest database, so nobody has to run the
+default load. Other quest lines and the rest of the order file are never touched, so several mods can ship quest
+lines side by side.
 
 Quest ids are derived from fixed keys, so running it again keeps the same ids (and the players' progress). The lazy
 AE and shard collector lines came from FluxDepths 0.1.x; their keys, folder names and file names are unchanged, so
@@ -135,27 +137,29 @@ def lazy_ae():
     core = quest(
         "lazyae/core", "§b§l懒人AE · 核心与存储",
         "一套能一直用到 EV 的 AE 网络核心。\n\n"
-        "[note]ME 自供能控制器自带无限能源：不用能源接收器，也不用谐振仓，放下就有电。[/note]\n\n"
+        "[note]ME 自供能控制器自带无限能源，一个就够整个网络用：不用能源接收器，也不用谐振仓。"
+        "另外 7 个普通 ME 控制器和它贴在一起，算同一个控制器，多出来的面都能接线。[/note]\n\n"
         "怎么搭：\n"
-        "1. 放下自供能控制器，从它的面上接致密线缆当主干，一面最多 32 个频道。\n"
-        "2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k，流体用流体元件（蒸汽、杂酚油、水都能存）。\n"
-        "3. 合成终端看库存、直接合成；样板终端和增广流体样板终端写样板；接口终端统一管理所有接口里的样板。\n\n"
+        "1. 8 个控制器拼成 2×2×2 的一整块，自供能的放在哪个位置都行。从控制器的面上接致密线缆当主干，一面最多 32 个频道。\n"
+        "2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k 元件；流体用多重流体存储元件，一个能存 5 种流体，10 个一共 50 种。\n"
+        "3. 合成终端看物品、直接合成；流体终端看流体；流体样板终端写样板，「合成」「处理」两种模式都能写；"
+        "接口终端统一管理所有接口里的样板。\n\n"
         "[warn]领取前先清空背包，放不下的会掉在地上。[/warn]",
         item(AE + "tile.BlockCreativeEnergyController"),
         [checkbox()],
-        [give(item(AE + "tile.BlockCreativeEnergyController", 0, 2), item(AE + "tile.BlockDrive", 0, 2),
+        [give(item(AE + "tile.BlockCreativeEnergyController"), item(AE + "tile.BlockController", 0, 7),
+              item(AE + "tile.BlockDrive", 0, 2),
               item(AE + "item.ItemBasicStorageCell.64k", 0, 6), item(AE + "item.ItemBasicStorageCell.16k", 0, 4),
-              item("ae2fc:fluid_storage64", 0, 2), item("ae2fc:fluid_storage16", 0, 2),
-              item(PART, 360), item(PART, 340), item("ae2fc:part_fluid_pattern_terminal_ex"), item(PART, 480),
-              item("ae2fc:part_fluid_terminal"), item(AE + "item.ToolNetworkTool"),
-              item(AE + "item.ToolMemoryCard", 0, 2))])
+              item("ae2fc:multi_fluid_storage64", 0, 6), item("ae2fc:multi_fluid_storage16", 0, 4),
+              item(PART, 360), item("ae2fc:part_fluid_terminal"), item("ae2fc:part_fluid_pattern_terminal"),
+              item(PART, 480), item(AE + "item.ToolNetworkTool"), item(AE + "item.ToolMemoryCard", 0, 2))])
     crafting = quest(
         "lazyae/crafting", "§b§l懒人AE · 自动合成",
         "让 AE 替你干活。\n\n"
-        "• 工作台配方：在样板终端里用「合成」模式写样板，放进 ME 接口，接口贴着分子装配室。要 GT 工具的配方也行，工具磨损后会还回网络。\n"
+        "• 工作台配方：在流体样板终端里用「合成」模式写样板，放进 ME 接口，接口贴着分子装配室。要 GT 工具的配方也行，工具磨损后会还回网络。\n"
         "• 机器配方（蒸汽打粉机、锻造锤、合金炉……）：用「处理」模式写样板，放进 ME 二合一接口，二合一接口贴着机器并打开「阻挡模式」；"
         "机器的另一面贴一个 ME 输入总线，把产物抽回网络。\n"
-        "• 要流体的配方用增广流体样板终端写，二合一接口会把流体一起送进机器。\n"
+        "• 要流体的配方也用「处理」模式写：流体可以直接放进样板格子（从 NEI 拖进去，或拿装着流体的容器点一下），二合一接口会把流体一起送进机器。\n"
         "• 合成 CPU：拼成 2×2×2，每组放 1 个 64k 和 1 个 16k 合成存储器、4 个并行处理单元、1 个合成单元、1 个合成监控器（能看进度）。这里给了两组的料。\n\n"
         "[note]加速卡插进输入 / 输出总线会快很多；样板扩容卡让一个接口放更多样板；合成卡让输出总线缺货时自动下单。[/note]",
         item(AE + "tile.BlockMolecularAssembler"),

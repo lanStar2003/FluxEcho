@@ -59,7 +59,7 @@ public final class Config {
             "install",
             QUESTS,
             installQuests,
-            "Copy FluxEcho's quest lines into config/betterquesting/DefaultQuests at startup and add them to QuestLinesOrder.txt. Other quest lines are never touched.");
+            "Put FluxEcho's quest lines into every world's quest database when it loads (missing quests added, changed ones updated, progress kept), and copy them into config/betterquesting/DefaultQuests and QuestLinesOrder.txt at startup so /bq_admin default load keeps them. Other quest lines are never touched.");
 
         c.setCategoryComment(
             BEES,
