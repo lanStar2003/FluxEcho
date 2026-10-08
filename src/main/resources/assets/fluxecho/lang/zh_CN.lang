@@ -79,12 +79,9 @@ fluxecho.status.no_fertilizer=林业肥料不够
 
 # thaumcraft
 gt.blockmachines.fluxecho.essentia_echo.name=要素回响仪
-gt.blockmachines.fluxecho.vis_charger.name=灵气充能器
 tile.fluxecho.essentia_outlet.name=要素回响口
 fluxecho.recipe.essentia_echo=要素回响
-fluxecho.recipe.vis_charger=灵气充能
 fluxecho.essentia_echo.tip=§3按需合成团队学会过的要素，不用炼金炉和蒸馏塔§r\n要旁边贴一个要素回响口：注魔矩阵 12 格内直接从回响口抽要素，要素管道也能从它抽\n每 1 点要素：拆到初始要素的单位数 × %s EU（初始要素 1 单位，光 2 单位……）\n另耗碎片额度：1 块魔力碎片顶 %s 单位，放在输入槽里\n学要素：把装着要素的瓶子、罐子或要素水晶放进输入槽（用完退到输出槽），或者拿着它右键机器\n最多 %3$s A 输入
-fluxecho.vis_charger.tip=§c已停用：在工作台里直接换成通量灵气汲取台§r\n§3用 EU 给法杖、权杖、长杖和灵气护符充灵气，不用节点§r\n只充团队学会过的初始要素：把对应的魔力碎片放进输入槽（或拿着右键机器）学会\n法杖留在输入槽里充，充满了自动移到输出槽\n每 1 点灵气 %s EU；1 块魔力碎片顶 %s 点灵气（六种要素加起来算）
 fluxecho.aspect.no_owner=这台机器没有记录主人，没法学要素。拆下来重新放一次。
 fluxecho.aspect.learned=学会了：%s（团队一共学会 %s 种要素）
 fluxecho.aspect.known=已经学会过：%s（团队一共学会 %s 种要素）
@@ -179,12 +176,6 @@ fluxecho.status.no_pool=附近没有魔力池
 fluxecho.status.pool_full=附近的魔力池全满了，等它们用掉
 fluxecho.status.no_petal=输入槽里放神秘花瓣
 
-# enchanting
-gt.blockmachines.fluxecho.enchant_echo.name=附魔回响器
-fluxecho.recipe.enchant_echo=附魔回响
-fluxecho.enchant_echo.tip=§3复制你手上的附魔书§r\n特殊槽：一本附魔书，一直留在槽里\n输入书和青金石，出一本一模一样的附魔书\n每级附魔 %s EU、%s 个青金石（时运 III 算 3 级）
-fluxecho.status.no_enchanted_book=特殊槽里放一本附魔书
-fluxecho.status.enchant_banned=这本书上有配置里禁止复制的附魔
 fluxecho.status.no_book=输入槽里放书
 fluxecho.status.no_lapis=青金石不够
 
@@ -201,7 +192,6 @@ fluxecho.codex.cat.aspect=要素
 fluxecho.codex.cat.mob=猎物
 fluxecho.codex.cat.crop=作物
 fluxecho.codex.cat.infusion=注魔与奥术
-fluxecho.codex.cat.enchant=附魔
 fluxecho.codex.cat.orb=血宝珠
 fluxecho.codex.todo.bee=通量回响：还没拓过——把这只蜂放进蜂种拓印机，输入纸
 fluxecho.codex.todo.tree=通量回响：还没拓过——把树苗或花粉放进蜂种拓印机，输入纸
@@ -210,7 +200,6 @@ fluxecho.codex.todo.aspect=通量回响：还没学会——放进任意一台�
 fluxecho.codex.todo.mob=通量回响：还没拓过——带着空白猎物印记杀一只
 fluxecho.codex.todo.crop=通量回响：还没拓过——扫描满级后放进种子拓印机，输入纸
 fluxecho.codex.todo.infusion=通量回响：还没回响过——亲手做一件，放进注魔回响台的特殊槽
-fluxecho.codex.todo.enchant=通量回响：还没回响过——放进附魔回响器的特殊槽
 fluxecho.codex.todo.orb=通量回响：还没用过——绑定后放进鲜血回响器
 
 # ae2
@@ -222,7 +211,6 @@ fluxecho.echo_provider.offline=回响 ME 供应器：没接上 AE 网络（或�
 fluxecho.bee_imprinter.type=基因拓印
 fluxecho.larva_incubator.type=生物培育
 fluxecho.essentia_echo.type=源质合成
-fluxecho.vis_charger.type=灵气充能
 fluxecho.insight_echo.type=研究点生成
 fluxecho.crucible_echo.type=炼金合成
 fluxecho.blood_echo.type=生命精华生成
@@ -231,7 +219,6 @@ fluxecho.infusion_echo.type=注魔合成
 fluxecho.seed_imprinter.type=作物拓印
 fluxecho.seed_echo.type=种子培育
 fluxecho.mana_echo.type=魔力生成
-fluxecho.enchant_echo.type=附魔书复制
 fluxecho.gene_assembler.type=基因组合
 
 # Flux Vis Pedestal
@@ -252,6 +239,12 @@ fluxecho.holo.title=通量灵气汲取台
 fluxecho.holo.energy=%s / %s EU
 fluxecho.holo.input=输入
 fluxecho.holo.input.value=%s EU/t
+fluxecho.holo.use=消耗
+fluxecho.waila.pedestal.energy=电量：%s / %s EU
+fluxecho.waila.pedestal.io=输入 %s EU/t · 消耗 %s EU/t
+fluxecho.waila.pedestal.rate=每种要素每秒 %s 点灵气 · 每点灵气 %s EU
+fluxecho.waila.pedestal.modules=模块：%s
+fluxecho.waila.pedestal.wand=法杖：%s（灵气 %s / %s）
 fluxecho.holo.draw=汲取
 fluxecho.holo.draw.value=每种 %s 灵气/秒
 fluxecho.holo.modules=模块

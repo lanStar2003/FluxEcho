@@ -1,14 +1,14 @@
 {
   "preRequisites:9": {
     "0:10": {
-      "questIDHigh:4": -7842334995294298873,
-      "questIDLow:4": -5097616245158690838
+      "questIDHigh:4": 3170890069590955045,
+      "questIDLow:4": -5225572181636670067
     }
   },
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "核心到 MV 起，针孔要用钻井液冷却：每块矿石消耗 20 L，加进界面左下的钻井液槽（或用管道从侧面灌）。\n\n钻井液在搅拌机里做，配方看 NEI。",
+      "desc:8": "钻头没有门槛：任意 GT 钻头都能用。它一直留在钻头槽里，每出一块矿石有 1/N 的概率磨损掉一个，平均能用 N 块：\n\n• 青铜 128、钢 256、铝 384、不锈钢 512、钛 768、钨钢 1024；\n• 其他材料按 GT 工具耐久的一半算。\n\n越好的钻头越耐用。可以用漏斗往钻头槽里补一整组。",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
@@ -17,10 +17,10 @@
         "id:8": "gregtech:gt.blockmachines"
       },
       "isGlobal:1": 0,
-      "isMain:1": 1,
+      "isMain:1": 0,
       "isSilent:1": 0,
       "lockedProgress:1": 0,
-      "name:8": "§6钻井液",
+      "name:8": "§e钻头",
       "partySingleReward:1": 0,
       "questLogic:8": "AND",
       "repeatTime:3": -1,
@@ -32,8 +32,8 @@
       "visibility:8": "NORMAL"
     }
   },
-  "questIDHigh:4": -3381051008540060004,
-  "questIDLow:4": -6965580987652672413,
+  "questIDHigh:4": -6841693230500851363,
+  "questIDLow:4": -7119791510726157794,
   "rewards:9": {},
   "tasks:9": {
     "0:10": {

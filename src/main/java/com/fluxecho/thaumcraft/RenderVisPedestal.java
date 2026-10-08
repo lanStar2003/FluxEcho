@@ -113,7 +113,7 @@ public class RenderVisPedestal extends TileEntitySpecialRenderer {
 
     /** Pixels the hologram is high: shorter without a wand, which has no primals to show. */
     private static int height(boolean wand) {
-        return 5 + 12 + 19 + 11 * 3 + 4 + 11 + (wand ? 37 : 0) + 10 + 4;
+        return 5 + 12 + 19 + 11 * 4 + 4 + 11 + (wand ? 37 : 0) + 10 + 4;
     }
 
     /** The light from the pedestal's top up to the hologram's lower edge. */
@@ -166,6 +166,8 @@ public class RenderVisPedestal extends TileEntitySpecialRenderer {
         y += 19;
 
         row(fr, EchoText.t("holo.input"), EchoText.t("holo.input.value", Compact.si(p.averageInput())), l, r, y, a);
+        y += 11;
+        row(fr, EchoText.t("holo.use"), EchoText.t("holo.input.value", Compact.si(p.averageOutput())), l, r, y, a);
         y += 11;
         row(
             fr,

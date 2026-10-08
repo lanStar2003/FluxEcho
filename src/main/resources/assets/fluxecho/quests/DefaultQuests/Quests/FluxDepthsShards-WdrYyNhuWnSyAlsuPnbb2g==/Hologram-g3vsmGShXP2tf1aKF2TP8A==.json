@@ -8,19 +8,19 @@
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "钢外壳，高压蒸汽：每 5 秒 1 块（720 块 / 小时），32 L/t 蒸汽。\n\n开孔头至少要钢钻头（平均 256 块磨损一个）。用一台蒸汽碎片采集器升级而来。",
+      "desc:8": "界面右上角的按钮，或者拿螺丝刀右键采集器，能打开全息投影（默认关闭）。\n\n采集器上方会悬着一块面向你的投影屏：核心等级、状态、正在回响的矿脉、凝结进度和每分钟产量、电量和耗电、印记、钻头磨损、已凝结数量、钻井液。\n\n[note]16 格内可见，配置 shard_collectors.hologramRange 可以改距离，设 0 全部关闭。[/note]",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
-        "Damage:2": 24521,
+        "Damage:2": 24520,
         "OreDict:8": "",
         "id:8": "gregtech:gt.blockmachines"
       },
       "isGlobal:1": 0,
-      "isMain:1": 1,
+      "isMain:1": 0,
       "isSilent:1": 0,
       "lockedProgress:1": 0,
-      "name:8": "§6高压蒸汽碎片采集器",
+      "name:8": "§3全息投影",
       "partySingleReward:1": 0,
       "questLogic:8": "AND",
       "repeatTime:3": -1,
@@ -32,25 +32,12 @@
       "visibility:8": "NORMAL"
     }
   },
-  "questIDHigh:4": 4197958764756753924,
-  "questIDLow:4": -9077114435719678624,
+  "questIDHigh:4": -8972317693338100483,
+  "questIDLow:4": -5944937832007806992,
   "rewards:9": {},
   "tasks:9": {
     "0:10": {
-      "autoConsume:1": 0,
-      "consume:1": 0,
-      "groupDetect:1": 0,
-      "ignoreNBT:1": 0,
-      "partialMatch:1": 1,
-      "requiredItems:9": {
-        "0:10": {
-          "Count:3": 1,
-          "Damage:2": 24521,
-          "OreDict:8": "",
-          "id:8": "gregtech:gt.blockmachines"
-        }
-      },
-      "taskID:8": "bq_standard:retrieval",
+      "taskID:8": "bq_standard:checkbox",
       "index:3": 0
     }
   }

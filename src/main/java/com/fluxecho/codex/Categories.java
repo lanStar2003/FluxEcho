@@ -15,7 +15,7 @@ import net.minecraft.item.ItemStack;
 public final class Categories {
 
     public static final String BEE = "bee", TREE = "tree", BUTTERFLY = "butterfly", ASPECT = "aspect", MOB = "mob",
-        CROP = "crop", INFUSION = "infusion", ENCHANT = "enchant", ORB = "orb";
+        CROP = "crop", INFUSION = "infusion", ORB = "orb";
 
     public static final class Category {
 
