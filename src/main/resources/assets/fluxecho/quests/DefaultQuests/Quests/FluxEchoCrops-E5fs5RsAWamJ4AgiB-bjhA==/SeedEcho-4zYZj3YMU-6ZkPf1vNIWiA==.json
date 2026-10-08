@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -545873070411982192,
+      "questIDLow:4": -6997841499588308497
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 LV 机器，用作物架做成。\n\n• 特殊槽放作物印记，一直留在槽里；\n• 输入 1 根作物架，出 1 袋扫描满级、属性和印记一样的种子。\n\n[note]收获交给 GT 的工业温室；这里只负责把种子变出来。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24540,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§a种子回响箱",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -2074442474405997586,
+  "questIDLow:4": -7381127154453309816,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24540,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 8849571797933055112,
+      "questIDLow:4": -8309083002942671960
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 LV 机器。\n\n• 特殊槽放猎物印记，一直留在槽里；\n• 每次按怪的最大生命收费：每点生命 128 EU，最少 10 秒（末影人 40 点生命，10 秒一只）；\n• 掉落照 MobsInfo 的表随机，包括「玩家击杀才掉」的东西，和极限实体粉碎机一样；\n• 输入槽放一把武器：按它的抢夺附魔算掉落，每次扣 1 点耐久。\n\n[note]腐肉正好喂给鲜血回响器。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24537,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§c猎物回响器",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -5890684174447190912,
+  "questIDLow:4": -8201710294553955961,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24537,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

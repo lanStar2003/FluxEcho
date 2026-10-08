@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 8814124032588339879,
+      "questIDLow:4": -5054759403094535333
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "把流体印记放进印记槽，输入槽放一个钻头，它就在家里回响出那种流体，地下储量不会减少。\n\n• 每秒出「印记储量 × 0.1」升，24 EU/t；\n• 钻头：钢钻头或更好，放进输入槽；采集器里能用 N 次的钻头，在泵里能用 N × 15 秒（钢钻头约 1 小时）；\n• 用扳手设输出面，流体自动推出去。\n\n[warn]和矿脉印记一样，只在拓下它的那个世界里有效。[/warn]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24527,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§7流体回响泵（LV）",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -4537883458739679037,
+  "questIDLow:4": -7979069144276248113,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24527,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

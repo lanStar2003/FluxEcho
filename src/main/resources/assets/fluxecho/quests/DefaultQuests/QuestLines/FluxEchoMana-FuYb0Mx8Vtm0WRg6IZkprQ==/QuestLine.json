@@ -1,0 +1,19 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "bg_image:8": "",
+      "bg_size:3": 256,
+      "desc:8": "用电产魔力，送进魔力池。不用再伺候产魔花。",
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "Botania:pool"
+      },
+      "name:8": "§b通量回响 · 植物魔法",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questLineIDHigh:4": 1650036897075713753,
+  "questLineIDLow:4": -5451299236004419155
+}

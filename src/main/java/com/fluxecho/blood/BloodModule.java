@@ -7,10 +7,12 @@ import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
+import WayofTime.alchemicalWizardry.api.items.interfaces.IBloodOrb;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
@@ -36,6 +38,18 @@ public final class BloodModule {
                 .slotOverlays((index, fluid, output, special) -> special ? GTUITextures.OVERLAY_SLOT_DATA_ORB : null));
     }
 
+    /** {@code modid:name} of an orb, the key of the ledger. */
+    static String key(ItemStack s) {
+        GameRegistry.UniqueIdentifier id = s == null ? null : GameRegistry.findUniqueIdentifierFor(s.getItem());
+        return id == null ? null : id.modId + ":" + id.name;
+    }
+
+    static ItemStack stack(String key) {
+        int i = key.indexOf(':');
+        Item item = i <= 0 ? null : GameRegistry.findItem(key.substring(0, i), key.substring(i + 1));
+        return item == null ? null : new ItemStack(item);
+    }
+
     public static void machines() {
         Machines.put(MachineId.BLOOD_ECHO, new MTEBloodEcho(Machines.claim(MachineId.BLOOD_ECHO)));
         map();
@@ -45,6 +59,10 @@ public final class BloodModule {
      * The recipe takes a blood altar and a sacrificial knife: the machine repeats what you did with them by hand.
      */
     public static void postInit() {
+        Categories.register(new Categories.Category(Categories.ORB, BloodModule::stack, key -> {
+            ItemStack s = stack(key);
+            return s == null ? key : s.getDisplayName();
+        }, s -> s != null && s.getItem() instanceof IBloodOrb ? key(s) : null));
         if (!Config.bloodEnabled || !Config.defaultRecipes) return;
         try {
             Block altar = GameRegistry.findBlock("AWWayofTime", "Altar");

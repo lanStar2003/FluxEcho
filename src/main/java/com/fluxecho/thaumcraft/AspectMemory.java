@@ -1,6 +1,7 @@
 package com.fluxecho.thaumcraft;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -12,6 +13,8 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraftforge.common.DimensionManager;
+
+import com.fluxecho.codex.EchoNet;
 
 import thaumcraft.api.aspects.Aspect;
 
@@ -65,13 +68,22 @@ public class AspectMemory extends WorldSavedData {
         return s == null ? 0 : s.size();
     }
 
+    /** The tags of the aspects the team knows. */
+    public Set<String> tags(UUID team) {
+        Set<String> s = team == null ? null : known.get(team);
+        return s == null ? Collections.emptySet() : Collections.unmodifiableSet(s);
+    }
+
     /** @return how many of the aspects were new to the team */
     public int learn(UUID team, Collection<Aspect> aspects) {
         if (team == null) return 0;
         Set<String> s = known.computeIfAbsent(team, k -> new LinkedHashSet<>());
         int added = 0;
         for (Aspect a : aspects) if (a != null && s.add(a.getTag())) added++;
-        if (added > 0) markDirty();
+        if (added > 0) {
+            markDirty();
+            EchoNet.ledgerChanged(team);
+        }
         return added;
     }
 

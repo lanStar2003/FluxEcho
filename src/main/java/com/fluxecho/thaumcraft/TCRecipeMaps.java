@@ -42,4 +42,14 @@ final class TCRecipeMaps {
             b -> b.maxIO(2, 1, 0, 0)
                 .minInputs(0, 0));
     }
+
+    static RecipeMap<?> infusionEcho() {
+        return EchoRecipeMaps.map(
+            MachineId.INFUSION_ECHO,
+            b -> b.maxIO(9, 1, 0, 0)
+                .minInputs(0, 0)
+                .useSpecialSlot()
+                .slotOverlays(
+                    (index, fluid, output, special) -> special ? GTUITextures.OVERLAY_SLOT_MOLECULAR_2 : null));
+    }
 }

@@ -1,0 +1,19 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "bg_image:8": "",
+      "bg_size:3": 256,
+      "desc:8": "一袋扫满的种子拓成印记，以后直接出同属性的种子。杂交一次就够了。",
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:crop_imprint"
+      },
+      "name:8": "§a通量回响 · 作物",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questLineIDHigh:4": 1411857476948613545,
+  "questLineIDLow:4": -8511794353475755132
+}

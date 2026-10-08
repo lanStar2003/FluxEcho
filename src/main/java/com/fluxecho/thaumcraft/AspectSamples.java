@@ -56,6 +56,22 @@ public final class AspectSamples {
         return out;
     }
 
+    /** A phial of the aspect, for the Codex. */
+    public static ItemStack phial(String tag) {
+        Aspect a = Aspect.getAspect(tag);
+        if (a == null) return null;
+        ItemStack s = new ItemStack(ConfigItems.itemEssence, 1, 1);
+        ((IEssentiaContainerItem) s.getItem()).setAspects(s, new AspectList().add(a, 8));
+        return s;
+    }
+
+    /** The aspect a phial, jar or crystal of one aspect, or a shard, stands for. */
+    public static String keyOf(ItemStack s) {
+        List<Aspect> taught = taught(s);
+        return taught.size() == 1 ? taught.get(0)
+            .getTag() : null;
+    }
+
     /** Primal units of one essentia of the aspect (see {@link AspectUnits}). */
     public static synchronized int units(Aspect a) {
         if (units == null) {

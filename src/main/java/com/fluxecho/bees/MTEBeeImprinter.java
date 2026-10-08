@@ -7,10 +7,12 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
+import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.Chromosomes;
+import com.fluxecho.logic.Karyotype;
 
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -18,11 +20,13 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 
 /**
- * Bee Imprinter (LV). A real bee (or an imprint) sits in the special slot and is never harmed.
+ * Bee Imprinter (LV). A real bee, sapling (or pollen) or butterfly, or an imprint, sits in the special slot and is
+ * never harmed.
  * <ul>
  * <li>Paper in the input: a full imprint of the sample.</li>
- * <li>An imprint in the input and a programmed circuit: that imprint with the sample's genes for the circuit (see
- * {@link Chromosomes#forCircuit}); circuit 13 carries over everything that decides where a bee works.</li>
+ * <li>An imprint of the same kind in the input and a programmed circuit: that imprint with the sample's genes for the
+ * circuit (see {@link Karyotype#forCircuit}); on bees circuit 13 carries over everything that decides where a bee
+ * works.</li>
  * </ul>
  */
 public class MTEBeeImprinter extends MTEEchoMachine {
@@ -60,22 +64,33 @@ public class MTEBeeImprinter extends MTEEchoMachine {
         return new Object[] { EchoText.seconds(Config.imprintTicks), Config.imprintEut };
     }
 
+    /** The ledger category of a root. */
+    static String category(String root) {
+        if (Karyotype.TREES.equals(root)) return Categories.TREE;
+        if (Karyotype.BUTTERFLIES.equals(root)) return Categories.BUTTERFLY;
+        return Categories.BEE;
+    }
+
     @Override
     protected int work() {
-        Map<String, String> sample = BeeImprints.genes(sample());
-        if (sample == null) return idle("no_bee_sample");
+        ItemStack sampleStack = sample();
+        Map<String, String> sample = BeeImprints.genes(sampleStack);
+        String root = BeeImprints.root(sampleStack);
+        Karyotype k = Karyotype.of(root);
+        if (sample == null || k == null) return idle("no_bee_sample");
         ItemStack in = input(0);
         if (in == null) return idle("no_paper");
 
         ItemStack out;
         if (in.getItem() == Items.paper) {
-            out = BeeImprints.imprint(sample);
+            out = BeeImprints.imprint(root, sample);
         } else if (BeeImprints.isImprint(in)) {
             Map<String, String> base = BeeImprints.read(in);
-            List<String> genes = Chromosomes.forCircuit(circuit());
             if (base == null) return idle("no_paper");
+            if (!root.equals(BeeImprints.root(in))) return idle("imprint_kind_mismatch");
+            List<String> genes = k.forCircuit(circuit());
             if (genes.isEmpty()) return idle("need_circuit");
-            out = BeeImprints.imprint(Chromosomes.transfer(base, sample, genes));
+            out = BeeImprints.imprint(root, Chromosomes.transfer(base, sample, genes));
         } else {
             return idle("no_paper");
         }
@@ -83,6 +98,7 @@ public class MTEBeeImprinter extends MTEEchoMachine {
 
         in.stackSize--;
         mOutputItems[0] = out;
+        if (!BeeImprints.isImprint(sampleStack)) remember(category(root), sample.get(Chromosomes.SPECIES));
         return start(Config.imprintEut, Config.imprintTicks);
     }
 }

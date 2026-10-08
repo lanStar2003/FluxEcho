@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -6668424360455153693,
+      "questIDLow:4": -8291053245572588529
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 MV 机器，用附魔台和书架做成。\n\n• 特殊槽放一本附魔书，一直留在槽里；\n• 输入书和青金石，出一本一模一样的附魔书；\n• 每级附魔 16384 EU、1 个青金石（时运 III 算 3 级）。\n\n[note]配置里的 blacklist 填附魔 id，就不会复制那些附魔。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24542,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3附魔回响器",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 3106644883655777194,
+  "questIDLow:4": -8640893978800776899,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24542,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

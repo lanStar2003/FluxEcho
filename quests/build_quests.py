@@ -185,12 +185,23 @@ def lazy_ae():
               item(PART, 240, 8), item(PART, 260, 8), item(PART, 220, 8), item(PART, 280, 4),
               item("ae2fc:part_fluid_import", 0, 4), item("ae2fc:part_fluid_export", 0, 4),
               item("ae2fc:part_fluid_storage_bus", 0, 4), item(PART, 460, 4))])
+    provider = quest(
+        "lazyae/echo_provider", "§b回响 ME 供应器",
+        "FluxEcho 的回响机器也能交给 AE 自动合成，不用给每台机器写样板、配接口。\n\n"
+        "• 把供应器贴在回响机器旁边（六个面都行），再接上 AE 网络，占一个频道；\n"
+        "• 旁边的机器现在能做什么，它就自动把对应的「处理」配方挂进 AE：幼虫培育箱出公主 / 树苗 / 蝴蝶，种子回响箱出种子，"
+        "炼金回响釜出坩埚产物，注魔回响台出注魔成品，附魔回响器出附魔书；\n"
+        "• AE 下单时它把原料塞进机器，机器输出槽里的东西每秒收回网络。\n\n"
+        "[note]换了样本或电路，配方会自动跟着变。猎物回响器的掉落是随机的，没法做成配方，但它的产物也会被收回网络。[/note]",
+        item("fluxecho:echo_provider"),
+        [retrieval(item("fluxecho:echo_provider"))],
+        pre=["lazyae/crafting"], main=False)
     return write_line(
         "line/lazyae", "LazyAE", "§b私货 · 懒人AE",
         "开局直接领一整套 AE2，蒸汽时代就能全自动。\n\n"
         "三个任务都是勾选即领，没有前置。GTNH 正常要到 EV 才能自己做 AE，这套的量够你撑到那时。",
         item(AE + "tile.BlockCreativeEnergyController"),
-        [(core, (0, 0)), (crafting, (48, 0)), (cables, (96, 0))],
+        [(core, (0, 0)), (crafting, (48, 0)), (cables, (96, 0)), (provider, (48, 48))],
         ["appliedenergistics2", "ae2fc"])
 
 
@@ -283,9 +294,36 @@ def shards():
         "[note]采集器不会因此作废：想专门刷某一条矿脉（只要铂、只要钍……），印记依然是最准的办法。[/note]",
         machine(6),
         [checkbox()], pre=["shards/iv"], main=False)
+    fluid = quest(
+        "shards/fluid_imprint", "§3流体印记",
+        "深层里沉着的不只是矿脉。GT 的地下流体（石油、天然气、盐水……）也是碎片的投影，每个区块一种。\n\n"
+        "拿着印记拓印器 [潜行右键]，就拓下脚下这个区块的地下流体，耗一张纸。印记记下的是这块碎片原本的储量，"
+        "已经被抽走多少都不影响。\n\n"
+        "[note]先用探矿工具或 VisualProspecting 地图找一块流体多的区块。需要 FluxDepths 0.2.0。[/note]",
+        item("fluxdepths:imprint"),
+        [checkbox()],
+        pre=["shards/imprinter"], main=False)
+    pump_lv = quest(
+        "shards/pump_lv", "§7流体回响泵（LV）",
+        "把流体印记放进印记槽，输入槽放一个钻头，它就在家里回响出那种流体，地下储量不会减少。\n\n"
+        "• 每秒出「印记储量 × 0.1」升，24 EU/t；\n"
+        "• 钻头：钢钻头或更好，放进输入槽；采集器里能用 N 次的钻头，在泵里能用 N × 15 秒（钢钻头约 1 小时）；\n"
+        "• 用扳手设输出面，流体自动推出去。\n\n"
+        "[warn]和矿脉印记一样，只在拓下它的那个世界里有效。[/warn]",
+        machine(7), [retrieval(machine(7))], pre=["shards/fluid_imprint"], main=False)
+    pump_mv = quest(
+        "shards/pump_mv", "§b流体回响泵（MV）",
+        "每秒「印记储量 × 0.25」升，96 EU/t。钻头：铝钻头或更好。",
+        machine(8), [retrieval(machine(8))], pre=["shards/pump_lv"], main=False)
+    pump_hv = quest(
+        "shards/pump_hv", "§6流体回响泵（HV）",
+        "每秒「印记储量 × 0.5」升，384 EU/t。钻头：不锈钢钻头或更好。\n\n"
+        "[note]再往上就交给 GT 的石油钻机：它们一次覆盖一大片区块。[/note]",
+        machine(9), [retrieval(machine(9))], pre=["shards/pump_mv"], main=False)
     placed = [(lore, (0, 48)), (imprinter, (48, 24)), (first, (96, 24)), (steam, (144, 0)), (hp, (192, 0)),
               (lv, (240, 0)), (mv, (288, 0)), (hv, (288, 48)), (ev, (240, 48)), (iv, (192, 48)),
-              (handover, (144, 48))]
+              (handover, (144, 48)), (fluid, (96, 96)), (pump_lv, (144, 96)), (pump_mv, (192, 96)),
+              (pump_hv, (240, 96))]
     return write_line(
         "line/shards", "FluxDepthsShards", "§3通量深层 · 碎片采集器",
         "拓下一条矿脉的印记，在家里慢慢回响出它的矿石。从蒸汽时代一路到 IV，直到原版的虚空采矿机接手。",
@@ -353,7 +391,17 @@ def echo_bees():
         [retrieval(echo_machine(1))],
         [give(item("Forestry:honeyDrop", 0, 32))],
         pre=["echo_bees/first_imprint"])
-    placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (edit, (144, 0)), (incubator, (144, 48))]
+    others = quest(
+        "echo_bees/trees", "§3树和蝴蝶",
+        "蜂种拓印机和幼虫培育箱也认林业的树和蝴蝶。\n\n"
+        "• 拓印：特殊槽放一棵树苗（或花粉）、一只蝴蝶，输入纸，拓出树种印记、蝶种印记；\n"
+        "• 编辑：电路 1–12（蝴蝶 1–13）抄单个基因，14 抄全部非品种基因，只能在同一种之间抄；\n"
+        "• 培育：树种印记吃林业肥料，4 个出 4 棵已分析的树苗；蝶种印记吃蜂蜜滴，8 滴出 1 只蝴蝶。",
+        item("Forestry:sapling"),
+        [checkbox()],
+        pre=["echo_bees/incubator"], main=False)
+    placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (edit, (144, 0)), (incubator, (144, 48)),
+              (others, (192, 48))]
     return write_line(
         "line/echo_bees", "FluxEchoBees", "§3通量回响 · 养蜂",
         "拓下一只真蜂的全部基因，以后要多少原始公主就培育多少。不找环境、不靠运气、不碰 Gendustry。",
@@ -437,8 +485,19 @@ def echo_thaum():
         echo_machine(5),
         [retrieval(echo_machine(5))],
         pre=["echo_thaum/memory"])
+    infusion = quest(
+        "echo_thaum/infusion_echo", "§5注魔回响台",
+        "一台 MV 机器，用符文矩阵和奥术基座做成。神秘里最磨人的注魔，亲手做一次就够了。\n\n"
+        "• 特殊槽放一件你亲手注魔出来的成品（奥术工作台做的也行），一直留在槽里；\n"
+        "• 九个输入槽放这件东西要的全部材料：注魔是中心物品加全部组件，奥术是全部原料（不看摆法）；\n"
+        "• 注魔的要素当场合成（和要素回响仪一样：每单位 128 EU，碎片额度另算），奥术的灵气每点按 1 单位初始要素算；\n"
+        "• 没有基座、没有不稳定度、不会炸，也不加扭曲。\n\n"
+        "[note]只做你研究过、团队学会了全部要素的配方。碎片既是材料又是额度时，先算材料。[/note]",
+        echo_machine(8),
+        [retrieval(echo_machine(8))],
+        pre=["echo_thaum/crucible_echo"])
     placed = [(lore, (0, 24)), (memory, (48, 24)), (echo, (96, 0)), (outlet, (144, 0)), (charger, (96, 48)),
-              (crucible, (144, 48)), (insight, (48, 72))]
+              (crucible, (144, 48)), (insight, (48, 72)), (infusion, (192, 48))]
     return write_line(
         "line/echo_thaum", "FluxEchoThaum", "§5通量回响 · 神秘",
         "每种要素亲手炼一次，以后用电现合成；初始要素认识一次，以后用电充法杖。注魔不再炼要素，法杖不再找节点。",
@@ -488,12 +547,149 @@ def echo_blood():
         item(BM + "weakBloodOrb"), placed, ["AWWayofTime"])
 
 
+def echo_prey():
+    lore = quest(
+        "echo_prey/lore", "§c§l通量回响 · 猎物",
+        ECHO_LORE + "\n\n猎物这一边：你亲手杀过的每一种怪，都在通量层里留着回响。"
+        "末影珍珠、烈焰棒、线、火药……杀一只拓下印记，以后用电刷它的掉落，不用再建刷怪塔。",
+        item("fluxecho:mob_imprint"),
+        [checkbox()])
+    blank = quest(
+        "echo_prey/imprint", "§c猎物印记",
+        "4 张纸加 1 块腐肉，合成 4 张空白猎物印记。写上一种怪有两种办法，都要你「亲手杀过」：\n\n"
+        "• 背包里带着空白印记，亲手杀一只怪（机器、假玩家杀的不算），一张空白印记就写上那种怪；\n"
+        "• 拿着空白印记右键一只活着的怪：原版统计里你杀过这种怪，就直接写上。\n\n"
+        "[note]只有 MobsInfo 有掉落表的怪能写。背包里已经有那种怪的印记时，杀它不会再写一张。[/note]",
+        item("fluxecho:mob_imprint"),
+        [retrieval(item("fluxecho:mob_imprint"), ignore_nbt=True)],
+        [give(item("minecraft:paper", 0, 16), item("minecraft:rotten_flesh", 0, 4))],
+        pre=["echo_prey/lore"])
+    echo = quest(
+        "echo_prey/mob_echo", "§c猎物回响器",
+        "一台 LV 机器。\n\n"
+        "• 特殊槽放猎物印记，一直留在槽里；\n"
+        "• 每次按怪的最大生命收费：每点生命 128 EU，最少 10 秒（末影人 40 点生命，10 秒一只）；\n"
+        "• 掉落照 MobsInfo 的表随机，包括「玩家击杀才掉」的东西，和极限实体粉碎机一样；\n"
+        "• 输入槽放一把武器：按它的抢夺附魔算掉落，每次扣 1 点耐久。\n\n"
+        "[note]腐肉正好喂给鲜血回响器。[/note]",
+        echo_machine(7),
+        [retrieval(echo_machine(7))],
+        pre=["echo_prey/imprint"])
+    bosses = quest(
+        "echo_prey/bosses", "§c首领",
+        "凋灵、暮色森林的首领……亲手打过一次，也能拓成印记。\n\n"
+        "首领要 50 倍的电和时间，凋灵一只大约 50 分钟。配置里可以改倍数，也可以整个关掉。\n\n"
+        "[warn]凋灵骷髅头默认在掉落黑名单里（dropBlacklist），想刷就自己从配置里删掉。[/warn]",
+        item("minecraft:nether_star"),
+        [checkbox()],
+        pre=["echo_prey/mob_echo"], main=False)
+    placed = [(lore, (0, 24)), (blank, (48, 24)), (echo, (96, 24)), (bosses, (144, 24))]
+    return write_line(
+        "line/echo_prey", "FluxEchoPrey", "§c通量回响 · 猎物",
+        "亲手杀一只怪拓下印记，以后用电刷它的掉落。末影珍珠、烈焰棒不用再建刷怪塔。",
+        item("fluxecho:mob_imprint"), placed, ["mobsinfo"])
+
+
+def echo_crops():
+    lore = quest(
+        "echo_crops/lore", "§a§l通量回响 · 作物",
+        ECHO_LORE + "\n\n作物这一边：你杂交出的每一种作物、刷出的每一组属性，都在通量层里留着回响。"
+        "拓下一袋好种子，以后要多少袋就出多少袋，不用再守着作物架等杂交。",
+        item("fluxecho:crop_imprint"),
+        [checkbox()])
+    imprinter = quest(
+        "echo_crops/imprinter", "§a种子拓印机",
+        "一台 LV 机器，用作物分析仪做成。\n\n"
+        "• 特殊槽放一袋扫描到满级的种子（作物分析仪扫 4 次），种子留在槽里，不消耗；\n"
+        "• 输入纸，拓下一张作物印记：作物和它的生长、增产、抗性。",
+        echo_machine(9),
+        [retrieval(echo_machine(9))],
+        [give(item("minecraft:paper", 0, 16))],
+        pre=["echo_crops/lore"])
+    first = quest(
+        "echo_crops/first_imprint", "§a第一张作物印记",
+        "印记的提示里写着三项属性。\n\n"
+        "改属性：特殊槽放属性好的种子（或印记），输入槽放要改的印记，编程电路选 1 生长、2 增产、3 抗性、4 全部。"
+        "作物不变，只换属性。\n\n"
+        "[note]新作物还是得在作物架上亲手杂交出来一次；拓下来以后就不用再杂交了。[/note]",
+        item("fluxecho:crop_imprint"),
+        [retrieval(item("fluxecho:crop_imprint"), ignore_nbt=True)],
+        pre=["echo_crops/imprinter"])
+    echo = quest(
+        "echo_crops/seed_echo", "§a种子回响箱",
+        "一台 LV 机器，用作物架做成。\n\n"
+        "• 特殊槽放作物印记，一直留在槽里；\n"
+        "• 输入 1 根作物架，出 1 袋扫描满级、属性和印记一样的种子。\n\n"
+        "[note]收获交给 GT 的工业温室；这里只负责把种子变出来。[/note]",
+        echo_machine(10),
+        [retrieval(echo_machine(10))],
+        pre=["echo_crops/first_imprint"])
+    placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (echo, (144, 24))]
+    return write_line(
+        "line/echo_crops", "FluxEchoCrops", "§a通量回响 · 作物",
+        "一袋扫满的种子拓成印记，以后直接出同属性的种子。杂交一次就够了。",
+        item("fluxecho:crop_imprint"), placed, ["IC2"])
+
+
+def echo_mana():
+    lore = quest(
+        "echo_mana/lore", "§b§l通量回响 · 植物魔法",
+        ECHO_LORE + "\n\n植物魔法这一边：魔力池里流过的魔力，通量层也记得。"
+        "亲手做出魔力池和魔力发射器，就不用再伺候一排产魔花了。",
+        item("Botania:pool"),
+        [checkbox()])
+    echo = quest(
+        "echo_mana/mana_echo", "§b魔力回响泉",
+        "一台 MV 机器，用魔力池和魔力发射器做成。\n\n"
+        "• 用 EU 产魔力：每 tick 64 魔力，每点魔力 2 EU（128 EU/t）；\n"
+        "• 每 5000 魔力吃 1 片神秘花瓣，放在输入槽里；\n"
+        "• 送进附近（水平 4 格、上下 2 格）最近的魔力池，池满就停。\n\n"
+        "[note]符文祭坛、魔力池浸染、魔力发射器都从魔力池里取，这一台就把它们都喂上了。[/note]",
+        echo_machine(11),
+        [retrieval(echo_machine(11))],
+        [give(item("Botania:petal", 0, 16))],
+        pre=["echo_mana/lore"])
+    return write_line(
+        "line/echo_mana", "FluxEchoMana", "§b通量回响 · 植物魔法",
+        "用电产魔力，送进魔力池。不用再伺候产魔花。",
+        item("Botania:pool"), [(lore, (0, 24)), (echo, (48, 24))], ["Botania"])
+
+
+def echo_general():
+    codex = quest(
+        "echo_general/codex", "§3§l回响图鉴",
+        ECHO_LORE + "\n\n回响图鉴记着团队亲手做过一次、通量层记住了的东西：拓过的蜂、树、蝴蝶，学会的要素，"
+        "杀过的怪，拓过的作物，回响过的注魔成品和附魔，用过的血宝珠。\n\n"
+        "• 右键打开，左边分类，右边是图标，鼠标停上去看名字；\n"
+        "• 物品提示（NEI 里也一样）会标出「通量回响：团队已经亲手做过」，还没做过的会告诉你下一步怎么做；\n"
+        "• Waila 看着一只怪，也能看到它有没有猎物印记。\n\n"
+        "[note]合成：一本书、一颗末影珍珠、一块玻璃板。这里先送一本。[/note]",
+        item("fluxecho:codex"),
+        [checkbox()],
+        [give(item("fluxecho:codex"))])
+    enchant = quest(
+        "echo_general/enchant_echo", "§3附魔回响器",
+        "一台 MV 机器，用附魔台和书架做成。\n\n"
+        "• 特殊槽放一本附魔书，一直留在槽里；\n"
+        "• 输入书和青金石，出一本一模一样的附魔书；\n"
+        "• 每级附魔 16384 EU、1 个青金石（时运 III 算 3 级）。\n\n"
+        "[note]配置里的 blacklist 填附魔 id，就不会复制那些附魔。[/note]",
+        echo_machine(12),
+        [retrieval(echo_machine(12))],
+        pre=["echo_general/codex"])
+    return write_line(
+        "line/echo_general", "FluxEchoGeneral", "§3通量回响 · 通用",
+        "回响图鉴，以及不依赖其他模组的回响机器。",
+        item("fluxecho:codex"), [(codex, (0, 24)), (enchant, (48, 24))], [])
+
+
 if __name__ == "__main__":
     # GTNH names a quest line after its id as url-safe base64 of the two longs; check against one of its own
     probe = struct.pack(">qq", 3630150074513574271, -7072631871726141045)
     assert base64.urlsafe_b64encode(probe).decode() == "MmDiQmi9SX-d2PbI-qhBiw==", "id format changed"
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)
-    lines = [lazy_ae(), shards(), echo_bees(), echo_thaum(), echo_blood()]
+    lines = [lazy_ae(), shards(), echo_bees(), echo_thaum(), echo_blood(), echo_prey(), echo_crops(), echo_mana(),
+             echo_general()]
     dump(INDEX, {"lines": lines})
     print("\n".join(entry["order"] for entry in lines))

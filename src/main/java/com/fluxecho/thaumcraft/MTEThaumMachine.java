@@ -15,12 +15,15 @@ import com.fluxecho.Config;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
+import com.fluxecho.core.Owners;
 
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
+import thaumcraft.api.ThaumcraftApiHelper;
 import thaumcraft.api.aspects.Aspect;
+import thaumcraft.api.aspects.AspectList;
 
 /**
  * A FluxEcho Thaumcraft machine. It learns aspects for its team from essentia and shards put into it (or held in
@@ -90,6 +93,33 @@ public abstract class MTEThaumMachine extends MTEEchoMachine {
         }
         credit -= (int) units;
         return true;
+    }
+
+    /** Whether the owner has finished the research: asked while they are online, remembered for when they are not. */
+    protected static boolean researched(UUID owner, String key) {
+        if (key == null || key.isEmpty()) return true;
+        AspectMemory m = AspectMemory.get();
+        if (m.researched(owner, key)) return true;
+        EntityPlayerMP p = Owners.online(owner);
+        if (p == null || !ThaumcraftApiHelper.isResearchComplete(p.getCommandSenderName(), key)) return false;
+        m.addResearch(owner, key);
+        return true;
+    }
+
+    /** Whether the team has learned every aspect in the list. */
+    protected static boolean knowsAll(UUID team, AspectList aspects) {
+        if (aspects == null) return true;
+        for (Aspect a : aspects.getAspects()) if (a != null && !AspectMemory.get()
+            .knows(team, a)) return false;
+        return true;
+    }
+
+    /** Primal units of the essentia in the list (see {@link AspectSamples#units}). */
+    protected static long units(AspectList aspects) {
+        long u = 0;
+        if (aspects != null) for (Aspect a : aspects.getAspects())
+            if (a != null) u += (long) AspectSamples.units(a) * aspects.getAmount(a);
+        return u;
     }
 
     /** Right-click with essentia or a shard in hand: learn it, keep it. */

@@ -8,7 +8,8 @@ import cpw.mods.fml.common.Loader;
  */
 public final class Mods {
 
-    public static boolean forestry, thaumcraft, bloodMagic, fluxDepths, betterQuesting;
+    public static boolean forestry, thaumcraft, bloodMagic, fluxDepths, betterQuesting, mobsInfo, ic2, botania, ae2,
+        waila;
 
     private Mods() {}
 
@@ -18,6 +19,11 @@ public final class Mods {
         bloodMagic = Loader.isModLoaded("AWWayofTime");
         fluxDepths = Loader.isModLoaded("fluxdepths");
         betterQuesting = Loader.isModLoaded("betterquesting");
+        mobsInfo = Loader.isModLoaded("mobsinfo");
+        ic2 = Loader.isModLoaded("IC2");
+        botania = Loader.isModLoaded("Botania");
+        ae2 = Loader.isModLoaded("appliedenergistics2");
+        waila = Loader.isModLoaded("Waila");
     }
 
     /** Whether every mod id in the list is loaded. */
