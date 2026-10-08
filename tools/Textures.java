@@ -38,6 +38,60 @@ public class Textures {
         item("items/crop_imprint", Textures::cropImprint);
         item("items/codex", Textures::codex);
         item("blocks/echo_provider", Textures::provider);
+        face("blocks/machines/gene_assembler/front", Textures::helixFrame);
+        item("items/gene_sample", Textures::geneVial);
+    }
+
+    /** Which strand of a double helix runs through (x, y), going down the middle of the face: 1 or 2, 0 for none. */
+    static int strand(int x, int y, double amplitude, double period) {
+        double phase = y * 2 * Math.PI / period;
+        int a = (int) Math.round(7.5 + amplitude * Math.sin(phase));
+        int b = (int) Math.round(7.5 - amplitude * Math.sin(phase));
+        boolean front = Math.cos(phase) > 0;
+        if (x == a && x == b) return front ? 1 : 2;
+        if (x == a) return 1;
+        if (x == b) return 2;
+        return 0;
+    }
+
+    /** Gene Assembler: a double helix in a steel frame; working, its rungs light up one by one. */
+    static int helixFrame(int x, int y, boolean active, boolean[] glow) {
+        if (x < 2 || x > 13 || y < 1 || y > 14) return 0;
+        if (x == 2 || x == 13 || y == 1 || y == 14) return (x == 2 || y == 1) ? 0x8A929C : 0x40464F;
+        int s = strand(x, y, 3.2, 12);
+        if (s == 1) {
+            glow[0] = active;
+            return active ? 0x7FF0D0 : 0x2F6F62;
+        }
+        if (s == 2) {
+            glow[0] = active;
+            return active ? 0xB48CFF : 0x4A3A78;
+        }
+        double phase = y * 2 * Math.PI / 12;
+        int a = (int) Math.round(7.5 + 3.2 * Math.sin(phase)), b = (int) Math.round(7.5 - 3.2 * Math.sin(phase));
+        boolean rung = y % 2 == 0 && x > Math.min(a, b) && x < Math.max(a, b);
+        if (rung) {
+            glow[0] = active && y % 4 == 0;
+            return active ? (y % 4 == 0 ? 0xFFF4C0 : 0x8C8470) : 0x3A3A44;
+        }
+        return 0x16181E;
+    }
+
+    /** Gene sample: a stoppered glass vial of honey-coloured fluid with the rungs of a DNA ladder in it. */
+    static int geneVial(int x, int y, boolean active, boolean[] glow) {
+        if (y >= 1 && y <= 2 && x >= 6 && x <= 9) return y == 1 ? 0xB0824A : 0x8A6234;
+        if (y < 3 || y > 14 || x < 5 || x > 10) return 0;
+        if (y == 14 && (x == 5 || x == 10)) return 0;
+        boolean wall = x == 5 || x == 10 || y == 14;
+        if (wall) return x == 5 ? 0xDDEBF2 : 0x8FA6B2;
+        if (y == 3) return 0xC9DCE6;
+        if (y < 6) return x == 6 ? 0xF4FAFF : 0xBFD6E2;
+        if (y >= 8 && y % 2 == 0) {
+            if (x == 6) return y % 4 == 0 ? 0x2FB3A0 : 0x7A4FD8;
+            if (x == 9) return y % 4 == 0 ? 0x7A4FD8 : 0x2FB3A0;
+            return 0xFFF0B8;
+        }
+        return y == 6 ? 0xF7D57A : x == 6 ? 0xF0BC55 : 0xE6A93A;
     }
 
     static int rgb(int c) {

@@ -1,26 +1,26 @@
 {
   "preRequisites:9": {
     "0:10": {
-      "questIDHigh:4": 2933457734948314309,
-      "questIDLow:4": -6149186495366229716
+      "questIDHigh:4": -2106670593096067146,
+      "questIDLow:4": -6733610943790466454
     }
   },
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "每 0.9 秒 1 块（4000 块 / 小时），1536 EU/t，能放 3 张印记。\n\n开孔头：钛钻头或更好（平均 768 块磨损一个）。",
+      "desc:8": "工作台里的组合，换成一台 LV 机器来做，可以接自动化。\n\n• 九个输入槽里的东西算一次组合：一张印记加样本，或者只有样本；\n• 每样消耗一个，约 5 秒一次；\n• 接 AE 用处理样板时，打开接口的阻挡模式，免得两次组合的东西混在一起。",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
-        "Damage:2": 24525,
+        "Damage:2": 24543,
         "OreDict:8": "",
         "id:8": "gregtech:gt.blockmachines"
       },
       "isGlobal:1": 0,
-      "isMain:1": 1,
+      "isMain:1": 0,
       "isSilent:1": 0,
       "lockedProgress:1": 0,
-      "name:8": "§5精英碎片采集器（EV）",
+      "name:8": "§3基因组合机",
       "partySingleReward:1": 0,
       "questLogic:8": "AND",
       "repeatTime:3": -1,
@@ -32,8 +32,8 @@
       "visibility:8": "NORMAL"
     }
   },
-  "questIDHigh:4": 2834382276207268645,
-  "questIDLow:4": -4712066094458671340,
+  "questIDHigh:4": 1949324181205114376,
+  "questIDLow:4": -8386694302354419233,
   "rewards:9": {},
   "tasks:9": {
     "0:10": {
@@ -45,7 +45,7 @@
       "requiredItems:9": {
         "0:10": {
           "Count:3": 1,
-          "Damage:2": 24525,
+          "Damage:2": 24543,
           "OreDict:8": "",
           "id:8": "gregtech:gt.blockmachines"
         }

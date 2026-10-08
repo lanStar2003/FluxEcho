@@ -1,6 +1,7 @@
 package com.fluxecho.bees;
 
 import net.minecraft.item.Item;
+import net.minecraftforge.oredict.RecipeSorter;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
@@ -18,27 +19,38 @@ import cpw.mods.fml.common.registry.GameRegistry;
  */
 public final class BeeModule {
 
-    public static Item imprint;
+    public static Item imprint, geneSample;
 
     private BeeModule() {}
 
     public static void preInit() {
         imprint = new ItemBeeImprint();
         GameRegistry.registerItem(imprint, "bee_imprint");
+        geneSample = new ItemGeneSample();
+        GameRegistry.registerItem(geneSample, "gene_sample");
     }
 
     public static void machines() {
         Machines.put(MachineId.BEE_IMPRINTER, new MTEBeeImprinter(Machines.claim(MachineId.BEE_IMPRINTER)));
         Machines.put(MachineId.BEE_INCUBATOR, new MTEBeeIncubator(Machines.claim(MachineId.BEE_INCUBATOR)));
+        Machines.put(MachineId.GENE_ASSEMBLER, new MTEGeneAssembler(Machines.claim(MachineId.GENE_ASSEMBLER)));
         BeeNei.imprinterMap();
         BeeNei.incubatorMap();
+        BeeNei.assemblerMap();
     }
 
     public static void postInit() {
         category(Categories.BEE, Karyotype.BEES);
         category(Categories.TREE, Karyotype.TREES);
         category(Categories.BUTTERFLY, Karyotype.BUTTERFLIES);
-        if (!Config.beesEnabled || !Config.defaultRecipes) return;
+        if (!Config.beesEnabled) return;
+        RecipeSorter.register(
+            FluxEcho.MODID + ":gene_splice",
+            GeneSpliceRecipe.class,
+            RecipeSorter.Category.SHAPELESS,
+            "after:minecraft:shapeless");
+        GameRegistry.addRecipe(new GeneSpliceRecipe());
+        if (!Config.defaultRecipes) return;
         try {
             BeeCrafting.register();
         } catch (Throwable t) {

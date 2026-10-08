@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -8288919412643374675,
+      "questIDLow:4": -5965641618344306477
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "在工作台里把一张蜂种印记和几个基因样本放在一起，合成出来的印记品种不变，样本里的性状全部写进去：想要哪些性状，就放哪些样本。\n\n• 只放样本（两个以上）：合成一个包含全部基因的大样本，可以一次套到很多品种上；\n• 两个样本对同一个性状给出不同的值时合不出来；\n• 蜂、树、蝴蝶的印记和样本不能混。\n\n做好的印记放进幼虫培育箱，出来的就是你拼出来的那只蜂。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "minecraft:crafting_table"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3组合基因：工作台",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -2106670593096067146,
+  "questIDLow:4": -6733610943790466454,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

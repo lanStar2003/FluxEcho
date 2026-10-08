@@ -18,7 +18,8 @@ public enum MachineId {
     SEED_IMPRINTER(9, "seed_imprinter", 1, "Seed Imprinter"),
     SEED_ECHO(10, "seed_echo", 1, "Seed Echo"),
     MANA_ECHO(11, "mana_echo", 2, "Mana Echo"),
-    ENCHANT_ECHO(12, "enchant_echo", 2, "Enchant Echo");
+    ENCHANT_ECHO(12, "enchant_echo", 2, "Enchant Echo"),
+    GENE_ASSEMBLER(13, "gene_assembler", 1, "Gene Assembler");
 
     /** Ids from the first one that belong to FluxEcho: 24530–24569 by default. */
     public static final int RESERVED = 40;
