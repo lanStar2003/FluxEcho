@@ -11,8 +11,8 @@ gt.blockmachines.fluxecho.bee_imprinter.name=蜂种拓印机
 gt.blockmachines.fluxecho.larva_incubator.name=幼虫培育箱
 fluxecho.recipe.bee_imprinter=蜂种拓印
 fluxecho.recipe.larva_incubator=幼虫培育
-fluxecho.bee_imprinter.tip=§3把一只真蜂的全部基因拓成印记，蜂毫发无伤§r\n特殊槽：样本蜂（或一张印记），一直留在槽里\n输入纸：拓下样本的全部基因\n输入印记 + 编程电路：把样本的基因写进这张印记（品种不变）\n  1 速度　2 寿命　3 繁殖　4 温度耐受　5 夜行　6 湿度耐受\n  7 耐雨　8 穴居　9 花　10 授粉　11 领地　12 效果\n  13 全部环境基因（4–8，从此不用找环境）　14 全部非品种基因\n每次 %s 秒，%s EU/t
-fluxecho.larva_incubator.tip=§3用蜂蜜滴喂养幼虫，长成印记上的蜂§r\n原始、已分析、纯合子，不看气候\n特殊槽：蜂种印记（或一只真蜂），一直留在槽里\n不放电路或 1 号电路：%3$s 滴蜂蜜 → 1 只公主 + %4$s 只雄蜂\n2 号电路：%5$s 滴蜂蜜 → %6$s 只雄蜂\n输出里的公主没取走时不会开始下一批\n每批 %1$s 秒，%2$s EU/t
+fluxecho.bee_imprinter.tip=§3把一只真蜂、一棵树苗（或花粉）、一只蝴蝶的全部基因拓成印记，样本毫发无伤§r\n特殊槽：样本（或一张印记），一直留在槽里\n输入纸：拓下样本的全部基因\n输入同种印记 + 编程电路：把样本的基因写进这张印记（品种不变）\n蜂：1 速度　2 寿命　3 繁殖　4 温度耐受　5 夜行　6 湿度耐受\n  7 耐雨　8 穴居　9 花　10 授粉　11 领地　12 效果\n  13 全部环境基因（4–8，从此不用找环境）　14 全部非品种基因\n树：1–12 单个基因，14 全部；蝴蝶：1–13 单个基因，14 全部\n每次 %s 秒，%s EU/t
+fluxecho.larva_incubator.tip=§3把印记上的蜂、树、蝴蝶培育出来§r\n已分析、纯合子，不看气候\n特殊槽：印记（或一只真的样本），一直留在槽里\n蜂（蜂蜜滴）：不放电路或 1 号电路 %3$s 滴 → 1 只原始公主 + %4$s 只雄蜂；2 号电路 %5$s 滴 → %6$s 只雄蜂\n树（林业肥料）：%7$s 个 → %8$s 棵树苗\n蝴蝶（蜂蜜滴）：%9$s 滴 → %10$s 只蝴蝶\n输出里的公主没取走时不会开始下一批\n每批 %1$s 秒，%2$s EU/t
 item.fluxecho.bee_imprint.name=蜂种印记
 fluxecho.bee_imprint.of=蜂种印记：%s
 fluxecho.bee_imprint.blank=空白印记\n把一只蜂放进蜂种拓印机的特殊槽，输入纸，拓下它的全部基因
@@ -37,6 +37,22 @@ fluxecho.status.need_circuit=编辑基因要选编程电路：1–12 单个基�
 fluxecho.status.no_imprint=特殊槽里放一张蜂种印记（或一只蜂）
 fluxecho.status.unknown_species=本整合包里没有印记上的品种
 fluxecho.status.no_honey=蜂蜜滴不够
+fluxecho.tree_imprint.of=树种印记：%s
+fluxecho.butterfly_imprint.of=蝶种印记：%s
+fluxecho.gene.GROWTH=生长
+fluxecho.gene.HEIGHT=高度
+fluxecho.gene.FRUITS=果实
+fluxecho.gene.YIELD=产量
+fluxecho.gene.PLANT=适种土壤
+fluxecho.gene.SAPPINESS=树液
+fluxecho.gene.MATURATION=成熟
+fluxecho.gene.GIRTH=粗细
+fluxecho.gene.FIREPROOF=防火
+fluxecho.gene.SIZE=体型
+fluxecho.gene.METABOLISM=新陈代谢
+fluxecho.gene.FIRE_RESIST=抗火
+fluxecho.status.imprint_kind_mismatch=输入的印记和样本不是同一种（蜂、树、蝴蝶要分开）
+fluxecho.status.no_fertilizer=林业肥料不够
 
 # thaumcraft
 gt.blockmachines.fluxecho.essentia_echo.name=要素回响仪
@@ -77,6 +93,13 @@ fluxecho.status.no_catalyst=输入槽里放催化剂
 fluxecho.status.no_crucible_recipe=没有用这个催化剂的坩埚配方
 fluxecho.status.crucible_locked=有用这个催化剂的配方，但主人还没研究，或团队还没学会它要的要素
 fluxecho.status.need_circuit_recipe=这个催化剂对应好几个配方：用编程电路选第几个
+gt.blockmachines.fluxecho.infusion_echo.name=注魔回响台
+fluxecho.recipe.infusion_echo=注魔回响
+fluxecho.infusion_echo.tip=§3不摆基座、不管不稳定度，重复你亲手注魔过的东西§r\n特殊槽：一件亲手注魔（或在奥术工作台做）出来的成品，一直留在槽里\n输入槽放这件东西要的全部材料（注魔：中心物品和全部组件；奥术：全部原料）\n注魔的要素用 EU 现合成：每单位 %s EU，1 块魔力碎片顶 %s 单位（碎片放在输入槽里）\n奥术配方的灵气每点按 1 单位初始要素算\n只做主人研究过、团队学会了全部要素的配方；不加扭曲
+fluxecho.status.no_infusion_sample=特殊槽里放一件亲手注魔或奥术合成出来的成品
+fluxecho.status.no_thaum_recipe=没有注魔或奥术配方能做出这件东西
+fluxecho.status.thaum_locked=主人还没研究这条配方，或团队还没学会它要的要素
+fluxecho.status.no_ingredients=输入槽里的材料不全
 
 # blood magic
 gt.blockmachines.fluxecho.blood_echo.name=鲜血回响器
@@ -90,3 +113,84 @@ fluxecho.status.no_altar=附近没有血之祭坛（或者用 2 号电路送进�
 fluxecho.status.altar_full=祭坛满了，等它用掉
 fluxecho.status.network_full=灵魂网络已经到宝珠上限
 fluxecho.status.no_meat=输入槽里放生肉或腐肉
+
+# prey
+gt.blockmachines.fluxecho.mob_echo.name=猎物回响器
+fluxecho.recipe.mob_echo=猎物回响
+fluxecho.mob_echo.tip=§3亲手杀过一次的怪，以后用电刷它的掉落§r\n特殊槽：猎物印记，一直留在槽里\n输入槽：一把武器（可不放），按它的抢夺附魔算掉落，每次扣 1 点耐久\n每次按怪的最大生命收费：每点生命 %s EU，最少 %s 秒\n首领（凋灵、暮色森林首领……）要 %s 倍的电和时间\n掉落表来自 MobsInfo，和极限实体粉碎机一样
+item.fluxecho.mob_imprint.name=猎物印记
+fluxecho.mob_imprint.of=猎物印记：%s
+fluxecho.mob_imprint.blank=空白猎物印记\n带在背包里亲手杀一只怪，就写上那种怪\n也可以拿着它右键一只活着的怪：统计里杀过这种怪就直接写上
+fluxecho.mob_imprint.written=写好了猎物印记：%s
+fluxecho.mob_imprint.not_killed=你还没杀过%s：带着空白印记杀一只
+fluxecho.mob_imprint.no_drops=MobsInfo 里没有%s的掉落表，没法回响
+fluxecho.status.no_mob_imprint=特殊槽里放一张猎物印记
+fluxecho.status.no_mob_drops=MobsInfo 里没有这种怪的掉落表
+fluxecho.status.boss_disabled=配置里关掉了首领回响
+
+# crops
+gt.blockmachines.fluxecho.seed_imprinter.name=种子拓印机
+gt.blockmachines.fluxecho.seed_echo.name=种子回响箱
+fluxecho.recipe.seed_imprinter=种子拓印
+fluxecho.recipe.seed_echo=种子回响
+fluxecho.seed_imprinter.tip=§3把一袋扫描满级的种子拓成作物印记，种子不消耗§r\n特殊槽：扫描到满级的种子袋（或一张作物印记），一直留在槽里\n输入纸：拓下作物和它的生长、增产、抗性\n输入作物印记 + 编程电路：把样本的属性写进印记（作物不变）\n  1 生长　2 增产　3 抗性　4 全部\n每次 %s 秒，%s EU/t
+fluxecho.seed_echo.tip=§3按作物印记直接出种子，不用再杂交§r\n特殊槽：作物印记，一直留在槽里\n输入 %s 根作物架 → 1 袋扫描满级、属性和印记一样的种子\n每袋 %s 秒，%s EU/t
+item.fluxecho.crop_imprint.name=作物印记
+fluxecho.crop_imprint.of=作物印记：%s
+fluxecho.crop_imprint.blank=空白作物印记\n把一袋扫描满级的种子放进种子拓印机的特殊槽，输入纸，拓下它
+fluxecho.crop_imprint.stats=生长 %s　增产 %s　抗性 %s
+fluxecho.status.no_seed_sample=特殊槽里放一袋种子（或一张作物印记）
+fluxecho.status.seed_not_scanned=种子还没扫描到满级：先用作物分析仪扫完
+fluxecho.status.no_paper_crop=输入槽里放纸（拓印），或一张作物印记（改属性）
+fluxecho.status.need_circuit_crop=改属性要选编程电路：1 生长，2 增产，3 抗性，4 全部
+fluxecho.status.no_crop_imprint=特殊槽里放一张作物印记
+fluxecho.status.unknown_crop=本整合包里没有印记上的作物
+fluxecho.status.no_sticks=作物架不够
+
+# botania
+gt.blockmachines.fluxecho.mana_echo.name=魔力回响泉
+fluxecho.recipe.mana_echo=魔力回响
+fluxecho.mana_echo.tip=§3用 EU 产魔力，送进附近的魔力池，不用再喂产魔花§r\n每 tick %s 魔力，每点魔力 %s EU\n每 %s 魔力吃 1 片神秘花瓣，放在输入槽里\n找水平 %s 格、上下 %s 格内最近的魔力池，池满就停
+fluxecho.mana_echo.waila=%s 魔力/t，待送 %s 魔力
+fluxecho.status.no_pool=附近没有魔力池
+fluxecho.status.pool_full=魔力池满了，等它用掉
+fluxecho.status.no_petal=输入槽里放神秘花瓣
+
+# enchanting
+gt.blockmachines.fluxecho.enchant_echo.name=附魔回响器
+fluxecho.recipe.enchant_echo=附魔回响
+fluxecho.enchant_echo.tip=§3复制你手上的附魔书§r\n特殊槽：一本附魔书，一直留在槽里\n输入书和青金石，出一本一模一样的附魔书\n每级附魔 %s EU、%s 个青金石（时运 III 算 3 级）
+fluxecho.status.no_enchanted_book=特殊槽里放一本附魔书
+fluxecho.status.enchant_banned=这本书上有配置里禁止复制的附魔
+fluxecho.status.no_book=输入槽里放书
+fluxecho.status.no_lapis=青金石不够
+
+# codex
+item.fluxecho.codex.name=回响图鉴
+fluxecho.codex.tip=§3团队亲手做过一次、通量层记住了的东西§r\n右键打开：拓过的蜂、树、蝴蝶，学会的要素，杀过的怪，拓过的作物……\n物品的提示里也会标出"已回响"或"还没亲手做过"
+fluxecho.codex.title=回响图鉴
+fluxecho.codex.total=共 %s 项
+fluxecho.codex.done=通量回响：团队已经亲手做过
+fluxecho.codex.cat.bee=蜂种
+fluxecho.codex.cat.tree=树种
+fluxecho.codex.cat.butterfly=蝶种
+fluxecho.codex.cat.aspect=要素
+fluxecho.codex.cat.mob=猎物
+fluxecho.codex.cat.crop=作物
+fluxecho.codex.cat.infusion=注魔与奥术
+fluxecho.codex.cat.enchant=附魔
+fluxecho.codex.cat.orb=血宝珠
+fluxecho.codex.todo.bee=通量回响：还没拓过——把这只蜂放进蜂种拓印机，输入纸
+fluxecho.codex.todo.tree=通量回响：还没拓过——把树苗或花粉放进蜂种拓印机，输入纸
+fluxecho.codex.todo.butterfly=通量回响：还没拓过——把蝴蝶放进蜂种拓印机，输入纸
+fluxecho.codex.todo.aspect=通量回响：还没学会——放进任意一台神秘回响机器，或拿着它右键机器
+fluxecho.codex.todo.mob=通量回响：还没拓过——带着空白猎物印记杀一只
+fluxecho.codex.todo.crop=通量回响：还没拓过——扫描满级后放进种子拓印机，输入纸
+fluxecho.codex.todo.infusion=通量回响：还没回响过——亲手做一件，放进注魔回响台的特殊槽
+fluxecho.codex.todo.enchant=通量回响：还没回响过——放进附魔回响器的特殊槽
+fluxecho.codex.todo.orb=通量回响：还没用过——绑定后放进鲜血回响器
+
+# ae2
+tile.fluxecho.echo_provider.name=回响 ME 供应器
+fluxecho.echo_provider.status=回响 ME 供应器：在线，向 AE 提供 %s 个配方
+fluxecho.echo_provider.offline=回响 ME 供应器：没接上 AE 网络（或没频道、没电），旁边机器有 %s 个配方

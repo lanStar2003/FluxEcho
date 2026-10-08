@@ -12,7 +12,13 @@ public enum MachineId {
     VIS_CHARGER(3, "vis_charger", 2, "Vis Charger"),
     INSIGHT_ECHO(4, "insight_echo", 1, "Insight Echo"),
     CRUCIBLE_ECHO(5, "crucible_echo", 2, "Crucible Echo"),
-    BLOOD_ECHO(6, "blood_echo", 2, "Blood Echo");
+    BLOOD_ECHO(6, "blood_echo", 2, "Blood Echo"),
+    MOB_ECHO(7, "mob_echo", 1, "Prey Echo"),
+    INFUSION_ECHO(8, "infusion_echo", 2, "Infusion Echo"),
+    SEED_IMPRINTER(9, "seed_imprinter", 1, "Seed Imprinter"),
+    SEED_ECHO(10, "seed_echo", 1, "Seed Echo"),
+    MANA_ECHO(11, "mana_echo", 2, "Mana Echo"),
+    ENCHANT_ECHO(12, "enchant_echo", 2, "Enchant Echo");
 
     /** Ids from the first one that belong to FluxEcho: 24530–24569 by default. */
     public static final int RESERVED = 40;

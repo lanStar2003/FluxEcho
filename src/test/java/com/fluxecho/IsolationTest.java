@@ -34,10 +34,15 @@ class IsolationTest {
         MODULES.put("thaumcraft/", "com/fluxecho/thaumcraft/");
         MODULES.put("WayofTime/", "com/fluxecho/blood/");
         MODULES.put("betterquesting/", "com/fluxecho/quest/bq/");
+        MODULES.put("com/kuba6000/mobsinfo/", "com/fluxecho/mobs/");
+        MODULES.put("ic2/", "com/fluxecho/crops/");
+        MODULES.put("vazkii/botania/", "com/fluxecho/mana/");
+        MODULES.put("appeng/", "com/fluxecho/ae/");
     }
 
     /** A class name at the start of a constant, or inside a descriptor ("Lforestry/...;"). */
-    private static final Pattern REF = Pattern.compile("(?:^|L)(forestry/|thaumcraft/|WayofTime/|betterquesting/)");
+    private static final Pattern REF = Pattern.compile(
+        "(?:^|L)(forestry/|thaumcraft/|WayofTime/|betterquesting/|com/kuba6000/mobsinfo/|ic2/|vazkii/botania/|appeng/)");
 
     @Test
     void optionalModsStayInTheirModules() throws IOException {

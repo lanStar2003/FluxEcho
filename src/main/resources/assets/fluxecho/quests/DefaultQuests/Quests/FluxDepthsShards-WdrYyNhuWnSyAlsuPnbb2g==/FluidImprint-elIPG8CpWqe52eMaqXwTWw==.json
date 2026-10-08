@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 8531361249750701892,
+      "questIDLow:4": -4845422313153336871
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "深层里沉着的不只是矿脉。GT 的地下流体（石油、天然气、盐水……）也是碎片的投影，每个区块一种。\n\n拿着印记拓印器 [潜行右键]，就拓下脚下这个区块的地下流体，耗一张纸。印记记下的是这块碎片原本的储量，已经被抽走多少都不影响。\n\n[note]先用探矿工具或 VisualProspecting 地图找一块流体多的区块。需要 FluxDepths 0.2.0。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxdepths:imprint"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3流体印记",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 8814124032588339879,
+  "questIDLow:4": -5054759403094535333,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

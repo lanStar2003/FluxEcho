@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -5684096278298009835,
+      "questIDLow:4": -7114299892350154547
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 MV 机器，用符文矩阵和奥术基座做成。神秘里最磨人的注魔，亲手做一次就够了。\n\n• 特殊槽放一件你亲手注魔出来的成品（奥术工作台做的也行），一直留在槽里；\n• 九个输入槽放这件东西要的全部材料：注魔是中心物品加全部组件，奥术是全部原料（不看摆法）；\n• 注魔的要素当场合成（和要素回响仪一样：每单位 128 EU，碎片额度另算），奥术的灵气每点按 1 单位初始要素算；\n• 没有基座、没有不稳定度、不会炸，也不加扭曲。\n\n[note]只做你研究过、团队学会了全部要素的配方。碎片既是材料又是额度时，先算材料。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24538,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§5注魔回响台",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 6979571227750978565,
+  "questIDLow:4": -7532776717071310299,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24538,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

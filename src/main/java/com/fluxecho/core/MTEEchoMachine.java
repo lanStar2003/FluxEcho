@@ -1,5 +1,6 @@
 package com.fluxecho.core;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,6 +9,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+
+import com.fluxecho.codex.EchoLedger;
 
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.metatileentity.implementations.MTEBasicMachine;
@@ -110,6 +113,70 @@ public abstract class MTEEchoMachine extends MTEBasicMachine {
     /** The team of the player who placed the machine (see {@link Owners}); null when GT recorded no owner. */
     public UUID team() {
         return Owners.team(getBaseMetaTileEntity().getOwnerUuid());
+    }
+
+    /** Notes in the team's ledger that this was done once (see {@link EchoLedger}). */
+    protected void remember(String category, String key) {
+        EchoLedger.get()
+            .record(team(), category, key);
+    }
+
+    /**
+     * What the machine can make right now with a known result, for the Echo ME Provider: usually one pattern for the
+     * sample in its special slot. None by default.
+     */
+    public List<EchoPattern> echoPatterns() {
+        return Collections.emptyList();
+    }
+
+    /** Puts the stacks into the input slots: all of them, or none when they do not fit. */
+    public boolean acceptInputs(ItemStack[] stacks) {
+        int first = getInputSlot();
+        ItemStack[] slots = new ItemStack[mInputSlotCount];
+        for (int i = 0; i < slots.length; i++)
+            slots[i] = mInventory[first + i] == null ? null : mInventory[first + i].copy();
+        for (ItemStack in : stacks) {
+            if (in == null) continue;
+            int left = in.stackSize;
+            int max = Math.min(in.getMaxStackSize(), getInventoryStackLimit());
+            for (int i = 0; i < slots.length && left > 0; i++) {
+                ItemStack s = slots[i];
+                if (s == null || !s.isItemEqual(in) || !ItemStack.areItemStackTagsEqual(s, in)) continue;
+                int move = Math.min(left, max - s.stackSize);
+                if (move > 0) {
+                    s.stackSize += move;
+                    left -= move;
+                }
+            }
+            for (int i = 0; i < slots.length && left > 0; i++) {
+                if (slots[i] != null) continue;
+                ItemStack s = in.copy();
+                s.stackSize = Math.min(left, max);
+                slots[i] = s;
+                left -= s.stackSize;
+            }
+            if (left > 0) return false;
+        }
+        for (int i = 0; i < slots.length; i++) mInventory[first + i] = slots[i];
+        getBaseMetaTileEntity().markInventoryBeenModified();
+        return true;
+    }
+
+    /** Number of output slots. */
+    public int outputSlots() {
+        return mOutputItems.length;
+    }
+
+    /** The stack in the n-th output slot (from 0), live: the caller may shrink it. */
+    public ItemStack outputSlot(int n) {
+        return mInventory[getOutputSlot() + n];
+    }
+
+    /** Clears an emptied output slot. */
+    public void clearOutputSlot(int n) {
+        ItemStack s = mInventory[getOutputSlot() + n];
+        if (s != null && s.stackSize <= 0) mInventory[getOutputSlot() + n] = null;
+        getBaseMetaTileEntity().markInventoryBeenModified();
     }
 
     /** Empty: GT would store the first description it sees in its own lang file, in whatever language. */

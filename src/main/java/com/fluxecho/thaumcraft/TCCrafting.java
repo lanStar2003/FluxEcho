@@ -18,7 +18,7 @@ import thaumcraft.common.config.ConfigItems;
  * Crafting table recipes, each with the Thaumcraft device whose job the machine repeats, as proof the job was done
  * once by hand: the Essentia Echo an alchemical furnace and a warded jar, the Vis Charger a wand recharge pedestal,
  * the Insight Echo a table, scribing tools and a thaumometer (the research table is made from them in the world, it
- * has no item), the Crucible Echo a crucible.
+ * has no item), the Crucible Echo a crucible, the Infusion Echo a runic matrix and arcane pedestals.
  */
 final class TCCrafting {
 
@@ -61,6 +61,12 @@ final class TCCrafting {
             new Object[] { "PEP", "CHC", "UXU", 'P', thaumium, 'E', pearl, 'C', OrePrefixes.circuit.get(Materials.MV),
                 'H', ItemList.Hull_MV.get(1), 'U', ItemList.Electric_Pump_MV.get(1), 'X',
                 new ItemStack(ConfigBlocks.blockMetalDevice, 1, 0) });
+        GTModHandler.addCraftingRecipe(
+            Machines.get(MachineId.INFUSION_ECHO),
+            BITS,
+            new Object[] { "PEP", "CHC", "AMA", 'P', thaumium, 'E', pearl, 'C', OrePrefixes.circuit.get(Materials.MV),
+                'H', ItemList.Hull_MV.get(1), 'A', new ItemStack(ConfigBlocks.blockStoneDevice, 1, 1), 'M',
+                new ItemStack(ConfigBlocks.blockStoneDevice, 1, 2) });
         FluxEcho.LOG.info("Thaumcraft machine recipes registered");
     }
 }

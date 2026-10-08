@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 
 import com.fluxecho.Config;
+import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -140,6 +141,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
         }
         credit -= amount;
         pending = amount;
+        remember(Categories.ORB, BloodModule.key(sample()));
         return start(rate * Config.euPerLp, CYCLE);
     }
 

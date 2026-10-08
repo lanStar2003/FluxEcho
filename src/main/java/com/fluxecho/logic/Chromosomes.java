@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * The genes on a bee imprint, by Forestry's chromosome names ({@code EnumBeeChromosome.name()}), and which of them a
  * programmed circuit copies from the sample onto a base imprint. The species is never copied, and the unused HUMIDITY
- * chromosome is not kept at all.
+ * chromosome is not kept at all. Trees and butterflies have their own lists in {@link Karyotype}.
  */
 public final class Chromosomes {
 
@@ -39,20 +39,14 @@ public final class Chromosomes {
 
     private Chromosomes() {}
 
-    /** Every gene an imprint holds: the species, then the traits. */
+    /** Every gene a bee imprint holds: the species, then the traits. */
     public static List<String> all() {
-        String[] a = new String[TRAITS.size() + 1];
-        a[0] = SPECIES;
-        for (int i = 0; i < TRAITS.size(); i++) a[i + 1] = TRAITS.get(i);
-        return Arrays.asList(a);
+        return Karyotype.BEE.all();
     }
 
-    /** The genes a circuit copies; empty for no circuit or an unknown one. */
+    /** The genes a circuit copies on a bee imprint; empty for no circuit or an unknown one. */
     public static List<String> forCircuit(int circuit) {
-        if (circuit >= 1 && circuit <= TRAITS.size()) return Collections.singletonList(TRAITS.get(circuit - 1));
-        if (circuit == CIRCUIT_ENVIRONMENT) return ENVIRONMENT;
-        if (circuit == CIRCUIT_ALL) return TRAITS;
-        return Collections.emptyList();
+        return Karyotype.BEE.forCircuit(circuit);
     }
 
     /**

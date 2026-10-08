@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 7580412413528134787,
+      "questIDLow:4": -6368616238096163930
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "FluxEcho 的回响机器也能交给 AE 自动合成，不用给每台机器写样板、配接口。\n\n• 把供应器贴在回响机器旁边（六个面都行），再接上 AE 网络，占一个频道；\n• 旁边的机器现在能做什么，它就自动把对应的「处理」配方挂进 AE：幼虫培育箱出公主 / 树苗 / 蝴蝶，种子回响箱出种子，炼金回响釜出坩埚产物，注魔回响台出注魔成品，附魔回响器出附魔书；\n• AE 下单时它把原料塞进机器，机器输出槽里的东西每秒收回网络。\n\n[note]换了样本或电路，配方会自动跟着变。猎物回响器的掉落是随机的，没法做成配方，但它的产物也会被收回网络。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:echo_provider"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§b回响 ME 供应器",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -664866012352522224,
+  "questIDLow:4": -5390685512084574753,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxecho:echo_provider"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

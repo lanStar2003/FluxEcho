@@ -28,6 +28,16 @@ public class Textures {
         face("blocks/machines/blood_echo/front", Textures::bloodDrop);
         face("blocks/machines/insight_echo/front", Textures::insightBook);
         face("blocks/machines/crucible_echo/front", Textures::crucible);
+        face("blocks/machines/mob_echo/front", Textures::skull);
+        face("blocks/machines/infusion_echo/front", Textures::runicMatrix);
+        face("blocks/machines/seed_imprinter/front", Textures::seedScanner);
+        face("blocks/machines/seed_echo/front", Textures::sprout);
+        face("blocks/machines/mana_echo/front", Textures::manaPool);
+        face("blocks/machines/enchant_echo/front", Textures::enchantBook);
+        item("items/mob_imprint", Textures::mobImprint);
+        item("items/crop_imprint", Textures::cropImprint);
+        item("items/codex", Textures::codex);
+        item("blocks/echo_provider", Textures::provider);
     }
 
     static int rgb(int c) {
@@ -236,6 +246,164 @@ public class Textures {
         if (h >= 2.6 && h < 3.6) return 0xD18F18;
         if (h < 1.6) return 0xF2C34A;
         return (x + y) % 5 == 0 ? 0xDCD0B0 : 0xE8DDC0;
+    }
+
+    /** Prey Echo: a skull in a steel ring; working, its eyes light up. */
+    static int skull(int x, int y, boolean active, boolean[] glow) {
+        double d = dist(x, y);
+        if (d >= 5.6 && d < 6.6) return (x + y < 15) ? 0x8A929C : 0x40464F;
+        if (d >= 5.6) return 0;
+        boolean cranium = Math.hypot(x - 7.5, (y - 6.5) * 1.15) < 3.9 && y <= 9;
+        boolean jaw = y >= 10 && y <= 11 && x >= 5 && x <= 10;
+        if ((y == 7 || y == 8) && (x == 5 || x == 6 || x == 9 || x == 10)) {
+            glow[0] = active;
+            return active ? 0x7CFF5A : 0x1A1612;
+        }
+        if (y == 9 && (x == 7 || x == 8)) return 0x2A2420;
+        if (jaw) return (x % 2 == 0) ? 0xD8D0BC : 0x9E9684;
+        if (cranium) return x < 7 ? 0xEDE6D4 : 0xC8C0AC;
+        return 0x16181C;
+    }
+
+    /** Infusion Echo: a runic matrix over a ring of pedestals; working, the runes and the orb glow. */
+    static int runicMatrix(int x, int y, boolean active, boolean[] glow) {
+        int[][] pedestals = { { 2, 7 }, { 13, 8 }, { 7, 2 }, { 8, 13 } };
+        for (int[] p : pedestals) if (Math.abs(x - p[0]) + Math.abs(y - p[1]) <= 1) {
+            glow[0] = active && x == p[0] && y == p[1];
+            return glow[0] ? 0xE0B0FF : 0x8C8C94;
+        }
+        double d = dist(x, y);
+        if (d < 1.6) {
+            glow[0] = active;
+            return active ? 0xFFFFFF : 0x4A3A60;
+        }
+        if (d < 4.0) {
+            boolean rune = (x + 2 * y) % 5 == 0;
+            glow[0] = active && rune;
+            return rune ? (active ? 0xB07CFF : 0x3E3550) : 0x5C5F66;
+        }
+        if (d < 4.8) return (x + y < 15) ? 0x9AA0A8 : 0x4A4E55;
+        return 0;
+    }
+
+    /** Seed Imprinter: a seed bag under a green scanning line. */
+    static int seedScanner(int x, int y, boolean active, boolean[] glow) {
+        boolean bag = x >= 4 && x <= 11 && y >= 4 && y <= 13 && !(y == 4 && (x == 4 || x == 11));
+        boolean tie = y == 3 && x >= 6 && x <= 9;
+        if (y == 8 && x >= 2 && x <= 13) {
+            glow[0] = active;
+            return active ? (x == 7 || x == 8 ? 0xEFFFE0 : 0x7CFF6A) : 0x2B3A2C;
+        }
+        if (tie) return 0x5A3B1C;
+        if (!bag) return 0;
+        if (x == 4 || x == 11 || y == 13) return 0x7A5A2E;
+        if ((x == 7 && y == 10) || (x == 9 && y == 6) || (x == 6 && y == 11)) return 0xD6C27A;
+        return (x + y) % 3 == 0 ? 0xB08A4E : 0xA27C42;
+    }
+
+    /** Seed Echo: a window over tilled soil; working, a sprout of light grows. */
+    static int sprout(int x, int y, boolean active, boolean[] glow) {
+        boolean inBox = x >= 3 && x <= 12 && y >= 3 && y <= 12;
+        if (!inBox) return 0;
+        if (x == 3 || x == 12 || y == 3 || y == 12) return (x == 3 || y == 3) ? 0x9FB7C4 : 0x55666F;
+        if (y >= 10) return (x % 2 == 0) ? 0x4A2E18 : 0x5C3A1E;
+        boolean stem = x == 7 && y >= 6;
+        boolean leaves = (y == 6 && (x == 5 || x == 6 || x == 8 || x == 9)) || (y == 5 && (x == 6 || x == 8))
+            || (y == 7 && (x == 6 || x == 8));
+        if (stem || leaves) {
+            glow[0] = active;
+            return active ? (stem ? 0xB8FF8A : 0x5CE05A) : (stem ? 0x3E5A2E : 0x2E4A24);
+        }
+        return active ? 0x1E2A2E : 0x14181C;
+    }
+
+    /** Mana Echo: a stone basin of mana; working, the mana shines. */
+    static int manaPool(int x, int y, boolean active, boolean[] glow) {
+        double ex = (x - 7.5) / 6.0, ey = (y - 8.5) / 3.4;
+        double e = ex * ex + ey * ey;
+        if (e < 0.62) {
+            glow[0] = active;
+            boolean sparkle = (x * 7 + y * 3) % 11 == 0;
+            return active ? (sparkle ? 0xFFFFFF : (y < 8 ? 0x8CF0FF : 0x3CC8F0)) : 0x1E3A48;
+        }
+        if (e < 1.0) return (y < 8) ? 0xC4C0B4 : 0x8A867C;
+        if (y >= 11 && y <= 13 && x >= 4 && x <= 11) return y == 13 ? 0x5E5A52 : 0x7A766C;
+        return 0;
+    }
+
+    /** Enchant Echo: an open book; working, glyphs rise off its pages. */
+    static int enchantBook(int x, int y, boolean active, boolean[] glow) {
+        if (active && y >= 2 && y <= 4 && ((x == 5 && y == 3) || (x == 9 && y == 2) || (x == 11 && y == 4)
+            || (x == 7 && y == 4))) {
+            glow[0] = true;
+            return 0xC8A0FF;
+        }
+        if (y < 6 || y > 12 || x < 2 || x > 13) return 0;
+        if (y == 12 || x == 2 || x == 13) return 0x7A1E1E;
+        if (x == 7 || x == 8) return 0x8C7B5A;
+        boolean line = y % 2 == 1 && x != 3 && x != 12 && x != 6 && x != 9;
+        if (line) {
+            glow[0] = active;
+            return active ? 0x9A6CFF : 0x6A6050;
+        }
+        return 0xE6DDC2;
+    }
+
+    /** A paper card with the teal mark of the flux layer at the top; the picture is drawn by {@code mark}. */
+    static int card(int x, int y, Face mark) {
+        if (x < 3 || x > 12 || y < 2 || y > 13) return 0;
+        if (x == 3 || x == 12 || y == 2 || y == 13) return 0x9C8A64;
+        if (y == 3) return (x >= 5 && x <= 10) ? 0x2FB3A0 : 0xE8DDC0;
+        int m = mark.at(x, y, false, new boolean[1]);
+        if (m != 0) return m;
+        return (x + y) % 5 == 0 ? 0xDCD0B0 : 0xE8DDC0;
+    }
+
+    /** Prey imprint: three claw marks. */
+    static int mobImprint(int x, int y, boolean active, boolean[] glow) {
+        return card(x, y, (cx, cy, a, g) -> {
+            for (int k = 0; k < 3; k++) {
+                int ox = 5 + k * 2;
+                if (cy >= 5 && cy <= 11 && cx == ox + (cy - 5) / 3) return cy % 2 == 0 ? 0xA81E24 : 0x7A1418;
+            }
+            return 0;
+        });
+    }
+
+    /** Crop imprint: a green leaf on a seed. */
+    static int cropImprint(int x, int y, boolean active, boolean[] glow) {
+        return card(x, y, (cx, cy, a, g) -> {
+            if (cy >= 10 && cy <= 11 && cx >= 6 && cx <= 9) return 0x9C7A3A;
+            if (cx == 7 && cy >= 7 && cy <= 9) return 0x3E8A2E;
+            double lx = cx - 8.5, ly = cy - 6.0;
+            if (lx * lx / 4.0 + ly * ly / 1.6 < 1.0) return lx + ly > 0 ? 0x2E7A24 : 0x5CC04A;
+            return 0;
+        });
+    }
+
+    /** Echo Codex: a teal book with the echo ring on its cover. */
+    static int codex(int x, int y, boolean active, boolean[] glow) {
+        if (x < 3 || x > 13 || y < 1 || y > 14) return 0;
+        if (x == 3 || x == 4) return x == 3 ? 0x0E3A36 : 0x1A5A52;
+        if (x == 13 || y == 1 || y == 14) return 0xE8DDC0;
+        double d = Math.hypot(x - 8.5, y - 7.5);
+        if (d < 1.2) return 0xC8FFF0;
+        if (d >= 2.2 && d < 3.0) return 0x4FE3C1;
+        if (d >= 3.8 && d < 4.4) return 0x5A3CC4;
+        return (x + y) % 6 == 0 ? 0x175C55 : 0x1E6B62;
+    }
+
+    /** Echo ME Provider: a dark ME frame around the echo ring. */
+    static int provider(int x, int y, boolean active, boolean[] glow) {
+        if (x == 0 || y == 0) return 0x5E6672;
+        if (x == 15 || y == 15) return 0x22262C;
+        if (x == 1 || y == 1 || x == 14 || y == 14) return 0x34393F;
+        double d = dist(x, y);
+        if (d < 1.6) return 0xC8FFF0;
+        if (d < 2.6) return 0x2FB3A0;
+        if (d >= 3.4 && d < 4.2) return 0x5A3CC4;
+        if ((x == 3 || x == 12) && (y == 3 || y == 12)) return 0x7FD8FF;
+        return 0x1A1D22;
     }
 
     static void save(BufferedImage img, String name) throws Exception {

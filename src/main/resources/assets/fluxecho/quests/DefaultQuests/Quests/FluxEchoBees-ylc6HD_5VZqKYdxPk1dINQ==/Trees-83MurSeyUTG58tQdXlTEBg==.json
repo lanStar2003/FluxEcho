@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 8552554467992229485,
+      "questIDLow:4": -7639558451669360302
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "蜂种拓印机和幼虫培育箱也认林业的树和蝴蝶。\n\n• 拓印：特殊槽放一棵树苗（或花粉）、一只蝴蝶，输入纸，拓出树种印记、蝶种印记；\n• 编辑：电路 1–12（蝴蝶 1–13）抄单个基因，14 抄全部非品种基因，只能在同一种之间抄；\n• 培育：树种印记吃林业肥料，4 个出 4 棵已分析的树苗；蝶种印记吃蜂蜜滴，8 滴出 1 只蝴蝶。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "Forestry:sapling"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3树和蝴蝶",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -904327778941120207,
+  "questIDLow:4": -5047739009727151098,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

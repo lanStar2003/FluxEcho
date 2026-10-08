@@ -11,8 +11,8 @@ gt.blockmachines.fluxecho.bee_imprinter.name=Bee Imprinter
 gt.blockmachines.fluxecho.larva_incubator.name=Larva Incubator
 fluxecho.recipe.bee_imprinter=Bee Imprinting
 fluxecho.recipe.larva_incubator=Larva Incubation
-fluxecho.bee_imprinter.tip=§3Imprints every gene of a real bee, unharmed§r\nSpecial slot: the sample bee (or an imprint); it stays there\nPaper in: an imprint of all the sample's genes\nImprint + programmed circuit in: the sample's genes written onto it (species kept)\n  1 speed  2 lifespan  3 fertility  4 temperature  5 nocturnal  6 humidity\n  7 rain  8 cave  9 flower  10 pollination  11 territory  12 effect\n  13 every environment gene (4-8: no more hunting for climates)  14 every gene but the species\n%s s per run, %s EU/t
-fluxecho.larva_incubator.tip=§3Feeds larvae honey drops until they grow into the imprinted bee§r\nPristine, analysed, pure-bred; climate does not matter\nSpecial slot: a bee imprint (or a real bee); it stays there\nNo circuit or circuit 1: %3$s honey drops -> 1 princess + %4$s drones\nCircuit 2: %5$s honey drops -> %6$s drones\nA princess left in the output holds the next batch\n%1$s s per batch, %2$s EU/t
+fluxecho.bee_imprinter.tip=§3Imprints every gene of a real bee, sapling (or pollen) or butterfly, unharmed§r\nSpecial slot: the sample (or an imprint); it stays there\nPaper in: an imprint of all the sample's genes\nImprint of the same kind + programmed circuit in: the sample's genes written onto it (species kept)\nBees: 1 speed  2 lifespan  3 fertility  4 temperature  5 nocturnal  6 humidity\n  7 rain  8 cave  9 flower  10 pollination  11 territory  12 effect\n  13 every environment gene (4-8: no more hunting for climates)  14 every gene but the species\nTrees: 1-12 one gene, 14 all; butterflies: 1-13 one gene, 14 all\n%s s per run, %s EU/t
+fluxecho.larva_incubator.tip=§3Grows the bee, tree or butterfly of an imprint§r\nAnalysed, pure-bred; climate does not matter\nSpecial slot: an imprint (or a real sample); it stays there\nBees (honey drops): no circuit or circuit 1 %3$s drops -> 1 pristine princess + %4$s drones; circuit 2 %5$s drops -> %6$s drones\nTrees (Forestry fertilizer): %7$s -> %8$s saplings\nButterflies (honey drops): %9$s -> %10$s butterflies\nA princess left in the output holds the next batch\n%1$s s per batch, %2$s EU/t
 item.fluxecho.bee_imprint.name=Bee Imprint
 fluxecho.bee_imprint.of=Bee Imprint: %s
 fluxecho.bee_imprint.blank=Blank imprint\nPut a bee into the Bee Imprinter's special slot and paper into its input to imprint all its genes
@@ -37,6 +37,22 @@ fluxecho.status.need_circuit=Editing genes needs a programmed circuit: 1-12 one 
 fluxecho.status.no_imprint=Put a bee imprint (or a bee) into the special slot
 fluxecho.status.unknown_species=This pack has no such species as the imprint's
 fluxecho.status.no_honey=Not enough honey drops
+fluxecho.tree_imprint.of=Tree Imprint: %s
+fluxecho.butterfly_imprint.of=Butterfly Imprint: %s
+fluxecho.gene.GROWTH=Growth
+fluxecho.gene.HEIGHT=Height
+fluxecho.gene.FRUITS=Fruits
+fluxecho.gene.YIELD=Yield
+fluxecho.gene.PLANT=Soil
+fluxecho.gene.SAPPINESS=Sappiness
+fluxecho.gene.MATURATION=Maturation
+fluxecho.gene.GIRTH=Girth
+fluxecho.gene.FIREPROOF=Fireproof
+fluxecho.gene.SIZE=Size
+fluxecho.gene.METABOLISM=Metabolism
+fluxecho.gene.FIRE_RESIST=Fire resistance
+fluxecho.status.imprint_kind_mismatch=The imprint in the input is not of the sample's kind (bees, trees and butterflies stay apart)
+fluxecho.status.no_fertilizer=Not enough Forestry fertilizer
 
 # thaumcraft
 gt.blockmachines.fluxecho.essentia_echo.name=Essentia Echo
@@ -77,6 +93,13 @@ fluxecho.status.no_catalyst=Put a catalyst into the input
 fluxecho.status.no_crucible_recipe=No crucible recipe uses this catalyst
 fluxecho.status.crucible_locked=Recipes use this catalyst, but the owner has not researched them or the team has not learned their aspects
 fluxecho.status.need_circuit_recipe=This catalyst fits several recipes: pick one with a programmed circuit
+gt.blockmachines.fluxecho.infusion_echo.name=Infusion Echo
+fluxecho.recipe.infusion_echo=Infusion Echo
+fluxecho.infusion_echo.tip=§3Repeats an infusion you made by hand: no pedestals, no instability§r\nSpecial slot: a finished item you infused (or made at the arcane workbench) once; it stays there\nInputs: everything its recipe takes (infusion: the centre and every component; arcane: every ingredient)\nAn infusion's essentia is synthesized from EU: %s EU per unit, a vis crystal shard pays %s units (shards in the inputs)\nAn arcane recipe's vis costs 1 primal unit per vis\nOnly recipes the owner researched and whose aspects the team learned; no warp
+fluxecho.status.no_infusion_sample=Put a finished item you infused or crafted at the arcane workbench into the special slot
+fluxecho.status.no_thaum_recipe=No infusion or arcane recipe makes this item
+fluxecho.status.thaum_locked=The owner has not researched the recipe, or the team has not learned its aspects
+fluxecho.status.no_ingredients=The inputs do not hold every ingredient
 
 # blood magic
 gt.blockmachines.fluxecho.blood_echo.name=Blood Echo
@@ -90,3 +113,84 @@ fluxecho.status.no_altar=No blood altar nearby (or use circuit 2 for the soul ne
 fluxecho.status.altar_full=The altar is full
 fluxecho.status.network_full=The soul network is at the orb's capacity
 fluxecho.status.no_meat=Put raw meat or rotten flesh into the input
+
+# prey
+gt.blockmachines.fluxecho.mob_echo.name=Prey Echo
+fluxecho.recipe.mob_echo=Prey Echo
+fluxecho.mob_echo.tip=§3A mob you killed once, its loot from EU from now on§r\nSpecial slot: a prey imprint; it stays there\nInput: a weapon (optional); its Looting counts and it loses 1 durability per kill\nEach kill costs by the mob's max health: %s EU per point, at least %s s\nBosses (the Wither, Twilight Forest bosses, ...) take %s times the EU and time\nDrop tables come from MobsInfo, as for the Extreme Entity Crusher
+item.fluxecho.mob_imprint.name=Prey Imprint
+fluxecho.mob_imprint.of=Prey Imprint: %s
+fluxecho.mob_imprint.blank=Blank prey imprint\nCarry it and kill a mob yourself to write that mob on it\nOr right-click a living mob with it: if your statistics show you killed its kind, it is written right away
+fluxecho.mob_imprint.written=Prey imprint written: %s
+fluxecho.mob_imprint.not_killed=You have not killed a %s yet: carry a blank imprint and kill one
+fluxecho.mob_imprint.no_drops=MobsInfo has no drop table for %s; it cannot be echoed
+fluxecho.status.no_mob_imprint=Put a prey imprint into the special slot
+fluxecho.status.no_mob_drops=MobsInfo has no drop table for this mob
+fluxecho.status.boss_disabled=Boss echoes are switched off in the config
+
+# crops
+gt.blockmachines.fluxecho.seed_imprinter.name=Seed Imprinter
+gt.blockmachines.fluxecho.seed_echo.name=Seed Echo
+fluxecho.recipe.seed_imprinter=Seed Imprinting
+fluxecho.recipe.seed_echo=Seed Echo
+fluxecho.seed_imprinter.tip=§3Imprints a fully scanned seed bag, seeds kept§r\nSpecial slot: a seed bag scanned to the top (or a crop imprint); it stays there\nPaper in: an imprint of the crop and its growth, gain and resistance\nCrop imprint + programmed circuit in: the sample's stats written onto it (crop kept)\n  1 growth  2 gain  3 resistance  4 all\n%s s per run, %s EU/t
+fluxecho.seed_echo.tip=§3Seed bags straight from a crop imprint, no more cross-breeding§r\nSpecial slot: a crop imprint; it stays there\n%s crop sticks in -> 1 fully scanned seed bag with the imprint's stats\n%s s per bag, %s EU/t
+item.fluxecho.crop_imprint.name=Crop Imprint
+fluxecho.crop_imprint.of=Crop Imprint: %s
+fluxecho.crop_imprint.blank=Blank crop imprint\nPut a fully scanned seed bag into the Seed Imprinter's special slot and paper into its input
+fluxecho.crop_imprint.stats=Growth %s  Gain %s  Resistance %s
+fluxecho.status.no_seed_sample=Put a seed bag (or a crop imprint) into the special slot
+fluxecho.status.seed_not_scanned=The seeds are not fully scanned: finish them in a cropnalyzer first
+fluxecho.status.no_paper_crop=Put paper (to imprint) or a crop imprint (to change stats) into the input
+fluxecho.status.need_circuit_crop=Changing stats needs a programmed circuit: 1 growth, 2 gain, 3 resistance, 4 all
+fluxecho.status.no_crop_imprint=Put a crop imprint into the special slot
+fluxecho.status.unknown_crop=This pack has no such crop as the imprint's
+fluxecho.status.no_sticks=Not enough crop sticks
+
+# botania
+gt.blockmachines.fluxecho.mana_echo.name=Mana Echo
+fluxecho.recipe.mana_echo=Mana Echo
+fluxecho.mana_echo.tip=§3Mana from EU into the mana pools nearby; no flowers to feed§r\n%s mana per tick, %s EU per mana\nEvery %s mana eats a mystical petal from the input\nFills the nearest pool within %s blocks sideways and %s up or down; stops when it is full
+fluxecho.mana_echo.waila=%s mana/t, %s mana waiting
+fluxecho.status.no_pool=No mana pool nearby
+fluxecho.status.pool_full=The mana pool is full
+fluxecho.status.no_petal=Put mystical petals into the input
+
+# enchanting
+gt.blockmachines.fluxecho.enchant_echo.name=Enchant Echo
+fluxecho.recipe.enchant_echo=Enchant Echo
+fluxecho.enchant_echo.tip=§3Copies an enchanted book you hold§r\nSpecial slot: an enchanted book; it stays there\nBooks and lapis in, the same enchanted book out\n%s EU and %s lapis per enchantment level (Fortune III is 3 levels)
+fluxecho.status.no_enchanted_book=Put an enchanted book into the special slot
+fluxecho.status.enchant_banned=The book holds an enchantment the config forbids copying
+fluxecho.status.no_book=Put books into the input
+fluxecho.status.no_lapis=Not enough lapis
+
+# codex
+item.fluxecho.codex.name=Echo Codex
+fluxecho.codex.tip=§3What your team did once and the flux layer remembers§r\nRight-click: imprinted bees, trees and butterflies, learned aspects, hunted prey, imprinted crops, ...\nItem tooltips say whether something echoes already
+fluxecho.codex.title=Echo Codex
+fluxecho.codex.total=%s in all
+fluxecho.codex.done=FluxEcho: your team has done this once
+fluxecho.codex.cat.bee=Bees
+fluxecho.codex.cat.tree=Trees
+fluxecho.codex.cat.butterfly=Butterflies
+fluxecho.codex.cat.aspect=Aspects
+fluxecho.codex.cat.mob=Prey
+fluxecho.codex.cat.crop=Crops
+fluxecho.codex.cat.infusion=Infusion & arcane
+fluxecho.codex.cat.enchant=Enchantments
+fluxecho.codex.cat.orb=Blood orbs
+fluxecho.codex.todo.bee=FluxEcho: not imprinted yet - put this bee into a Bee Imprinter with paper
+fluxecho.codex.todo.tree=FluxEcho: not imprinted yet - put a sapling or pollen into a Bee Imprinter with paper
+fluxecho.codex.todo.butterfly=FluxEcho: not imprinted yet - put the butterfly into a Bee Imprinter with paper
+fluxecho.codex.todo.aspect=FluxEcho: not learned yet - put it into any Thaumcraft echo machine, or right-click one with it
+fluxecho.codex.todo.mob=FluxEcho: no imprint yet - carry a blank prey imprint and kill one
+fluxecho.codex.todo.crop=FluxEcho: not imprinted yet - scan it to the top, then into a Seed Imprinter with paper
+fluxecho.codex.todo.infusion=FluxEcho: not echoed yet - make one by hand and put it into an Infusion Echo
+fluxecho.codex.todo.enchant=FluxEcho: not echoed yet - put it into an Enchant Echo
+fluxecho.codex.todo.orb=FluxEcho: not used yet - bind it and put it into a Blood Echo
+
+# ae2
+tile.fluxecho.echo_provider.name=Echo ME Provider
+fluxecho.echo_provider.status=Echo ME Provider: online, offering %s patterns to AE
+fluxecho.echo_provider.offline=Echo ME Provider: not on an AE network (or no channel or power); the machines next to it have %s patterns
