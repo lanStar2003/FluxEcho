@@ -84,7 +84,7 @@ tile.fluxecho.essentia_outlet.name=要素回响口
 fluxecho.recipe.essentia_echo=要素回响
 fluxecho.recipe.vis_charger=灵气充能
 fluxecho.essentia_echo.tip=§3按需合成团队学会过的要素，不用炼金炉和蒸馏塔§r\n要旁边贴一个要素回响口：注魔矩阵 12 格内直接从回响口抽要素，要素管道也能从它抽\n每 1 点要素：拆到初始要素的单位数 × %s EU（初始要素 1 单位，光 2 单位……）\n另耗碎片额度：1 块魔力碎片顶 %s 单位，放在输入槽里\n学要素：把装着要素的瓶子、罐子或要素水晶放进输入槽（用完退到输出槽），或者拿着它右键机器\n最多 %3$s A 输入
-fluxecho.vis_charger.tip=§3用 EU 给法杖、权杖、长杖和灵气护符充灵气，不用节点§r\n只充团队学会过的初始要素：把对应的魔力碎片放进输入槽（或拿着右键机器）学会\n法杖留在输入槽里充，充满了自动移到输出槽\n每 1 点灵气 %s EU；1 块魔力碎片顶 %s 点灵气（六种要素加起来算）
+fluxecho.vis_charger.tip=§c已停用：在工作台里直接换成通量灵气汲取台§r\n§3用 EU 给法杖、权杖、长杖和灵气护符充灵气，不用节点§r\n只充团队学会过的初始要素：把对应的魔力碎片放进输入槽（或拿着右键机器）学会\n法杖留在输入槽里充，充满了自动移到输出槽\n每 1 点灵气 %s EU；1 块魔力碎片顶 %s 点灵气（六种要素加起来算）
 fluxecho.aspect.no_owner=这台机器没有记录主人，没法学要素。拆下来重新放一次。
 fluxecho.aspect.learned=学会了：%s（团队一共学会 %s 种要素）
 fluxecho.aspect.known=已经学会过：%s（团队一共学会 %s 种要素）
@@ -233,3 +233,18 @@ fluxecho.seed_echo.type=种子培育
 fluxecho.mana_echo.type=魔力生成
 fluxecho.enchant_echo.type=附魔书复制
 fluxecho.gene_assembler.type=基因组合
+
+# Flux Vis Pedestal
+tile.fluxecho.vis_pedestal.name=通量灵气汲取台
+fluxecho.vis_pedestal.type=灵气充能
+fluxecho.vis_pedestal.tip=§3通量层深处沉着大量的要素：汲取台用电把六种初始要素实时抽上来，灌进悬浮在它上方的法杖§r\n右键放上法杖、权杖、长杖或灵气护符；空手右键取回；台上没东西时空手右键看状态\n每种要素每秒 %s 点灵气，每点灵气 %s EU；装汲取模块更快\n电从 GT 线缆来（除顶面外任意一面、任意电压），或者装通量链接模块从无线电网取；内置 %s EU 电池\n最多 %s 个模块：拿着模块右键安装，空手潜行右键取下
+item.fluxecho.vis_module.extraction.name=汲取模块
+item.fluxecho.vis_module.wireless.name=无线充能模块
+item.fluxecho.vis_module.link.name=通量链接模块
+fluxecho.vis_module.extraction.tip=§3从通量深处多抽一股初始要素§r\n每种要素每秒多 %s 点灵气，可以叠加，最多装 4 个
+fluxecho.vis_module.wireless.tip=§3把抽上来的灵气直接送到团队成员身上§r\n同一个世界里 %s 格内，团队成员背包里的法杖、权杖、长杖和灵气护符一起充
+fluxecho.vis_module.link.tip=§3接入团队的 GT 无线电网（就是 FluxLite 的通量网络）§r\n汲取台电量低于一半时自动取电，最多 %s EU/t，不用拉线
+fluxecho.vis_module.install=§8拿着右键通量灵气汲取台安装；空手潜行右键取下最后装的模块\n§8无线充能模块和通量链接模块各只装 1 个
+fluxecho.vis_pedestal.installed=已安装：%s（%s/%s）
+fluxecho.vis_pedestal.no_slot=装不下了：最多 4 个模块，无线充能模块和通量链接模块各只能装 1 个
+fluxecho.vis_pedestal.status=通量灵气汲取台：电量 %s / %s EU；每种要素每秒 %s 点灵气（六种一起充时约 %s EU/s）；模块 %s/%s
