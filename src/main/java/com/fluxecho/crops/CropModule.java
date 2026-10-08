@@ -133,5 +133,25 @@ public final class CropModule {
             }
         }
         FluxEcho.LOG.info("Seed Echo: {} crops in NEI", pages);
+        imprinterPages();
+    }
+
+    /** NEI: one page per crop for the Seed Imprinter, a scanned seed bag and paper into an imprint. */
+    private static void imprinterPages() {
+        CropStats stats = new CropStats(1, 1, 1);
+        for (CropCard c : Crops.instance.getCrops()) {
+            if (c == null || c == Crops.weed) continue;
+            try {
+                EchoRecipeMaps.page(
+                    MachineId.SEED_IMPRINTER,
+                    CropImprints.seeds(c, stats),
+                    new ItemStack[] { new ItemStack(Items.paper) },
+                    new ItemStack[] { CropImprints.imprint(c, stats) },
+                    Config.cropImprintEut,
+                    Config.cropImprintTicks);
+            } catch (RuntimeException e) {
+                FluxEcho.LOG.debug("No NEI imprint page for crop {}", c.name(), e);
+            }
+        }
     }
 }

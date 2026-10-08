@@ -12,6 +12,7 @@ import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
+import com.fluxecho.logic.BloodRates;
 
 import WayofTime.alchemicalWizardry.api.items.interfaces.IBloodOrb;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -38,6 +39,25 @@ public final class BloodModule {
                 .slotOverlays((index, fluid, output, special) -> special ? GTUITextures.OVERLAY_SLOT_DATA_ORB : null));
     }
 
+    /** Blood Magic's orbs, weakest first. */
+    private static final String[] ORBS = { "weakBloodOrb", "apprenticeBloodOrb", "magicianBloodOrb", "masterBloodOrb",
+        "archmageBloodOrb", "transcendentBloodOrb" };
+
+    /** NEI: one page per orb, with its LP a tick and the EU for it; the LP goes into the altar nearby. */
+    private static void neiPages() {
+        Block altar = GameRegistry.findBlock("AWWayofTime", "Altar");
+        ItemStack[] out = altar == null ? new ItemStack[0] : new ItemStack[] { new ItemStack(altar) };
+        ItemStack[] in = Config.lpPerMeat > 0 ? new ItemStack[] { new ItemStack(Items.rotten_flesh) }
+            : new ItemStack[0];
+        for (String name : ORBS) {
+            Item orb = GameRegistry.findItem("AWWayofTime", name);
+            if (!(orb instanceof IBloodOrb o)) continue;
+            int rate = BloodRates.lpPerTick(Config.lpPerTick, o.getOrbLevel());
+            if (rate > 0)
+                EchoRecipeMaps.page(MachineId.BLOOD_ECHO, new ItemStack(orb), in, out, rate * Config.euPerLp, 20);
+        }
+    }
+
     /** {@code modid:name} of an orb, the key of the ledger. */
     static String key(ItemStack s) {
         GameRegistry.UniqueIdentifier id = s == null ? null : GameRegistry.findUniqueIdentifierFor(s.getItem());
@@ -59,6 +79,7 @@ public final class BloodModule {
      * The recipe takes a blood altar and a sacrificial knife: the machine repeats what you did with them by hand.
      */
     public static void postInit() {
+        if (Config.bloodEnabled) neiPages();
         Categories.register(new Categories.Category(Categories.ORB, BloodModule::stack, key -> {
             ItemStack s = stack(key);
             return s == null ? key : s.getDisplayName();

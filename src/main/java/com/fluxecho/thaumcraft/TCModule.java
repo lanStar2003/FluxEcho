@@ -51,6 +51,11 @@ public final class TCModule {
         TCRecipeMaps.infusionEcho();
     }
 
+    /** NEI pages, once every mod has added its Thaumcraft recipes. */
+    public static void loadComplete() {
+        if (Config.thaumEnabled) TCNei.pages();
+    }
+
     public static void postInit() {
         EchoLedger.source(
             Categories.ASPECT,

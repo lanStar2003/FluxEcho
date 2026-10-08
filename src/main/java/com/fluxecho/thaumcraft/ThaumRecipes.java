@@ -95,6 +95,11 @@ final class ThaumRecipes {
         return out;
     }
 
+    /** Every option, by output, for NEI. */
+    static Map<String, List<Option>> all() {
+        return Collections.unmodifiableMap(index());
+    }
+
     /** Whether something makes this item, for the Codex's tooltip line. */
     static boolean isProduct(ItemStack s) {
         return index().containsKey(key(s));

@@ -103,6 +103,8 @@ public class FluxEcho {
     public void loadComplete(FMLLoadCompleteEvent e) {
         if (Mods.forestry) BeeModule.loadComplete();
         if (Mods.ic2) CropModule.loadComplete();
+        if (Mods.thaumcraft) TCModule.loadComplete();
+        if (Mods.mobsInfo) MobModule.loadComplete();
         RecipeCheck.run();
     }
 

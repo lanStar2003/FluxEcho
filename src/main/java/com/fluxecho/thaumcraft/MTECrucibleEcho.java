@@ -69,7 +69,7 @@ public class MTECrucibleEcho extends MTEThaumMachine {
     }
 
     /** Every crucible recipe, in a fixed order; read once all mods have added theirs. */
-    private static synchronized List<CrucibleRecipe> recipes() {
+    static synchronized List<CrucibleRecipe> recipes() {
         if (recipes == null) {
             List<CrucibleRecipe> all = new ArrayList<>();
             for (Object o : ThaumcraftApi.getCraftingRecipes()) if (o instanceof CrucibleRecipe r) all.add(r);
@@ -132,7 +132,7 @@ public class MTECrucibleEcho extends MTEThaumMachine {
     }
 
     /** A catalyst's stand-in for an AE pattern: the stack, or the first of its ore dictionary entries. */
-    private static ItemStack example(Object catalyst) {
+    static ItemStack example(Object catalyst) {
         ItemStack e = null;
         if (catalyst instanceof ItemStack s) e = s.copy();
         else if (catalyst instanceof List<?>l && !l.isEmpty() && l.get(0) instanceof ItemStack s) e = s.copy();
