@@ -17,7 +17,7 @@ public enum MachineId {
     INFUSION_ECHO(8, "infusion_echo", 2, "Infusion Echo"),
     SEED_IMPRINTER(9, "seed_imprinter", 1, "Seed Imprinter"),
     SEED_ECHO(10, "seed_echo", 1, "Seed Echo"),
-    MANA_ECHO(11, "mana_echo", 2, "Mana Echo"),
+    MANA_ECHO(11, "mana_echo", 1, "Mana Echo Spring"),
     GENE_ASSEMBLER(13, "gene_assembler", 1, "Gene Assembler");
 
     /** Ids from the first one that belong to FluxEcho: 24530–24569 by default. */
@@ -26,7 +26,7 @@ public enum MachineId {
     public final int offset;
     /** Name part of the GT machine ({@code "fluxecho." + key}), its textures, lang keys and recipe map. */
     public final String key;
-    /** GT voltage tier: 1 LV, 2 MV. */
+    /** GT voltage tier: 1 LV, 2 MV (the Mana Echo Spring takes its tier from the circuit in its core). */
     public final int tier;
     /** GT's fallback name, for its own lang file; the real names come from FluxEcho's lang files. */
     public final String english;

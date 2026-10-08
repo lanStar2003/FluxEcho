@@ -202,6 +202,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     public void updateEntity() {
         if (worldObj.isRemote) {
             if (charging && wand != null) PedestalFx.flow(worldObj, xCoord, yCoord, zCoord);
+            PedestalHolo.seen(this);
             return;
         }
         if (!Config.thaumEnabled) return;

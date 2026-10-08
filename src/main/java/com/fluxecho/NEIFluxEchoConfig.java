@@ -5,6 +5,8 @@ import java.util.regex.Pattern;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 
+import com.fluxecho.mana.SpringNei;
+
 import codechicken.nei.SearchField;
 import codechicken.nei.api.API;
 import codechicken.nei.api.IConfigureNEI;
@@ -15,7 +17,8 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.common.blocks.ItemMachines;
 
 /**
- * NEI plugin (NEI finds it by its name). FluxEcho's machines are GT machines, items of GregTech's machine block, so
+ * NEI plugin (NEI finds it by its name): the Mana Echo Spring's own page ({@link SpringNei}), and the "@" search.
+ * FluxEcho's machines are GT machines, items of GregTech's machine block, so
  * NEI's "@mod" search only finds them under GregTech. This replaces the "@" search with one that also finds any GT
  * machine under the mod its name starts with ({@code "fluxecho.bee.imprinter"} under FluxEcho).
  * <p>
@@ -28,6 +31,7 @@ public class NEIFluxEchoConfig implements IConfigureNEI {
     public void loadConfig() {
         API.addSearchProvider(
             new SearchField.SearchParserProvider('@', "modName", EnumChatFormatting.LIGHT_PURPLE, Filter::new));
+        if (Mods.botania) SpringNei.register();
     }
 
     @Override
