@@ -1,0 +1,71 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 2368560055692711788,
+      "questIDLow:4": -5628921670835994709
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 MV 机器，用炼金炉和源质罐做成：你亲手炼过要素，它才学得会。\n\n它按需合成团队学会过的要素：每 1 点要素的代价是它拆到初始要素后的单位数（初始要素 1，光 2，交换 3……），每单位 128 EU，外加碎片额度（1 块魔力碎片 64 单位）。\n\n[note]GT 的基础机器只存 64 个电包，回响仪改成能存 2048 个、最多 4 A 输入，一次大注魔也付得起。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24532,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§5要素回响仪",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -134440985683403025,
+  "questIDLow:4": -7486030639439394892,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 16,
+          "Damage:2": 6,
+          "OreDict:8": "",
+          "id:8": "Thaumcraft:ItemShard"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24532,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

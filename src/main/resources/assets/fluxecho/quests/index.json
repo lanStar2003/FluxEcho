@@ -1,0 +1,130 @@
+{
+  "lines": [
+    {
+      "order": "f1sy-CqyVk-tiJKjcEchBw==: §b私货 · 懒人AE",
+      "requires": [
+        "appliedenergistics2",
+        "ae2fc"
+      ],
+      "dirs": [
+        "QuestLines/LazyAE-f1sy-CqyVk-tiJKjcEchBw==",
+        "Quests/LazyAE-f1sy-CqyVk-tiJKjcEchBw=="
+      ],
+      "files": [
+        "QuestLines/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Cables-WJcxQx_fW0q2ZCF27imvaA==.json",
+        "QuestLines/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Core-fN1fIgvIUVSzrbgXq6elQQ==.json",
+        "QuestLines/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Crafting-aTMI7WdOVIOnniFGGX5bpg==.json",
+        "QuestLines/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/QuestLine.json",
+        "Quests/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Cables-WJcxQx_fW0q2ZCF27imvaA==.json",
+        "Quests/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Core-fN1fIgvIUVSzrbgXq6elQQ==.json",
+        "Quests/LazyAE-f1sy-CqyVk-tiJKjcEchBw==/Crafting-aTMI7WdOVIOnniFGGX5bpg==.json"
+      ]
+    },
+    {
+      "order": "WdrYyNhuWnSyAlsuPnbb2g==: §3通量深层 · 碎片采集器",
+      "requires": [
+        "fluxdepths"
+      ],
+      "dirs": [
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g=="
+      ],
+      "files": [
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Depths-l9tP8lYcWdCJGSb9MMyOVA==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Ev-J1W_qbr_UyW-m2DaSaDvFA==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/First-XC9bK-N5W-G-4jtK2GZ4BA==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Handover-jzCKMvpcUh6ClfsgmhVD8g==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/HpSteam-OkIlQTsQXgSCB5yDaVu1YA==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Hv-KLW8RI83XMWqqbN2VhERLA==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Imprinter-dmV72wXsV0S8wZoUDb5p2Q==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Iv-SBimkQYWXZWatFJjcw-9og==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Lv-kypt30veXQe5QaEIig4_6g==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Mv-0RQYBXR-VpyfVUj_OL90Yw==.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/QuestLine.json",
+        "QuestLines/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Steam-LAFDt9vIVCW3ewnJfWIdjQ==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Depths-l9tP8lYcWdCJGSb9MMyOVA==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Ev-J1W_qbr_UyW-m2DaSaDvFA==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/First-XC9bK-N5W-G-4jtK2GZ4BA==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Handover-jzCKMvpcUh6ClfsgmhVD8g==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/HpSteam-OkIlQTsQXgSCB5yDaVu1YA==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Hv-KLW8RI83XMWqqbN2VhERLA==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Imprinter-dmV72wXsV0S8wZoUDb5p2Q==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Iv-SBimkQYWXZWatFJjcw-9og==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Lv-kypt30veXQe5QaEIig4_6g==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Mv-0RQYBXR-VpyfVUj_OL90Yw==.json",
+        "Quests/FluxDepthsShards-WdrYyNhuWnSyAlsuPnbb2g==/Steam-LAFDt9vIVCW3ewnJfWIdjQ==.json"
+      ]
+    },
+    {
+      "order": "ylc6HD_5VZqKYdxPk1dINQ==: §3通量回响 · 养蜂",
+      "requires": [
+        "Forestry"
+      ],
+      "dirs": [
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ=="
+      ],
+      "files": [
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Edit-jPfXtfWNWa2tNciOMU0Y0w==.json",
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/FirstImprint-lXZZ8FvYXUa93HP2UVzqUA==.json",
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Imprinter-PN8eUR8eV0ONlWscBTM4Cw==.json",
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Incubator-drDG-arbVm2V-tYQd2ohUg==.json",
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Lore-lmvB_hWvUtuUYNrWt5gmRQ==.json",
+        "QuestLines/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/QuestLine.json",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Edit-jPfXtfWNWa2tNciOMU0Y0w==.json",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/FirstImprint-lXZZ8FvYXUa93HP2UVzqUA==.json",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Imprinter-PN8eUR8eV0ONlWscBTM4Cw==.json",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Incubator-drDG-arbVm2V-tYQd2ohUg==.json",
+        "Quests/FluxEchoBees-ylc6HD_5VZqKYdxPk1dINQ==/Lore-lmvB_hWvUtuUYNrWt5gmRQ==.json"
+      ]
+    },
+    {
+      "order": "AmGDXRDZU8y_pj9IX1FlrA==: §5通量回响 · 神秘",
+      "requires": [
+        "Thaumcraft"
+      ],
+      "dirs": [
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA=="
+      ],
+      "files": [
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/CrucibleEcho-sR4IjO7tXxWdRO3w6t6IzQ==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/EssentiaEcho-_iJeosUWXu-YHEbLzoZHtA==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/InsightEcho-cgG9QBY4Vu2QDSrnP52cYg==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Lore-5NfeyNFmWqaoR0i9ier65A==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Memory-IN7Q0ky-V2yx4g2QTVJ_qw==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Outlet-V65IGo-dXpWO8Cyxpi6m2g==.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/QuestLine.json",
+        "QuestLines/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/VisCharger-A-8eLYusUJGgiXfeHkUc9w==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/CrucibleEcho-sR4IjO7tXxWdRO3w6t6IzQ==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/EssentiaEcho-_iJeosUWXu-YHEbLzoZHtA==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/InsightEcho-cgG9QBY4Vu2QDSrnP52cYg==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Lore-5NfeyNFmWqaoR0i9ier65A==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Memory-IN7Q0ky-V2yx4g2QTVJ_qw==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/Outlet-V65IGo-dXpWO8Cyxpi6m2g==.json",
+        "Quests/FluxEchoThaum-AmGDXRDZU8y_pj9IX1FlrA==/VisCharger-A-8eLYusUJGgiXfeHkUc9w==.json"
+      ]
+    },
+    {
+      "order": "CvDV_BeIXbS0Pb6krRK32g==: §4通量回响 · 血魔法",
+      "requires": [
+        "AWWayofTime"
+      ],
+      "dirs": [
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==",
+        "Quests/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g=="
+      ],
+      "files": [
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/BloodEcho-_nvMLr0sUwW3RwWXbeb1ow==.json",
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/FirstOrb-DLFBR-AqWBiPPPN5TgF-EA==.json",
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/Lore-dZBsIQ00XaWFE30DG7t5yg==.json",
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/Network-qCc403-MVDC4eloYqbUgaw==.json",
+        "QuestLines/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/QuestLine.json",
+        "Quests/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/BloodEcho-_nvMLr0sUwW3RwWXbeb1ow==.json",
+        "Quests/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/FirstOrb-DLFBR-AqWBiPPPN5TgF-EA==.json",
+        "Quests/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/Lore-dZBsIQ00XaWFE30DG7t5yg==.json",
+        "Quests/FluxEchoBlood-CvDV_BeIXbS0Pb6krRK32g==/Network-qCc403-MVDC4eloYqbUgaw==.json"
+      ]
+    }
+  ]
+}

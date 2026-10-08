@@ -1,0 +1,124 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一套能一直用到 EV 的 AE 网络核心。\n\n[note]ME 自供能控制器自带无限能源：不用能源接收器，也不用谐振仓，放下就有电。[/note]\n\n怎么搭：\n1. 放下自供能控制器，从它的面上接致密线缆当主干，一面最多 32 个频道。\n2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k，流体用流体元件（蒸汽、杂酚油、水都能存）。\n3. 合成终端看库存、直接合成；样板终端和增广流体样板终端写样板；接口终端统一管理所有接口里的样板。\n\n[warn]领取前先清空背包，放不下的会掉在地上。[/warn]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "appliedenergistics2:tile.BlockCreativeEnergyController"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§b§l懒人AE · 核心与存储",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 8997452230387323220,
+  "questIDLow:4": -5499537158145858239,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 2,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:tile.BlockCreativeEnergyController"
+        },
+        "1:10": {
+          "Count:3": 2,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:tile.BlockDrive"
+        },
+        "2:10": {
+          "Count:3": 6,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemBasicStorageCell.64k"
+        },
+        "3:10": {
+          "Count:3": 4,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemBasicStorageCell.16k"
+        },
+        "4:10": {
+          "Count:3": 2,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:fluid_storage64"
+        },
+        "5:10": {
+          "Count:3": 2,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:fluid_storage16"
+        },
+        "6:10": {
+          "Count:3": 1,
+          "Damage:2": 360,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "7:10": {
+          "Count:3": 1,
+          "Damage:2": 340,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "8:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_pattern_terminal_ex"
+        },
+        "9:10": {
+          "Count:3": 1,
+          "Damage:2": 480,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "10:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_terminal"
+        },
+        "11:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ToolNetworkTool"
+        },
+        "12:10": {
+          "Count:3": 2,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ToolMemoryCard"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

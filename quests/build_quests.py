@@ -1,0 +1,495 @@
+"""
+Writes FluxEcho's quest lines in GTNH's BetterQuesting layout (config/betterquesting/DefaultQuests).
+Run from the repository root: python quests/build_quests.py
+Output, shipped inside the jar:
+  src/main/resources/assets/fluxecho/quests/DefaultQuests/{QuestLines,Quests}/<line>/...
+  src/main/resources/assets/fluxecho/quests/index.json
+At startup FluxEcho's QuestInstaller copies each line whose mods are loaded into the instance's DefaultQuests and
+adds the line to QuestLinesOrder.txt (/bq_admin default load only loads the lines listed there). Other quest lines
+and the rest of the order file are never touched, so several mods can ship quest lines side by side.
+
+Quest ids are derived from fixed keys, so running it again keeps the same ids (and the players' progress). The lazy
+AE and shard collector lines came from FluxDepths 0.1.x; their keys, folder names and file names are unchanged, so
+the files players copied in by hand are overwritten in place.
+"""
+import base64
+import json
+import os
+import shutil
+import struct
+import uuid
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ASSETS = os.path.join(HERE, os.pardir, "src", "main", "resources", "assets", "fluxecho", "quests")
+OUT = os.path.join(ASSETS, "DefaultQuests")
+INDEX = os.path.join(ASSETS, "index.json")
+NS = uuid.UUID("6f1c2d6a-3a0b-4b51-9a57-7f1d2e9c4b10")
+FLUXDEPTHS_FIRST_ID = 24520  # FluxDepths' shard_collectors.firstMachineId
+FIRST_ID = 24530  # FluxEcho's general.firstMachineId
+
+
+def ids(key):
+    u = uuid.uuid5(NS, key)
+    hi, lo = struct.unpack(">qq", u.bytes)
+    return hi, lo, base64.urlsafe_b64encode(u.bytes).decode()
+
+
+def item(i, dmg=0, count=1, ore=""):
+    return {"Count:3": count, "Damage:2": dmg, "OreDict:8": ore, "id:8": i}
+
+
+def numbered(entries):
+    return {f"{n}:10": e for n, e in enumerate(entries)}
+
+
+def stacks(i, dmg, count):
+    out = []
+    while count > 0:
+        out.append(item(i, dmg, min(64, count)))
+        count -= 64
+    return out
+
+
+AE = "appliedenergistics2:"
+PART = AE + "item.ItemMultiPart"
+MAT = AE + "item.ItemMultiMaterial"
+
+
+def quest(key, name, desc, icon, tasks, rewards=(), pre=(), main=True):
+    hi, lo, b64 = ids(key)
+    t = []
+    for n, task in enumerate(tasks):
+        task = dict(task)
+        task["index:3"] = n
+        t.append(task)
+    r = []
+    for n, rew in enumerate(rewards):
+        rew = dict(rew)
+        rew["index:3"] = n
+        r.append(rew)
+    q = {}
+    if pre:
+        q["preRequisites:9"] = numbered([{"questIDHigh:4": ids(p)[0], "questIDLow:4": ids(p)[1]} for p in pre])
+    q["properties:10"] = {"betterquesting:10": {
+        "autoClaim:1": 0, "desc:8": desc, "globalShare:1": 1, "icon:10": icon, "isGlobal:1": 0,
+        "isMain:1": 1 if main else 0, "isSilent:1": 0, "lockedProgress:1": 0, "name:8": name,
+        "partySingleReward:1": 0, "questLogic:8": "AND", "repeatTime:3": -1, "repeat_relative:1": 1,
+        "simultaneous:1": 0, "snd_complete:8": "random.levelup", "snd_update:8": "random.levelup",
+        "taskLogic:8": "AND", "visibility:8": "NORMAL"}}
+    q["questIDHigh:4"] = hi
+    q["questIDLow:4"] = lo
+    q["rewards:9"] = numbered(r)
+    q["tasks:9"] = numbered(t)
+    return key, q, b64
+
+
+def checkbox():
+    return {"taskID:8": "bq_standard:checkbox"}
+
+
+def retrieval(*items, ignore_nbt=False):
+    return {"autoConsume:1": 0, "consume:1": 0, "groupDetect:1": 0, "ignoreNBT:1": 1 if ignore_nbt else 0,
+            "partialMatch:1": 1, "requiredItems:9": numbered(list(items)), "taskID:8": "bq_standard:retrieval"}
+
+
+def give(*items):
+    flat = []
+    for i in items:
+        flat.extend(i if isinstance(i, list) else [i])
+    return {"ignoreDisabled:1": 0, "rewardID:8": "bq_standard:item", "rewards:9": numbered(flat)}
+
+
+def dump(path, obj):
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+def write_line(key, slug, name, desc, icon, placed, requires):
+    """Writes one quest line; returns its index entry. requires: mod ids that must be loaded to install it."""
+    hi, lo, b64 = ids(key)
+    line_dir = f"{slug}-{b64}"
+    qdir = os.path.join(OUT, "Quests", line_dir)
+    ldir = os.path.join(OUT, "QuestLines", line_dir)
+    os.makedirs(qdir, exist_ok=True)
+    os.makedirs(ldir, exist_ok=True)
+    files = [f"QuestLines/{line_dir}/QuestLine.json"]
+    dump(os.path.join(ldir, "QuestLine.json"), {
+        "properties:10": {"betterquesting:10": {"bg_image:8": "", "bg_size:3": 256, "desc:8": desc,
+                                                "icon:10": icon, "name:8": name, "visibility:8": "NORMAL"}},
+        "questLineIDHigh:4": hi, "questLineIDLow:4": lo})
+    for (qkey, q, qb64), (x, y) in placed:
+        stem = "".join(c for c in qkey.split("/")[-1].title() if c.isalnum())[:16]
+        fname = f"{stem}-{qb64}.json"
+        dump(os.path.join(qdir, fname), q)
+        dump(os.path.join(ldir, fname), {"sizeX:3": 24, "sizeY:3": 24, "x:3": x, "y:3": y,
+                                          "questIDHigh:4": q["questIDHigh:4"], "questIDLow:4": q["questIDLow:4"]})
+        files += [f"Quests/{line_dir}/{fname}", f"QuestLines/{line_dir}/{fname}"]
+    return {"order": f"{b64}: {name}", "requires": list(requires),
+            "dirs": [f"QuestLines/{line_dir}", f"Quests/{line_dir}"], "files": sorted(files)}
+
+
+# ---------------------------------------------------------------- lazy AE
+
+def lazy_ae():
+    core = quest(
+        "lazyae/core", "§b§l懒人AE · 核心与存储",
+        "一套能一直用到 EV 的 AE 网络核心。\n\n"
+        "[note]ME 自供能控制器自带无限能源：不用能源接收器，也不用谐振仓，放下就有电。[/note]\n\n"
+        "怎么搭：\n"
+        "1. 放下自供能控制器，从它的面上接致密线缆当主干，一面最多 32 个频道。\n"
+        "2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k，流体用流体元件（蒸汽、杂酚油、水都能存）。\n"
+        "3. 合成终端看库存、直接合成；样板终端和增广流体样板终端写样板；接口终端统一管理所有接口里的样板。\n\n"
+        "[warn]领取前先清空背包，放不下的会掉在地上。[/warn]",
+        item(AE + "tile.BlockCreativeEnergyController"),
+        [checkbox()],
+        [give(item(AE + "tile.BlockCreativeEnergyController", 0, 2), item(AE + "tile.BlockDrive", 0, 2),
+              item(AE + "item.ItemBasicStorageCell.64k", 0, 6), item(AE + "item.ItemBasicStorageCell.16k", 0, 4),
+              item("ae2fc:fluid_storage64", 0, 2), item("ae2fc:fluid_storage16", 0, 2),
+              item(PART, 360), item(PART, 340), item("ae2fc:part_fluid_pattern_terminal_ex"), item(PART, 480),
+              item("ae2fc:part_fluid_terminal"), item(AE + "item.ToolNetworkTool"),
+              item(AE + "item.ToolMemoryCard", 0, 2))])
+    crafting = quest(
+        "lazyae/crafting", "§b§l懒人AE · 自动合成",
+        "让 AE 替你干活。\n\n"
+        "• 工作台配方：在样板终端里用「合成」模式写样板，放进 ME 接口，接口贴着分子装配室。要 GT 工具的配方也行，工具磨损后会还回网络。\n"
+        "• 机器配方（蒸汽打粉机、锻造锤、合金炉……）：用「处理」模式写样板，放进 ME 二合一接口，二合一接口贴着机器并打开「阻挡模式」；"
+        "机器的另一面贴一个 ME 输入总线，把产物抽回网络。\n"
+        "• 要流体的配方用增广流体样板终端写，二合一接口会把流体一起送进机器。\n"
+        "• 合成 CPU：拼成 2×2×2，每组放 1 个 64k 和 1 个 16k 合成存储器、4 个并行处理单元、1 个合成单元、1 个合成监控器（能看进度）。这里给了两组的料。\n\n"
+        "[note]加速卡插进输入 / 输出总线会快很多；样板扩容卡让一个接口放更多样板；合成卡让输出总线缺货时自动下单。[/note]",
+        item(AE + "tile.BlockMolecularAssembler"),
+        [checkbox()],
+        [give(item(AE + "tile.BlockMolecularAssembler", 0, 12), item("ae2fc:fluid_interface", 0, 12),
+              item(AE + "tile.BlockInterface", 0, 4), item(AE + "tile.BlockCraftingStorage", 3, 2),
+              item(AE + "tile.BlockCraftingStorage", 2, 2), item(AE + "tile.BlockCraftingUnit", 1, 8),
+              item(AE + "tile.BlockCraftingUnit", 0, 2), item(AE + "tile.BlockCraftingMonitor", 0, 2),
+              stacks(MAT, 52, 192), item(MAT, 30, 24), item(MAT, 53, 8), item(MAT, 27, 8), item(MAT, 54, 8),
+              item(MAT, 29, 4), item(MAT, 26, 4))])
+    cables = quest(
+        "lazyae/cables", "§b§l懒人AE · 线缆与输入输出",
+        "把网络接到每一台机器上。\n\n"
+        "• 玻璃 / 包层线缆走 8 个频道，智能线缆能看到频道占用，致密线缆走 32 个。控制器每一面出 32 个频道，用致密线缆做主干，再分出普通线缆。\n"
+        "• 存储总线贴在箱子、抽屉、储罐上，网络就能直接读写它们。\n"
+        "• 输入总线把机器的产物抽回网络，输出总线把物品推出去；流体用对应的流体总线。\n"
+        "• ME 标准发信器：库存低于设定值时输出红石，可以用来开关锅炉、机器。\n"
+        "• P2P 通道能把一整束频道送到远处。\n\n"
+        "[note]GTNH 里 AE 要到 EV 才能自己做，这套的量就是按撑到那时准备的。[/note]",
+        item(PART, 56),
+        [checkbox()],
+        [give(stacks(PART, 16, 128), item(PART, 36, 64), item(PART, 56, 64), item(PART, 76, 16), item(PART, 140, 16),
+              item(PART, 240, 8), item(PART, 260, 8), item(PART, 220, 8), item(PART, 280, 4),
+              item("ae2fc:part_fluid_import", 0, 4), item("ae2fc:part_fluid_export", 0, 4),
+              item("ae2fc:part_fluid_storage_bus", 0, 4), item(PART, 460, 4))])
+    return write_line(
+        "line/lazyae", "LazyAE", "§b私货 · 懒人AE",
+        "开局直接领一整套 AE2，蒸汽时代就能全自动。\n\n"
+        "三个任务都是勾选即领，没有前置。GTNH 正常要到 EV 才能自己做 AE，这套的量够你撑到那时。",
+        item(AE + "tile.BlockCreativeEnergyController"),
+        [(core, (0, 0)), (crafting, (48, 0)), (cables, (96, 0))],
+        ["appliedenergistics2", "ae2fc"])
+
+
+# ---------------------------------------------------------------- shard collectors
+
+def machine(tier):
+    return item("gregtech:gt.blockmachines", FLUXDEPTHS_FIRST_ID + tier)
+
+
+def shards():
+    lore = quest(
+        "shards/depths", "§3§l通量深层",
+        "FluxLite 的网络把电送进「通量层」——现实之下、贯穿所有世界的一层能量之海。\n\n"
+        "通量层再往下，是「通量深层」。那里沉着世界诞生时留下的碎片：每个世界生成时，地下的每一条矿脉，都是深层里一块碎片的投影。"
+        "这也是为什么 GT 的矿脉总是整整齐齐地每 3 个区块出现一次——那是碎片投进现实的网格。\n\n"
+        "你挖空一条矿脉，碎片还在，只是不再投影。\n\n"
+        "碎片采集器拿着一张「矿脉印记」对准深层里的那块碎片，让它再投影一次：不是投进地底，而是投进采集器的腔体里，一次凝结一块矿石。"
+        "投影很微弱，所以很慢；采集器等级越高，共振越稳，速度越快。\n\n"
+        "[note]为什么永远比不上原版的虚空采矿机？虚空采矿机是把整个世界的通量层撕开一道口子——所以出来的是全世界所有矿脉的混合物，"
+        "要 LuV 的电，还要惰性气体撑住裂口。采集器只是透过针孔聆听一块碎片：最快的大师级（IV）也只有虚空采矿机 I 的 77%。[/note]",
+        item("fluxdepths:imprint"),
+        [checkbox()])
+    imprinter = quest(
+        "shards/imprinter", "§3印记拓印器",
+        "一根带透镜的青铜杆，能听见脚下矿脉在深层里的回响。\n\n"
+        "站在矿脉所在的区域里（以矿脉为中心的 3×3 区块）右键，就会拓下一张矿脉印记，每次消耗一张纸。\n\n"
+        "[note]它只认世界生成时真实存在的矿脉——和 VisualProspecting 地图上记录的一样，所以得先找到矿脉。[/note]",
+        item("fluxdepths:imprinter"),
+        [retrieval(item("fluxdepths:imprinter"))],
+        [give(item("minecraft:paper", 0, 16))],
+        pre=["shards/depths"])
+    first = quest(
+        "shards/first", "§3第一张矿脉印记",
+        "先找矿脉：\n"
+        "• 用 GT 的探矿工具，或者打开地图（JourneyMap / Navigator）看 VisualProspecting 已经记下的矿脉；\n"
+        "• 走到矿脉的范围里（水平位置在它的 3×3 区块之内，高度不限），拿着拓印器右键。\n\n"
+        "印记上写着这条矿脉出哪些矿石、各占多少，以及它来自哪个世界。\n\n"
+        "[warn]印记只在拓下它的那个世界里有效：主世界的印记在下界、月球都不会共振。外星的矿脉要先飞过去拓印，再在当地建采集器。[/warn]\n\n"
+        "[note]NEI 里搜「碎片采集」能看到每条矿脉的产出；查某种矿石的来源，也能看到它在哪些矿脉里。[/note]",
+        item("fluxdepths:imprint"),
+        [retrieval(item("fluxdepths:imprint"), ignore_nbt=True)],
+        pre=["shards/imprinter"])
+    steam = quest(
+        "shards/steam", "§6蒸汽碎片采集器",
+        "第一台采集器：青铜外壳，烧低压蒸汽。\n\n"
+        "• 矿脉印记放进印记槽（带数据棒图标的那一格）；\n"
+        "• 输入槽放一个 GT 青铜钻头（或更好的）当开孔头，一个能用 128 次；\n"
+        "• 每 10 秒凝结 1 块矿石（360 块 / 小时），工作时消耗 16 L/t 蒸汽；\n"
+        "• 和 GT 的蒸汽机器一样，每块矿石完成后都要从排气口放汽，排气口前面不能堵；\n"
+        "• 它不会自动输出，用漏斗或 AE 的输入总线把矿石取走。\n\n"
+        "出来的是普通矿石方块，后面照常打粉、洗矿。",
+        machine(0), [retrieval(machine(0))], pre=["shards/first"])
+    hp = quest(
+        "shards/hp_steam", "§6高压蒸汽碎片采集器",
+        "钢外壳，高压蒸汽：每 5 秒 1 块（720 块 / 小时），32 L/t 蒸汽。\n\n"
+        "开孔头至少要钢钻头（256 次）。用一台蒸汽碎片采集器升级而来。",
+        machine(1), [retrieval(machine(1))], pre=["shards/steam"])
+    lv = quest(
+        "shards/lv", "§7基础碎片采集器（LV）",
+        "进入电力时代：每 2.5 秒 1 块（1440 块 / 小时），24 EU/t。\n\n"
+        "• 能放 2 张印记（印记槽 + 一个输入槽），两条矿脉轮流产出——是分享，不是叠加；\n"
+        "• 开孔头：钢钻头或更好；\n"
+        "• 用扳手设一个输出面，就能自动把矿石推出去。\n\n"
+        "[note]可以用 FluxLite 连接器从无线电网给它供电。[/note]",
+        machine(2), [retrieval(machine(2))], pre=["shards/hp_steam"])
+    mv = quest(
+        "shards/mv", "§b进阶碎片采集器（MV）",
+        "每 1.65 秒 1 块（约 2180 块 / 小时），96 EU/t。\n\n"
+        "从这一级起，针孔要用钻井液冷却：每块矿石消耗 20 L。钻井液在搅拌机里做（配方看 NEI）。\n\n"
+        "开孔头：铝钻头或更好（384 次）。",
+        machine(3), [retrieval(machine(3))], pre=["shards/lv"])
+    hv = quest(
+        "shards/hv", "§6高级碎片采集器（HV）",
+        "每 1.25 秒 1 块（2880 块 / 小时），384 EU/t，能放 3 张印记。\n\n开孔头：不锈钢钻头或更好（512 次）。",
+        machine(4), [retrieval(machine(4))], pre=["shards/mv"])
+    ev = quest(
+        "shards/ev", "§5精英碎片采集器（EV）",
+        "每 0.9 秒 1 块（4000 块 / 小时），1536 EU/t，能放 3 张印记。\n\n开孔头：钛钻头或更好（768 次）。",
+        machine(5), [retrieval(machine(5))], pre=["shards/hv"])
+    iv = quest(
+        "shards/iv", "§1大师碎片采集器（IV）",
+        "每 0.65 秒 1 块（约 5540 块 / 小时），6144 EU/t，能放 4 张印记。\n\n"
+        "开孔头：钨钢钻头（1024 次）。\n\n这是针孔能做到的极限。",
+        machine(6), [retrieval(machine(6))], pre=["shards/ev"])
+    handover = quest(
+        "shards/handover", "§3交接：虚空采矿机",
+        "再往上，就该把通量层撕开了。\n\n"
+        "原版的虚空采矿机（LuV 起）一次拿整个世界所有矿脉的混合，每秒 2 块起步，加上惰性气体能到每秒上百块。"
+        "采集器的使命到此为止，剩下的交给它。\n\n"
+        "[note]采集器不会因此作废：想专门刷某一条矿脉（只要铂、只要钍……），印记依然是最准的办法。[/note]",
+        machine(6),
+        [checkbox()], pre=["shards/iv"], main=False)
+    placed = [(lore, (0, 48)), (imprinter, (48, 24)), (first, (96, 24)), (steam, (144, 0)), (hp, (192, 0)),
+              (lv, (240, 0)), (mv, (288, 0)), (hv, (288, 48)), (ev, (240, 48)), (iv, (192, 48)),
+              (handover, (144, 48))]
+    return write_line(
+        "line/shards", "FluxDepthsShards", "§3通量深层 · 碎片采集器",
+        "拓下一条矿脉的印记，在家里慢慢回响出它的矿石。从蒸汽时代一路到 IV，直到原版的虚空采矿机接手。",
+        item("fluxdepths:imprint"), placed, ["fluxdepths"])
+
+
+# ---------------------------------------------------------------- FluxEcho
+
+def echo_machine(offset):
+    return item("gregtech:gt.blockmachines", FIRST_ID + offset)
+
+
+ECHO_LORE = (
+    "FluxLite 的网络把电送进「通量层」，FluxDepths 从它下面的深层里捞出矿脉的碎片。"
+    "可通量层不只是一片能量之海：流过它的一切，它都记得。\n\n"
+    "你亲手做过一次的事，都在通量层里留下了回响。回响机器（每一台都带一颗末影珍珠，那是通往通量层的那一环）"
+    "把这些回响重新放大：第一次必须亲手做，之后交给机器。\n\n"
+    "[note]规则只有一条：机器只认真东西。蜂要从真蜂身上拓，要素要从真的要素里学，血要从你亲手做出的宝珠里来。[/note]")
+
+
+def echo_bees():
+    lore = quest(
+        "echo_bees/lore", "§3§l通量回响 · 养蜂",
+        ECHO_LORE + "\n\n养蜂这一边：你配出过的每一种蜂都在通量层里留着回响。"
+        "拓下它的基因，以后要多少公主就培育多少，不用再找环境、不用再碰运气突变。",
+        item("fluxecho:bee_imprint"),
+        [checkbox()])
+    imprinter = quest(
+        "echo_bees/imprinter", "§3蜂种拓印机",
+        "一台 LV 机器，用一台便携蜂类分析仪做成：你亲手分析过蜂，它才学得会。\n\n"
+        "• 特殊槽放一只蜂（雄蜂、公主、蜂后、幼虫都行），它会一直留在槽里，毫发无伤；\n"
+        "• 输入槽放一张纸，约 5 秒拓下一张蜂种印记，记下这只蜂的全部基因。\n\n"
+        "[note]不用 Gendustry 的采样器、模板、液态 DNA（在 GTNH 里那一套要到 LuV），也不会失败。[/note]",
+        echo_machine(0),
+        [retrieval(echo_machine(0))],
+        [give(item("minecraft:paper", 0, 16))],
+        pre=["echo_bees/lore"])
+    first = quest(
+        "echo_bees/first_imprint", "§3第一张蜂种印记",
+        "印记上记着品种和 12 个性状，按住 Shift 能看到每一个。\n\n"
+        "印记可以复制：特殊槽放一张印记、输入槽放纸，就再拓一张。",
+        item("fluxecho:bee_imprint"),
+        [retrieval(item("fluxecho:bee_imprint"), ignore_nbt=True)],
+        pre=["echo_bees/imprinter"])
+    edit = quest(
+        "echo_bees/edit", "§3编辑基因：13 号电路",
+        "想让一种蜂在哪里都能干活，不用再找生物群系？\n\n"
+        "1. 找一只环境基因好的蜂（温度、湿度耐受高，夜行、耐雨、穴居），放进特殊槽当样本；\n"
+        "2. 输入槽放你要改的那张印记；\n"
+        "3. 编程电路选 13。\n\n"
+        "出来的印记品种不变，环境基因全换成样本的。其他电路：1 速度、2 寿命、3 繁殖、4 温度耐受、5 夜行、"
+        "6 湿度耐受、7 耐雨、8 穴居、9 花、10 授粉、11 领地、12 效果、14 全部非品种基因。\n\n"
+        "[note]品种永远不会被改：新品种还是得在蜂箱里亲手突变一次，拓下来以后就不用再配了。[/note]",
+        item("gregtech:gt.integrated_circuit", 13),
+        [checkbox()],
+        pre=["echo_bees/first_imprint"], main=False)
+    incubator = quest(
+        "echo_bees/incubator", "§3幼虫培育箱",
+        "一台 LV 机器，用一台蜂箱做成。\n\n"
+        "• 特殊槽放蜂种印记（也可以直接放一只蜂），一直留在槽里；\n"
+        "• 输入蜂蜜滴：默认 12 滴出 1 只公主加 2 只雄蜂；选 2 号电路，16 滴出 16 只雄蜂；\n"
+        "• 出来的蜂都是原始的（不会退化）、已分析、纯合子，培育时不看气候。\n\n"
+        "[note]输出槽里的公主没取走，下一批就不会开始，不会浪费。[/note]",
+        echo_machine(1),
+        [retrieval(echo_machine(1))],
+        [give(item("Forestry:honeyDrop", 0, 32))],
+        pre=["echo_bees/first_imprint"])
+    placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (edit, (144, 0)), (incubator, (144, 48))]
+    return write_line(
+        "line/echo_bees", "FluxEchoBees", "§3通量回响 · 养蜂",
+        "拓下一只真蜂的全部基因，以后要多少原始公主就培育多少。不找环境、不靠运气、不碰 Gendustry。",
+        item("fluxecho:bee_imprint"), placed, ["Forestry"])
+
+
+TC = "Thaumcraft:"
+
+
+def echo_thaum():
+    lore = quest(
+        "echo_thaum/lore", "§5§l通量回响 · 神秘",
+        ECHO_LORE + "\n\n神秘这一边：你亲手炼出过的每一种要素、捡到过的每一种魔力碎片，都在通量层里留着回响。"
+        "学会一次，以后用电现合成：注魔不用再炼要素，法杖不用再找节点。\n\n"
+        "[note]研究：本实例的 config/Thaumcraft.cfg 里 research_difficulty 是 -1，研究直接用研究点购买，没有解谜小游戏。"
+        "整合包更新可能把它改回去，记得再改一次。[/note]\n\n"
+        "[note]找要素、攒研究点：Salis Arcana 让神秘透镜能在背包界面里扫物品（鼠标停在物品上），"
+        "研究了「箱子扫描」（CHESTSCAN）以后能一次扫一整个箱子。[/note]",
+        item(TC + "ItemEssence", 1),
+        [checkbox()])
+    memory = quest(
+        "echo_thaum/memory", "§5要素记忆",
+        "FluxEcho 的神秘机器按团队记住你们拿到过的要素，一台机器学会，团队所有机器都会。\n\n"
+        "怎么学：\n"
+        "• 装着要素的瓶子、罐子、要素水晶：学会里面的要素；\n"
+        "• 魔力碎片：学会它的初始要素（风、火、水、地、秩序、混沌）；\n"
+        "• 放进机器的输入槽，或者拿在手上右键机器都行。瓶罐学完会退到输出槽，碎片留在输入槽。\n\n"
+        "[note]所以第一次还是要亲手炼：炼金炉加蒸馏塔，每种要素炼出一瓶就够了。[/note]\n\n"
+        "碎片也是这些机器的耗材：输入槽里的魔力碎片（平衡碎片也算）按需折成碎片额度。",
+        item(TC + "ItemShard", 6),
+        [checkbox()],
+        pre=["echo_thaum/lore"])
+    echo = quest(
+        "echo_thaum/essentia_echo", "§5要素回响仪",
+        "一台 MV 机器，用炼金炉和源质罐做成：你亲手炼过要素，它才学得会。\n\n"
+        "它按需合成团队学会过的要素：每 1 点要素的代价是它拆到初始要素后的单位数（初始要素 1，光 2，交换 3……），"
+        "每单位 128 EU，外加碎片额度（1 块魔力碎片 64 单位）。\n\n"
+        "[note]GT 的基础机器只存 64 个电包，回响仪改成能存 2048 个、最多 4 A 输入，一次大注魔也付得起。[/note]",
+        echo_machine(2),
+        [retrieval(echo_machine(2))],
+        [give(item(TC + "ItemShard", 6, 16))],
+        pre=["echo_thaum/memory"])
+    outlet = quest(
+        "echo_thaum/outlet", "§5要素回响口",
+        "回响仪本身不能直接接神秘的东西，要在它旁边贴一个要素回响口。\n\n"
+        "• 注魔：回响口在注魔矩阵 12 格内，注魔要什么要素就直接从回响口抽，回响仪当场合成。不用罐子，不用管道。\n"
+        "• 管道：要素管道接在回响口上，下游的罐子贴了标签要哪种就送哪种；没有标签时，送回响口选定的要素"
+        "（拿着装要素的瓶子右键回响口来选）。\n"
+        "• 空手右键回响口：看团队学会了几种要素、选定的要素现在能合成多少。\n\n"
+        "[note]回响口不存要素：每一点都是离开的那一刻才合成、才付钱。新放的回响口要等几秒才会被注魔矩阵发现。[/note]",
+        item("fluxecho:essentia_outlet"),
+        [retrieval(item("fluxecho:essentia_outlet"))],
+        pre=["echo_thaum/essentia_echo"])
+    charger = quest(
+        "echo_thaum/vis_charger", "§5灵气充能器",
+        "一台 MV 机器，用法杖充能台做成。\n\n"
+        "• 法杖、权杖、长杖或灵气护符放进输入槽，按团队学会过的初始要素充灵气，充满了自动移到输出槽；\n"
+        "• 学初始要素：把对应的魔力碎片放进输入槽或拿着右键；\n"
+        "• 每点灵气 100 EU，1 块魔力碎片顶 200 点灵气（六种加起来算）。一轮最多 2 分钟，装得多的长杖会多充几轮。\n\n"
+        "[note]和 EMT 的工业充能台比：那个要 EV、每点灵气 5 万 EU。[/note]",
+        echo_machine(3),
+        [retrieval(echo_machine(3))],
+        pre=["echo_thaum/memory"])
+    insight = quest(
+        "echo_thaum/insight_echo", "§5灵感回响仪",
+        "研究点不够买研究？一台 LV 机器，用桌子、书写工具和神秘透镜做成（研究台本身没有物品形态）。\n\n"
+        "• 特殊槽放一件你用神秘透镜扫描过的东西，一直留在槽里；\n"
+        "• 每次耗 1 张纸，10 秒，把这件东西的要素点再给你一次，就像重新扫描一遍；\n"
+        "• 你要在线：神秘只在玩家在线时才有研究数据。\n\n"
+        "[note]挑要素多、又正好是你缺的那种东西放进去。神秘自己的研究点上限照常生效，点数越多涨得越慢。[/note]",
+        echo_machine(4),
+        [retrieval(echo_machine(4))],
+        [give(item("minecraft:paper", 0, 64))],
+        pre=["echo_thaum/lore"])
+    crucible = quest(
+        "echo_thaum/crucible_echo", "§5炼金回响釜",
+        "一台 MV 机器，用坩埚做成。坩埚配方不用再往锅里扔东西攒要素了。\n\n"
+        "• 输入槽放催化剂，配方要的要素当场合成（和要素回响仪一样：每单位 128 EU，碎片额度另算），直接出产物；\n"
+        "• 只做你研究过、团队学会了全部要素的配方；\n"
+        "• 一个催化剂对应好几个配方时，编程电路选第几个（顺序固定，NEI 里神秘自己的页面能看到有哪些）。",
+        echo_machine(5),
+        [retrieval(echo_machine(5))],
+        pre=["echo_thaum/memory"])
+    placed = [(lore, (0, 24)), (memory, (48, 24)), (echo, (96, 0)), (outlet, (144, 0)), (charger, (96, 48)),
+              (crucible, (144, 48)), (insight, (48, 72))]
+    return write_line(
+        "line/echo_thaum", "FluxEchoThaum", "§5通量回响 · 神秘",
+        "每种要素亲手炼一次，以后用电现合成；初始要素认识一次，以后用电充法杖。注魔不再炼要素，法杖不再找节点。",
+        item(TC + "ItemEssence", 1), placed, ["Thaumcraft"])
+
+
+BM = "AWWayofTime:"
+
+
+def echo_blood():
+    lore = quest(
+        "echo_blood/lore", "§4§l通量回响 · 血魔法",
+        ECHO_LORE + "\n\n血魔法这一边：你在祭坛里流过的每一滴血都在通量层里留着回响，"
+        "宝珠就是你流过血的凭证。宝珠做出来以后，就不用再拿小刀割自己了。",
+        item(BM + "weakBloodOrb"),
+        [checkbox()])
+    orb = quest(
+        "echo_blood/first_orb", "§4第一颗血宝珠",
+        "这一步只能亲手来：用献祭小刀割血，攒够 5000 LP，在祭坛里做出虚弱血宝珠，再拿着它右键绑定到自己身上。\n\n"
+        "[note]这就是「手动做一次」。以后每一级宝珠也都要先在祭坛里做出来，鲜血回响器才会跟着提速。[/note]",
+        item(BM + "weakBloodOrb"),
+        [retrieval(item(BM + "weakBloodOrb"), ignore_nbt=True)],
+        pre=["echo_blood/lore"])
+    echo = quest(
+        "echo_blood/blood_echo", "§4鲜血回响器",
+        "一台 MV 机器，用血之祭坛和献祭小刀做成。\n\n"
+        "• 特殊槽放一颗绑定过的血宝珠，一直留在槽里。宝珠越高级越快：虚弱 4 LP/t，学徒 8，魔导师 16，大师 32，"
+        "大魔导师 48，超越 64；\n"
+        "• 每 LP 耗 2 EU（最快 128 EU/t，正好是 MV），每 2000 LP 吃 1 块生肉或腐肉；\n"
+        "• 默认把 LP 直接送进附近（水平 5 格、上下 10 格）血之祭坛的主罐，和苦难之井一样，不走那个每秒只进 20 mB 的输入缓冲。\n\n"
+        "[note]祭坛满了它就停，不会浪费。祭坛上的自我献祭符文照样会放大送进去的 LP。[/note]",
+        echo_machine(6),
+        [retrieval(echo_machine(6))],
+        [give(item("minecraft:rotten_flesh", 0, 32))],
+        pre=["echo_blood/first_orb"])
+    network = quest(
+        "echo_blood/network", "§4灵魂网络模式：2 号电路",
+        "编程电路选 2：LP 不进祭坛，直接进宝珠主人的灵魂网络，到宝珠的上限为止。\n\n"
+        "印记、仪式、各种血魔法道具用的都是灵魂网络里的 LP，从此不用再拿宝珠右键扣血补网络了。",
+        item("gregtech:gt.integrated_circuit", 2),
+        [checkbox()],
+        pre=["echo_blood/blood_echo"], main=False)
+    placed = [(lore, (0, 24)), (orb, (48, 24)), (echo, (96, 24)), (network, (144, 24))]
+    return write_line(
+        "line/echo_blood", "FluxEchoBlood", "§4通量回响 · 血魔法",
+        "第一颗宝珠亲手割出来，之后用电和一点肉产 LP：送进祭坛，或者直接补灵魂网络。",
+        item(BM + "weakBloodOrb"), placed, ["AWWayofTime"])
+
+
+if __name__ == "__main__":
+    # GTNH names a quest line after its id as url-safe base64 of the two longs; check against one of its own
+    probe = struct.pack(">qq", 3630150074513574271, -7072631871726141045)
+    assert base64.urlsafe_b64encode(probe).decode() == "MmDiQmi9SX-d2PbI-qhBiw==", "id format changed"
+    if os.path.isdir(OUT):
+        shutil.rmtree(OUT)
+    lines = [lazy_ae(), shards(), echo_bees(), echo_thaum(), echo_blood()]
+    dump(INDEX, {"lines": lines})
+    print("\n".join(entry["order"] for entry in lines))

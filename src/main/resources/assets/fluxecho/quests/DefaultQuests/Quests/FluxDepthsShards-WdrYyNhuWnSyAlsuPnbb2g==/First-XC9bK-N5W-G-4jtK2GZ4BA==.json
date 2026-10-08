@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 8531361249750701892,
+      "questIDLow:4": -4845422313153336871
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "先找矿脉：\n• 用 GT 的探矿工具，或者打开地图（JourneyMap / Navigator）看 VisualProspecting 已经记下的矿脉；\n• 走到矿脉的范围里（水平位置在它的 3×3 区块之内，高度不限），拿着拓印器右键。\n\n印记上写着这条矿脉出哪些矿石、各占多少，以及它来自哪个世界。\n\n[warn]印记只在拓下它的那个世界里有效：主世界的印记在下界、月球都不会共振。外星的矿脉要先飞过去拓印，再在当地建采集器。[/warn]\n\n[note]NEI 里搜「碎片采集」能看到每条矿脉的产出；查某种矿石的来源，也能看到它在哪些矿脉里。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxdepths:imprint"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3第一张矿脉印记",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 6642628219452873697,
+  "questIDLow:4": -4692122669122422780,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 1,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxdepths:imprint"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

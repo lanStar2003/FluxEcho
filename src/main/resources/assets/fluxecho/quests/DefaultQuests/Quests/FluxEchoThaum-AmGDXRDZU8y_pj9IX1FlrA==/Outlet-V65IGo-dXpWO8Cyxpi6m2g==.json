@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -134440985683403025,
+      "questIDLow:4": -7486030639439394892
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "回响仪本身不能直接接神秘的东西，要在它旁边贴一个要素回响口。\n\n• 注魔：回响口在注魔矩阵 12 格内，注魔要什么要素就直接从回响口抽，回响仪当场合成。不用罐子，不用管道。\n• 管道：要素管道接在回响口上，下游的罐子贴了标签要哪种就送哪种；没有标签时，送回响口选定的要素（拿着装要素的瓶子右键回响口来选）。\n• 空手右键回响口：看团队学会了几种要素、选定的要素现在能合成多少。\n\n[note]回响口不存要素：每一点都是离开的那一刻才合成、才付钱。新放的回响口要等几秒才会被注魔矩阵发现。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:essentia_outlet"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§5要素回响口",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 6318066606163189397,
+  "questIDLow:4": -8146962584404318502,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxecho:essentia_outlet"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

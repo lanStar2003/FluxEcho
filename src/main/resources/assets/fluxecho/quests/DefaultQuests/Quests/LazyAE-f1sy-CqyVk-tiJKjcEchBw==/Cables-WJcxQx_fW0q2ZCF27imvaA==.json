@@ -1,0 +1,130 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "把网络接到每一台机器上。\n\n• 玻璃 / 包层线缆走 8 个频道，智能线缆能看到频道占用，致密线缆走 32 个。控制器每一面出 32 个频道，用致密线缆做主干，再分出普通线缆。\n• 存储总线贴在箱子、抽屉、储罐上，网络就能直接读写它们。\n• 输入总线把机器的产物抽回网络，输出总线把物品推出去；流体用对应的流体总线。\n• ME 标准发信器：库存低于设定值时输出红石，可以用来开关锅炉、机器。\n• P2P 通道能把一整束频道送到远处。\n\n[note]GTNH 里 AE 要到 EV 才能自己做，这套的量就是按撑到那时准备的。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 56,
+        "OreDict:8": "",
+        "id:8": "appliedenergistics2:item.ItemMultiPart"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§b§l懒人AE · 线缆与输入输出",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 6383625161188268874,
+  "questIDLow:4": -5304077666450034840,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 64,
+          "Damage:2": 16,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "1:10": {
+          "Count:3": 64,
+          "Damage:2": 16,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "2:10": {
+          "Count:3": 64,
+          "Damage:2": 36,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "3:10": {
+          "Count:3": 64,
+          "Damage:2": 56,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "4:10": {
+          "Count:3": 16,
+          "Damage:2": 76,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "5:10": {
+          "Count:3": 16,
+          "Damage:2": 140,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "6:10": {
+          "Count:3": 8,
+          "Damage:2": 240,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "7:10": {
+          "Count:3": 8,
+          "Damage:2": 260,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "8:10": {
+          "Count:3": 8,
+          "Damage:2": 220,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "9:10": {
+          "Count:3": 4,
+          "Damage:2": 280,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        },
+        "10:10": {
+          "Count:3": 4,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_import"
+        },
+        "11:10": {
+          "Count:3": 4,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_export"
+        },
+        "12:10": {
+          "Count:3": 4,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_storage_bus"
+        },
+        "13:10": {
+          "Count:3": 4,
+          "Damage:2": 460,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:item.ItemMultiPart"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

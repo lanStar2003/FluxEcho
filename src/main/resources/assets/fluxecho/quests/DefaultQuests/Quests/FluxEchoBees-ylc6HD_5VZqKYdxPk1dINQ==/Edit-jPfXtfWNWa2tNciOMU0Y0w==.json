@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -7676849625938502330,
+      "questIDLow:4": -4765806803900634544
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "想让一种蜂在哪里都能干活，不用再找生物群系？\n\n1. 找一只环境基因好的蜂（温度、湿度耐受高，夜行、耐雨、穴居），放进特殊槽当样本；\n2. 输入槽放你要改的那张印记；\n3. 编程电路选 13。\n\n出来的印记品种不变，环境基因全换成样本的。其他电路：1 速度、2 寿命、3 繁殖、4 温度耐受、5 夜行、6 湿度耐受、7 耐雨、8 穴居、9 花、10 授粉、11 领地、12 效果、14 全部非品种基因。\n\n[note]品种永远不会被改：新品种还是得在蜂箱里亲手突变一次，拓下来以后就不用再配了。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 13,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.integrated_circuit"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3编辑基因：13 号电路",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -8288919412643374675,
+  "questIDLow:4": -5965641618344306477,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}
