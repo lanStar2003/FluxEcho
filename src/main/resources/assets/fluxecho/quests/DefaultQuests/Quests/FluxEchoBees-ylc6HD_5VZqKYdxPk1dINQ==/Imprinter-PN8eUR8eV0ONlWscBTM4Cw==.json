@@ -1,0 +1,71 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -7607773848482655525,
+      "questIDLow:4": -7754957942593935803
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 LV 机器，用一台便携蜂类分析仪做成：你亲手分析过蜂，它才学得会。\n\n• 特殊槽放一只蜂（雄蜂、公主、蜂后、幼虫都行），它会一直留在槽里，毫发无伤；\n• 输入槽放一张纸，约 5 秒拓下一张蜂种印记，记下这只蜂的全部基因。\n\n[note]不用 Gendustry 的采样器、模板、液态 DNA（在 GTNH 里那一套要到 LuV），也不会失败。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24530,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3蜂种拓印机",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 4386257895845418819,
+  "questIDLow:4": -8244565774741325813,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 16,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "minecraft:paper"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24530,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

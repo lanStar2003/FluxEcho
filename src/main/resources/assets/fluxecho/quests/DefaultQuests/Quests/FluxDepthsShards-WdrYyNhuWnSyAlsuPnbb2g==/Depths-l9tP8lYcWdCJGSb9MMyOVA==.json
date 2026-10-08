@@ -1,0 +1,38 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "FluxLite 的网络把电送进「通量层」——现实之下、贯穿所有世界的一层能量之海。\n\n通量层再往下，是「通量深层」。那里沉着世界诞生时留下的碎片：每个世界生成时，地下的每一条矿脉，都是深层里一块碎片的投影。这也是为什么 GT 的矿脉总是整整齐齐地每 3 个区块出现一次——那是碎片投进现实的网格。\n\n你挖空一条矿脉，碎片还在，只是不再投影。\n\n碎片采集器拿着一张「矿脉印记」对准深层里的那块碎片，让它再投影一次：不是投进地底，而是投进采集器的腔体里，一次凝结一块矿石。投影很微弱，所以很慢；采集器等级越高，共振越稳，速度越快。\n\n[note]为什么永远比不上原版的虚空采矿机？虚空采矿机是把整个世界的通量层撕开一道口子——所以出来的是全世界所有矿脉的混合物，要 LuV 的电，还要惰性气体撑住裂口。采集器只是透过针孔聆听一块碎片：最快的大师级（IV）也只有虚空采矿机 I 的 77%。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxdepths:imprint"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3§l通量深层",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -7504316451837421104,
+  "questIDLow:4": -8567773947208364460,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

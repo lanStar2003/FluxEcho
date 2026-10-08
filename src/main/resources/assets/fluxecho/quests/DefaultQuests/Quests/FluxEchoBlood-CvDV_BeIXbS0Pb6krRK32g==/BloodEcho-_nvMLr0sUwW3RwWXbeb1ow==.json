@@ -1,0 +1,71 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 914583976292276248,
+      "questIDLow:4": -8125351925357904368
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "一台 MV 机器，用血之祭坛和献祭小刀做成。\n\n• 特殊槽放一颗绑定过的血宝珠，一直留在槽里。宝珠越高级越快：虚弱 4 LP/t，学徒 8，魔导师 16，大师 32，大魔导师 48，超越 64；\n• 每 LP 耗 2 EU（最快 128 EU/t，正好是 MV），每 2000 LP 吃 1 块生肉或腐肉；\n• 默认把 LP 直接送进附近（水平 5 格、上下 10 格）血之祭坛的主罐，和苦难之井一样，不走那个每秒只进 20 mB 的输入缓冲。\n\n[note]祭坛满了它就停，不会浪费。祭坛上的自我献祭符文照样会放大送进去的 LP。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24536,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§4鲜血回响器",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -109269264826084603,
+  "questIDLow:4": -5240213493480229469,
+  "rewards:9": {
+    "0:10": {
+      "ignoreDisabled:1": 0,
+      "rewardID:8": "bq_standard:item",
+      "rewards:9": {
+        "0:10": {
+          "Count:3": 32,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "minecraft:rotten_flesh"
+        }
+      },
+      "index:3": 0
+    }
+  },
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24536,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "FluxLite 的网络把电送进「通量层」，FluxDepths 从它下面的深层里捞出矿脉的碎片。可通量层不只是一片能量之海：流过它的一切，它都记得。\n\n你亲手做过一次的事，都在通量层里留下了回响。回响机器（每一台都带一颗末影珍珠，那是通往通量层的那一环）把这些回响重新放大：第一次必须亲手做，之后交给机器。\n\n[note]规则只有一条：机器只认真东西。蜂要从真蜂身上拓，要素要从真的要素里学，血要从你亲手做出的宝珠里来。[/note]\n\n养蜂这一边：你配出过的每一种蜂都在通量层里留着回响。拓下它的基因，以后要多少公主就培育多少，不用再找环境、不用再碰运气突变。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:bee_imprint"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3§l通量回响 · 养蜂",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -7607773848482655525,
+  "questIDLow:4": -7754957942593935803,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

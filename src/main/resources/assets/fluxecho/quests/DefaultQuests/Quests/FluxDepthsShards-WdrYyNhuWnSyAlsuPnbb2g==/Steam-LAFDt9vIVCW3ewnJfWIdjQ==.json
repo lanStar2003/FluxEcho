@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 6642628219452873697,
+      "questIDLow:4": -4692122669122422780
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "第一台采集器：青铜外壳，烧低压蒸汽。\n\n• 矿脉印记放进印记槽（带数据棒图标的那一格）；\n• 输入槽放一个 GT 青铜钻头（或更好的）当开孔头，一个能用 128 次；\n• 每 10 秒凝结 1 块矿石（360 块 / 小时），工作时消耗 16 L/t 蒸汽；\n• 和 GT 的蒸汽机器一样，每块矿石完成后都要从排气口放汽，排气口前面不能堵；\n• 它不会自动输出，用漏斗或 AE 的输入总线把矿石取走。\n\n出来的是普通矿石方块，后面照常打粉、洗矿。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24520,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§6蒸汽碎片采集器",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 3170890069590955045,
+  "questIDLow:4": -5225572181636670067,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 24520,
+          "OreDict:8": "",
+          "id:8": "gregtech:gt.blockmachines"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

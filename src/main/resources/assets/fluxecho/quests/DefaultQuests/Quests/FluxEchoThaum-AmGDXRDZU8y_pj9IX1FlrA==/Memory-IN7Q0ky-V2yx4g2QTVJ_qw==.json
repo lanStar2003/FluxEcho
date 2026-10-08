@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -1956850558981219674,
+      "questIDLow:4": -6321003573091304732
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "FluxEcho 的神秘机器按团队记住你们拿到过的要素，一台机器学会，团队所有机器都会。\n\n怎么学：\n• 装着要素的瓶子、罐子、要素水晶：学会里面的要素；\n• 魔力碎片：学会它的初始要素（风、火、水、地、秩序、混沌）；\n• 放进机器的输入槽，或者拿在手上右键机器都行。瓶罐学完会退到输出槽，碎片留在输入槽。\n\n[note]所以第一次还是要亲手炼：炼金炉加蒸馏塔，每种要素炼出一瓶就够了。[/note]\n\n碎片也是这些机器的耗材：输入槽里的魔力碎片（平衡碎片也算）按需折成碎片额度。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 6,
+        "OreDict:8": "",
+        "id:8": "Thaumcraft:ItemShard"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§5要素记忆",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 2368560055692711788,
+  "questIDLow:4": -5628921670835994709,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

@@ -1,1 +1,92 @@
 itemGroup.fluxecho=通量回响
+fluxecho.quests.updated=FluxEcho 更新了任务书文件。执行 /bq_admin default load 载入（已有进度会保留）。
+
+fluxecho.status.idle=空闲
+fluxecho.status.working=工作中
+fluxecho.status.disabled=这个模块在配置里关掉了
+fluxecho.status.output_full=输出槽满了
+
+# bees
+gt.blockmachines.fluxecho.bee_imprinter.name=蜂种拓印机
+gt.blockmachines.fluxecho.larva_incubator.name=幼虫培育箱
+fluxecho.recipe.bee_imprinter=蜂种拓印
+fluxecho.recipe.larva_incubator=幼虫培育
+fluxecho.bee_imprinter.tip=§3把一只真蜂的全部基因拓成印记，蜂毫发无伤§r\n特殊槽：样本蜂（或一张印记），一直留在槽里\n输入纸：拓下样本的全部基因\n输入印记 + 编程电路：把样本的基因写进这张印记（品种不变）\n  1 速度　2 寿命　3 繁殖　4 温度耐受　5 夜行　6 湿度耐受\n  7 耐雨　8 穴居　9 花　10 授粉　11 领地　12 效果\n  13 全部环境基因（4–8，从此不用找环境）　14 全部非品种基因\n每次 %s 秒，%s EU/t
+fluxecho.larva_incubator.tip=§3用蜂蜜滴喂养幼虫，长成印记上的蜂§r\n原始、已分析、纯合子，不看气候\n特殊槽：蜂种印记（或一只真蜂），一直留在槽里\n不放电路或 1 号电路：%3$s 滴蜂蜜 → 1 只公主 + %4$s 只雄蜂\n2 号电路：%5$s 滴蜂蜜 → %6$s 只雄蜂\n输出里的公主没取走时不会开始下一批\n每批 %1$s 秒，%2$s EU/t
+item.fluxecho.bee_imprint.name=蜂种印记
+fluxecho.bee_imprint.of=蜂种印记：%s
+fluxecho.bee_imprint.blank=空白印记\n把一只蜂放进蜂种拓印机的特殊槽，输入纸，拓下它的全部基因
+fluxecho.bee_imprint.unknown=本整合包里没有这个品种：%s
+fluxecho.bee_imprint.shift=按住 Shift 查看基因
+fluxecho.bee_imprint.missing=有些基因在本整合包里已经不存在，培育时取品种的默认值
+fluxecho.gene.SPEED=速度
+fluxecho.gene.LIFESPAN=寿命
+fluxecho.gene.FERTILITY=繁殖
+fluxecho.gene.TEMPERATURE_TOLERANCE=温度耐受
+fluxecho.gene.NOCTURNAL=夜行
+fluxecho.gene.HUMIDITY_TOLERANCE=湿度耐受
+fluxecho.gene.TOLERANT_FLYER=耐雨
+fluxecho.gene.CAVE_DWELLING=穴居
+fluxecho.gene.FLOWER_PROVIDER=花
+fluxecho.gene.FLOWERING=授粉
+fluxecho.gene.TERRITORY=领地
+fluxecho.gene.EFFECT=效果
+fluxecho.status.no_bee_sample=特殊槽里放一只蜂（或一张印记）作样本
+fluxecho.status.no_paper=输入槽里放纸（拓印），或一张印记（编辑基因）
+fluxecho.status.need_circuit=编辑基因要选编程电路：1–12 单个基因，13 全部环境基因，14 全部非品种基因
+fluxecho.status.no_imprint=特殊槽里放一张蜂种印记（或一只蜂）
+fluxecho.status.unknown_species=本整合包里没有印记上的品种
+fluxecho.status.no_honey=蜂蜜滴不够
+
+# thaumcraft
+gt.blockmachines.fluxecho.essentia_echo.name=要素回响仪
+gt.blockmachines.fluxecho.vis_charger.name=灵气充能器
+tile.fluxecho.essentia_outlet.name=要素回响口
+fluxecho.recipe.essentia_echo=要素回响
+fluxecho.recipe.vis_charger=灵气充能
+fluxecho.essentia_echo.tip=§3按需合成团队学会过的要素，不用炼金炉和蒸馏塔§r\n要旁边贴一个要素回响口：注魔矩阵 12 格内直接从回响口抽要素，要素管道也能从它抽\n每 1 点要素：拆到初始要素的单位数 × %s EU（初始要素 1 单位，光 2 单位……）\n另耗碎片额度：1 块魔力碎片顶 %s 单位，放在输入槽里\n学要素：把装着要素的瓶子、罐子或要素水晶放进输入槽（用完退到输出槽），或者拿着它右键机器\n最多 %3$s A 输入
+fluxecho.vis_charger.tip=§3用 EU 给法杖、权杖、长杖和灵气护符充灵气，不用节点§r\n只充团队学会过的初始要素：把对应的魔力碎片放进输入槽（或拿着右键机器）学会\n法杖留在输入槽里充，充满了自动移到输出槽\n每 1 点灵气 %s EU；1 块魔力碎片顶 %s 点灵气（六种要素加起来算）
+fluxecho.aspect.no_owner=这台机器没有记录主人，没法学要素。拆下来重新放一次。
+fluxecho.aspect.learned=学会了：%s（团队一共学会 %s 种要素）
+fluxecho.aspect.known=已经学会过：%s（团队一共学会 %s 种要素）
+fluxecho.aspect.waila=团队学会的要素：%s 种　碎片额度：%s
+fluxecho.essentia_echo.linked=要素回响仪：团队学会 %s 种要素，存电 %s EU
+fluxecho.essentia_outlet.selected=回响口选定要素：%s（管道没有指定要哪种时就送这种）
+fluxecho.essentia_outlet.selected_now=选定要素：%s，现在能合成 %s 点
+fluxecho.essentia_outlet.none=还没选定要素：拿着装有要素的瓶子、罐子或要素水晶右键回响口
+fluxecho.essentia_outlet.no_echo=回响口旁边没有要素回响仪
+fluxecho.status.no_owner=这台机器没有记录主人：拆下来重新放一次
+fluxecho.status.no_aspect_known=团队还没学会任何要素：放入装着要素的瓶子、罐子或魔力碎片
+fluxecho.status.ready=待命：通过要素回响口按需合成
+fluxecho.status.no_wand=输入槽里放一根法杖、权杖或一个灵气护符
+fluxecho.status.no_primal_known=团队还没学会任何初始要素：放入对应的魔力碎片
+fluxecho.status.no_shard=碎片额度不够：往输入槽里放魔力碎片
+
+gt.blockmachines.fluxecho.insight_echo.name=灵感回响仪
+gt.blockmachines.fluxecho.crucible_echo.name=炼金回响釜
+fluxecho.recipe.insight_echo=灵感回响
+fluxecho.recipe.crucible_echo=炼金回响
+fluxecho.insight_echo.tip=§3把扫描过的东西再"扫"一遍，补研究点§r\n特殊槽：一件主人用神秘透镜扫描过的物品，一直留在槽里\n每次耗 1 张纸，把这件物品的要素点再给主人一次（神秘自己的研究点上限照常生效）\n主人要在线\n每次 %s 秒，%s EU/t
+fluxecho.crucible_echo.tip=§3不用往坩埚里扔东西就能做坩埚配方§r\n输入催化剂，配方要的要素用 EU 现合成：每单位 %s EU，1 块魔力碎片顶 %s 单位（碎片放在输入槽里）\n只做主人研究过、团队学会了全部要素的配方\n一个催化剂对应多个配方时，用编程电路选第几个
+fluxecho.status.owner_offline=主人不在线：神秘只在玩家在线时才有研究数据
+fluxecho.status.no_scan_sample=特殊槽里放一件主人扫描过的物品
+fluxecho.status.not_scanned=主人还没扫描过这件物品：先用神秘透镜扫一次
+fluxecho.status.no_scan_aspects=这件物品没有要素
+fluxecho.status.need_paper=输入槽里放纸
+fluxecho.status.no_catalyst=输入槽里放催化剂
+fluxecho.status.no_crucible_recipe=没有用这个催化剂的坩埚配方
+fluxecho.status.crucible_locked=有用这个催化剂的配方，但主人还没研究，或团队还没学会它要的要素
+fluxecho.status.need_circuit_recipe=这个催化剂对应好几个配方：用编程电路选第几个
+
+# blood magic
+gt.blockmachines.fluxecho.blood_echo.name=鲜血回响器
+fluxecho.recipe.blood_echo=鲜血回响
+fluxecho.blood_echo.tip=§3用 EU 和一点肉产出 LP，不用再自己割§r\n特殊槽：一颗绑定过的血宝珠，一直留在槽里，等级决定速度（虚弱 %s LP/t … 超越 %s LP/t）\n每 LP %s EU；每 %s LP 消耗 1 块生肉或腐肉，放在输入槽里\n不放电路或 1 号电路：送进 %s 格内（上下 %s 格）的血之祭坛主罐\n2 号电路：送进宝珠主人的灵魂网络，到宝珠上限为止\n祭坛或网络满了就暂停
+fluxecho.blood_echo.waila_altar=祭坛模式：%s LP/t，待送 %s LP
+fluxecho.blood_echo.waila_network=灵魂网络模式：%s LP/t，待送 %s LP
+fluxecho.status.no_orb=特殊槽里放一颗血宝珠
+fluxecho.status.orb_unbound=血宝珠还没绑定：拿着它右键一次
+fluxecho.status.no_altar=附近没有血之祭坛（或者用 2 号电路送进灵魂网络）
+fluxecho.status.altar_full=祭坛满了，等它用掉
+fluxecho.status.network_full=灵魂网络已经到宝珠上限
+fluxecho.status.no_meat=输入槽里放生肉或腐肉

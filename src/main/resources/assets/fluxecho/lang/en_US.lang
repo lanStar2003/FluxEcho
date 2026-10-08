@@ -1,1 +1,92 @@
 itemGroup.fluxecho=FluxEcho
+fluxecho.quests.updated=FluxEcho updated its quest files. Run /bq_admin default load to load them (progress is kept).
+
+fluxecho.status.idle=Idle
+fluxecho.status.working=Working
+fluxecho.status.disabled=This module is switched off in the config
+fluxecho.status.output_full=Output full
+
+# bees
+gt.blockmachines.fluxecho.bee_imprinter.name=Bee Imprinter
+gt.blockmachines.fluxecho.larva_incubator.name=Larva Incubator
+fluxecho.recipe.bee_imprinter=Bee Imprinting
+fluxecho.recipe.larva_incubator=Larva Incubation
+fluxecho.bee_imprinter.tip=§3Imprints every gene of a real bee, unharmed§r\nSpecial slot: the sample bee (or an imprint); it stays there\nPaper in: an imprint of all the sample's genes\nImprint + programmed circuit in: the sample's genes written onto it (species kept)\n  1 speed  2 lifespan  3 fertility  4 temperature  5 nocturnal  6 humidity\n  7 rain  8 cave  9 flower  10 pollination  11 territory  12 effect\n  13 every environment gene (4-8: no more hunting for climates)  14 every gene but the species\n%s s per run, %s EU/t
+fluxecho.larva_incubator.tip=§3Feeds larvae honey drops until they grow into the imprinted bee§r\nPristine, analysed, pure-bred; climate does not matter\nSpecial slot: a bee imprint (or a real bee); it stays there\nNo circuit or circuit 1: %3$s honey drops -> 1 princess + %4$s drones\nCircuit 2: %5$s honey drops -> %6$s drones\nA princess left in the output holds the next batch\n%1$s s per batch, %2$s EU/t
+item.fluxecho.bee_imprint.name=Bee Imprint
+fluxecho.bee_imprint.of=Bee Imprint: %s
+fluxecho.bee_imprint.blank=Blank imprint\nPut a bee into the Bee Imprinter's special slot and paper into its input to imprint all its genes
+fluxecho.bee_imprint.unknown=This pack has no such species: %s
+fluxecho.bee_imprint.shift=Hold Shift for the genes
+fluxecho.bee_imprint.missing=Some genes no longer exist in this pack; incubated bees get the species' default for them
+fluxecho.gene.SPEED=Speed
+fluxecho.gene.LIFESPAN=Lifespan
+fluxecho.gene.FERTILITY=Fertility
+fluxecho.gene.TEMPERATURE_TOLERANCE=Temperature tolerance
+fluxecho.gene.NOCTURNAL=Nocturnal
+fluxecho.gene.HUMIDITY_TOLERANCE=Humidity tolerance
+fluxecho.gene.TOLERANT_FLYER=Rain-tolerant flyer
+fluxecho.gene.CAVE_DWELLING=Cave dwelling
+fluxecho.gene.FLOWER_PROVIDER=Flowers
+fluxecho.gene.FLOWERING=Pollination
+fluxecho.gene.TERRITORY=Territory
+fluxecho.gene.EFFECT=Effect
+fluxecho.status.no_bee_sample=Put a bee (or an imprint) into the special slot as the sample
+fluxecho.status.no_paper=Put paper (to imprint) or an imprint (to edit genes) into the input
+fluxecho.status.need_circuit=Editing genes needs a programmed circuit: 1-12 one gene, 13 every environment gene, 14 every gene but the species
+fluxecho.status.no_imprint=Put a bee imprint (or a bee) into the special slot
+fluxecho.status.unknown_species=This pack has no such species as the imprint's
+fluxecho.status.no_honey=Not enough honey drops
+
+# thaumcraft
+gt.blockmachines.fluxecho.essentia_echo.name=Essentia Echo
+gt.blockmachines.fluxecho.vis_charger.name=Vis Charger
+tile.fluxecho.essentia_outlet.name=Essentia Outlet
+fluxecho.recipe.essentia_echo=Essentia Echo
+fluxecho.recipe.vis_charger=Vis Charging
+fluxecho.essentia_echo.tip=§3Synthesizes, on demand, every aspect your team has held once: no alchemical furnace, no alembics§r\nNeeds an Essentia Outlet next to it: an infusion matrix within 12 blocks draws from the outlet, essentia tubes pull from it\nPer essentia: its primal units x %s EU (a primal is 1 unit, Lux 2, ...)\nPlus shard credit: one vis crystal shard pays for %s units; keep shards in the input\nLearn aspects: put a filled phial, jar or crystal into the input (it goes to the output), or right-click the machine with it\nTakes up to %3$s A
+fluxecho.vis_charger.tip=§3Charges wands, sceptres, staves and vis amulets from EU, no node needed§r\nOnly the primals your team has learned: put the matching shard into the input (or right-click with it)\nThe wand charges in the input and moves to the output once full\n%s EU per vis; one shard pays for %s vis (summed over the primals)
+fluxecho.aspect.no_owner=This machine has no recorded owner and cannot learn aspects. Break it and place it again.
+fluxecho.aspect.learned=Learned: %s (your team knows %s aspects)
+fluxecho.aspect.known=Already known: %s (your team knows %s aspects)
+fluxecho.aspect.waila=Aspects known to the team: %s  Shard credit: %s
+fluxecho.essentia_echo.linked=Essentia Echo: the team knows %s aspects, %s EU stored
+fluxecho.essentia_outlet.selected=Outlet aspect: %s (sent when a tube asks for no aspect in particular)
+fluxecho.essentia_outlet.selected_now=Selected aspect: %s, %s can be made right now
+fluxecho.essentia_outlet.none=No aspect selected: right-click the outlet with a filled phial, jar or crystal
+fluxecho.essentia_outlet.no_echo=No Essentia Echo next to this outlet
+fluxecho.status.no_owner=No recorded owner: break the machine and place it again
+fluxecho.status.no_aspect_known=Your team knows no aspect yet: put in a filled phial, jar or a shard
+fluxecho.status.ready=Ready: makes essentia on demand through an Essentia Outlet
+fluxecho.status.no_wand=Put a wand, sceptre or vis amulet into the input
+fluxecho.status.no_primal_known=Your team knows no primal yet: put in the matching shards
+fluxecho.status.no_shard=Not enough shard credit: put vis crystal shards into the input
+
+gt.blockmachines.fluxecho.insight_echo.name=Insight Echo
+gt.blockmachines.fluxecho.crucible_echo.name=Crucible Echo
+fluxecho.recipe.insight_echo=Insight Echo
+fluxecho.recipe.crucible_echo=Crucible Echo
+fluxecho.insight_echo.tip=§3Scans what you have scanned again, for research points§r\nSpecial slot: an item its owner has scanned with a thaumometer; it stays there\nEach cycle takes a paper and gives the owner that item's research points again (Thaumcraft's own cap still applies)\nThe owner must be online\n%s s per cycle, %s EU/t
+fluxecho.crucible_echo.tip=§3Crucible recipes without throwing anything into a crucible§r\nPut the catalyst in; the essentia the recipe needs is synthesized: %s EU per unit, one vis crystal shard pays for %s units (keep shards in the input)\nOnly recipes the owner has researched and whose aspects the team has learned\nWhen one catalyst fits several recipes, a programmed circuit picks which
+fluxecho.status.owner_offline=The owner is offline: Thaumcraft only has research data for online players
+fluxecho.status.no_scan_sample=Put an item the owner has scanned into the special slot
+fluxecho.status.not_scanned=The owner has not scanned this item yet: scan it once with a thaumometer
+fluxecho.status.no_scan_aspects=This item has no aspects
+fluxecho.status.need_paper=Put paper into the input
+fluxecho.status.no_catalyst=Put a catalyst into the input
+fluxecho.status.no_crucible_recipe=No crucible recipe uses this catalyst
+fluxecho.status.crucible_locked=Recipes use this catalyst, but the owner has not researched them or the team has not learned their aspects
+fluxecho.status.need_circuit_recipe=This catalyst fits several recipes: pick one with a programmed circuit
+
+# blood magic
+gt.blockmachines.fluxecho.blood_echo.name=Blood Echo
+fluxecho.recipe.blood_echo=Blood Echo
+fluxecho.blood_echo.tip=§3Makes LP from EU and a little meat: no more self-sacrifice§r\nSpecial slot: a bound blood orb; it stays there and its level sets the pace (weak %s LP/t ... transcendent %s LP/t)\n%s EU per LP; one raw meat or rotten flesh in the input per %s LP\nNo circuit or circuit 1: into the main tank of a blood altar within %s blocks (%s up or down)\nCircuit 2: into the orb owner's soul network, up to the orb's capacity\nWaits while the altar or network is full
+fluxecho.blood_echo.waila_altar=Altar mode: %s LP/t, %s LP waiting
+fluxecho.blood_echo.waila_network=Soul network mode: %s LP/t, %s LP waiting
+fluxecho.status.no_orb=Put a blood orb into the special slot
+fluxecho.status.orb_unbound=The blood orb is not bound yet: right-click with it once
+fluxecho.status.no_altar=No blood altar nearby (or use circuit 2 for the soul network)
+fluxecho.status.altar_full=The altar is full
+fluxecho.status.network_full=The soul network is at the orb's capacity
+fluxecho.status.no_meat=Put raw meat or rotten flesh into the input
