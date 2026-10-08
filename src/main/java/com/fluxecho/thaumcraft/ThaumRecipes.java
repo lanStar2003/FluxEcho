@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.oredict.OreDictionary;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -172,11 +173,16 @@ final class ThaumRecipes {
         return null;
     }
 
-    /** A concrete stack of one: wildcard damage becomes 0. */
+    /**
+     * A concrete stack of one: wildcard damage becomes 0. Built anew rather than through setItemDamage, which IC2's
+     * electric armour answers with a warning and a stack trace in the log.
+     */
     private static ItemStack example(ItemStack s) {
-        ItemStack e = s.copy();
-        e.stackSize = 1;
-        if (e.getItemDamage() == OreDictionary.WILDCARD_VALUE) e.setItemDamage(0);
+        int damage = s.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : s.getItemDamage();
+        ItemStack e = new ItemStack(s.getItem(), 1, damage);
+        if (s.hasTagCompound()) e.setTagCompound(
+            (NBTTagCompound) s.getTagCompound()
+                .copy());
         return e;
     }
 

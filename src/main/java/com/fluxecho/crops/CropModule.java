@@ -8,6 +8,7 @@ import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoRecipeMaps;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 import com.fluxecho.logic.CropStats;
@@ -19,7 +20,6 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTUtility;
 import ic2.api.crops.CropCard;
 import ic2.api.crops.Crops;
@@ -93,15 +93,13 @@ public final class CropModule {
             FluxEcho.LOG.warn("No IC2 cropnalyzer or crop sticks: the crop machines have no recipes");
             return;
         }
-        GTModHandler.addCraftingRecipe(
-            Machines.get(MachineId.SEED_IMPRINTER),
-            GTModHandler.RecipeBits.NOT_REMOVABLE,
+        EchoRecipes.machine(
+            MachineId.SEED_IMPRINTER,
             new Object[] { "PEP", "CHC", "RZR", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'R', ItemList.Robot_Arm_LV.get(1),
                 'Z', GTUtility.copyAmount(1, cropnalyzer) });
-        GTModHandler.addCraftingRecipe(
-            Machines.get(MachineId.SEED_ECHO),
-            GTModHandler.RecipeBits.NOT_REMOVABLE,
+        EchoRecipes.machine(
+            MachineId.SEED_ECHO,
             new Object[] { "PEP", "CHC", "SUS", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'U',
                 ItemList.Electric_Pump_LV.get(1), 'S', GTUtility.copyAmount(1, sticks) });

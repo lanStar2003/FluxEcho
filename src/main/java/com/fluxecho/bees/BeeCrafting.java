@@ -5,8 +5,8 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
-import com.fluxecho.core.Machines;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.ItemList;
@@ -32,24 +32,21 @@ final class BeeCrafting {
         ItemStack pearl = new ItemStack(Items.ender_pearl);
 
         if (beealyzer == null) FluxEcho.LOG.warn("No Forestry beealyzer: the Bee Imprinter has no recipe");
-        else GTModHandler.addCraftingRecipe(
-            Machines.get(MachineId.BEE_IMPRINTER),
-            BITS,
+        else EchoRecipes.machine(
+            MachineId.BEE_IMPRINTER,
             new Object[] { "PEP", "CHC", "RBR", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'R', ItemList.Robot_Arm_LV.get(1),
                 'B', beealyzer });
 
-        if (beealyzer != null) GTModHandler.addCraftingRecipe(
-            Machines.get(MachineId.GENE_ASSEMBLER),
-            BITS,
+        if (beealyzer != null) EchoRecipes.machine(
+            MachineId.GENE_ASSEMBLER,
             new Object[] { "PEP", "RHR", "CBC", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'R', ItemList.Robot_Arm_LV.get(1),
                 'B', beealyzer });
 
         if (apiary == null) FluxEcho.LOG.warn("No Forestry apiary: the Larva Incubator has no recipe");
-        else GTModHandler.addCraftingRecipe(
-            Machines.get(MachineId.BEE_INCUBATOR),
-            BITS,
+        else EchoRecipes.machine(
+            MachineId.BEE_INCUBATOR,
             new Object[] { "PEP", "CHC", "UAU", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'U',
                 ItemList.Electric_Pump_LV.get(1), 'A', apiary });

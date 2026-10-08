@@ -12,6 +12,7 @@ import com.fluxecho.bees.BeeModule;
 import com.fluxecho.blood.BloodModule;
 import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
+import com.fluxecho.core.RecipeCheck;
 import com.fluxecho.crops.CropModule;
 import com.fluxecho.enchant.EnchantModule;
 import com.fluxecho.mana.ManaModule;
@@ -105,6 +106,7 @@ public class FluxEcho {
     public void loadComplete(FMLLoadCompleteEvent e) {
         if (Mods.forestry) BeeModule.loadComplete();
         if (Mods.ic2) CropModule.loadComplete();
+        RecipeCheck.run();
     }
 
     @Mod.EventHandler

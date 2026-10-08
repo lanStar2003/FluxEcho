@@ -8,6 +8,7 @@ import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoRecipeMaps;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
@@ -16,7 +17,6 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 
 /** Enchanting (vanilla, always loaded). The machine stays registered when the module is switched off. */
 public final class EnchantModule {
@@ -45,9 +45,8 @@ public final class EnchantModule {
             new Categories.Category(Categories.ENCHANT, EnchantBooks::icon, EnchantBooks::name, EnchantBooks::keyOf));
         if (!Config.enchantEnabled || !Config.defaultRecipes) return;
         try {
-            GTModHandler.addCraftingRecipe(
-                Machines.get(MachineId.ENCHANT_ECHO),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
+            EchoRecipes.machine(
+                MachineId.ENCHANT_ECHO,
                 new Object[] { "PEP", "CHC", "BTB", 'P', OrePrefixes.plate.get(Materials.Steel), 'E',
                     new ItemStack(Items.ender_pearl), 'C', OrePrefixes.circuit.get(Materials.MV), 'H',
                     ItemList.Hull_MV.get(1), 'B', new ItemStack(Blocks.bookshelf), 'T',

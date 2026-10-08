@@ -10,6 +10,7 @@ import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoRecipeMaps;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
@@ -20,7 +21,6 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 
 /**
  * Prey (needs MobsInfo for the drop tables). Only called when MobsInfo is loaded. The imprint and the machine are
@@ -60,14 +60,13 @@ public final class MobModule {
             new Categories.Category(Categories.MOB, MobImprints::egg, MobImprints::displayName, MobImprints::keyOf));
         if (!Config.mobsEnabled || !Config.defaultRecipes) return;
         try {
-            GTModHandler.addShapelessCraftingRecipe(
+            EchoRecipes.shapeless(
+                "Prey Imprint",
                 new ItemStack(imprint, 4),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
                 new Object[] { new ItemStack(Items.paper), new ItemStack(Items.paper), new ItemStack(Items.paper),
                     new ItemStack(Items.paper), new ItemStack(Items.rotten_flesh) });
-            GTModHandler.addCraftingRecipe(
-                Machines.get(MachineId.MOB_ECHO),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
+            EchoRecipes.machine(
+                MachineId.MOB_ECHO,
                 new Object[] { "PEP", "CHC", "ASA", 'P', OrePrefixes.plate.get(Materials.Steel), 'E',
                     new ItemStack(Items.ender_pearl), 'C', OrePrefixes.circuit.get(Materials.LV), 'H',
                     ItemList.Hull_LV.get(1), 'A', ItemList.Robot_Arm_LV.get(1), 'S', new ItemStack(Items.iron_sword) });

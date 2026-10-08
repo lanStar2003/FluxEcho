@@ -7,9 +7,9 @@ import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
-import gregtech.api.util.GTModHandler;
 
 /** The Echo Codex and the ledger behind it. Always on: it only shows what the other modules wrote down. */
 public final class CodexModule {
@@ -28,9 +28,9 @@ public final class CodexModule {
     public static void postInit() {
         if (!Config.defaultRecipes) return;
         try {
-            GTModHandler.addShapelessCraftingRecipe(
+            EchoRecipes.shapeless(
+                "Echo Codex",
                 new ItemStack(codex),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
                 new Object[] { new ItemStack(Items.book), new ItemStack(Items.ender_pearl),
                     new ItemStack(Blocks.glass_pane) });
         } catch (Throwable t) {

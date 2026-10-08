@@ -173,10 +173,10 @@ fluxecho.status.no_sticks=Not enough crop sticks
 # botania
 gt.blockmachines.fluxecho.mana_echo.name=Mana Echo
 fluxecho.recipe.mana_echo=Mana Echo
-fluxecho.mana_echo.tip=§3Mana from EU into the mana pools nearby; no flowers to feed§r\n%s mana per tick, %s EU per mana\nEvery %s mana eats a mystical petal from the input\nFills the nearest pool within %s blocks sideways and %s up or down; stops when it is full
+fluxecho.mana_echo.tip=§3Mana from EU into the mana pools nearby; no flowers to feed§r\n%s mana per tick, %s EU per mana\nEvery %s mana eats a mystical petal from the input\nFills the pools within %s blocks sideways and %s up or down, nearest first; stops when all of them are full
 fluxecho.mana_echo.waila=%s mana/t, %s mana waiting
 fluxecho.status.no_pool=No mana pool nearby
-fluxecho.status.pool_full=The mana pool is full
+fluxecho.status.pool_full=All mana pools nearby are full
 fluxecho.status.no_petal=Put mystical petals into the input
 
 # enchanting
@@ -217,3 +217,19 @@ fluxecho.codex.todo.orb=FluxEcho: not used yet - bind it and put it into a Blood
 tile.fluxecho.echo_provider.name=Echo ME Provider
 fluxecho.echo_provider.status=Echo ME Provider: online, offering %s patterns to AE
 fluxecho.echo_provider.offline=Echo ME Provider: not on an AE network (or no channel or power); the machines next to it have %s patterns
+
+# machine types (GT's "Machine Type" line)
+fluxecho.bee_imprinter.type=Gene Imprinting
+fluxecho.larva_incubator.type=Breeding
+fluxecho.essentia_echo.type=Essentia Synthesis
+fluxecho.vis_charger.type=Vis Charging
+fluxecho.insight_echo.type=Research Points
+fluxecho.crucible_echo.type=Alchemy
+fluxecho.blood_echo.type=LP Generation
+fluxecho.mob_echo.type=Mob Drops
+fluxecho.infusion_echo.type=Infusion
+fluxecho.seed_imprinter.type=Crop Imprinting
+fluxecho.seed_echo.type=Seed Breeding
+fluxecho.mana_echo.type=Mana Generation
+fluxecho.enchant_echo.type=Enchanted Book Copying
+fluxecho.gene_assembler.type=Gene Splicing
