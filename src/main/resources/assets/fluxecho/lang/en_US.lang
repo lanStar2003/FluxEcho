@@ -1,5 +1,5 @@
 itemGroup.fluxecho=FluxEcho
-fluxecho.quests.updated=FluxEcho updated its quest files. Run /bq_admin default load to load them (progress is kept).
+fluxecho.quests.synced=FluxEcho synced its quest lines into this world: %s added, %s updated, progress kept.
 
 fluxecho.status.idle=Idle
 fluxecho.status.working=Working

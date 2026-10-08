@@ -1,5 +1,5 @@
 itemGroup.fluxecho=通量回响
-fluxecho.quests.updated=FluxEcho 更新了任务书文件。执行 /bq_admin default load 载入（已有进度会保留）。
+fluxecho.quests.synced=FluxEcho 已把任务书同步进这个存档：新增 %s 项，更新 %s 项，原有进度保留。
 
 fluxecho.status.idle=空闲
 fluxecho.status.working=工作中

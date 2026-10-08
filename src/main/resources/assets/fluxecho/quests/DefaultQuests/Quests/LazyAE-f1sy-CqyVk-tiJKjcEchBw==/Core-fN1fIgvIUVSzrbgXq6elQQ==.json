@@ -2,7 +2,7 @@
   "properties:10": {
     "betterquesting:10": {
       "autoClaim:1": 0,
-      "desc:8": "一套能一直用到 EV 的 AE 网络核心。\n\n[note]ME 自供能控制器自带无限能源：不用能源接收器，也不用谐振仓，放下就有电。[/note]\n\n怎么搭：\n1. 放下自供能控制器，从它的面上接致密线缆当主干，一面最多 32 个频道。\n2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k，流体用流体元件（蒸汽、杂酚油、水都能存）。\n3. 合成终端看库存、直接合成；样板终端和增广流体样板终端写样板；接口终端统一管理所有接口里的样板。\n\n[warn]领取前先清空背包，放不下的会掉在地上。[/warn]",
+      "desc:8": "一套能一直用到 EV 的 AE 网络核心。\n\n[note]ME 自供能控制器自带无限能源，一个就够整个网络用：不用能源接收器，也不用谐振仓。另外 7 个普通 ME 控制器和它贴在一起，算同一个控制器，多出来的面都能接线。[/note]\n\n怎么搭：\n1. 8 个控制器拼成 2×2×2 的一整块，自供能的放在哪个位置都行。从控制器的面上接致密线缆当主干，一面最多 32 个频道。\n2. 两台 ME 驱动器插上存储元件：物品用 64k / 16k 元件；流体用多重流体存储元件，一个能存 5 种流体，10 个一共 50 种。\n3. 合成终端看物品、直接合成；流体终端看流体；流体样板终端写样板，「合成」「处理」两种模式都能写；接口终端统一管理所有接口里的样板。\n\n[warn]领取前先清空背包，放不下的会掉在地上。[/warn]",
       "globalShare:1": 1,
       "icon:10": {
         "Count:3": 1,
@@ -34,50 +34,50 @@
       "rewardID:8": "bq_standard:item",
       "rewards:9": {
         "0:10": {
-          "Count:3": 2,
+          "Count:3": 1,
           "Damage:2": 0,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:tile.BlockCreativeEnergyController"
         },
         "1:10": {
+          "Count:3": 7,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "appliedenergistics2:tile.BlockController"
+        },
+        "2:10": {
           "Count:3": 2,
           "Damage:2": 0,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:tile.BlockDrive"
         },
-        "2:10": {
+        "3:10": {
           "Count:3": 6,
           "Damage:2": 0,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:item.ItemBasicStorageCell.64k"
         },
-        "3:10": {
+        "4:10": {
           "Count:3": 4,
           "Damage:2": 0,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:item.ItemBasicStorageCell.16k"
         },
-        "4:10": {
-          "Count:3": 2,
-          "Damage:2": 0,
-          "OreDict:8": "",
-          "id:8": "ae2fc:fluid_storage64"
-        },
         "5:10": {
-          "Count:3": 2,
+          "Count:3": 6,
           "Damage:2": 0,
           "OreDict:8": "",
-          "id:8": "ae2fc:fluid_storage16"
+          "id:8": "ae2fc:multi_fluid_storage64"
         },
         "6:10": {
-          "Count:3": 1,
-          "Damage:2": 360,
+          "Count:3": 4,
+          "Damage:2": 0,
           "OreDict:8": "",
-          "id:8": "appliedenergistics2:item.ItemMultiPart"
+          "id:8": "ae2fc:multi_fluid_storage16"
         },
         "7:10": {
           "Count:3": 1,
-          "Damage:2": 340,
+          "Damage:2": 360,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:item.ItemMultiPart"
         },
@@ -85,19 +85,19 @@
           "Count:3": 1,
           "Damage:2": 0,
           "OreDict:8": "",
-          "id:8": "ae2fc:part_fluid_pattern_terminal_ex"
+          "id:8": "ae2fc:part_fluid_terminal"
         },
         "9:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "ae2fc:part_fluid_pattern_terminal"
+        },
+        "10:10": {
           "Count:3": 1,
           "Damage:2": 480,
           "OreDict:8": "",
           "id:8": "appliedenergistics2:item.ItemMultiPart"
-        },
-        "10:10": {
-          "Count:3": 1,
-          "Damage:2": 0,
-          "OreDict:8": "",
-          "id:8": "ae2fc:part_fluid_terminal"
         },
         "11:10": {
           "Count:3": 1,

@@ -17,12 +17,13 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStartedEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 
 /**
  * FluxEcho: the flux layer remembers what you did once and lets it echo. Each module takes the repetitive part of a
  * magic mod off your hands once you have done it for real: bees (Forestry), Thaumcraft, Blood Magic. It also ships
- * the quest lines of FluxEcho and FluxDepths and installs them into BetterQuesting.
+ * the quest lines of FluxEcho and FluxDepths and puts them into BetterQuesting by itself.
  * <p>
  * A module is only called when its mod is loaded ({@link Mods}), so none of an absent mod's classes are touched.
  */
@@ -50,7 +51,7 @@ public class FluxEcho {
     public void preInit(FMLPreInitializationEvent e) {
         Config.load(e.getSuggestedConfigurationFile());
         Mods.detect();
-        QuestInstaller.run(e.getModConfigurationDirectory());
+        QuestInstaller.preInit(e.getModConfigurationDirectory());
         if (Mods.forestry) BeeModule.preInit();
         if (Mods.thaumcraft) TCModule.preInit();
     }
@@ -73,6 +74,11 @@ public class FluxEcho {
     @Mod.EventHandler
     public void loadComplete(FMLLoadCompleteEvent e) {
         if (Mods.forestry) BeeModule.loadComplete();
+    }
+
+    @Mod.EventHandler
+    public void serverStarted(FMLServerStartedEvent e) {
+        QuestInstaller.serverStarted();
     }
 
     @Mod.EventHandler
