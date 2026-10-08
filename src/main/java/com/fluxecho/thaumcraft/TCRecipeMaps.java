@@ -18,13 +18,6 @@ final class TCRecipeMaps {
                 .minInputs(0, 0));
     }
 
-    static RecipeMap<?> visCharger() {
-        return EchoRecipeMaps.map(
-            MachineId.VIS_CHARGER,
-            b -> b.maxIO(2, 1, 0, 0)
-                .minInputs(0, 0));
-    }
-
     static RecipeMap<?> insightEcho() {
         return EchoRecipeMaps.map(
             MachineId.INSIGHT_ECHO,

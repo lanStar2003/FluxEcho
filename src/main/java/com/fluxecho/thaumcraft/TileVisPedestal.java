@@ -43,8 +43,8 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     private boolean charging;
     private boolean chargedThisTick;
     private int flowTicks;
-    /** EU that came in during the current second, and the average EU/t of the last one. */
-    private long inputAcc, avgInput;
+    /** EU that came in / was spent during the current second, and the average EU/t of the last one. */
+    private long inputAcc, avgInput, outputAcc, avgOutput;
     /** What the hologram says: {@link #IDLE} ... {@link #NO_POWER}. */
     private byte state;
     /** Shown on the client as the server had them at the last sync. */
@@ -84,6 +84,11 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     /** Average EU/t that came in over the last second. */
     public long averageInput() {
         return avgInput;
+    }
+
+    /** Average EU/t spent on vis over the last second. */
+    public long averageOutput() {
+        return avgOutput;
     }
 
     public byte state() {
@@ -210,6 +215,8 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         if (t % 20 == 0) {
             avgInput = inputAcc / 20;
             inputAcc = 0;
+            avgOutput = outputAcc / 20;
+            outputAcc = 0;
         }
         if (t % SYNC_PERIOD == 0) {
             charging = flowTicks > 0;
@@ -220,6 +227,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
                 state,
                 energy / Math.max(1, capacity() / 200),
                 avgInput,
+                avgOutput,
                 rate(),
                 wand == null ? -1 : VisItems.total(wand));
             if (key != lastSync) {
@@ -238,6 +246,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         VisFlow f = VisItems.charge(s, rate, Config.visEuPerCentiVis, energy);
         if (f.eu <= 0) return;
         energy -= f.eu;
+        outputAcc += f.eu;
         chargedThisTick = true;
         markDirty();
     }
@@ -342,6 +351,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         t.setLong("Energy", energy);
         t.setLong("Cap", capacity());
         t.setLong("In", avgInput);
+        t.setLong("Out", avgOutput);
         t.setInteger("Rate", rate());
         t.setByte("State", state);
     }
@@ -359,8 +369,28 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         energy = Math.max(0, t.getLong("Energy"));
         shownCapacity = t.getLong("Cap");
         avgInput = t.getLong("In");
+        avgOutput = t.getLong("Out");
         shownRate = t.getInteger("Rate");
         state = t.getByte("State");
+    }
+
+    /** What Waila shows, read on the server when a player looks at the pedestal. */
+    public void writeWaila(NBTTagCompound t) {
+        t.setLong("feEnergy", energy);
+        t.setLong("feCap", capacity());
+        t.setLong("feIn", avgInput);
+        t.setLong("feOut", avgOutput);
+        t.setInteger("feRate", rate());
+        t.setInteger("feEuPerCv", Config.visEuPerCentiVis);
+        t.setByte("feState", state);
+        t.setInteger("feExtraction", count(ItemVisModule.Kind.EXTRACTION));
+        t.setBoolean("feWireless", count(ItemVisModule.Kind.WIRELESS) > 0);
+        t.setBoolean("feLink", count(ItemVisModule.Kind.LINK) > 0);
+        if (wand != null) {
+            t.setString("feWand", wand.getDisplayName());
+            t.setLong("feVis", VisItems.total(wand));
+            t.setLong("feVisMax", (long) VisItems.max(wand) * 6);
+        }
     }
 
     @Override

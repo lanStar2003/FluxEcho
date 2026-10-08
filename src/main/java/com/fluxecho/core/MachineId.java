@@ -2,14 +2,14 @@ package com.fluxecho.core;
 
 /**
  * FluxEcho's GT machines and their ids: fixed offsets from {@code general.firstMachineId}, so an id never moves when
- * a module is missing or switched off. {@link #RESERVED} ids are kept for machines still to come.
+ * a module is missing or switched off. {@link #RESERVED} ids are kept for machines still to come. Offsets of removed
+ * machines are never handed out again: 3 (Vis Charger, replaced by the Flux Vis Pedestal) and 12 (Enchant Echo).
  */
 public enum MachineId {
 
     BEE_IMPRINTER(0, "bee_imprinter", 1, "Bee Imprinter"),
     BEE_INCUBATOR(1, "larva_incubator", 1, "Larva Incubator"),
     ESSENTIA_ECHO(2, "essentia_echo", 2, "Essentia Echo"),
-    VIS_CHARGER(3, "vis_charger", 2, "Vis Charger"),
     INSIGHT_ECHO(4, "insight_echo", 1, "Insight Echo"),
     CRUCIBLE_ECHO(5, "crucible_echo", 2, "Crucible Echo"),
     BLOOD_ECHO(6, "blood_echo", 2, "Blood Echo"),
@@ -18,7 +18,6 @@ public enum MachineId {
     SEED_IMPRINTER(9, "seed_imprinter", 1, "Seed Imprinter"),
     SEED_ECHO(10, "seed_echo", 1, "Seed Echo"),
     MANA_ECHO(11, "mana_echo", 2, "Mana Echo"),
-    ENCHANT_ECHO(12, "enchant_echo", 2, "Enchant Echo"),
     GENE_ASSEMBLER(13, "gene_assembler", 1, "Gene Assembler");
 
     /** Ids from the first one that belong to FluxEcho: 24530–24569 by default. */

@@ -14,7 +14,6 @@ import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.RecipeCheck;
 import com.fluxecho.crops.CropModule;
-import com.fluxecho.enchant.EnchantModule;
 import com.fluxecho.mana.ManaModule;
 import com.fluxecho.mobs.MobModule;
 import com.fluxecho.quest.QuestInstaller;
@@ -85,7 +84,6 @@ public class FluxEcho {
         if (Mods.mobsInfo) MobModule.machines();
         if (Mods.ic2) CropModule.machines();
         if (Mods.botania) ManaModule.machines();
-        EnchantModule.machines();
         proxy.init();
     }
 
@@ -98,7 +96,6 @@ public class FluxEcho {
         if (Mods.mobsInfo) MobModule.postInit();
         if (Mods.ic2) CropModule.postInit();
         if (Mods.botania) ManaModule.postInit();
-        EnchantModule.postInit();
         if (Mods.ae2) AEModule.postInit();
     }
 

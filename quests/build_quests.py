@@ -481,10 +481,10 @@ def echo_thaum():
         "echo_thaum/vis_charger", "§5通量灵气汲取台",
         "通量层深处沉着大量的要素。汲取台用电把六种初始要素实时抽上来，灌进悬浮在它上方的法杖：不用节点，不用等。\n\n"
         "• 拿着法杖、权杖、长杖或灵气护符右键放上去，它会浮起来转着充；空手右键取回；\n"
-        "• 每种要素每秒 5 点灵气，每点灵气 100 EU（六种一起充约 150 EU/t）；\n"
-        "• 电从 GT 线缆来，除了顶面哪一面都行，什么电压都收；内置 40 万 EU 电池；\n"
-        "• 台上没东西时空手右键，看电量、速度和模块。\n\n"
-        "[note]用法杖充能台做成：你亲手给法杖充过灵气。旧的 GT 灵气充能器放在工作台里就能换成汲取台。[/note]",
+        "• 每种要素每秒 5 点灵气，每点灵气 1000 EU（六种一起充约 1500 EU/t，装汲取模块更快也更费电）；\n"
+        "• 电从 GT 线缆来，除了顶面哪一面都行，什么电压都收；内置 400 万 EU 电池；\n"
+        "• 台子上方的全息投影一直显示电量、输入、速度、模块和法杖的灵气；Waila 看着它也能看到。\n\n"
+        "[note]用法杖充能台做成：你亲手给法杖充过灵气。[/note]",
         item("fluxecho:vis_pedestal"),
         [retrieval(item("fluxecho:vis_pedestal"))],
         pre=["echo_thaum/memory"])
@@ -693,7 +693,7 @@ def echo_general():
     codex = quest(
         "echo_general/codex", "§3§l回响图鉴",
         ECHO_LORE + "\n\n回响图鉴记着团队亲手做过一次、通量层记住了的东西：拓过的蜂、树、蝴蝶，学会的要素，"
-        "杀过的怪，拓过的作物，回响过的注魔成品和附魔，用过的血宝珠。\n\n"
+        "杀过的怪，拓过的作物，回响过的注魔成品，用过的血宝珠。\n\n"
         "• 右键打开，左边分类，右边是图标，鼠标停上去看名字；\n"
         "• 物品提示（NEI 里也一样）会标出「通量回响：团队已经亲手做过」，还没做过的会告诉你下一步怎么做；\n"
         "• Waila 看着一只怪，也能看到它有没有猎物印记。\n\n"
@@ -701,20 +701,10 @@ def echo_general():
         item("fluxecho:codex"),
         [checkbox()],
         [give(item("fluxecho:codex"))])
-    enchant = quest(
-        "echo_general/enchant_echo", "§3附魔回响器",
-        "一台 MV 机器，用附魔台和书架做成。\n\n"
-        "• 特殊槽放一本附魔书，一直留在槽里；\n"
-        "• 输入书和青金石，出一本一模一样的附魔书；\n"
-        "• 每级附魔 16384 EU、1 个青金石（时运 III 算 3 级）。\n\n"
-        "[note]配置里的 blacklist 填附魔 id，就不会复制那些附魔。[/note]",
-        echo_machine(12),
-        [retrieval(echo_machine(12))],
-        pre=["echo_general/codex"])
     return write_line(
         "line/echo_general", "FluxEchoGeneral", "§3通量回响 · 通用",
-        "回响图鉴，以及不依赖其他模组的回响机器。",
-        item("fluxecho:codex"), [(codex, (0, 24)), (enchant, (48, 24))], [])
+        "回响图鉴：团队亲手做过、通量层记住了的东西。",
+        item("fluxecho:codex"), [(codex, (0, 24))], [])
 
 
 if __name__ == "__main__":

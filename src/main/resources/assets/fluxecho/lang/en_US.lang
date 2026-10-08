@@ -79,12 +79,9 @@ fluxecho.status.no_fertilizer=Not enough Forestry fertilizer
 
 # thaumcraft
 gt.blockmachines.fluxecho.essentia_echo.name=Essentia Echo
-gt.blockmachines.fluxecho.vis_charger.name=Vis Charger
 tile.fluxecho.essentia_outlet.name=Essentia Outlet
 fluxecho.recipe.essentia_echo=Essentia Echo
-fluxecho.recipe.vis_charger=Vis Charging
 fluxecho.essentia_echo.tip=§3Synthesizes, on demand, every aspect your team has held once: no alchemical furnace, no alembics§r\nNeeds an Essentia Outlet next to it: an infusion matrix within 12 blocks draws from the outlet, essentia tubes pull from it\nPer essentia: its primal units x %s EU (a primal is 1 unit, Lux 2, ...)\nPlus shard credit: one vis crystal shard pays for %s units; keep shards in the input\nLearn aspects: put a filled phial, jar or crystal into the input (it goes to the output), or right-click the machine with it\nTakes up to %3$s A
-fluxecho.vis_charger.tip=§cRetired: turn it into a Flux Vis Pedestal in a crafting grid§r\n§3Charges wands, sceptres, staves and vis amulets from EU, no node needed§r\nOnly the primals your team has learned: put the matching shard into the input (or right-click with it)\nThe wand charges in the input and moves to the output once full\n%s EU per vis; one shard pays for %s vis (summed over the primals)
 fluxecho.aspect.no_owner=This machine has no recorded owner and cannot learn aspects. Break it and place it again.
 fluxecho.aspect.learned=Learned: %s (your team knows %s aspects)
 fluxecho.aspect.known=Already known: %s (your team knows %s aspects)
@@ -179,12 +176,6 @@ fluxecho.status.no_pool=No mana pool nearby
 fluxecho.status.pool_full=All mana pools nearby are full
 fluxecho.status.no_petal=Put mystical petals into the input
 
-# enchanting
-gt.blockmachines.fluxecho.enchant_echo.name=Enchant Echo
-fluxecho.recipe.enchant_echo=Enchant Echo
-fluxecho.enchant_echo.tip=§3Copies an enchanted book you hold§r\nSpecial slot: an enchanted book; it stays there\nBooks and lapis in, the same enchanted book out\n%s EU and %s lapis per enchantment level (Fortune III is 3 levels)
-fluxecho.status.no_enchanted_book=Put an enchanted book into the special slot
-fluxecho.status.enchant_banned=The book holds an enchantment the config forbids copying
 fluxecho.status.no_book=Put books into the input
 fluxecho.status.no_lapis=Not enough lapis
 
@@ -201,7 +192,6 @@ fluxecho.codex.cat.aspect=Aspects
 fluxecho.codex.cat.mob=Prey
 fluxecho.codex.cat.crop=Crops
 fluxecho.codex.cat.infusion=Infusion & arcane
-fluxecho.codex.cat.enchant=Enchantments
 fluxecho.codex.cat.orb=Blood orbs
 fluxecho.codex.todo.bee=FluxEcho: not imprinted yet - put this bee into a Bee Imprinter with paper
 fluxecho.codex.todo.tree=FluxEcho: not imprinted yet - put a sapling or pollen into a Bee Imprinter with paper
@@ -210,7 +200,6 @@ fluxecho.codex.todo.aspect=FluxEcho: not learned yet - put it into any Thaumcraf
 fluxecho.codex.todo.mob=FluxEcho: no imprint yet - carry a blank prey imprint and kill one
 fluxecho.codex.todo.crop=FluxEcho: not imprinted yet - scan it to the top, then into a Seed Imprinter with paper
 fluxecho.codex.todo.infusion=FluxEcho: not echoed yet - make one by hand and put it into an Infusion Echo
-fluxecho.codex.todo.enchant=FluxEcho: not echoed yet - put it into an Enchant Echo
 fluxecho.codex.todo.orb=FluxEcho: not used yet - bind it and put it into a Blood Echo
 
 # ae2
@@ -222,7 +211,6 @@ fluxecho.echo_provider.offline=Echo ME Provider: not on an AE network (or no cha
 fluxecho.bee_imprinter.type=Gene Imprinting
 fluxecho.larva_incubator.type=Breeding
 fluxecho.essentia_echo.type=Essentia Synthesis
-fluxecho.vis_charger.type=Vis Charging
 fluxecho.insight_echo.type=Research Points
 fluxecho.crucible_echo.type=Alchemy
 fluxecho.blood_echo.type=LP Generation
@@ -231,7 +219,6 @@ fluxecho.infusion_echo.type=Infusion
 fluxecho.seed_imprinter.type=Crop Imprinting
 fluxecho.seed_echo.type=Seed Breeding
 fluxecho.mana_echo.type=Mana Generation
-fluxecho.enchant_echo.type=Enchanted Book Copying
 fluxecho.gene_assembler.type=Gene Splicing
 
 # Flux Vis Pedestal
@@ -252,6 +239,12 @@ fluxecho.holo.title=Flux Vis Pedestal
 fluxecho.holo.energy=%s / %s EU
 fluxecho.holo.input=Input
 fluxecho.holo.input.value=%s EU/t
+fluxecho.holo.use=Use
+fluxecho.waila.pedestal.energy=Stored: %s / %s EU
+fluxecho.waila.pedestal.io=In %s EU/t · using %s EU/t
+fluxecho.waila.pedestal.rate=%s vis per primal per second · %s EU per vis
+fluxecho.waila.pedestal.modules=Modules: %s
+fluxecho.waila.pedestal.wand=Wand: %s (%s / %s vis)
 fluxecho.holo.draw=Draw
 fluxecho.holo.draw.value=%s vis/s each
 fluxecho.holo.modules=Modules

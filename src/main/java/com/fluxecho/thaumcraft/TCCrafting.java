@@ -6,7 +6,6 @@ import net.minecraft.item.ItemStack;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
-import com.fluxecho.core.Machines;
 
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
@@ -51,11 +50,6 @@ final class TCCrafting {
             new ItemStack(TCModule.visPedestal),
             new Object[] { "TET", "CWC", "AHA", 'T', thaumium, 'E', pearl, 'C', mv, 'W', pedestal, 'A',
                 OrePrefixes.plate.get(Materials.Aluminium), 'H', ItemList.Hull_MV.get(1) });
-        // the old GT Vis Charger turns into the pedestal
-        EchoRecipes.shapeless(
-            "Flux Vis Pedestal (from a Vis Charger)",
-            new ItemStack(TCModule.visPedestal),
-            new Object[] { Machines.get(MachineId.VIS_CHARGER) });
         EchoRecipes.shaped(
             "Extraction Module",
             ItemVisModule.stack(ItemVisModule.Kind.EXTRACTION, 1),

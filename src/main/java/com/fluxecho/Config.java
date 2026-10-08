@@ -2,6 +2,7 @@ package com.fluxecho;
 
 import java.io.File;
 
+import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.Configuration;
 
 import com.fluxecho.logic.BloodRates;
@@ -13,8 +14,7 @@ import com.fluxecho.logic.BloodRates;
 public final class Config {
 
     private static final String GENERAL = "general", QUESTS = "quests", BEES = "bees", THAUM = "thaumcraft",
-        BLOOD = "bloodmagic", MOBS = "mobs", CROPS = "crops", MANA = "botania", ENCHANT = "enchanting", CODEX = "codex",
-        AE = "ae2";
+        BLOOD = "bloodmagic", MOBS = "mobs", CROPS = "crops", MANA = "botania", CODEX = "codex", AE = "ae2";
 
     public static int firstMachineId = 24530;
     public static boolean defaultRecipes = true;
@@ -32,10 +32,10 @@ public final class Config {
 
     public static boolean thaumEnabled = true;
     public static int essentiaEuPerUnit = 128, essentiaPerShard = 64;
-    public static int visEuPerCentiVis = 1, visPerShard = 200, visMaxTicks = 2400;
-    public static int visPedestalRate = 25, visModuleRate = 50, visWirelessRange = 32, visLinkEut = 8192,
+    public static int visEuPerCentiVis = 10;
+    public static int visPedestalRate = 25, visModuleRate = 50, visWirelessRange = 32, visLinkEut = 32768,
         visHologramRange = 12;
-    public static long visPedestalBuffer = 400_000;
+    public static long visPedestalBuffer = 4_000_000;
     public static int insightTicks = 200, insightEut = 16;
 
     public static boolean bloodEnabled = true;
@@ -55,18 +55,18 @@ public final class Config {
     public static boolean manaEnabled = true;
     public static int manaPerTick = 64, euPerMana = 2, manaPerPetal = 5000, manaRange = 4, manaHeight = 2;
 
-    public static boolean enchantEnabled = true;
-    public static int enchantEuPerLevel = 16384, lapisPerLevel = 1;
-    public static String[] enchantBlacklist = {};
-
     public static boolean codexHints = true;
 
     public static boolean aeEnabled = true;
 
+    /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
+    private static final String VERSION = "0.5.0";
+
     private Config() {}
 
     public static void load(File file) {
-        Configuration c = new Configuration(file);
+        Configuration c = new Configuration(file, VERSION);
+        upgrade(c);
 
         c.setCategoryComment(GENERAL, "Settings shared by every module.");
         firstMachineId = c.getInt(
@@ -166,12 +166,12 @@ public final class Config {
             100_000,
             "Primal units of essentia one vis crystal shard pays for (any shard, the balanced one too).");
         visEuPerCentiVis = c.getInt(
-            "visEuPerCentiVis",
+            "pedestalEuPerCentivis",
             THAUM,
             visEuPerCentiVis,
             1,
-            10_000,
-            "EU per centivis the Flux Vis Pedestal (and the old Vis Charger) puts into a wand (100 centivis = 1 vis).");
+            1_000_000,
+            "EU per centivis the Flux Vis Pedestal puts into a wand (100 centivis = 1 vis; 10 = 1000 EU per vis, about 1500 EU/t with all six primals filling and no module).");
         visPedestalRate = c.getInt(
             "pedestalCentivisPerTick",
             THAUM,
@@ -214,20 +214,6 @@ public final class Config {
             0,
             64,
             "Blocks within which the Flux Vis Pedestal shows its status hologram (power, modules, the wand's vis). Client side; 0 turns it off.");
-        visPerShard = c.getInt(
-            "visPerShard",
-            THAUM,
-            visPerShard,
-            1,
-            100_000,
-            "Vis (summed over the primals) one vis crystal shard pays for in the Vis Charger.");
-        visMaxTicks = c.getInt(
-            "visMaxTicks",
-            THAUM,
-            visMaxTicks,
-            20,
-            72000,
-            "Longest Vis Charger cycle; a wand that holds more is topped up over several cycles.");
         insightTicks = c.getInt(
             "insightTicks",
             THAUM,
@@ -333,23 +319,6 @@ public final class Config {
         manaRange = c.getInt("poolRange", MANA, manaRange, 1, 16, "How far sideways the Mana Echo looks for pools.");
         manaHeight = c.getInt("poolHeight", MANA, manaHeight, 0, 16, "How far up and down it looks for pools.");
 
-        c.setCategoryComment(ENCHANT, "Enchanting: copy an enchanted book you hold from EU, books and lapis.");
-        enchantEnabled = c.getBoolean(
-            "enabled",
-            ENCHANT,
-            enchantEnabled,
-            "Switch the module off: no recipe, and placed machines stop working (they stay in the world).");
-        enchantEuPerLevel = c.getInt(
-            "euPerLevel",
-            ENCHANT,
-            enchantEuPerLevel,
-            1,
-            100_000_000,
-            "EU per enchantment level on the copied book (Fortune III is 3 levels).");
-        lapisPerLevel = c.getInt("lapisPerLevel", ENCHANT, lapisPerLevel, 0, 64, "Lapis lazuli per enchantment level.");
-        enchantBlacklist = c
-            .getStringList("blacklist", ENCHANT, enchantBlacklist, "Enchantment ids (numbers) that are never copied.");
-
         c.setCategoryComment(CODEX, "The Echo Codex and the tooltip lines.");
         codexHints = c.getBoolean(
             "tooltipHints",
@@ -365,6 +334,22 @@ public final class Config {
             "Switch the Echo ME Provider off: no recipe, and placed ones offer no patterns.");
 
         if (c.hasChanged()) c.save();
+    }
+
+    /**
+     * Brings a config file written by an older FluxEcho up to date: settings that are gone are removed, and settings
+     * whose default changed are reset to the new default (0.5.0: the vis pedestal costs ten times the EU, so its
+     * buffer and link module grew too).
+     */
+    private static void upgrade(Configuration c) {
+        String was = c.getLoadedConfigVersion();
+        if (VERSION.equals(was)) return;
+        if (c.hasCategory("enchanting")) c.removeCategory(c.getCategory("enchanting"));
+        if (c.hasCategory(THAUM)) {
+            ConfigCategory t = c.getCategory(THAUM);
+            for (String k : new String[] { "visEuPerCentiVis", "visPerShard", "visMaxTicks", "pedestalBufferEU",
+                "linkModuleEuPerTick" }) t.remove(k);
+        }
     }
 
     private static long parseLong(String s, long fallback) {

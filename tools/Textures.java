@@ -23,7 +23,6 @@ public class Textures {
         face("blocks/machines/larva_incubator/front", Textures::incubator);
         item("items/bee_imprint", Textures::beeImprint);
         face("blocks/machines/essentia_echo/front", Textures::essentiaVortex);
-        face("blocks/machines/vis_charger/front", Textures::visCharger);
         item("blocks/essentia_outlet", Textures::outlet);
         face("blocks/machines/blood_echo/front", Textures::bloodDrop);
         face("blocks/machines/insight_echo/front", Textures::insightBook);
@@ -33,7 +32,6 @@ public class Textures {
         face("blocks/machines/seed_imprinter/front", Textures::seedScanner);
         face("blocks/machines/seed_echo/front", Textures::sprout);
         face("blocks/machines/mana_echo/front", Textures::manaPool);
-        face("blocks/machines/enchant_echo/front", Textures::enchantBook);
         item("items/mob_imprint", Textures::mobImprint);
         item("items/crop_imprint", Textures::cropImprint);
         item("items/codex", Textures::codex);
@@ -300,27 +298,6 @@ public class Textures {
         return 0x3A2466;
     }
 
-    /** Vis Charger: a wand across the face, the six primals lit around it. */
-    static int visCharger(int x, int y, boolean active, boolean[] glow) {
-        int[][] dots = { { 3, 7 }, { 5, 3 }, { 10, 3 }, { 12, 8 }, { 10, 12 }, { 5, 12 } };
-        int[] colors = { 0xFFFF7E, 0x8BC34A, 0xFF5A01, 0x3CD4FC, 0xD5D4EC, 0x404040 };
-        for (int i = 0; i < dots.length; i++) if (x == dots[i][0] && y == dots[i][1]) {
-            glow[0] = active;
-            return active ? colors[i] : 0x3A404A;
-        }
-        if ((x == 10 || x == 11) && (y == 4 || y == 5)) {
-            glow[0] = active;
-            return active ? 0xF4EBFF : 0x6A5A80;
-        }
-        boolean shaft = Math.abs((x - 7.5) + (y - 7.5)) < 1.2 && x >= 4 && x <= 10 && y >= 5 && y <= 11;
-        if (shaft) {
-            if (x <= 5 || y <= 5) return 0xD4AF37;
-            glow[0] = active;
-            return active ? 0xB07CFF : 0x5B4A3A;
-        }
-        return 0;
-    }
-
     /** Essentia Outlet: a steel block with a tube mouth; the ring glows teal and purple. */
     static int outlet(int x, int y, boolean active, boolean[] glow) {
         if (x == 0 || y == 0) return 0x8E97A3;
@@ -482,24 +459,6 @@ public class Textures {
         if (e < 1.0) return (y < 8) ? 0xC4C0B4 : 0x8A867C;
         if (y >= 11 && y <= 13 && x >= 4 && x <= 11) return y == 13 ? 0x5E5A52 : 0x7A766C;
         return 0;
-    }
-
-    /** Enchant Echo: an open book; working, glyphs rise off its pages. */
-    static int enchantBook(int x, int y, boolean active, boolean[] glow) {
-        if (active && y >= 2 && y <= 4 && ((x == 5 && y == 3) || (x == 9 && y == 2) || (x == 11 && y == 4)
-            || (x == 7 && y == 4))) {
-            glow[0] = true;
-            return 0xC8A0FF;
-        }
-        if (y < 6 || y > 12 || x < 2 || x > 13) return 0;
-        if (y == 12 || x == 2 || x == 13) return 0x7A1E1E;
-        if (x == 7 || x == 8) return 0x8C7B5A;
-        boolean line = y % 2 == 1 && x != 3 && x != 12 && x != 6 && x != 9;
-        if (line) {
-            glow[0] = active;
-            return active ? 0x9A6CFF : 0x6A6050;
-        }
-        return 0xE6DDC2;
     }
 
     /** A paper card with the teal mark of the flux layer at the top; the picture is drawn by {@code mark}. */

@@ -6,11 +6,13 @@ import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.Mods;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
+import cpw.mods.fml.common.event.FMLInterModComms;
 import cpw.mods.fml.common.registry.GameRegistry;
 import thaumcraft.api.aspects.Aspect;
 
@@ -34,16 +36,16 @@ public final class TCModule {
         GameRegistry.registerTileEntity(TileVisPedestal.class, "fluxecho:vis_pedestal");
         visModule = new ItemVisModule();
         GameRegistry.registerItem(visModule, "vis_module");
+        if (Mods.waila)
+            FMLInterModComms.sendMessage("Waila", "register", "com.fluxecho.thaumcraft.PedestalWaila.register");
     }
 
     public static void machines() {
         Machines.put(MachineId.ESSENTIA_ECHO, new MTEEssentiaEcho(Machines.claim(MachineId.ESSENTIA_ECHO)));
-        Machines.put(MachineId.VIS_CHARGER, new MTEVisCharger(Machines.claim(MachineId.VIS_CHARGER)));
         Machines.put(MachineId.INSIGHT_ECHO, new MTEInsightEcho(Machines.claim(MachineId.INSIGHT_ECHO)));
         Machines.put(MachineId.CRUCIBLE_ECHO, new MTECrucibleEcho(Machines.claim(MachineId.CRUCIBLE_ECHO)));
         Machines.put(MachineId.INFUSION_ECHO, new MTEInfusionEcho(Machines.claim(MachineId.INFUSION_ECHO)));
         TCRecipeMaps.essentiaEcho();
-        TCRecipeMaps.visCharger();
         TCRecipeMaps.insightEcho();
         TCRecipeMaps.crucibleEcho();
         TCRecipeMaps.infusionEcho();
