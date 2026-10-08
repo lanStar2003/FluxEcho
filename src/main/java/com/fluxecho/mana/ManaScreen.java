@@ -85,7 +85,9 @@ final class ManaScreen {
         trapezoid(cx, RIM - 1, HALF_RIM + 1, FLOOR + 1, HALF_FLOOR + 1, SEAM, 1f, SEAM, 1f);
         trapezoid(cx, RIM, HALF_RIM, FLOOR, HALF_FLOOR, 0x07101A, 1f, 0x07101A, 1f);
         int cap = Math.max(1, m.guiBufferCap);
+        // the buffer is handed on every cycle while the pools take it: a working spring shows a film welling in it
         float fill = Math.min(1f, (float) m.buffer() / cap);
+        if (working) fill = Math.max(fill, 0.14f + 0.04f * (float) Math.sin(t * 0.15));
         boolean full = m.state() == MTEManaSpring.State.POOL_FULL;
         if (fill > 0) {
             double level = FLOOR - (FLOOR - RIM) * fill;
