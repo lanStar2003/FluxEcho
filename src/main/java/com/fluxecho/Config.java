@@ -24,6 +24,7 @@ public final class Config {
     public static boolean beesEnabled = true;
     public static int imprintTicks = 100, imprintEut = 16;
     public static int incubateTicks = 200, incubateEut = 24;
+    public static int assembleTicks = 100, assembleEut = 16;
     public static int honeyPerPrincess = 12, dronesWithPrincess = 2;
     public static int honeyPerDrones = 16, dronesPerBatch = 16;
     public static int fertilizerPerSaplings = 4, saplingsPerBatch = 4;
@@ -87,7 +88,7 @@ public final class Config {
 
         c.setCategoryComment(
             BEES,
-            "Bees (Forestry): imprint a real bee once, then incubate pristine princesses and drones of it.");
+            "Bees (Forestry): imprint a real bee once, then incubate pristine princesses and drones of it; take gene samples of single traits and put them together into the bee you want.");
         beesEnabled = c.getBoolean(
             "enabled",
             BEES,
@@ -99,6 +100,9 @@ public final class Config {
         incubateTicks = c
             .getInt("incubateTicks", BEES, incubateTicks, 1, 72000, "Ticks the Larva Incubator takes per batch.");
         incubateEut = c.getInt("incubateEuPerTick", BEES, incubateEut, 1, 32, "EU/t of the Larva Incubator (LV).");
+        assembleTicks = c
+            .getInt("assembleTicks", BEES, assembleTicks, 1, 72000, "Ticks the Gene Assembler takes per job.");
+        assembleEut = c.getInt("assembleEuPerTick", BEES, assembleEut, 1, 32, "EU/t of the Gene Assembler (LV).");
         honeyPerPrincess = c.getInt(
             "honeyPerPrincess",
             BEES,

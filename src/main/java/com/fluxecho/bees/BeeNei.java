@@ -1,5 +1,6 @@
 package com.fluxecho.bees;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ import com.fluxecho.FluxEcho;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.Chromosomes;
+import com.fluxecho.logic.GeneSplice;
 import com.fluxecho.logic.Karyotype;
 
 import forestry.api.apiculture.BeeManager;
@@ -41,6 +43,13 @@ public final class BeeNei {
                         : !output && !fluid && index == 0 ? GTUITextures.OVERLAY_SLOT_PAGE_BLANK : null));
     }
 
+    static RecipeMap<?> assemblerMap() {
+        return EchoRecipeMaps.map(
+            MachineId.GENE_ASSEMBLER,
+            b -> b.maxIO(9, 1, 0, 0)
+                .minInputs(0, 0));
+    }
+
     static RecipeMap<?> incubatorMap() {
         return EchoRecipeMaps.map(
             MachineId.BEE_INCUBATOR,
@@ -62,6 +71,11 @@ public final class BeeNei {
             imprinterPages();
         } catch (Throwable t) {
             FluxEcho.LOG.error("Failed to add the Bee Imprinter NEI pages", t);
+        }
+        try {
+            assemblerPages();
+        } catch (Throwable t) {
+            FluxEcho.LOG.error("Failed to add the Gene Assembler NEI pages", t);
         }
         try {
             incubatorPages();
@@ -88,6 +102,25 @@ public final class BeeNei {
             .eut(Config.imprintEut)
             .fake()
             .addTo(map);
+        GTValues.RA.stdBuilder()
+            .special(sample)
+            .itemInputs(new ItemStack(Items.paper), GTUtility.getIntegratedCircuit(1))
+            .itemOutputs(GeneSamples.of(Karyotype.BEES, GeneSplice.extract(forest, Chromosomes.forCircuit(1))))
+            .duration(Config.imprintTicks)
+            .eut(Config.imprintEut)
+            .fake()
+            .addTo(map);
+        GTValues.RA.stdBuilder()
+            .special(sample)
+            .itemInputs(new ItemStack(Items.paper), GTUtility.getIntegratedCircuit(Chromosomes.CIRCUIT_ENVIRONMENT))
+            .itemOutputs(
+                GeneSamples.of(
+                    Karyotype.BEES,
+                    GeneSplice.extract(forest, Chromosomes.forCircuit(Chromosomes.CIRCUIT_ENVIRONMENT))))
+            .duration(Config.imprintTicks)
+            .eut(Config.imprintEut)
+            .fake()
+            .addTo(map);
         Map<String, String> edited = Chromosomes
             .transfer(meadows, forest, Chromosomes.forCircuit(Chromosomes.CIRCUIT_ENVIRONMENT));
         GTValues.RA.stdBuilder()
@@ -96,6 +129,34 @@ public final class BeeNei {
             .itemOutputs(BeeImprints.imprint(edited))
             .duration(Config.imprintTicks)
             .eut(Config.imprintEut)
+            .fake()
+            .addTo(map);
+    }
+
+    /** An imprint and two samples; two samples alone. */
+    private static void assemblerPages() {
+        RecipeMap<?> map = assemblerMap();
+        Map<String, String> forest = template(FOREST), meadows = template(MEADOWS);
+        if (map == null || forest == null || meadows == null) return;
+        Map<String, String> speed = GeneSplice.extract(forest, Chromosomes.forCircuit(1));
+        Map<String, String> environment = GeneSplice
+            .extract(forest, Chromosomes.forCircuit(Chromosomes.CIRCUIT_ENVIRONMENT));
+        Map<String, String> both = GeneSplice.merge(Arrays.asList(speed, environment));
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                BeeImprints.imprint(meadows),
+                GeneSamples.of(Karyotype.BEES, speed),
+                GeneSamples.of(Karyotype.BEES, environment))
+            .itemOutputs(BeeImprints.imprint(GeneSplice.apply(meadows, both)))
+            .duration(Config.assembleTicks)
+            .eut(Config.assembleEut)
+            .fake()
+            .addTo(map);
+        GTValues.RA.stdBuilder()
+            .itemInputs(GeneSamples.of(Karyotype.BEES, speed), GeneSamples.of(Karyotype.BEES, environment))
+            .itemOutputs(GeneSamples.of(Karyotype.BEES, both))
+            .duration(Config.assembleTicks)
+            .eut(Config.assembleEut)
             .fake()
             .addTo(map);
     }

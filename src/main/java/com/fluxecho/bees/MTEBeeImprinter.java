@@ -12,6 +12,7 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.Chromosomes;
+import com.fluxecho.logic.GeneSplice;
 import com.fluxecho.logic.Karyotype;
 
 import gregtech.api.interfaces.ITexture;
@@ -20,13 +21,13 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 
 /**
- * Bee Imprinter (LV). A real bee, sapling (or pollen) or butterfly, or an imprint, sits in the special slot and is
- * never harmed.
+ * Bee Imprinter (LV). A real bee, sapling (or pollen) or butterfly, an imprint or a gene sample sits in the special
+ * slot and is never harmed.
  * <ul>
- * <li>Paper in the input: a full imprint of the sample.</li>
- * <li>An imprint of the same kind in the input and a programmed circuit: that imprint with the sample's genes for the
- * circuit (see {@link Karyotype#forCircuit}); on bees circuit 13 carries over everything that decides where a bee
- * works.</li>
+ * <li>Paper, no circuit: a full imprint of the sample (a copy, for a gene sample).</li>
+ * <li>Paper and a programmed circuit: a gene sample of the sample's genes for the circuit (see
+ * {@link Karyotype#forCircuit}): one trait, on bees 13 everything that decides where a bee works, 14 every trait.</li>
+ * <li>An imprint of the same kind in the input and a circuit: that imprint with those genes written over it.</li>
  * </ul>
  */
 public class MTEBeeImprinter extends MTEEchoMachine {
@@ -74,8 +75,9 @@ public class MTEBeeImprinter extends MTEEchoMachine {
     @Override
     protected int work() {
         ItemStack sampleStack = sample();
-        Map<String, String> sample = BeeImprints.genes(sampleStack);
-        String root = BeeImprints.root(sampleStack);
+        boolean geneSample = GeneSamples.is(sampleStack);
+        Map<String, String> sample = geneSample ? GeneSamples.genes(sampleStack) : BeeImprints.genes(sampleStack);
+        String root = geneSample ? GeneSamples.root(sampleStack) : BeeImprints.root(sampleStack);
         Karyotype k = Karyotype.of(root);
         if (sample == null || k == null) return idle("no_bee_sample");
         ItemStack in = input(0);
@@ -83,7 +85,16 @@ public class MTEBeeImprinter extends MTEEchoMachine {
 
         ItemStack out;
         if (in.getItem() == Items.paper) {
-            out = BeeImprints.imprint(root, sample);
+            int circuit = circuit();
+            if (circuit == 0) {
+                out = geneSample ? GeneSamples.of(root, sample) : BeeImprints.imprint(root, sample);
+            } else {
+                List<String> genes = k.forCircuit(circuit);
+                if (genes.isEmpty()) return idle("gene_circuit");
+                Map<String, String> part = GeneSplice.extract(sample, genes);
+                if (part.isEmpty()) return idle("gene_not_in_sample");
+                out = GeneSamples.of(root, part);
+            }
         } else if (BeeImprints.isImprint(in)) {
             Map<String, String> base = BeeImprints.read(in);
             if (base == null) return idle("no_paper");
@@ -98,7 +109,8 @@ public class MTEBeeImprinter extends MTEEchoMachine {
 
         in.stackSize--;
         mOutputItems[0] = out;
-        if (!BeeImprints.isImprint(sampleStack)) remember(category(root), sample.get(Chromosomes.SPECIES));
+        if (!geneSample && !BeeImprints.isImprint(sampleStack))
+            remember(category(root), sample.get(Chromosomes.SPECIES));
         return start(Config.imprintEut, Config.imprintTicks);
     }
 }

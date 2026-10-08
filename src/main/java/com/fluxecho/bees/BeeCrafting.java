@@ -16,8 +16,8 @@ import gregtech.api.util.GTModHandler;
 
 /**
  * Crafting table recipes. Each machine takes the vanilla tool of the job it repeats, as proof the job was done once
- * by hand: the imprinter a portable Beealyzer, the incubator an Apiary. The ender pearl is the link to the flux layer,
- * as in FluxLite and FluxDepths.
+ * by hand: the imprinter and the gene assembler a portable Beealyzer, the incubator an Apiary. The ender pearl is the
+ * link to the flux layer, as in FluxLite and FluxDepths.
  */
 final class BeeCrafting {
 
@@ -36,6 +36,13 @@ final class BeeCrafting {
             Machines.get(MachineId.BEE_IMPRINTER),
             BITS,
             new Object[] { "PEP", "CHC", "RBR", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
+                OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'R', ItemList.Robot_Arm_LV.get(1),
+                'B', beealyzer });
+
+        if (beealyzer != null) GTModHandler.addCraftingRecipe(
+            Machines.get(MachineId.GENE_ASSEMBLER),
+            BITS,
+            new Object[] { "PEP", "RHR", "CBC", 'P', OrePrefixes.plate.get(Materials.Steel), 'E', pearl, 'C',
                 OrePrefixes.circuit.get(Materials.LV), 'H', ItemList.Hull_LV.get(1), 'R', ItemList.Robot_Arm_LV.get(1),
                 'B', beealyzer });
 
