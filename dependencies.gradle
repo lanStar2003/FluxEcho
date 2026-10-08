@@ -1,0 +1,14 @@
+// See FluxLite's dependencies.gradle for what each configuration means.
+dependencies {
+    // GTNH 2.8.4 ships gregtech-5.09.51.482; GT pulls in GTNHLib, StructureLib, ModularUI and NEI
+    api("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.482:dev") {
+        // pulls a CodeChickenLib version that is not published anywhere
+        exclude(group: "com.github.GTNewHorizons", module: "ThaumicTinkerer")
+    }
+    compileOnly("com.github.GTNewHorizons:waila:1.8.14:dev") { transitive = false }
+    // Optional mods, each behind its own module package (com.fluxecho.bees / .thaumcraft / .blood); IsolationTest
+    // fails the build when a class outside that package refers to them. Versions are the ones GTNH 2.8.4 ships.
+    compileOnly("com.github.GTNewHorizons:ForestryMC:4.10.17:dev") { transitive = false }
+    compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev") { transitive = false }
+    compileOnly("com.github.GTNewHorizons:BloodMagic:1.7.52:dev") { transitive = false }
+}

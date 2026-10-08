@@ -1,0 +1,21 @@
+{
+	"modListVersion": 2,
+	"modList": [{
+		"modid": "${modId}",
+		"name": "${modName}",
+		"description": "The flux layer remembers what you did once and lets it echo: lazy shortcuts for GT New Horizons. Bees (Forestry): imprint a bee once, incubate pristine princesses forever. Thaumcraft: essentia and vis from EU for aspects you have held once. Blood Magic: LP from EU once you have made the orb. Ships the FluxEcho and FluxDepths quest lines. Each module can be switched off in the config.",
+		"version": "${modVersion}",
+		"mcversion": "${minecraftVersion}",
+		"url": "https://github.com/lanStar2003/FluxEcho",
+		"updateUrl": "",
+		"authorList": ["lan"],
+		"credits": "Companion of FluxLite and FluxDepths",
+		"logoFile": "",
+		"screenshots": [],
+		"parent": "",
+		"requiredMods": ["gregtech"],
+		"dependencies": ["gregtech"],
+		"dependants": [],
+		"useDependencyInformation": true
+	}]
+}
