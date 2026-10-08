@@ -7,8 +7,9 @@ public final class TCClient {
 
     private TCClient() {}
 
-    /** The floating wand on the Flux Vis Pedestal. */
+    /** The floating wand on the Flux Vis Pedestal, and its hologram. */
     public static void init() {
         ClientRegistry.bindTileEntitySpecialRenderer(TileVisPedestal.class, new RenderVisPedestal());
+        PedestalHolo.register();
     }
 }

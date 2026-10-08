@@ -53,14 +53,15 @@ public final class Config {
     public static int seedTicks = 200, seedEut = 24, sticksPerSeed = 1;
 
     public static boolean manaEnabled = true;
-    public static int manaPerTick = 64, euPerMana = 2, manaPerPetal = 5000, manaRange = 4, manaHeight = 2;
+    public static int manaPerTick = 16, euPerMana = 2, manaPerPetal = 1250, manaRange = 4, manaHeight = 2,
+        manaHologramRange = 16;
 
     public static boolean codexHints = true;
 
     public static boolean aeEnabled = true;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.5.0";
+    private static final String VERSION = "0.6.0";
 
     private Config() {}
 
@@ -301,23 +302,48 @@ public final class Config {
 
         c.setCategoryComment(
             MANA,
-            "Botania: mana from EU into the mana pools near the Mana Echo, a few petals along the way.");
+            "Botania: the Mana Echo Spring draws the echo of mana up from the flux layer with EU and a few petals, into the mana pools around it. The circuit in its core (LV to LuV) sets its tier: each tier draws 4x the mana of the one below, for 4x the EU, and a petal is worth 4x as much.");
         manaEnabled = c.getBoolean(
             "enabled",
             MANA,
             manaEnabled,
             "Switch the module off: no recipes, and placed machines stop working (they stay in the world).");
         manaPerTick = c.getInt(
-            "manaPerTick",
+            "lvManaPerTick",
             MANA,
             manaPerTick,
             1,
-            100_000,
-            "Mana per tick. The Mana Echo is an MV machine: keep manaPerTick x euPerMana at 128 or below.");
+            10_000,
+            "Mana per tick with an LV core (x4 per tier above). With euPerMana 2 the default uses each tier's full voltage at 1 A.");
         euPerMana = c.getInt("euPerMana", MANA, euPerMana, 1, 10_000, "EU per mana.");
-        manaPerPetal = c.getInt("manaPerPetal", MANA, manaPerPetal, 1, 10_000_000, "Mana one mystical petal is worth.");
-        manaRange = c.getInt("poolRange", MANA, manaRange, 1, 16, "How far sideways the Mana Echo looks for pools.");
-        manaHeight = c.getInt("poolHeight", MANA, manaHeight, 0, 16, "How far up and down it looks for pools.");
+        manaPerPetal = c.getInt(
+            "lvManaPerPetal",
+            MANA,
+            manaPerPetal,
+            1,
+            10_000_000,
+            "Mana one mystical petal is worth with an LV core (x4 per tier above, so petals go at the same pace at every tier).");
+        manaRange = c.getInt(
+            "poolRange",
+            MANA,
+            manaRange,
+            1,
+            16,
+            "How far sideways the spring reaches pools with an LV core (one more per tier above).");
+        manaHeight = c.getInt(
+            "poolHeight",
+            MANA,
+            manaHeight,
+            0,
+            16,
+            "How far up and down it reaches with an LV core (one more every second tier above).");
+        manaHologramRange = c.getInt(
+            "hologramRange",
+            MANA,
+            manaHologramRange,
+            0,
+            64,
+            "Blocks within which a spring's hologram shows (each spring's is off until switched on in its GUI or with a screwdriver). Client side; 0 turns them all off.");
 
         c.setCategoryComment(CODEX, "The Echo Codex and the tooltip lines.");
         codexHints = c.getBoolean(
@@ -344,11 +370,37 @@ public final class Config {
     private static void upgrade(Configuration c) {
         String was = c.getLoadedConfigVersion();
         if (VERSION.equals(was)) return;
-        if (c.hasCategory("enchanting")) c.removeCategory(c.getCategory("enchanting"));
-        if (c.hasCategory(THAUM)) {
-            ConfigCategory t = c.getCategory(THAUM);
-            for (String k : new String[] { "visEuPerCentiVis", "visPerShard", "visMaxTicks", "pedestalBufferEU",
-                "linkModuleEuPerTick" }) t.remove(k);
+        if (older(was, "0.5.0")) {
+            if (c.hasCategory("enchanting")) c.removeCategory(c.getCategory("enchanting"));
+            if (c.hasCategory(THAUM)) {
+                ConfigCategory t = c.getCategory(THAUM);
+                for (String k : new String[] { "visEuPerCentiVis", "visPerShard", "visMaxTicks", "pedestalBufferEU",
+                    "linkModuleEuPerTick" }) t.remove(k);
+            }
+        }
+        // 0.6.0: the Mana Echo Spring is tiered by its core; its rates are per LV now
+        if (older(was, "0.6.0") && c.hasCategory(MANA)) {
+            ConfigCategory m = c.getCategory(MANA);
+            for (String k : new String[] { "manaPerTick", "manaPerPetal" }) m.remove(k);
+        }
+    }
+
+    /** Whether a file written by version {@code was} (null: before versions were written) predates {@code v}. */
+    static boolean older(String was, String v) {
+        if (was == null || was.isEmpty()) return true;
+        String[] a = was.split("\\."), b = v.split("\\.");
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            int x = i < a.length ? parse(a[i]) : 0, y = i < b.length ? parse(b[i]) : 0;
+            if (x != y) return x < y;
+        }
+        return false;
+    }
+
+    private static int parse(String s) {
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 

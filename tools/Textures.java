@@ -31,7 +31,6 @@ public class Textures {
         face("blocks/machines/infusion_echo/front", Textures::runicMatrix);
         face("blocks/machines/seed_imprinter/front", Textures::seedScanner);
         face("blocks/machines/seed_echo/front", Textures::sprout);
-        face("blocks/machines/mana_echo/front", Textures::manaPool);
         item("items/mob_imprint", Textures::mobImprint);
         item("items/crop_imprint", Textures::cropImprint);
         item("items/codex", Textures::codex);
@@ -445,20 +444,6 @@ public class Textures {
             return active ? (stem ? 0xB8FF8A : 0x5CE05A) : (stem ? 0x3E5A2E : 0x2E4A24);
         }
         return active ? 0x1E2A2E : 0x14181C;
-    }
-
-    /** Mana Echo: a stone basin of mana; working, the mana shines. */
-    static int manaPool(int x, int y, boolean active, boolean[] glow) {
-        double ex = (x - 7.5) / 6.0, ey = (y - 8.5) / 3.4;
-        double e = ex * ex + ey * ey;
-        if (e < 0.62) {
-            glow[0] = active;
-            boolean sparkle = (x * 7 + y * 3) % 11 == 0;
-            return active ? (sparkle ? 0xFFFFFF : (y < 8 ? 0x8CF0FF : 0x3CC8F0)) : 0x1E3A48;
-        }
-        if (e < 1.0) return (y < 8) ? 0xC4C0B4 : 0x8A867C;
-        if (y >= 11 && y <= 13 && x >= 4 && x <= 11) return y == 13 ? 0x5E5A52 : 0x7A766C;
-        return 0;
     }
 
     /** A paper card with the teal mark of the flux layer at the top; the picture is drawn by {@code mark}. */

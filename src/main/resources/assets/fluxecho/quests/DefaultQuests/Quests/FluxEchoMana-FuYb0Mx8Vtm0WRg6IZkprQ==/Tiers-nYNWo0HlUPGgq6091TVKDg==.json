@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -2678625643190658070,
+      "questIDLow:4": -7084275038981582481
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "回响泉只有一台，靠核心里的电路板升级：换一块更高阶的电路板，电压、产量、花瓣价值和范围一起变。\n\n• NEI 里查回响泉（或神秘花瓣的用途）能看到每一阶的数值；界面里点中间的泉池也能打开；\n• 拿螺丝刀右键可以打开全息投影，在机器上方显示状态、魔力池和电量（默认关闭）。\n\n[warn]换入更高阶的电路板会提高输入电压，先确认线缆和电源跟得上。[/warn]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 24541,
+        "OreDict:8": "",
+        "id:8": "gregtech:gt.blockmachines"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§b升级核心",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -7096733328620564239,
+  "questIDLow:4": -6869206325541910002,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}
