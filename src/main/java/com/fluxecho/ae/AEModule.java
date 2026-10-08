@@ -6,12 +6,12 @@ import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
-import gregtech.api.util.GTModHandler;
 
 /**
  * Applied Energistics 2: the Echo ME Provider. Only called when AE2 is loaded. The block is registered even when it
@@ -39,9 +39,9 @@ public final class AEModule {
                 FluxEcho.LOG.warn("No ME interface or molecular assembler found: the Echo ME Provider has no recipe");
                 return;
             }
-            GTModHandler.addCraftingRecipe(
+            EchoRecipes.shaped(
+                "Echo ME Provider",
                 new ItemStack(provider),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
                 new Object[] { "PEP", "IHA", "PCP", 'P', OrePrefixes.plate.get(Materials.Aluminium), 'E',
                     new ItemStack(Items.ender_pearl), 'I', iface, 'H', ItemList.Hull_MV.get(1), 'A', assembler, 'C',
                     OrePrefixes.circuit.get(Materials.MV) });

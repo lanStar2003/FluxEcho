@@ -1,11 +1,13 @@
 package com.fluxecho.mana;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.world.World;
 
 import com.fluxecho.Config;
@@ -25,17 +27,18 @@ import vazkii.botania.api.mana.IManaPool;
 import vazkii.botania.common.block.tile.mana.TilePool;
 
 /**
- * Mana Echo (MV). EU and a few mystical petals become mana, sent into the nearest mana pool around it. No generating
- * flowers to feed: the machine's recipe takes a mana pool and a spreader, the proof that mana was made by hand once.
- * Mana made waits in a small buffer until the pool has room, so a full pool stops the machine.
+ * Mana Echo (MV). EU and a few mystical petals become mana, sent into the mana pools around it: the nearest one
+ * first, and when it is full the next nearest, until every pool in range is full. No generating flowers to feed: the
+ * machine's recipe takes a mana pool and a spreader, the proof that mana was made by hand once. Mana made waits in a
+ * small buffer until a pool has room, so the machine stops once all of them are full.
  */
 public class MTEManaEcho extends MTEEchoMachine {
 
     private static final int CYCLE = 20, BUFFERED_CYCLES = 3, RESCAN_TICKS = 100;
 
     private int buffer, credit, pending;
-    private int poolX, poolY, poolZ;
-    private boolean poolKnown;
+    /** Where the pools in range stand, nearest first; refreshed every few seconds. */
+    private final List<ChunkCoordinates> poolsAt = new ArrayList<>();
     private long nextScan;
 
     public MTEManaEcho(int id) {
@@ -74,7 +77,7 @@ public class MTEManaEcho extends MTEEchoMachine {
     @Override
     protected int work() {
         int amount = Config.manaPerTick * CYCLE;
-        if (pool() == null) return idle("no_pool");
+        if (pools().isEmpty()) return idle("no_pool");
         if (buffer >= amount * BUFFERED_CYCLES) return idle("pool_full");
         int petals = BloodRates.meatNeeded(credit, amount, Config.manaPerPetal);
         if (petals > 0) {
@@ -105,48 +108,56 @@ public class MTEManaEcho extends MTEEchoMachine {
         if ("pool_full".equals(status) || "no_pool".equals(status)) te.markInventoryBeenModified();
     }
 
-    /** Hands the buffer to the pool, as much as fits. */
-    private void flush() {
-        if (buffer <= 0 || !Config.manaEnabled) return;
-        IManaPool p = pool();
-        if (p == null || p.isFull()) return;
-        int send = buffer;
-        if (p instanceof TilePool tp) send = Math.min(send, Math.max(0, tp.manaCap - tp.getCurrentMana()));
-        else send = Math.min(send, Config.manaPerTick * CYCLE); // unknown capacity: a little at a time
-        if (send <= 0) return;
-        p.recieveMana(send);
-        buffer -= send;
+    /** Mana a pool still takes. */
+    private static int room(IManaPool p) {
+        if (p.isFull()) return 0;
+        if (p instanceof TilePool tp) return Math.max(0, tp.manaCap - tp.getCurrentMana());
+        return Config.manaPerTick * CYCLE; // unknown capacity: a little at a time
     }
 
-    /** The nearest pool in range: the last one found while it stands, else a fresh search every few seconds. */
-    private IManaPool pool() {
+    /** Hands the buffer to the pools, nearest first, as much as each one takes. */
+    private void flush() {
+        if (buffer <= 0 || !Config.manaEnabled) return;
+        for (IManaPool p : pools()) {
+            int send = Math.min(buffer, room(p));
+            if (send <= 0) continue;
+            p.recieveMana(send);
+            buffer -= send;
+            if (buffer <= 0) return;
+        }
+    }
+
+    /** The pools in range, nearest first. The search runs again every few seconds, so new pools join in. */
+    private List<IManaPool> pools() {
+        World w = world();
+        if (w.getTotalWorldTime() >= nextScan) {
+            nextScan = w.getTotalWorldTime() + RESCAN_TICKS;
+            scan(w);
+        }
+        List<IManaPool> out = new ArrayList<>(poolsAt.size());
+        for (ChunkCoordinates c : poolsAt)
+            if (w.getTileEntity(c.posX, c.posY, c.posZ) instanceof IManaPool p) out.add(p);
+        return out;
+    }
+
+    private void scan(World w) {
         IGregTechTileEntity te = getBaseMetaTileEntity();
-        World w = te.getWorld();
-        if (poolKnown && w.getTileEntity(poolX, poolY, poolZ) instanceof IManaPool p) return p;
-        poolKnown = false;
-        if (w.getTotalWorldTime() < nextScan) return null;
-        nextScan = w.getTotalWorldTime() + RESCAN_TICKS;
         int x0 = te.getXCoord(), y0 = te.getYCoord(), z0 = te.getZCoord();
         int r = Config.manaRange, h = Config.manaHeight;
-        IManaPool best = null;
-        int bestDist = Integer.MAX_VALUE;
+        poolsAt.clear();
         for (int dy = -h; dy <= h; dy++) {
             int y = y0 + dy;
             if (y < 0 || y >= w.getHeight()) continue;
-            for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
-                TileEntity t = w.getTileEntity(x0 + dx, y, z0 + dz);
-                int d = dx * dx + dy * dy + dz * dz;
-                if (t instanceof IManaPool p && d < bestDist) {
-                    best = p;
-                    bestDist = d;
-                    poolX = x0 + dx;
-                    poolY = y;
-                    poolZ = z0 + dz;
-                }
-            }
+            for (int dx = -r; dx <= r; dx++)
+                for (int dz = -r; dz <= r; dz++) if (w.getTileEntity(x0 + dx, y, z0 + dz) instanceof IManaPool)
+                    poolsAt.add(new ChunkCoordinates(x0 + dx, y, z0 + dz));
         }
-        poolKnown = best != null;
-        return best;
+        poolsAt.sort((a, b) -> Integer.compare(dist(a, x0, y0, z0), dist(b, x0, y0, z0)));
+    }
+
+    private static int dist(ChunkCoordinates c, int x, int y, int z) {
+        int dx = c.posX - x, dy = c.posY - y, dz = c.posZ - z;
+        return dx * dx + dy * dy + dz * dz;
     }
 
     @Override

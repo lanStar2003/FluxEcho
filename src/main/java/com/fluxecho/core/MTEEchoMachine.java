@@ -187,6 +187,7 @@ public abstract class MTEEchoMachine extends MTEBasicMachine {
 
     @Override
     public void addAdditionalTooltipInformation(ItemStack stack, List<String> tooltip) {
+        tooltip.add(EchoText.machineType(kind.key));
         tooltip.addAll(EchoText.lines(kind.key + ".tip", tooltipArgs()));
     }
 

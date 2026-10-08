@@ -7,6 +7,7 @@ import net.minecraft.item.ItemStack;
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.core.EchoRecipeMaps;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
@@ -15,7 +16,6 @@ import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 
 /**
  * Botania. Only called when Botania is loaded. The machine is registered even when the module is switched off, so
@@ -47,9 +47,8 @@ public final class ManaModule {
                 FluxEcho.LOG.warn("No Botania mana pool or spreader found: the Mana Echo has no recipe");
                 return;
             }
-            GTModHandler.addCraftingRecipe(
-                Machines.get(MachineId.MANA_ECHO),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
+            EchoRecipes.machine(
+                MachineId.MANA_ECHO,
                 new Object[] { "PEP", "CHC", "SOS", 'P', OrePrefixes.plate.get(Materials.Aluminium), 'E',
                     new ItemStack(Items.ender_pearl), 'C', OrePrefixes.circuit.get(Materials.MV), 'H',
                     ItemList.Hull_MV.get(1), 'S', new ItemStack(spreader, 1, 0), 'O', new ItemStack(pool, 1, 0) });

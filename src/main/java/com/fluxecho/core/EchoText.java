@@ -24,6 +24,17 @@ public final class EchoText {
         return out;
     }
 
+    /**
+     * GT's "Machine Type: X" line, as its own machines have it ({@code GT5U.MBTT.MachineType} is GT's lang key), with
+     * the type from {@code fluxecho.<key>.type}.
+     */
+    public static String machineType(String key) {
+        return StatCollector.translateToLocal("GT5U.MBTT.MachineType") + ": "
+            + EnumChatFormatting.YELLOW
+            + t(key + ".type")
+            + EnumChatFormatting.RESET;
+    }
+
     /** Ticks as seconds: "5", "0.65". */
     public static String seconds(int ticks) {
         double s = ticks / 20.0;

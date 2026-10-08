@@ -9,6 +9,7 @@ import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.core.EchoRecipeMaps;
+import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
@@ -19,7 +20,6 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 
 /**
  * Blood Magic. Only called when Blood Magic is loaded. The machine is registered even when the module is switched
@@ -71,9 +71,8 @@ public final class BloodModule {
                 FluxEcho.LOG.warn("No blood altar or sacrificial knife found: the Blood Echo has no recipe");
                 return;
             }
-            GTModHandler.addCraftingRecipe(
-                Machines.get(MachineId.BLOOD_ECHO),
-                GTModHandler.RecipeBits.NOT_REMOVABLE,
+            EchoRecipes.machine(
+                MachineId.BLOOD_ECHO,
                 new Object[] { "PEP", "CHC", "UAK", 'P', OrePrefixes.plate.get(Materials.Aluminium), 'E',
                     new ItemStack(Items.ender_pearl), 'C', OrePrefixes.circuit.get(Materials.MV), 'H',
                     ItemList.Hull_MV.get(1), 'U', ItemList.Electric_Pump_MV.get(1), 'A', new ItemStack(altar), 'K',
