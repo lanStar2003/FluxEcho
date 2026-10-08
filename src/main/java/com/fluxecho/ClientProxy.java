@@ -4,6 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraftforge.common.MinecraftForge;
 
+import com.fluxecho.client.FlowFx;
+import com.fluxecho.client.MachineFx;
+import com.fluxecho.client.MachineHolo;
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
 import com.fluxecho.mana.ManaHolo;
@@ -20,6 +23,9 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance()
             .bus()
             .register(tips);
+        MachineFx.register();
+        MachineHolo.register();
+        FlowFx.register();
         if (Mods.thaumcraft) TCClient.init();
         if (Mods.botania) ManaHolo.register();
     }

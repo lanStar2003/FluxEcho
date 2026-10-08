@@ -17,6 +17,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.Config;
+import com.fluxecho.codex.EchoNet;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.VisFlow;
 
@@ -34,6 +35,8 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
 
     public static final int MODULE_SLOTS = 4;
     private static final int WIRELESS_PERIOD = 10, LINK_PERIOD = 20, SYNC_PERIOD = 10;
+    /** Colour of the trail to a player its wireless module charges. */
+    private static final int TRAIL = 0xB48CFF;
 
     private ItemStack wand;
     private final ItemStack[] modules = new ItemStack[MODULE_SLOTS];
@@ -243,13 +246,15 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         return true;
     }
 
-    private void chargeOne(ItemStack s, int rate) {
+    /** Charges one wand, staff or amulet; whether any vis went in. */
+    private boolean chargeOne(ItemStack s, int rate) {
         VisFlow f = VisItems.charge(s, rate, Config.visEuPerCentiVis, energy);
-        if (f.eu <= 0) return;
+        if (f.eu <= 0) return false;
         energy -= f.eu;
         outputAcc += f.eu;
         chargedThisTick = true;
         markDirty();
+        return true;
     }
 
     /** The wireless module: what the team carries within range, in this world. */
@@ -261,7 +266,18 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         for (Object o : worldObj.playerEntities) {
             if (!(o instanceof EntityPlayer p) || !team.equals(Owners.team(p.getUniqueID()))) continue;
             if (p.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) > r2) continue;
-            for (ItemStack s : p.inventory.mainInventory) if (VisItems.chargeable(s)) chargeOne(s, rate);
+            boolean charged = false;
+            for (ItemStack s : p.inventory.mainInventory) if (VisItems.chargeable(s)) charged |= chargeOne(s, rate);
+            // a trail to whoever it charges, about once a second
+            if (charged && worldObj.getTotalWorldTime() % 20 < WIRELESS_PERIOD) EchoNet.flow(
+                worldObj,
+                xCoord,
+                yCoord,
+                zCoord,
+                (int) Math.floor(p.posX),
+                (int) Math.floor(p.posY),
+                (int) Math.floor(p.posZ),
+                TRAIL);
         }
     }
 

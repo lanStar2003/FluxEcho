@@ -13,6 +13,7 @@ import net.minecraftforge.oredict.OreDictionary;
 
 import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.codex.EchoNet;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -55,7 +56,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
     private int pending;
 
     private int altarX, altarY, altarZ;
-    private boolean altarKnown;
+    private boolean altarKnown, fedAltar;
     private long nextScan;
 
     public MTEBloodEcho(int id) {
@@ -158,6 +159,8 @@ public class MTEBloodEcho extends MTEEchoMachine {
         super.onPostTick(te, tick);
         if (!te.isServerSide() || tick % 20 != 0) return;
         flush();
+        if (fedAltar && altarKnown) EchoNet.flow(te, altarX, altarY, altarZ, kind.accent);
+        fedAltar = false;
         // GT only rechecks an idle machine every 30 s; the altar or network may have room again sooner
         if ("altar_full".equals(status) || "network_full".equals(status) || "no_altar".equals(status)) {
             te.markInventoryBeenModified();
@@ -181,6 +184,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
             a.sacrificialDaggerCall(send, false);
             a.startCycle();
             buffer -= send;
+            fedAltar = true;
         }
     }
 
@@ -213,6 +217,14 @@ public class MTEBloodEcho extends MTEEchoMachine {
         }
         altarKnown = best != null;
         return best;
+    }
+
+    /** LP a tick, LP waiting, and where it goes. */
+    @Override
+    protected String info() {
+        IBloodOrb orb = orb();
+        int rate = orb == null ? 0 : BloodRates.lpPerTick(Config.lpPerTick, orb.getOrbLevel());
+        return encode(network() ? "blood_echo.gui_network" : "blood_echo.gui_altar", rate, buffer);
     }
 
     @Override

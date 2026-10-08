@@ -112,6 +112,12 @@ public class MTEInsightEcho extends MTEThaumMachine {
         }
     }
 
+    /** Whether its owner is here to receive the points, and how many aspects' worth wait. */
+    @Override
+    protected String info() {
+        return encode(owner() != null ? "insight_echo.gui_online" : "insight_echo.gui_offline", owed.size());
+    }
+
     @Override
     public void saveNBTData(NBTTagCompound t) {
         super.saveNBTData(t);

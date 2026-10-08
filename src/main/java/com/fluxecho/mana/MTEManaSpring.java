@@ -3,7 +3,9 @@ package com.fluxecho.mana;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -17,8 +19,10 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.Config;
+import com.fluxecho.client.MachineFx;
 import com.fluxecho.codex.EchoNet;
 import com.fluxecho.core.CoreCircuits;
+import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.ManaSpring;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
@@ -80,6 +84,8 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
     private boolean hologram, migrated = true;
 
     private final List<ChunkCoordinates> poolsAt = new ArrayList<>();
+    /** Pools it handed mana to since the last trail was sent. */
+    private final Set<ChunkCoordinates> fed = new HashSet<>();
     private long nextScan;
     private int scannedTier = -1;
 
@@ -288,7 +294,11 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
     public void onPostTick(IGregTechTileEntity base, long tick) {
         if (base.isServerSide() && !migrated) migrate(base);
         super.onPostTick(base, tick);
-        if (!base.isServerSide()) return;
+        if (!base.isServerSide()) {
+            if (base.isActive()) MachineFx
+                .seen(MachineId.MANA_ECHO, base.getWorld(), base.getXCoord(), base.getYCoord(), base.getZCoord());
+            return;
+        }
         if (mMaxProgresstime <= 0) {
             if (tier() <= 0) state = State.NO_CORE;
             else if (!hasEnoughEnergyToCheckRecipe()) state = State.NO_POWER;
@@ -301,6 +311,10 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
         else if (state == State.NO_POWER) state = State.WORKING;
         if (tick % 20 == 0) {
             flush();
+            int sent = 0;
+            for (ChunkCoordinates c : fed)
+                if (sent++ < SHOWN_POOLS * 2) EchoNet.flow(base, c.posX, c.posY, c.posZ, ManaGui.TITLE);
+            fed.clear();
             survey();
             if (state == State.POOL_FULL || state == State.NO_POOL) base.markInventoryBeenModified();
         }
@@ -326,6 +340,7 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
             p.recieveMana(send);
             buffer -= send;
             delivered += send;
+            if (p instanceof TileEntity t) fed.add(new ChunkCoordinates(t.xCoord, t.yCoord, t.zCoord));
         }
     }
 

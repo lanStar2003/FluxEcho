@@ -67,7 +67,7 @@ public class MTEMobEcho extends MTEEchoMachine {
         return blacklist;
     }
 
-    private static boolean banned(ItemStack s) {
+    static boolean banned(ItemStack s) {
         GameRegistry.UniqueIdentifier id = GameRegistry.findUniqueIdentifierFor(s.getItem());
         return id != null && blacklist().matches(id.modId + ":" + id.name, s.getItemDamage());
     }
@@ -96,6 +96,19 @@ public class MTEMobEcho extends MTEEchoMachine {
             if (!merged && out.size() < mOutputItems.length) out.add(s.copy());
         }
         return out;
+    }
+
+    /** The weapon's Looting and how worn it is. */
+    @Override
+    protected String info() {
+        ItemStack weapon = input(0);
+        if (weapon == null) return encode("mob_echo.gui_bare");
+        int looting = EnchantmentHelper.getEnchantmentLevel(Enchantment.looting.effectId, weapon);
+        int left = weapon.isItemStackDamageable()
+            ? (int) Math
+                .round(100.0 * (weapon.getMaxDamage() - weapon.getItemDamage()) / Math.max(1, weapon.getMaxDamage()))
+            : 100;
+        return encode("mob_echo.gui", looting, left);
     }
 
     @Override

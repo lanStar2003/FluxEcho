@@ -9,8 +9,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.World;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.client.FlowStore;
 import com.fluxecho.client.HoloStore;
 import com.fluxecho.core.Owners;
 
@@ -31,7 +33,8 @@ import io.netty.buffer.ByteBuf;
 /**
  * FluxEcho's channel. It sends each player their team's ledger: when they log in, and at the end of a tick in which
  * the team's ledger changed. In 1.7.10 handlers run on the Netty thread, so the client queues the copy for its main
- * thread. It also carries what machine holograms show ({@link #holo}) to the players near them.
+ * thread. It also carries what machine holograms show ({@link #holo}) to the players near them, and the trails of
+ * what a machine hands to the blocks around it ({@link #flow}).
  */
 public final class EchoNet {
 
@@ -45,6 +48,7 @@ public final class EchoNet {
         channel = NetworkRegistry.INSTANCE.newSimpleChannel(FluxEcho.MODID);
         channel.registerMessage(Handler.class, MsgLedger.class, 0, Side.CLIENT);
         channel.registerMessage(HoloHandler.class, MsgHolo.class, 1, Side.CLIENT);
+        channel.registerMessage(FlowHandler.class, MsgFlow.class, 2, Side.CLIENT);
         FMLCommonHandler.instance()
             .bus()
             .register(new Events());
@@ -68,7 +72,27 @@ public final class EchoNet {
     }
 
     /** Kinds of hologram. */
-    public static final byte HOLO_MANA = 1;
+    public static final byte HOLO_MANA = 1, HOLO_MACHINE = 2;
+
+    /** Players within this many blocks of a trail's start are told about it; their own config decides what shows. */
+    private static final int FLOW_RANGE = 64;
+
+    /**
+     * Tells the players nearby that the machine is handing something to the block at {@code to} (mana into a pool,
+     * LP into an altar): they draw a trail of it in {@code color} for a moment. Sent about once a second per target.
+     */
+    public static void flow(IGregTechTileEntity b, int tx, int ty, int tz, int color) {
+        if (b != null) flow(b.getWorld(), b.getXCoord(), b.getYCoord(), b.getZCoord(), tx, ty, tz, color);
+    }
+
+    /** As {@link #flow(IGregTechTileEntity, int, int, int, int)}, from any block. */
+    public static void flow(World w, int x, int y, int z, int tx, int ty, int tz, int color) {
+        if (channel == null || w == null) return;
+        int dim = w.provider.dimensionId;
+        channel.sendToAllAround(
+            new MsgFlow(dim, x, y, z, tx, ty, tz, color),
+            new NetworkRegistry.TargetPoint(dim, x + 0.5, y + 0.5, z + 0.5, FLOW_RANGE));
+    }
 
     /** Tells the players within {@code range} (plus a margin) of the machine what its hologram shows. */
     public static void holo(IGregTechTileEntity b, byte kind, NBTTagCompound data, int range) {
@@ -188,6 +212,57 @@ public final class EchoNet {
         @Override
         public IMessage onMessage(MsgHolo msg, MessageContext ctx) {
             if (msg.data != null) HoloStore.receive(msg.kind, msg.dim, msg.x, msg.y, msg.z, msg.data);
+            return null;
+        }
+    }
+
+    public static final class MsgFlow implements IMessage {
+
+        int dim, x, y, z, tx, ty, tz, color;
+
+        public MsgFlow() {}
+
+        MsgFlow(int dim, int x, int y, int z, int tx, int ty, int tz, int color) {
+            this.dim = dim;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.tx = tx;
+            this.ty = ty;
+            this.tz = tz;
+            this.color = color;
+        }
+
+        @Override
+        public void fromBytes(ByteBuf buf) {
+            dim = buf.readInt();
+            x = buf.readInt();
+            y = buf.readInt();
+            z = buf.readInt();
+            tx = buf.readInt();
+            ty = buf.readInt();
+            tz = buf.readInt();
+            color = buf.readInt();
+        }
+
+        @Override
+        public void toBytes(ByteBuf buf) {
+            buf.writeInt(dim);
+            buf.writeInt(x);
+            buf.writeInt(y);
+            buf.writeInt(z);
+            buf.writeInt(tx);
+            buf.writeInt(ty);
+            buf.writeInt(tz);
+            buf.writeInt(color);
+        }
+    }
+
+    public static final class FlowHandler implements IMessageHandler<MsgFlow, IMessage> {
+
+        @Override
+        public IMessage onMessage(MsgFlow msg, MessageContext ctx) {
+            FlowStore.receive(msg.dim, msg.x, msg.y, msg.z, msg.tx, msg.ty, msg.tz, msg.color);
             return null;
         }
     }

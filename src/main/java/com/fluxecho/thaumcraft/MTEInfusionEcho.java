@@ -57,7 +57,7 @@ public class MTEInfusionEcho extends MTEThaumMachine {
     }
 
     /** Primal units an option costs: the essentia's units, or one per vis. */
-    private static long cost(ThaumRecipes.Option o) {
+    static long cost(ThaumRecipes.Option o) {
         if (!o.arcane) return units(o.aspects);
         long u = 0;
         if (o.aspects != null) for (Aspect a : o.aspects.getAspects()) if (a != null) u += o.aspects.getAmount(a);

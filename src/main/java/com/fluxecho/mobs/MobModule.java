@@ -1,5 +1,11 @@
 package com.fluxecho.mobs;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -13,9 +19,13 @@ import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
+import com.fluxecho.logic.KillCost;
+import com.kuba6000.mobsinfo.api.MobDrop;
+import com.kuba6000.mobsinfo.api.MobRecipe;
 
 import cpw.mods.fml.common.event.FMLInterModComms;
 import cpw.mods.fml.common.registry.GameRegistry;
+import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
@@ -73,5 +83,42 @@ public final class MobModule {
         } catch (Throwable t) {
             FluxEcho.LOG.error("Failed to register the prey recipes", t);
         }
+    }
+
+    /**
+     * NEI: one page per mob MobsInfo knows (it builds its tables in its own loadComplete, before this one): the
+     * imprint, up to four of its drops, and the EU and time of a kill.
+     */
+    public static void loadComplete() {
+        if (!Config.mobsEnabled || MobRecipe.MobNameToRecipeMap == null) return;
+        int pages = 0;
+        for (Map.Entry<String, MobRecipe> e : new TreeMap<>(MobRecipe.MobNameToRecipeMap).entrySet()) {
+            MobRecipe r = e.getValue();
+            if (r == null || r.mOutputs == null) continue;
+            boolean boss = r.entity instanceof IBossDisplayData;
+            if (boss && !Config.mobBosses) continue;
+            List<ItemStack> drops = new ArrayList<>();
+            for (MobDrop d : r.mOutputs) {
+                if (d == null || d.stack == null || d.stack.getItem() == null || MTEMobEcho.banned(d.stack)) continue;
+                drops.add(d.stack.copy());
+                if (drops.size() == 4) break;
+            }
+            if (drops.isEmpty()) continue;
+            KillCost cost = KillCost.of(
+                r.maxEntityHealth,
+                Config.mobEuPerHealth,
+                boss ? Config.mobBossMultiplier : 1,
+                (int) GTValues.V[MachineId.MOB_ECHO.tier],
+                Config.mobMinTicks);
+            EchoRecipeMaps.page(
+                MachineId.MOB_ECHO,
+                MobImprints.imprint(e.getKey()),
+                new ItemStack[0],
+                drops.toArray(new ItemStack[0]),
+                cost.eut,
+                cost.ticks);
+            pages++;
+        }
+        FluxEcho.LOG.info("Prey Echo: {} mobs in NEI", pages);
     }
 }

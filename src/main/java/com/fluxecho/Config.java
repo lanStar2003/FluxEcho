@@ -14,7 +14,8 @@ import com.fluxecho.logic.BloodRates;
 public final class Config {
 
     private static final String GENERAL = "general", QUESTS = "quests", BEES = "bees", THAUM = "thaumcraft",
-        BLOOD = "bloodmagic", MOBS = "mobs", CROPS = "crops", MANA = "botania", CODEX = "codex", AE = "ae2";
+        BLOOD = "bloodmagic", MOBS = "mobs", CROPS = "crops", MANA = "botania", CODEX = "codex", AE = "ae2",
+        EFFECTS = "effects";
 
     public static int firstMachineId = 24530;
     public static boolean defaultRecipes = true;
@@ -58,10 +59,13 @@ public final class Config {
 
     public static boolean codexHints = true;
 
+    public static boolean machineEffects = true, flowTrails = true;
+    public static int effectRange = 32, machineHologramRange = 16;
+
     public static boolean aeEnabled = true;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.6.0";
+    private static final String VERSION = "0.7.0";
 
     private Config() {}
 
@@ -351,6 +355,28 @@ public final class Config {
             CODEX,
             codexHints,
             "Client: a line under bees, seed bags, phials, ... saying whether your team has done it once (NEI shows it too).");
+
+        c.setCategoryComment(
+            EFFECTS,
+            "How the echo machines show their work in the world: an effect above each while it works, trails to what the Mana Echo Spring, the Blood Echo and a pedestal's wireless module fill, and their holograms.");
+        machineEffects = c.getBoolean(
+            "machineEffects",
+            EFFECTS,
+            machineEffects,
+            "Client: an effect above an echo machine while it works (rings, motes, sparks in its colour).");
+        flowTrails = c.getBoolean(
+            "flowTrails",
+            EFFECTS,
+            flowTrails,
+            "Client: a trail from the Mana Echo Spring to each mana pool it fills, from the Blood Echo to its altar, and from a Flux Vis Pedestal to each player its wireless module charges.");
+        effectRange = c.getInt("effectRange", EFFECTS, effectRange, 0, 128, "Client: blocks within which they show.");
+        machineHologramRange = c.getInt(
+            "hologramRange",
+            EFFECTS,
+            machineHologramRange,
+            0,
+            64,
+            "Blocks within which an echo machine's hologram shows (each one's is off until switched on in its GUI or with a screwdriver on its side). 0 turns them all off.");
 
         c.setCategoryComment(AE, "Applied Energistics 2: the Echo ME Provider.");
         aeEnabled = c.getBoolean(

@@ -4,8 +4,9 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the mod's 16x16 textures. Run from the repository root: {@code java tools/Textures.java}.
- * Machine overlays go on top of GT's casings, so everything outside the drawn parts stays transparent. Each face comes
- * in three images: idle, working, and the working parts that glow in the dark.
+ * Machine faces go on top of the flux casing (drawn by {@code tools/FluxTextures.java}), so everything outside the
+ * drawn parts stays transparent. Each face comes in three images: idle, working (animated), and the working parts
+ * that glow in the dark (animated alike).
  */
 public class Textures {
 
@@ -204,17 +205,53 @@ public class Textures {
         return Math.max(dy * 1.1547, dx + dy * 0.57735);
     }
 
+    /** Frames of a working face's animation, and ticks each one shows. */
+    static final int FRAMES = 8, FRAME_TIME = 2;
+
+    /**
+     * Idle, working and glow images of a face. The working ones are animated: a ripple runs out from the middle
+     * through the glowing parts and a bright band sweeps across them, as the flux layer's echo passes.
+     */
     static void face(String name, Face f) throws Exception {
-        for (int mode = 0; mode < 3; mode++) {
-            boolean active = mode > 0, glowOnly = mode == 2;
-            BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
-                boolean[] glow = { false };
-                int c = f.at(x, y, active, glow);
-                if (c != 0 && (!glowOnly || glow[0])) img.setRGB(x, y, rgb(c));
+        BufferedImage idle = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage active = new BufferedImage(16, 16 * FRAMES, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage glowing = new BufferedImage(16, 16 * FRAMES, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            int c = f.at(x, y, false, new boolean[1]);
+            if (c != 0) idle.setRGB(x, y, rgb(c));
+            boolean[] glow = { false };
+            int a = f.at(x, y, true, glow);
+            if (a == 0) continue;
+            for (int frame = 0; frame < FRAMES; frame++) {
+                int shown = glow[0] ? pulse(a, x, y, frame) : a;
+                active.setRGB(x, frame * 16 + y, rgb(shown));
+                if (glow[0]) glowing.setRGB(x, frame * 16 + y, rgb(shown));
             }
-            save(img, name + (mode == 0 ? "" : mode == 1 ? "_active" : "_active_glow"));
         }
+        save(idle, name);
+        save(active, name + "_active");
+        save(glowing, name + "_active_glow");
+        mcmeta(name + "_active");
+        mcmeta(name + "_active_glow");
+    }
+
+    /** A glowing pixel in a frame: dimmed and brightened by the ripple, lifted towards white by the sweep. */
+    static int pulse(int c, int x, int y, int frame) {
+        double phase = frame * 2 * Math.PI / FRAMES;
+        double ripple = 0.82 + 0.18 * Math.sin(dist(x, y) * 0.9 - phase);
+        double band = (x + y) - frame * 32.0 / FRAMES;
+        double sweep = Math.max(0, 1 - Math.abs(band - 8) / 2.5) * 0.35;
+        int r = c >> 16 & 0xFF, g = c >> 8 & 0xFF, b = c & 0xFF;
+        r = (int) Math.min(255, r * ripple + (255 - r * ripple) * sweep);
+        g = (int) Math.min(255, g * ripple + (255 - g * ripple) * sweep);
+        b = (int) Math.min(255, b * ripple + (255 - b * ripple) * sweep);
+        return r << 16 | g << 8 | b;
+    }
+
+    static void mcmeta(String name) throws Exception {
+        java.nio.file.Files.write(
+            new File(ROOT + name + ".png.mcmeta").toPath(),
+            ("{\n  \"animation\": { \"frametime\": " + FRAME_TIME + " }\n}\n").getBytes());
     }
 
     static void item(String name, Face f) throws Exception {

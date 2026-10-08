@@ -154,6 +154,18 @@ public abstract class MTEThaumMachine extends MTEEchoMachine {
         return b.toString();
     }
 
+    /** Aspects the team knows and the shard credit left. */
+    @Override
+    protected String info() {
+        UUID team = team();
+        return encode(
+            "aspect.gui",
+            team == null ? 0
+                : AspectMemory.get()
+                    .count(team),
+            credit);
+    }
+
     @Override
     public void saveNBTData(NBTTagCompound t) {
         super.saveNBTData(t);
