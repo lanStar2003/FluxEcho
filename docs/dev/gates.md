@@ -128,12 +128,18 @@
    MinecraftForge.EVENT_BUS.register(h); FarDraw.add(h::onRenderLast);
    ```
    现有登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`。
-2. **相对 `RenderManager.renderPosX/Y/Z` 画**，距离和淡出也按它算，**不要用 `mc.thePlayer` 的位置**。回退路径里 `FarDraw.draw` 被调用时 renderPos 是门另一侧的摄像机，GL 已经转到本门、绑着离屏 FBO、开着 CLIP_PLANE0、着色器程序为 0。
+2. **相对 `RenderManager.renderPosX/Y/Z` 画**，距离和淡出也按它算，**不要用 `mc.thePlayer` 的位置**；朝向摄像机的公告板用 `RenderManager.instance.playerViewY/X`，不要用玩家的 `rotationYaw`。回退路径里 `FarDraw.draw` 被调用时（`GateClient.far`）：`renderPos*`、`RenderManager.viewerPos*`、`TileEntityRendererDispatcher.staticPlayer*` 都换成了门另一侧的摄像机，`playerViewY` 换成 carry 后的朝向；modelview 已经平移并旋转好，按 renderPos 相对坐标画的东西直接落在本门离屏图里的正确位置；绑着离屏 FBO、开着 CLIP_PLANE0、着色器程序为 0、`GL_TEXTURE_2D` 开着、光照和 lightmap 关着。
 3. `ShaderCompat.shadowPass()` 时直接返回。
-4. 容忍 `mc.renderViewEntity` 是 `GateCamera`、`RenderWorldLastEvent` 每帧最多重入 2 次（真实视图的嵌套 renderWorld）；需要区分时用 `Portal.inPass()`/`Portal.passGate()`。
+4. **容忍每帧被调用多次、而且不是站在玩家位置**：
+   - 真实视图（无光影）：嵌套 renderWorld 让 `RenderWorldLastEvent` 每帧最多多来 `PASSES=2` 次；这时 `mc.renderViewEntity` 是 `GateCamera`，`Portal.inPass()` 为真，`Portal.passGate()` 是摄像机正看出去的那扇（另一侧的）门。
+   - 回退画法（开光影包，也就是用户实际在用的情况）：`FarDraw.draw` 每帧对**每扇画了离屏图的门**各调一次（96 格内、在视锥里、已连接、人在门正面——没有固定上限）；这时 `renderViewEntity` 仍是玩家、`Portal.inPass()` 为 false，变的只有第 2 条列出的摄像机字段。
+   - 所以：动画按 `getTotalWorldTime() + partialTicks` 或系统时间算，不按调用次数推进；不要在 `onRenderLast` 里生成粒子、发包或改世界/全局状态（现有部件都是幂等的：清理过期条目可以，计数器自增不行）。
 - 任何部件抛异常 → `FarDraw.failed=true`，**所有**部件在本次运行内都不再画进门里。
 
-**服务端**：全息、轨迹的数据要发给隔门看得到的人，接收者用 `Sight.near(world, x, y, z, range)` 选（直接距离或隔门距离在 range 内），不能只按直线距离。现有调用方：`fluxdepths/holo/HoloNet.send`、`fluxlite/tile/TileControlCenter.pushHologram`、`codex/EchoNet.flow/holo`、中枢的全息。
+**服务端**：
+- **按距离挑接收者的包**（全息、轨迹；自己遍历 `playerEntities` 算距离的、`sendToAllAround` 的）必须改用 `Sight.near(world, x, y, z, range)`（直接距离或隔门距离在 range 内）。现有调用方：`fluxdepths/holo/HoloNet.send`、`fluxlite/tile/TileControlCenter.pushHologram`、`codex/EchoNet.flow/holo`。
+- **走区块观察者的数据不用管**：TE 描述包（`markBlockForUpdate` → `getDescriptionPacket`）、方块更新都发给 watch 那个区块的人，而 `Pins` 让 keepRange 内隔门看的人本来就 watch 门另一侧的区块；实体由 `MixinEntityTrackerEntry` 管。中枢（`nexus/TileMultiblock`）就是走描述包，所以没有 `Sight` 调用。
+- 两者的范围一致：`Pins` 和 `Sight` 都只算 keepRange（默认 48）内的门。
 
 ## 6. Mixin 与 AT
 
@@ -180,7 +186,7 @@ AT（`META-INF/fluxecho_at.cfg`）开放：`PlayerManager$PlayerInstance`、`Pla
 - 光影包下门里用简单画法：不经过光影、看不到别的模组在世界上画的东西和粒子（进出照样无缝）。门那边的声音听不到。门里的门不递归。
 - BLUEPRINT 3.10 说"偶尔用一个像素的剪裁框画一次"——现在是 `Angelica.walk`（不画）+ 16 格内 all-walk。
 - `BlockLightGate` 的 Javadoc 还用 0.8.1 的说法。
-- 推断：`Sight.LINES` 以 `EntityPlayerMP` 实例为 key，重生产生的新实例在旧实例登出前不会清理（`lines()` 对 `isDead` 返回空，不影响行为）。
+- `Sight.LINES` 以 `EntityPlayerMP` 为 key，但重生**不会**留下旧条目：1.7.10 的 `Entity.equals/hashCode` 按 `entityId`，`respawnPlayer` 把旧 id 设给新实例，所以新旧实例是同一个 key（已用 javap 核对），登出时 `Sight.forget` 一并清掉。
 
 ## 10. 测试（`src/test/java/com/fluxecho/logic/`）
 

@@ -75,7 +75,7 @@
 4. `worldEnd()`：popAttrib 后**手动** `glEnable(GL_TEXTURE_2D)` 和 `glColor4f(1,1,1,1)`（"Angelica only tells the shader pipeline about glEnable / glDisable, and whatever is drawn next would come out white"）。
 5. **只用 quads**（Angelica 的 tessellator 到处都按 quads；三角形用"重复一个角"的 quad），不用 QUAD_STRIP/TRIANGLE_FAN。⚠ `MachineHolo.beam()` 还在用 `GL_TRIANGLES`，未验证。
 6. 文字 alpha 下限 5（字体渲染器把接近 0 当不透明）。
-7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画；服务端发包用 `gate.Sight.near`。
+7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画，每帧可能被调用多次；服务端按距离挑接收者的包用 `gate.Sight.near`（TE 描述包不用）。细节见 [gates.md](gates.md) §5。
 8. 世界里的东西相对相机画、每处理器 try/finally 恢复状态；全息默认关、可切换。
 
 ## 5. 图鉴与账本（`codex/`）
