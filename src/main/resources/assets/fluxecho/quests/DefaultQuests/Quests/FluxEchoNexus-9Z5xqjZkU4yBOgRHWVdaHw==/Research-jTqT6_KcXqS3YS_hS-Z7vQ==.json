@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -487390879970799143,
+      "questIDLow:4": -7985830019142941520
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "中枢界面里点「星图」。每颗星是一项研究：\n\n• 开始时从背包里扣掉材料，之后中枢用算力慢慢推（相位 I 每秒 20 算力）；\n• 研究属于团队：别的团队用通量终端潜行右键核心，把终端绑定上来（要主人打开「开放绑定」），就和这座中枢共享研究；\n• 灰掉的星要等以后的相位。\n\n[note]先研究「内环」：中枢周围开出两个模块槽位。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:flux_crystal"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d研究星图",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -8270135124115562844,
+  "questIDLow:4": -5232848647340262467,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

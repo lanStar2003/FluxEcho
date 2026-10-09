@@ -14,10 +14,18 @@ import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.RecipeCheck;
 import com.fluxecho.crops.CropModule;
+import com.fluxecho.frame.Formed;
+import com.fluxecho.frame.FrameEvents;
+import com.fluxecho.frame.FrameModule;
 import com.fluxecho.gate.GateModule;
+import com.fluxecho.library.LibraryModule;
 import com.fluxecho.mana.ManaModule;
+import com.fluxecho.matter.MatterModule;
 import com.fluxecho.mobs.MobModule;
+import com.fluxecho.nexus.NexusModule;
+import com.fluxecho.nexus.NexusNet;
 import com.fluxecho.quest.QuestInstaller;
+import com.fluxecho.research.ResearchData;
 import com.fluxecho.thaumcraft.TCModule;
 
 import cpw.mods.fml.common.Mod;
@@ -72,6 +80,11 @@ public class FluxEcho {
         Mods.detect();
         QuestInstaller.preInit(e.getModConfigurationDirectory());
         CodexModule.preInit();
+        MatterModule.preInit();
+        FrameModule.preInit();
+        NexusModule.preInit();
+        LibraryModule.preInit();
+        NexusNet.init();
         GateModule.preInit();
         if (Mods.forestry) BeeModule.preInit();
         if (Mods.thaumcraft) TCModule.preInit();
@@ -90,12 +103,18 @@ public class FluxEcho {
         if (Mods.ic2) CropModule.machines();
         if (Mods.botania) ManaModule.machines();
         GateModule.init();
+        NexusModule.init();
+        LibraryModule.init();
         proxy.init();
     }
 
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent e) {
         CodexModule.postInit();
+        MatterModule.postInit();
+        FrameModule.postInit();
+        NexusModule.postInit();
+        LibraryModule.postInit();
         GateModule.postInit();
         if (Mods.forestry) BeeModule.postInit();
         if (Mods.thaumcraft) TCModule.postInit();
@@ -123,6 +142,10 @@ public class FluxEcho {
     @Mod.EventHandler
     public void serverStopped(FMLServerStoppedEvent e) {
         EchoLedger.reset();
+        ResearchData.reset();
+        Formed.clearServer();
+        FrameEvents.clear();
+        NexusModule.serverStopped();
         GateModule.serverStopped();
         if (Mods.thaumcraft) TCModule.serverStopped();
     }

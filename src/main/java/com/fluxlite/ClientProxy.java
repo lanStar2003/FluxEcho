@@ -11,6 +11,7 @@ import com.fluxlite.gui.ConnectorScreen;
 import com.fluxlite.gui.ControlCenterScreen;
 import com.fluxlite.gui.GuiHost;
 import com.fluxlite.gui.Highlighter;
+import com.fluxlite.gui.TerminalScreen;
 import com.fluxlite.tile.TileControlCenter;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
@@ -49,6 +50,6 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void openTerminalGui(EntityPlayer player) {
         Minecraft.getMinecraft()
-            .displayGuiScreen(new GuiHost(ControlCenterScreen.handheld()));
+            .displayGuiScreen(new GuiHost(new TerminalScreen()));
     }
 }

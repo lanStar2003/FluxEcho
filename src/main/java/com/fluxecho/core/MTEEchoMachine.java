@@ -17,6 +17,7 @@ import com.fluxecho.Config;
 import com.fluxecho.client.MachineFx;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.library.Lending;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
@@ -127,9 +128,14 @@ public abstract class MTEEchoMachine extends MTEBasicMachine implements IBindPla
         return mInventory[getInputSlot() + n];
     }
 
-    /** The sample in the special slot. */
+    /**
+     * The sample in the special slot; for a written library index card, the sample an Echo Library of the team lends
+     * for it (null while none does).
+     */
     protected ItemStack sample() {
-        return mInventory[getSpecialSlotIndex()];
+        ItemStack s = mInventory[getSpecialSlotIndex()];
+        if (Lending.isCard(s)) return Lending.resolve(s, world(), team());
+        return s;
     }
 
     protected World world() {
@@ -261,6 +267,18 @@ public abstract class MTEEchoMachine extends MTEBasicMachine implements IBindPla
         }
         if (hologram && Config.machineHologramRange > 0 && tick % 10 == 0)
             EchoNet.holo(base, EchoNet.HOLO_MACHINE, holoData(), Config.machineHologramRange);
+        if (tick % 100 == 0) {
+            String st = shownStatus();
+            Directory.report(
+                base.getWorld(),
+                base.getXCoord(),
+                base.getYCoord(),
+                base.getZCoord(),
+                team(),
+                "gt.blockmachines." + getMetaName() + ".name",
+                "fluxecho.status." + st,
+                Directory.level(st));
+        }
     }
 
     /** What the hologram shows. */

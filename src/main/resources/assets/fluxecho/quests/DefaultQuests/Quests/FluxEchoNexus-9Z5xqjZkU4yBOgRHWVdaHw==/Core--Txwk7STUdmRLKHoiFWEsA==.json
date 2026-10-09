@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 3879871326836511672,
+      "questIDLow:4": -9201649230028136971
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "4 块通量结晶、回响图鉴、2 块 HV 电路板、HV 机械外壳、通量监控台。\n\n• 核心放在八角形底座正前方的边缘，朝外；物品提示按住 Shift 看结构，NEI 里能看三维预览，StructureLib 投影仪可以自动搭；\n• 从团队无线电网取电维持，默认 512 EU/t；没电时研究和显化都停下；\n• 成型后：晶核浮在光柱上，顶上的环转起来。\n\n[note]第一次成型就完成研究「锚定」，星图从这里展开。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:nexus"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l通量中枢核心",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -487390879970799143,
+  "questIDLow:4": -7985830019142941520,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxecho:nexus"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

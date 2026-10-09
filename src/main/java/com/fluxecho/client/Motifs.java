@@ -32,18 +32,18 @@ public final class Motifs {
 
     // ---- helpers
 
-    static void dot(double x, double y, double s, int rgb, float a) {
+    public static void dot(double x, double y, double s, int rgb, float a) {
         rect(x - s / 2, y - s / 2, x + s / 2, y + s / 2, rgb, a);
     }
 
     /** Dots along a line. */
-    static void line(double x0, double y0, double x1, double y1, double s, int rgb, float a) {
+    public static void line(double x0, double y0, double x1, double y1, double s, int rgb, float a) {
         int n = (int) Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / Math.max(0.5, s * 0.7)));
         for (int i = 0; i <= n; i++) dot(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, s, rgb, a);
     }
 
     /** Dots around a circle. */
-    static void ring(double cx, double cy, double r, int n, double s, int rgb, float a) {
+    public static void ring(double cx, double cy, double r, int n, double s, int rgb, float a) {
         for (int i = 0; i < n; i++) {
             double ang = i * 2 * Math.PI / n;
             dot(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, s, rgb, a);
@@ -51,13 +51,13 @@ public final class Motifs {
     }
 
     /** A flat-topped hexagon of radius r. */
-    static void hex(double cx, double cy, double r, int rgb, float a) {
+    public static void hex(double cx, double cy, double r, int rgb, float a) {
         double hh = r * 0.87;
         trapezoid(cx, cy - hh, r * 0.5, cy, r, rgb, a, rgb, a);
         trapezoid(cx, cy, r, cy + hh, r * 0.5, rgb, a, rgb, a);
     }
 
-    static int mix(int x, int y, double f) {
+    public static int mix(int x, int y, double f) {
         f = Math.max(0, Math.min(1, f));
         int r = (int) ((x >> 16 & 0xFF) * (1 - f) + (y >> 16 & 0xFF) * f);
         int g = (int) ((x >> 8 & 0xFF) * (1 - f) + (y >> 8 & 0xFF) * f);
@@ -66,7 +66,7 @@ public final class Motifs {
     }
 
     /** A fixed pseudo-random 0..1 for an index. */
-    static double hash(int i) {
+    public static double hash(int i) {
         double v = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
         return v - Math.floor(v);
     }

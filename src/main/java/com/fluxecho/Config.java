@@ -15,7 +15,7 @@ public final class Config {
 
     private static final String GENERAL = "general", QUESTS = "quests", BEES = "bees", THAUM = "thaumcraft",
         BLOOD = "bloodmagic", MOBS = "mobs", CROPS = "crops", MANA = "botania", CODEX = "codex", AE = "ae2",
-        EFFECTS = "effects", GATES = "gates";
+        EFFECTS = "effects", GATES = "gates", NEXUS = "nexus";
 
     public static int firstMachineId = 24530;
     public static boolean defaultRecipes = true;
@@ -58,6 +58,11 @@ public final class Config {
         manaHologramRange = 16;
 
     public static boolean codexHints = true;
+
+    public static boolean nexusEnabled = true, nexusEffects = true;
+    public static double gritChance = 0.15, researchScale = 1.0;
+    public static int crystalGrit = 3, nexusUpkeep = 512, nexusCompute = 20, innerRadius = 32, recordCooldown = 24000,
+        manifestEut = 480, libraryUpkeep = 128, libraryCapacity = 27, nexusEffectRange = 128;
 
     public static boolean machineEffects = true, flowTrails = true;
     public static int effectRange = 32, machineHologramRange = 16;
@@ -358,6 +363,90 @@ public final class Config {
             CODEX,
             codexHints,
             "Client: a line under bees, seed bags, phials, ... saying whether your team has done it once (NEI shows it too).");
+
+        c.setCategoryComment(
+            NEXUS,
+            "The Flux Nexus (from HV): the flux materials, the nexus itself, its research and the modules docked on its rings. Energy comes from the owner's team wireless network.");
+        nexusEnabled = c.getBoolean(
+            "enabled",
+            NEXUS,
+            nexusEnabled,
+            "Switch the nexus and its modules off: no recipes, and placed ones stop working (they stay in the world). The flux materials stay.");
+        gritChance = c.get(
+            NEXUS,
+            "gritChance",
+            gritChance,
+            "Chance that a Flux Shard Collector gives off one flux grit with each ore it condenses (0-1). The only source of flux grit.",
+            0,
+            1)
+            .getDouble();
+        crystalGrit = c
+            .getInt("crystalGrit", NEXUS, crystalGrit, 1, 64, "Flux grit per flux crystal in GT's autoclave.");
+        nexusUpkeep = c.getInt(
+            "upkeepEuPerTick",
+            NEXUS,
+            nexusUpkeep,
+            0,
+            Integer.MAX_VALUE,
+            "EU/t a formed nexus draws from its owner's team wireless network to stay anchored (phase I).");
+        nexusCompute = c.getInt(
+            "computePerSecond",
+            NEXUS,
+            nexusCompute,
+            0,
+            1_000_000,
+            "Flux compute a formed, powered nexus produces each second (phase I); research runs on it.");
+        researchScale = c
+            .get(
+                NEXUS,
+                "researchCostScale",
+                researchScale,
+                "Multiplies the compute every research takes (0.1 = ten times faster).",
+                0.01,
+                100)
+            .getDouble();
+        manifestEut = c.getInt(
+            "manifestEuPerTick",
+            NEXUS,
+            manifestEut,
+            1,
+            Integer.MAX_VALUE,
+            "EU/t the nexus's manifestation table draws on top of the upkeep while it makes something.");
+        recordCooldown = c.getInt(
+            "recordCooldownTicks",
+            NEXUS,
+            recordCooldown,
+            0,
+            Integer.MAX_VALUE,
+            "Ticks before the same Echo Codex entry can be pressed into an echo crystal again (24000 = one day).");
+        innerRadius = c.getInt(
+            "innerRingRadius",
+            NEXUS,
+            innerRadius,
+            12,
+            128,
+            "Blocks from the nexus's centre to the centre of each inner ring slot. Changing it moves the slots of nexuses already built.");
+        libraryUpkeep = c.getInt(
+            "libraryUpkeepEuPerTick",
+            NEXUS,
+            libraryUpkeep,
+            0,
+            Integer.MAX_VALUE,
+            "EU/t a docked Echo Library draws while it lends samples.");
+        libraryCapacity = c
+            .getInt("librarySamples", NEXUS, libraryCapacity, 1, 54, "Samples an Echo Library keeps (one of each).");
+        nexusEffects = c.getBoolean(
+            "effects",
+            NEXUS,
+            nexusEffects,
+            "Client: draw the formed nexus and its modules (floating rings, light column, bridges, the library's depths). Off: the bare blocks.");
+        nexusEffectRange = c.getInt(
+            "effectRange",
+            NEXUS,
+            nexusEffectRange,
+            16,
+            512,
+            "Client: blocks within which a formed nexus and its modules are drawn.");
 
         c.setCategoryComment(
             EFFECTS,

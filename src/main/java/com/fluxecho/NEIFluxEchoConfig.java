@@ -10,6 +10,8 @@ import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.mana.SpringNei;
 import com.fluxecho.nei.FluxRecipeHandler;
+import com.fluxecho.nei.ManifestHandler;
+import com.fluxecho.nexus.NexusModule;
 
 import codechicken.nei.SearchField;
 import codechicken.nei.api.API;
@@ -38,6 +40,7 @@ public class NEIFluxEchoConfig implements IConfigureNEI {
             new SearchField.SearchParserProvider('@', "modName", EnumChatFormatting.LIGHT_PURPLE, Filter::new));
         if (Mods.botania) SpringNei.register();
         FluxRecipeHandler.registerAll(EnumSet.complementOf(EnumSet.of(MachineId.MANA_ECHO)), EchoRecipeMaps::get);
+        if (NexusModule.core != null) ManifestHandler.register();
     }
 
     @Override

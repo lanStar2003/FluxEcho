@@ -8,11 +8,14 @@ public final class Kinds {
     public static final int CONNECTOR_EDIT = 1;
     public static final int CC_REQUEST = 2;
     public static final int CC_ACTION = 3;
+    /** The handheld terminal's FluxEcho pages (machines, research, nexus): "termPage". */
+    public static final int TERM_REQUEST = 4;
 
     // server -> client
     public static final int CONNECTOR_DATA = 0;
     public static final int CC_DATA = 1;
     public static final int HOLO_DATA = 2;
+    public static final int TERM_DATA = 3;
 
     // connector edits
     public static final int OP_NAME = 0;

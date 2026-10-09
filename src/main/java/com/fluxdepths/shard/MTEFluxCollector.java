@@ -18,6 +18,8 @@ import net.minecraftforge.fluids.FluidStack;
 import com.fluxdepths.Config;
 import com.fluxdepths.holo.HoloNet;
 import com.fluxdepths.item.ItemImprint;
+import com.fluxecho.core.Directory;
+import com.fluxecho.core.Owners;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
@@ -218,6 +220,20 @@ public class MTEFluxCollector extends MTEBasicMachine implements IBindPlayerInve
         } else if (mStuttering) state.status = ShardState.Status.NO_POWER;
         else if (state.status == ShardState.Status.NO_POWER) state.status = ShardState.Status.WORKING;
         if (hologram && Config.hologramRange > 0 && tick % 10 == 0) HoloNet.send(this);
+        if (tick % 100 == 0) {
+            ShardState.Status st = state.status;
+            Directory.report(
+                base.getWorld(),
+                base.getXCoord(),
+                base.getYCoord(),
+                base.getZCoord(),
+                Owners.team(base.getOwnerUuid()),
+                "gt.blockmachines." + getMetaName() + ".name",
+                "fluxdepths.status." + st.name()
+                    .toLowerCase(),
+                st == ShardState.Status.WORKING ? Directory.WORKING
+                    : st == ShardState.Status.IDLE ? Directory.IDLE : Directory.PROBLEM);
+        }
     }
 
     /**

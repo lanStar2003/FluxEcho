@@ -9,6 +9,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import com.fluxdepths.Config;
 import com.fluxdepths.item.ItemImprint;
+import com.fluxecho.matter.Grit;
 
 import gregtech.api.enums.ItemList;
 
@@ -90,6 +91,12 @@ public final class ShardWork {
         }
         if (tank != null) tank.amount -= tier.fluidPerOre;
         m.mOutputItems[0] = ore;
+        // flux grit (FluxEcho's nexus materials) falls out now and then; it never holds the ore up
+        ItemStack grit = Grit.roll(
+            world.rand,
+            m.getBaseMetaTileEntity()
+                .getOwnerUuid());
+        m.mOutputItems[1] = grit != null && m.fits(grit) ? grit : null;
         m.mEUt = tier.energy;
         m.mMaxProgresstime = tier.ticks;
         s.status = ShardState.Status.WORKING;

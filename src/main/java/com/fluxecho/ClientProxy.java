@@ -3,6 +3,7 @@ package com.fluxecho;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraftforge.client.ClientCommandHandler;
+import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.common.MinecraftForge;
 
 import com.fluxecho.client.FlowFx;
@@ -10,9 +11,14 @@ import com.fluxecho.client.MachineFx;
 import com.fluxecho.client.MachineHolo;
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
+import com.fluxecho.frame.client.FrameClient;
 import com.fluxecho.gate.client.GateClient;
 import com.fluxecho.mana.ManaHolo;
+import com.fluxecho.matter.MatterModule;
+import com.fluxecho.matter.client.EchoCrystalRender;
 import com.fluxecho.nei.NeiCheck;
+import com.fluxecho.nexus.TileMultiblock;
+import com.fluxecho.nexus.client.NexusRender;
 import com.fluxecho.thaumcraft.TCClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -28,6 +34,10 @@ public class ClientProxy extends CommonProxy {
             .bus()
             .register(tips);
         MachineFx.register();
+        FrameClient.register();
+        TileMultiblock.clientWorld = net.minecraft.client.multiplayer.WorldClient.class;
+        NexusRender.register();
+        MinecraftForgeClient.registerItemRenderer(MatterModule.echoCrystal, new EchoCrystalRender());
         MachineHolo.register();
         FlowFx.register();
         GateClient.register();

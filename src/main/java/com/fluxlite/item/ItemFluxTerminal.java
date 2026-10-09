@@ -53,6 +53,13 @@ public class ItemFluxTerminal extends Item {
         return stack;
     }
 
+    /** Sneak-right-click on a Flux Nexus's core binds the terminal to it (FluxEcho's nexus). */
+    @Override
+    public boolean onItemUseFirst(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
+        float hitX, float hitY, float hitZ) {
+        return com.fluxecho.nexus.NexusBinding.use(stack, player, world, x, y, z);
+    }
+
     /** Whether this terminal charges (on unless switched off). */
     public static boolean chargingOn(ItemStack s) {
         return s != null && s.getItem() instanceof ItemFluxTerminal
@@ -81,6 +88,10 @@ public class ItemFluxTerminal extends Item {
     public void addInformation(ItemStack stack, EntityPlayer player, List list, boolean advanced) {
         String base = getUnlocalizedName() + ".desc.";
         list.add(EnumChatFormatting.GRAY + StatCollector.translateToLocal(base + "0"));
+        int[] nexus = com.fluxecho.nexus.NexusBinding.bound(stack);
+        if (nexus != null) list.add(
+            EnumChatFormatting.LIGHT_PURPLE + StatCollector
+                .translateToLocalFormatted("fluxlite.terminal.bound", nexus[0], nexus[1], nexus[2], nexus[3]));
         if (Config.chargingEnabled) list.add(
             chargingOn(stack) ? EnumChatFormatting.AQUA + StatCollector.translateToLocal("fluxlite.terminal.charging")
                 : EnumChatFormatting.DARK_GRAY + StatCollector.translateToLocal("fluxlite.terminal.not_charging"));

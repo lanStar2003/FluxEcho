@@ -1,0 +1,38 @@
+{
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "回响机器一台一台地把通量层的记忆引回地面；记得越多，通量层就越「重」，开始在现实里凝结。\n\n通量中枢是钉进通量层的一根桩：一座 11×11 的八角形构架，中心浮着一颗晶核。研究、显化、模块都从这里开始。\n\n[note]这一条线从凝结出的第一种物质开始：通量碎屑。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:nexus"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l通量中枢",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 7999036481728372062,
+  "questIDLow:4": -7679212312158533525,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

@@ -72,6 +72,12 @@ public final class ServerPackets {
                     if (ItemFluxTerminal.carries(player)) ControlCenterView.action(player, null, d);
                 } else if (te instanceof TileControlCenter cc) ControlCenterView.action(player, cc, d);
             }
+            case Kinds.TERM_REQUEST -> {
+                if (ItemFluxTerminal.carries(player)) Net.toClient(
+                    player,
+                    Kinds.TERM_DATA,
+                    com.fluxecho.nexus.TerminalView.build(player, d.getInteger("termPage")));
+            }
             default -> {}
         }
     }

@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -2689557034280723221,
+      "questIDLow:4": -8792107164758220760
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "第一个模块。研究「回响书库」（要先研究内环和回响晶），在显化台用 4 块回响晶、回响图鉴、2 块 HV 电路板、16 本书显化出书库核心。\n\n• 9×9 的模块地基上立一个 7×7×7 的立方体：棱是构架支柱，侧面和顶面是回响书格（工作台合成，一块回响晶配出 8 块，模块地基也是）；\n• 地基中心对准中枢内环的一个槽位（拿着通量终端会看到槽位的轮廓），停靠上去才工作，从团队无线电网再取 128 EU/t；\n• 样本槽放回响机器用的样本，每种存一份。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:library"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l回响书库",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -8733918740278651781,
+  "questIDLow:4": -6925954353649385374,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 0,
+          "OreDict:8": "",
+          "id:8": "fluxecho:library"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

@@ -12,6 +12,9 @@ import net.minecraft.nbt.NBTTagList;
 /** The client's copy of its team's ledger, as the server last sent it. Empty until then. */
 public final class ClientLedger {
 
+    /** The key the team's research comes under: no category is called that. */
+    public static final String RESEARCH = "@research";
+
     private static volatile Map<String, Set<String>> done = Collections.emptyMap();
 
     private ClientLedger() {}
@@ -35,6 +38,19 @@ public final class ClientLedger {
 
     public static boolean has(String category, String key) {
         return keys(category).contains(key);
+    }
+
+    /** The research nodes the team has done. */
+    public static Set<String> research() {
+        return keys(RESEARCH);
+    }
+
+    /** Entries of every category, the research left out. */
+    public static int records() {
+        int n = 0;
+        for (Map.Entry<String, Set<String>> e : done.entrySet()) if (!RESEARCH.equals(e.getKey())) n += e.getValue()
+            .size();
+        return n;
     }
 
     /** Leaving a world: the next one sends its own. */

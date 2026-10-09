@@ -50,7 +50,7 @@ public class ControlCenterScreen extends UiScreen {
         this(dim, x, y, z, false);
     }
 
-    private ControlCenterScreen(int dim, int x, int y, int z, boolean hand) {
+    protected ControlCenterScreen(int dim, int x, int y, int z, boolean hand) {
         this.dim = dim;
         this.bx = x;
         this.by = y;
@@ -185,13 +185,19 @@ public class ControlCenterScreen extends UiScreen {
                 onClick(lx, y + 20, lw, 11, this::nextTeam);
             }
         }
+        float rail = rail();
+        if (rail > 0) rail(c, x + 14, y + 38, h - 50);
+        if (page(c, x + 14 + rail, y + 38, w - 28 - rail, h - 50)) {
+            menus(c);
+            return;
+        }
         String[] tabs = { tr("fluxlite.gui.tab.overview"), tr("fluxlite.gui.tab.devices"),
             tr("fluxlite.gui.tab.alerts"), tr("fluxlite.gui.tab.settings") };
         int[] badges = { 0, 0, data == null ? 0 : data.getInteger("alerts"), 0 };
         float segW = segmentedWidth(c, tabs, badges);
         segmented(c, x + w - 28 - segW, y + 12, tabs, tab, this::go, badges);
 
-        float cx = x + 14, cy = y + 38, cw = w - 28, ch = h - 38 - 12;
+        float cx = x + 14 + rail, cy = y + 38, cw = w - 28 - rail, ch = h - 38 - 12;
         if (data == null) {
             textCenter(c, tr("fluxlite.gui.loading"), cx + cw / 2, cy + ch / 2 - 4, Theme.LABEL2, 1);
             return;
@@ -207,6 +213,19 @@ public class ControlCenterScreen extends UiScreen {
             default -> overview(c, cx, cy, cw, ch);
         }
         menus(c);
+    }
+
+    /** Width of a page rail on the left of the content (none here). */
+    protected float rail() {
+        return 0;
+    }
+
+    /** Draws the rail. */
+    protected void rail(Canvas c, float x, float y, float h) {}
+
+    /** Draws a page other than the dashboard; false to draw the dashboard. */
+    protected boolean page(Canvas c, float x, float y, float w, float h) {
+        return false;
     }
 
     private void nextTeam() {

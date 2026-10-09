@@ -19,6 +19,8 @@ import com.fluxdepths.shard.DrillHead;
 import com.fluxdepths.shard.DrillHeads;
 import com.fluxdepths.shard.ShardText;
 import com.fluxdepths.shard.ShardTextures;
+import com.fluxecho.core.Directory;
+import com.fluxecho.core.Owners;
 
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -77,6 +79,20 @@ public class MTEFluidPump extends MTEBasicMachine {
     private int idle(String why) {
         status = why;
         return 0;
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity base, long tick) {
+        super.onPostTick(base, tick);
+        if (base.isServerSide() && tick % 100 == 0) Directory.report(
+            base.getWorld(),
+            base.getXCoord(),
+            base.getYCoord(),
+            base.getZCoord(),
+            Owners.team(base.getOwnerUuid()),
+            "gt.blockmachines." + getMetaName() + ".name",
+            "fluxdepths.pump.status." + status,
+            "working".equals(status) ? Directory.WORKING : "idle".equals(status) ? Directory.IDLE : Directory.PROBLEM);
     }
 
     @Override

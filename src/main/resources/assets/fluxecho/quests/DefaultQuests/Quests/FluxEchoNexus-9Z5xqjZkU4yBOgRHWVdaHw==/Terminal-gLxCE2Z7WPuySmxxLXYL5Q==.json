@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -487390879970799143,
+      "questIDLow:4": -7985830019142941520
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "FluxLite 的通量终端多了四页：\n\n• 机器：团队所有回响机器、碎片采集器、泵的状态和坐标，出问题的标红；\n• 图鉴：团队的回响记录；\n• 研究、中枢：绑定的中枢的研究进度、可以开始的研究、停靠的模块。\n\n潜行右键中枢核心绑定，再潜行右键一次解除。",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxlite:terminal"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d通量终端",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -9170382090142000901,
+  "questIDLow:4": -5599543953331975195,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

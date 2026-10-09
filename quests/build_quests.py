@@ -717,6 +717,111 @@ def echo_general():
         item("fluxecho:codex"), [(codex, (0, 24))], [])
 
 
+def echo_nexus():
+    lore = quest(
+        "echo_nexus/lore", "§d§l通量中枢",
+        "回响机器一台一台地把通量层的记忆引回地面；记得越多，通量层就越「重」，开始在现实里凝结。\n\n"
+        "通量中枢是钉进通量层的一根桩：一座 11×11 的八角形构架，中心浮着一颗晶核。"
+        "研究、显化、模块都从这里开始。\n\n"
+        "[note]这一条线从凝结出的第一种物质开始：通量碎屑。[/note]",
+        item("fluxecho:nexus"),
+        [checkbox()])
+    grit = quest(
+        "echo_nexus/grit", "§d通量碎屑",
+        "通量碎片采集器每凝结一次矿石，有 15% 的几率多出一份通量碎屑，放在第二个输出槽。\n\n"
+        "[note]只有碎片采集器会出碎屑。研究「碎屑产出」以后几率 ×1.5。[/note]",
+        item("fluxecho:flux_grit"),
+        [retrieval(item("fluxecho:flux_grit", 0, 6))],
+        pre=["echo_nexus/lore"])
+    crystal = quest(
+        "echo_nexus/crystal", "§d通量结晶",
+        "GT 高压釜：3 份通量碎屑、1 份末影珍珠粉、250 L 蒸馏水，MV（120 EU/t）30 秒，长成 1 块通量结晶。\n\n"
+        "构架、导能柱、晶核座和中枢核心都要用它。",
+        item("fluxecho:flux_crystal"),
+        [retrieval(item("fluxecho:flux_crystal", 0, 4))],
+        pre=["echo_nexus/grit"])
+    frame = quest(
+        "echo_nexus/frame", "§d构架",
+        "工作台合成，都用不锈钢：\n\n"
+        "• 构架基座 ×8：石砖、不锈钢板、通量碎屑；导能基座 ×4：萤石、基座、通量结晶；\n"
+        "• 构架支柱 ×4：6 根不锈钢杆、通量碎屑；导能柱：通量结晶、玻璃板、支柱；\n"
+        "• 悬浮环段 ×4：5 块不锈钢板、通量结晶；晶核座：4 块通量结晶、末影之眼、HV 机械外壳、3 块不锈钢板。\n\n"
+        "一座相位 I 的中枢要 96 块基座（八条辐线是导能基座）、16 根支柱、3 根导能柱、1 个晶核座、16 个环段。"
+        "成型以后支柱溶解成悬浮的支撑件，可以穿过去。",
+        item("fluxecho:frame", 5),
+        [retrieval(item("fluxecho:frame", 5))],
+        pre=["echo_nexus/crystal"])
+    core = quest(
+        "echo_nexus/core", "§d§l通量中枢核心",
+        "4 块通量结晶、回响图鉴、2 块 HV 电路板、HV 机械外壳、通量监控台。\n\n"
+        "• 核心放在八角形底座正前方的边缘，朝外；物品提示按住 Shift 看结构，NEI 里能看三维预览，"
+        "StructureLib 投影仪可以自动搭；\n"
+        "• 从团队无线电网取电维持，默认 512 EU/t；没电时研究和显化都停下；\n"
+        "• 成型后：晶核浮在光柱上，顶上的环转起来。\n\n"
+        "[note]第一次成型就完成研究「锚定」，星图从这里展开。[/note]",
+        item("fluxecho:nexus"),
+        [retrieval(item("fluxecho:nexus"))],
+        pre=["echo_nexus/frame"])
+    research = quest(
+        "echo_nexus/research", "§d研究星图",
+        "中枢界面里点「星图」。每颗星是一项研究：\n\n"
+        "• 开始时从背包里扣掉材料，之后中枢用算力慢慢推（相位 I 每秒 20 算力）；\n"
+        "• 研究属于团队：别的团队用通量终端潜行右键核心，把终端绑定上来（要主人打开「开放绑定」），"
+        "就和这座中枢共享研究；\n"
+        "• 灰掉的星要等以后的相位。\n\n"
+        "[note]先研究「内环」：中枢周围开出两个模块槽位。[/note]",
+        item("fluxecho:flux_crystal"),
+        [checkbox()],
+        pre=["echo_nexus/core"])
+    echo = quest(
+        "echo_nexus/echo_crystal", "§d回响晶",
+        "研究「回响晶」要团队的图鉴里至少有 5 条记录。\n\n"
+        "研究完，中枢的显化台就能做回响晶：1 块通量结晶加一条图鉴记录，把这条记录压进结晶里。"
+        "记录本身不消耗，但同一条记录压过一次要休息 20 分钟；所有记录都在休息时显化台就等着。\n\n"
+        "NEI 里查回响晶或中枢核心能看到显化台的全部配方。",
+        item("fluxecho:echo_crystal"),
+        [retrieval(item("fluxecho:echo_crystal"), ignore_nbt=True)],
+        pre=["echo_nexus/research"])
+    library = quest(
+        "echo_nexus/library", "§d§l回响书库",
+        "第一个模块。研究「回响书库」（要先研究内环和回响晶），在显化台用 4 块回响晶、回响图鉴、"
+        "2 块 HV 电路板、16 本书显化出书库核心。\n\n"
+        "• 9×9 的模块地基上立一个 7×7×7 的立方体：棱是构架支柱，侧面和顶面是回响书格（工作台合成，"
+        "一块回响晶配出 8 块，模块地基也是）；\n"
+        "• 地基中心对准中枢内环的一个槽位（拿着通量终端会看到槽位的轮廓），停靠上去才工作，"
+        "从团队无线电网再取 128 EU/t；\n"
+        "• 样本槽放回响机器用的样本，每种存一份。",
+        item("fluxecho:library"),
+        [retrieval(item("fluxecho:library"))],
+        pre=["echo_nexus/echo_crystal"])
+    card = quest(
+        "echo_nexus/card", "§d书库索引卡",
+        "显化台：1 块回响晶、8 张纸，出 8 张空白索引卡。\n\n"
+        "空白卡放进书库的写卡台，用箭头选一个样本，书库就给它写卡。写好的卡放进回响机器的样本槽，"
+        "就当作那个样本用：一份样本，全队的机器都能借。\n\n"
+        "[note]要书库停靠着、有电。研究「书库远借」以后，别的维度的机器也能借。[/note]",
+        item("fluxecho:library_card"),
+        [retrieval(item("fluxecho:library_card"), ignore_nbt=True)],
+        pre=["echo_nexus/library"])
+    terminal = quest(
+        "echo_nexus/terminal", "§d通量终端",
+        "FluxLite 的通量终端多了四页：\n\n"
+        "• 机器：团队所有回响机器、碎片采集器、泵的状态和坐标，出问题的标红；\n"
+        "• 图鉴：团队的回响记录；\n"
+        "• 研究、中枢：绑定的中枢的研究进度、可以开始的研究、停靠的模块。\n\n"
+        "潜行右键中枢核心绑定，再潜行右键一次解除。",
+        item("fluxlite:terminal"),
+        [checkbox()],
+        pre=["echo_nexus/core"], main=False)
+    placed = [(lore, (0, 48)), (grit, (40, 48)), (crystal, (80, 48)), (frame, (120, 48)), (core, (160, 48)),
+              (research, (200, 48)), (echo, (240, 48)), (library, (280, 48)), (card, (320, 48)),
+              (terminal, (200, 0))]
+    return write_line(
+        "line/echo_nexus", "FluxEchoNexus", "§d通量回响 · 通量中枢",
+        "通量层在现实里凝结：碎屑、结晶、构架，一座中枢，一张研究星图，和第一个模块回响书库。",
+        item("fluxecho:nexus"), placed, [])
+
+
 if __name__ == "__main__":
     # GTNH names a quest line after its id as url-safe base64 of the two longs; check against one of its own
     probe = struct.pack(">qq", 3630150074513574271, -7072631871726141045)
@@ -724,6 +829,6 @@ if __name__ == "__main__":
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)
     lines = [lazy_ae(), shards(), echo_bees(), echo_thaum(), echo_blood(), echo_prey(), echo_crops(), echo_mana(),
-             echo_general()]
+             echo_general(), echo_nexus()]
     dump(INDEX, {"lines": lines})
     print("\n".join(entry["order"] for entry in lines))

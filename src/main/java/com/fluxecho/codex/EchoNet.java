@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 
@@ -16,6 +18,7 @@ import com.fluxecho.client.FlowStore;
 import com.fluxecho.client.HoloStore;
 import com.fluxecho.core.Owners;
 import com.fluxecho.gate.Sight;
+import com.fluxecho.research.Research;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -55,7 +58,7 @@ public final class EchoNet {
             .register(new Events());
     }
 
-    /** The team's ledger changed; its online players get it at the end of the tick. */
+    /** The team's ledger or research changed; its online players get both at the end of the tick. */
     public static void ledgerChanged(UUID team) {
         if (team != null) synchronized (CHANGED) {
             CHANGED.add(team);
@@ -65,11 +68,13 @@ public final class EchoNet {
     static void send(EntityPlayerMP p) {
         if (channel == null) return;
         UUID team = Owners.team(p.getUniqueID());
-        channel.sendTo(
-            new MsgLedger(
-                EchoLedger.get()
-                    .snapshot(team)),
-            p);
+        NBTTagCompound snap = EchoLedger.get()
+            .snapshot(team);
+        // the team's research rides along under a key no category has
+        NBTTagList research = new NBTTagList();
+        for (String id : Research.done(team)) research.appendTag(new NBTTagString(id));
+        snap.setTag(ClientLedger.RESEARCH, research);
+        channel.sendTo(new MsgLedger(snap), p);
     }
 
     /** Kinds of hologram. */

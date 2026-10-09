@@ -7,6 +7,7 @@ import net.minecraft.world.World;
 import com.fluxlite.gui.ConnectorScreen;
 import com.fluxlite.gui.ControlCenterScreen;
 import com.fluxlite.gui.GuiHost;
+import com.fluxlite.gui.TerminalScreen;
 import com.fluxlite.tile.TileControlCenter;
 
 import cpw.mods.fml.relauncher.Side;
@@ -29,5 +30,6 @@ public final class ClientPackets {
         if (!(Minecraft.getMinecraft().currentScreen instanceof GuiHost host)) return;
         if (kind == Kinds.CONNECTOR_DATA && host.screen() instanceof ConnectorScreen s) s.onData(data);
         else if (kind == Kinds.CC_DATA && host.screen() instanceof ControlCenterScreen s) s.onData(data);
+        else if (kind == Kinds.TERM_DATA && host.screen() instanceof TerminalScreen s) s.onTermData(data);
     }
 }
