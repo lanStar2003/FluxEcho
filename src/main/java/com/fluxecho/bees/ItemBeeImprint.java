@@ -17,8 +17,6 @@ import com.fluxecho.logic.Karyotype;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import forestry.api.genetics.AlleleManager;
-import forestry.api.genetics.IAllele;
 import forestry.api.genetics.IAlleleSpecies;
 
 /**
@@ -65,10 +63,10 @@ public class ItemBeeImprint extends Item {
         }
         if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)) {
             for (String name : k.traits) {
-                String uid = genes.get(name);
-                IAllele a = uid == null ? null : AlleleManager.alleleRegistry.getAllele(uid);
-                String value = a != null ? a.getName() : EnumChatFormatting.RED + String.valueOf(uid);
-                tip.add(EchoText.t("gene." + name) + ": " + EnumChatFormatting.WHITE + value);
+                tip.add(
+                    EchoText.t("gene." + name) + ": "
+                        + EnumChatFormatting.WHITE
+                        + ItemGeneSample.allele(genes.get(name)));
             }
         } else {
             tip.add(EnumChatFormatting.DARK_GRAY + EchoText.t("bee_imprint.shift"));

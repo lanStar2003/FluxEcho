@@ -3,6 +3,8 @@ package com.fluxecho.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraftforge.oredict.ShapedOreRecipe;
@@ -45,11 +47,27 @@ public final class EchoRecipes {
         GameRegistry.addRecipe(plain);
     }
 
+    /**
+     * The recipe in words Forge reads: GT's ore names ({@code OrePrefixes.plate.get(...)}) are GT objects that only
+     * spell the name, which Forge turns down; it gets the name itself.
+     */
+    static Object[] forForge(Object[] recipe) {
+        Object[] out = recipe.clone();
+        for (int i = 0; i < out.length; i++) {
+            Object o = out[i];
+            if (o != null && !(o instanceof String || o instanceof Character
+                || o instanceof ItemStack
+                || o instanceof Item
+                || o instanceof Block)) out[i] = String.valueOf(o);
+        }
+        return out;
+    }
+
     /** The plain Forge recipe, or null when Forge cannot read the ingredients. */
     private static IRecipe plain(String what, boolean shaped, ItemStack output, Object[] recipe) {
         try {
-            return shaped ? new ShapedOreRecipe(output.copy(), recipe.clone())
-                : new ShapelessOreRecipe(output.copy(), recipe.clone());
+            return shaped ? new ShapedOreRecipe(output.copy(), forForge(recipe))
+                : new ShapelessOreRecipe(output.copy(), forForge(recipe));
         } catch (RuntimeException e) {
             FluxEcho.LOG.warn("Forge cannot read the recipe of {}: {}", what, e.getMessage());
             return null;

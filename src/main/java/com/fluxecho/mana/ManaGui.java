@@ -8,6 +8,7 @@ import net.minecraft.item.ItemStack;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.core.CoreCircuits;
 import com.fluxecho.core.EchoText;
+import com.fluxecho.core.FluxMachineGui;
 import com.gtnewhorizons.modularui.api.drawable.UITexture;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.common.widget.CycleButtonWidget;
@@ -36,7 +37,7 @@ public final class ManaGui {
     public static final GUITextureSet TEXTURES = new GUITextureSet().setMainBackground(BACKGROUND)
         .setItemSlot(SLOT)
         .setCoverTab(GTUITextures.TAB_COVER_NORMAL, GTUITextures.TAB_COVER_HIGHLIGHT, GTUITextures.TAB_COVER_DISABLED)
-        .setTitleTab(GTUITextures.TAB_TITLE, GTUITextures.TAB_TITLE_DARK, GTUITextures.TAB_TITLE_ANGULAR)
+        .setTitleTab(FluxMachineGui.TITLE_TAB, FluxMachineGui.TITLE_TAB, FluxMachineGui.TITLE_TAB_ANGULAR)
         .setGregTechLogo(LOGO);
 
     private ManaGui() {}

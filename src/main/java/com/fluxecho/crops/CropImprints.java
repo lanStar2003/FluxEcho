@@ -2,6 +2,7 @@ package com.fluxecho.crops;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 
 import com.fluxecho.logic.CropStats;
 
@@ -92,12 +93,19 @@ public final class CropImprints {
         return i <= 0 ? null : Crops.instance.getCropCard(key.substring(0, i), key.substring(i + 1));
     }
 
+    /**
+     * The crop's name as IC2's seed bags show it: IC2 hands the display name to the language file, since its own
+     * crops name a lang key there ({@code ic2.crop.redwheat}); other crops' plain names pass through unchanged.
+     */
     public static String name(CropCard crop) {
+        String raw;
         try {
-            return crop.displayName();
+            raw = crop.displayName();
         } catch (RuntimeException e) {
-            return crop.name();
+            raw = null;
         }
+        if (raw == null || raw.isEmpty()) raw = crop.name();
+        return StatCollector.translateToLocal(raw);
     }
 
     public static boolean isSticks(ItemStack s) {

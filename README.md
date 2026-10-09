@@ -425,7 +425,8 @@ GT 机器 ID 24521–24575 在 GTNH 2.8.4 里除了 FluxDepths（24520–24526�
 - 依赖：GT5-Unofficial 5.09.51.482；可选 Forestry 4.10.17、Thaumcraft 4.2.3.5、Blood Magic 1.7.52、MobsInfo 0.5.6、Botania 1.12.28，IC2 和 AE2 随 GT 一起进来（都是 GTNH 2.8.4 自带的版本）。
 - 可选模组只在各自的模块包里使用（`com.fluxecho.bees`、`.thaumcraft`、`.blood`、`.mobs`、`.crops`、`.mana`、`.ae`，BetterQuesting 在 `.quest.bq`）。`IsolationTest` 会扫描编译出的类，模块包以外引用了它们就让构建失败。
 - 回响图鉴的账本在 `com.fluxecho.codex`（`EchoLedger`，存在存档的 `data/fluxecho_ledger.dat`），各模块记账、注册图标；回响 ME 供应器通过 `MTEEchoMachine.echoPatterns()` 问机器能做什么，只用 AE2 的公开 API。
-- `./gradlew build`：编译、格式检查、单元测试。
+- `./gradlew build`：编译、格式检查、单元测试（含语言文件：中英文键一致、代码里写到的键都在）。
+- `/fluxecho_nei`（客户端命令）：按玩家按 U、按 R 的方式查一遍每个回响机器的 NEI 页面，在聊天栏报告哪个页面出错。
 - 纹理由 `tools/Textures.java` 生成：`java tools/Textures.java`。
 - 任务书由 `quests/build_quests.py` 生成到 `src/main/resources/assets/fluxecho/quests/`：`python quests/build_quests.py`。任务 ID 由固定的键算出来，重新生成后 ID 不变，进度也不会丢。
 - 推送 `X.Y.Z` 标签后，CI 会构建并发布 GitHub Release，更新说明取自 CHANGELOG 的对应小节。

@@ -353,3 +353,7 @@ fluxecho.nei.note.blood_echo=LP into the blood altar nearby (circuit 2: the soul
 fluxecho.nei.note.mob_echo=Drops rolled from MobsInfo's table; a weapon in the input adds its Looting
 fluxecho.nei.note.seed_imprinter=The seed bag stays; paper makes a crop imprint, a programmed circuit changes its stats
 fluxecho.nei.note.seed_echo=Crop sticks into fully scanned seed bags with the imprint's crop and stats
+
+# 0.7.2
+fluxecho.gene.yes=Yes
+fluxecho.gene.no=No

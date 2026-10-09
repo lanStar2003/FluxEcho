@@ -5,6 +5,7 @@ import net.minecraft.item.ItemStack;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.client.MachineScreen;
 import com.fluxecho.logic.SlotLayout;
+import com.gtnewhorizons.modularui.api.drawable.AdaptableUITexture;
 import com.gtnewhorizons.modularui.api.drawable.UITexture;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.common.widget.CycleButtonWidget;
@@ -31,10 +32,15 @@ public final class FluxMachineGui {
         SLOT_SAMPLE = tex("slot_sample"), BUTTON = tex("button"), BUTTON_ON = tex("button_on"),
         ICON_HOLO = tex("icon_holo"), ICON_OUTPUT = tex("icon_output"), LOGO = tex("logo");
 
+    /** The dark tab the title sits on, in the machine's colour, in place of GT's light grey one. */
+    public static final AdaptableUITexture TITLE_TAB = AdaptableUITexture
+        .of(FluxEcho.MODID, "gui/flux/title_tab", 28, 28, 4),
+        TITLE_TAB_ANGULAR = AdaptableUITexture.of(FluxEcho.MODID, "gui/flux/title_tab_angular", 28, 28, 4);
+
     public static final GUITextureSet TEXTURES = new GUITextureSet().setMainBackground(BACKGROUND)
         .setItemSlot(SLOT)
         .setCoverTab(GTUITextures.TAB_COVER_NORMAL, GTUITextures.TAB_COVER_HIGHLIGHT, GTUITextures.TAB_COVER_DISABLED)
-        .setTitleTab(GTUITextures.TAB_TITLE, GTUITextures.TAB_TITLE_DARK, GTUITextures.TAB_TITLE_ANGULAR)
+        .setTitleTab(TITLE_TAB, TITLE_TAB, TITLE_TAB_ANGULAR)
         .setGregTechLogo(LOGO);
 
     /** Top and height of the work pane's slot area. */

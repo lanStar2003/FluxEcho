@@ -33,6 +33,8 @@ public class FluxTextures {
         iconHolo();
         iconOutput();
         logo();
+        titleTab("title_tab", true);
+        titleTab("title_tab_angular", false);
         mote();
     }
 
@@ -235,6 +237,27 @@ public class FluxTextures {
             if (c != 0) img.setRGB(x, y, c);
         }
         save(img, GUI + "logo");
+    }
+
+    /**
+     * The tab the GUI's title sits on, in place of GT's light grey one: 28 x 28 with 4-pixel edges that stretch to the
+     * title's width, open at the bottom where it meets the window.
+     */
+    static void titleTab(String name, boolean rounded) throws Exception {
+        BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        fill(g, 0, 0, 28, 28, PANE, 1);
+        fill(g, 1, 1, 27, 2, 0x1E3A4C, 1);
+        fill(g, 0, 0, 28, 1, 0x2A5068, 1);
+        fill(g, 0, 0, 1, 28, 0x2A5068, 1);
+        fill(g, 27, 0, 28, 28, 0x2A5068, 1);
+        // cyan brackets in the top corners, as on the window's frame
+        fill(g, 0, 0, 4, 1, CYAN, 1);
+        fill(g, 0, 0, 1, 4, CYAN, 1);
+        fill(g, 24, 0, 28, 1, CYAN, 1);
+        fill(g, 27, 0, 28, 4, CYAN, 1);
+        if (rounded) for (int[] p : new int[][] { { 0, 0 }, { 27, 0 } }) img.setRGB(p[0], p[1], 0);
+        save(img, GUI + name);
     }
 
     /** The soft round spot the world effects and trails are drawn with: white, tinted when drawn. */

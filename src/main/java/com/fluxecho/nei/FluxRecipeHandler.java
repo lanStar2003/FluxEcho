@@ -39,7 +39,9 @@ import gregtech.api.util.GTRecipe;
 public class FluxRecipeHandler extends TemplateRecipeHandler {
 
     public static final int WIDTH = 166, HEIGHT = 100;
-    private static final int AREA_TOP = 19, AREA_H = 58;
+    static final int AREA_TOP = 19, AREA_H = 58;
+    /** NEI keeps the right edge of each recipe's lower part for its bookmark and overlay buttons. */
+    static final int BUTTONS = 17;
 
     private final MachineId kind;
     private final RecipeMap<?> map;
@@ -58,7 +60,7 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
             sample = kind.sample && special != null ? new PositionedStack(special.copy(), 6, 39) : null;
             ItemStack[] ins = present(r.mInputs), outs = present(r.mOutputs);
             int[][] in = SlotLayout.grid(Math.max(1, ins.length), 28, AREA_TOP, AREA_H, false),
-                out = SlotLayout.grid(Math.max(1, outs.length), 160, AREA_TOP, AREA_H, true);
+                out = SlotLayout.grid(Math.max(1, outs.length), outputsRight(outs.length), AREA_TOP, AREA_H, true);
             for (int i = 0; i < ins.length; i++)
                 inputs.add(new PositionedStack(ins[i].copy(), in[i][0] + 1, in[i][1] + 1));
             for (int i = 0; i < outs.length; i++)
@@ -89,6 +91,10 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
         this.kind = kind;
         this.map = map;
         this.id = FluxMachineGui.neiId(kind);
+        // NEI's constructor asks for the transfer rects before this one has set the id: add the rect now, or NEI
+        // looks up "every recipe of id null" when the machine itself is looked up (its catalyst) and fails
+        transferRects.clear();
+        transferRects.add(new RecipeTransferRect(new java.awt.Rectangle(60, AREA_TOP, 46, AREA_H), id));
     }
 
     /**
@@ -116,10 +122,16 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
                 .setDisplayStack(machine)
                 .build();
             API.addRecipeCatalyst(machine, h.id);
+            NeiCheck.track(h, machine);
             // NEI rebuilds its tab table when it loads handler info; whichever comes first, the tab keeps its look
             GuiRecipeTab.handlerMap.put(h.id, built);
             GuiRecipeTab.handlerAdderFromIMC.put(h.id, built);
         }
+    }
+
+    /** Outputs stand against the right edge, or clear of NEI's buttons when a third row reaches down to them. */
+    static int outputsRight(int outputs) {
+        return SlotLayout.rows(Math.max(1, outputs)) >= 3 ? WIDTH - BUTTONS : 160;
     }
 
     private static ItemStack[] present(ItemStack[] stacks) {
@@ -164,11 +176,12 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
 
     @Override
     public void loadTransferRects() {
-        transferRects.add(new RecipeTransferRect(new java.awt.Rectangle(60, AREA_TOP, 46, AREA_H), id));
+        // added by the constructor, once the id is known
     }
 
     @Override
     public void loadCraftingRecipes(String outputId, Object... results) {
+        if (outputId == null) return;
         if (id.equals(outputId)) {
             for (GTRecipe r : recipes()) arecipes.add(new CachedFlux(r));
         } else super.loadCraftingRecipes(outputId, results);
@@ -245,20 +258,20 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
     @Override
     public void drawExtras(int recipe) {
         CachedFlux c = (CachedFlux) arecipes.get(recipe);
-        text(font().trimStringToWidth(getRecipeName(), WIDTH - 50), 5, 4, CYAN, 1f);
+        text(fit(getRecipeName(), WIDTH - 50), 5, 4, CYAN, 1f);
         right(EchoText.tier(kind.tier) + " · " + EchoText.t(kind.key + ".type"), WIDTH - 5, 4, kind.accent, 1f);
         if (c.sample != null) smallCentered(EchoText.t("nei.sample"), 14, 58, 0.5f, 0xFFD27A, 1f);
         GTRecipe r = c.recipe;
         long eut = Math.max(0, r.mEUt), ticks = Math.max(0, r.mDuration);
-        int y = AREA_TOP + AREA_H + 6, width = (int) ((WIDTH - 10) / 0.6f);
+        int y = AREA_TOP + AREA_H + 6, width = (int) ((WIDTH - 5 - BUTTONS) / 0.6f);
         if (eut > 0) {
             String stats = EchoText
                 .t("nei.stats", Compact.si(eut), EchoText.seconds((int) ticks), Compact.si(eut * ticks));
-            small(font().trimStringToWidth(stats, width), 5, y, 0.6f, WHITE, 1f);
+            small(fit(stats, width), 5, y, 0.6f, WHITE, 1f);
             y += 7;
         }
         String note = "fluxecho.nei.note." + kind.key;
         if (StatCollector.canTranslate(note))
-            small(font().trimStringToWidth(StatCollector.translateToLocal(note), width), 5, y, 0.6f, DIM, 1f);
+            small(fit(StatCollector.translateToLocal(note), width), 5, y, 0.6f, DIM, 1f);
     }
 }

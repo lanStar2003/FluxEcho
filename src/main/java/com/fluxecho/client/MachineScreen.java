@@ -42,7 +42,7 @@ public final class MachineScreen {
         String left = EchoText.tier(m.voltageTier()) + " · " + EchoText.t(k.key + ".type");
         String right = EchoText.status(status);
         FontRenderer f = font();
-        right = f.trimStringToWidth(right, (int) w - 12 - f.getStringWidth(left));
+        right = fit(right, (int) w - 12 - f.getStringWidth(left));
         text(left, 4, 3, k.accent, 1f);
         right(right, (int) w - 4, 3, EchoText.statusColor(status), 1f);
         GL11.glPopMatrix();
@@ -91,13 +91,13 @@ public final class MachineScreen {
             ? EchoText
                 .t("gui.power", Compact.si(eut), EchoText.seconds(m.mMaxProgresstime), Math.round(progress(m) * 100))
             : EchoText.t("gui.voltage", EchoText.tier(m.voltageTier()), m.voltage());
-        text(f.trimStringToWidth(power, lw), 4, 3, WHITE, 1f);
+        text(fit(power, lw), 4, 3, WHITE, 1f);
         if (k.sample) {
             String s = sample == null ? EchoText.t("gui.no_sample") : EchoText.t("gui.sample", sample.getDisplayName());
-            text(f.trimStringToWidth(s, lw), 4, 13, sample == null ? AMBER : DIM, 1f);
+            text(fit(s, lw), 4, 13, sample == null ? AMBER : DIM, 1f);
         }
         String line = EchoText.decode(info);
-        if (!line.isEmpty()) text(f.trimStringToWidth(line, lw), 4, k.sample ? 23 : 13, CYAN, 1f);
+        if (!line.isEmpty()) text(fit(line, lw), 4, k.sample ? 23 : 13, CYAN, 1f);
 
         begin();
         float fill = euCap <= 0 ? 0 : (float) Math.min(1, (double) eu / euCap);

@@ -99,7 +99,8 @@ public class BlockVisPedestal extends BlockContainer {
                 player.addChatMessage(
                     new ChatComponentTranslation(
                         "fluxecho.vis_pedestal.installed",
-                        held.getDisplayName(),
+                        // the module's name, translated by the player's game rather than the server's
+                        new ChatComponentTranslation(held.getUnlocalizedName() + ".name"),
                         t.installed(),
                         TileVisPedestal.MODULE_SLOTS));
             } else {

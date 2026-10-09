@@ -353,3 +353,7 @@ fluxecho.nei.note.blood_echo=LP 送进附近的血之祭坛（或编程电路 2 
 fluxecho.nei.note.mob_echo=按 MobsInfo 的掉落表随机掉落；输入槽的武器提供抢夺
 fluxecho.nei.note.seed_imprinter=种子留在槽里；纸拓作物印记，加编程电路改属性
 fluxecho.nei.note.seed_echo=作物架变成扫描满级、属性和印记一样的种子
+
+# 0.7.2
+fluxecho.gene.yes=是
+fluxecho.gene.no=否

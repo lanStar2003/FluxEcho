@@ -148,7 +148,7 @@ public final class PedestalHolo {
             centered(EchoText.t("holo.no_wand"), W / 2.0, y, DIM, a);
             y += 11;
         } else {
-            centered(font().trimStringToWidth(wand.getDisplayName(), r - l), W / 2.0, y, WHITE, a);
+            centered(fit(wand.getDisplayName(), r - l), W / 2.0, y, WHITE, a);
             y += 11;
             primals(wand, l, r, y, a);
             y += 37;
