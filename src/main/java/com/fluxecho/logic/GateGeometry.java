@@ -157,23 +157,6 @@ public final class GateGeometry {
         return new Box(x0, Math.max(0, g.y - below), z0, x1, Math.min(255, g.y + above), z1);
     }
 
-    /** The interior plots: one every 1024 blocks along x, so none ever sees another. */
-    public static final int PLOT_SPACING = 1024, FLOOR_Y = 63, PLOT_HALF = 12;
-
-    public static int plotX(int plot) {
-        return plot * PLOT_SPACING;
-    }
-
-    /** The plot a point in the interior belongs to. */
-    public static int plotOf(double x) {
-        return (int) Math.round(x / PLOT_SPACING);
-    }
-
-    /** A plot's own gate: on its floor, near the south rim, facing north into the plot. */
-    public static Gate plotGate(int plot) {
-        return new Gate(plotX(plot), FLOOR_Y + 1, PLOT_HALF - 2, 2);
-    }
-
     /**
      * A point relative to the camera, through OpenGL's column-major projection and modelview matrices: x and y on the
      * screen from -1 to 1, and w, which is not positive for a point behind the camera.

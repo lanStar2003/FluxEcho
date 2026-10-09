@@ -358,11 +358,25 @@ fluxecho.nei.note.seed_echo=Crop sticks into fully scanned seed bags with the im
 fluxecho.gene.yes=Yes
 fluxecho.gene.no=No
 
-# 0.8.1 light gates (prototype)
+# 0.8.1 light gates (prototype), rooms since 0.8.2
 tile.fluxecho.light_gate.name=Light Gate (Prototype)
-tile.fluxecho.interior_floor.name=Flux Interior Floor
-fluxecho.gate.item.new=Put down, it opens a new plot in the flux interior.\nClose to it you see inside; walk in to go there.
-fluxecho.gate.item.plot=Opens onto plot %s of the flux interior.\nClose to it you see inside; walk in to go there.
-fluxecho.gate.opened=The light gate opens onto plot %s of the flux interior.
-fluxecho.gate.not_inside=A light gate goes outside the flux interior; each plot has its own gate already.
-fluxecho.gate.no_interior=The flux interior is not available (see the log), so the gate opens nothing.
+tile.fluxecho.interior_shell.name=Room Shell
+tile.fluxecho.interior_glass.name=Room Glass
+fluxecho.gate.item.new=Put down, it opens a new room: %s, %s x %s, %s high.
+Sneak-use in the air for another shape.
+Close to it you see inside; walk in to go there.
+fluxecho.gate.item.plot=Opens onto room %s (%s).
+Close to it you see inside; walk in to go there.
+fluxecho.gate.opened=The light gate opens onto %s (room %s).
+fluxecho.gate.picked=Room shape: %s
+fluxecho.gate.not_inside=A light gate cannot go inside the folded zone (past x and z 1048576), where the rooms are; each room has its own gate already.
+fluxecho.gate.room.hall=City Hall (Flux Nexus)
+fluxecho.gate.room.garden=Eco Dome
+fluxecho.gate.room.gallery=Echo Library Gallery
+fluxecho.gate.room.sanctum=Arcane Court
+fluxecho.gate.room.altar=Blood Altar Hall
+fluxecho.gate.room.arena=Holodeck (Echo Hunting Ground)
+fluxecho.gate.room.spring=Mana Spring Garden
+fluxecho.gate.room.datavoid=Data Void (Sophon Array)
+fluxecho.gate.room.canvas=Canvas Vault (Dual-Vector Vault)
+fluxecho.gate.room.observatory=Observatory

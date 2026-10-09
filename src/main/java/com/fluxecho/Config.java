@@ -64,7 +64,7 @@ public final class Config {
 
     public static boolean aeEnabled = true;
 
-    public static boolean gateRecipe = true, gateLiveView = true, gatePrefill = true;
+    public static boolean gateRecipe = true, gateLiveView = true, gateHoldBase = true;
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
@@ -390,39 +390,39 @@ public final class Config {
 
         c.setCategoryComment(
             GATES,
-            "Light gates (prototype): a gate opens onto its own plot in the flux interior, a dimension of its own. Close to a gate you see into it; walking through it takes you there.");
+            "Light gates (prototype): each gate opens onto a room of its own, closed all round, in the folded zone of the gate's own dimension (past x and z 1048576, where nothing generates). Close to a gate you see into it; walking through is a step within the same world, nothing reloads.");
         gateRecipe = c.getBoolean("enableRecipe", GATES, gateRecipe, "Register the crafting recipe of the light gate.");
-        gateDimension = c.getInt(
-            "dimensionId",
-            GATES,
-            gateDimension,
-            -100000,
-            100000,
-            "Dimension id of the flux interior. Change it only for a new world or when another mod takes it; a world's plots live in DIM<id>.");
-        gateProvider = c.getInt(
-            "providerId",
-            GATES,
-            gateProvider,
-            -100000,
-            100000,
-            "World provider id of the flux interior; only when another mod takes it.");
         gateViewRange = c.getInt(
             "viewRange",
             GATES,
             gateViewRange,
             0,
             64,
-            "Blocks within which the server sends players what lies behind a gate, so they see into it. 0 turns the view off for everyone.");
+            "Blocks within which players see through a gate. The far side is kept loaded for them a little further out, so it is there before they look. 0 turns the view off for everyone.");
         gateLiveView = c.getBoolean(
             "liveView",
             GATES,
             gateLiveView,
             "Client: draw what lies behind a gate on its membrane. Off: the membrane only glows (for weak graphics cards or a shader pack it does not get along with).");
-        gatePrefill = c.getBoolean(
-            "prefill",
+        gateHoldBase = c.getBoolean(
+            "holdBase",
             GATES,
-            gatePrefill,
-            "Client: on walking through, fill the other side's blocks in from what the gate showed, before the server's chunks arrive.");
+            gateHoldBase,
+            "While a player is inside a room, keep everything they had loaded round the gate outside loaded for them (and running), so walking back out reloads nothing. Off: only what the room's gate shows stays.");
+        gateDimension = c.getInt(
+            "dimensionId",
+            GATES,
+            gateDimension,
+            -100000,
+            100000,
+            "Dimension id of the 0.8.1 prototype's flux interior. Rooms are no longer made there; it stays registered so worlds from 0.8.1 load, and its gates are moved into the folded zone.");
+        gateProvider = c.getInt(
+            "providerId",
+            GATES,
+            gateProvider,
+            -100000,
+            100000,
+            "World provider id of the 0.8.1 prototype's flux interior; only when another mod takes it.");
 
         if (c.hasChanged()) c.save();
     }

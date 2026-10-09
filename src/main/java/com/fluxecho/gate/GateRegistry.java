@@ -15,9 +15,9 @@ import net.minecraftforge.common.DimensionManager;
 import com.fluxecho.logic.GateGeometry;
 
 /**
- * Every light gate of a world and the plot each one opens onto, kept with the world ({@code data/fluxecho_gates.dat},
- * shared by all dimensions). A plot has one gate inside it, made with the plot, and at most one gate outside linked to
- * it.
+ * Every light gate of a world and the room each one opens onto, kept with the world ({@code data/fluxecho_gates.dat},
+ * shared by all dimensions). A room ("plot") has one gate inside it, made with the room in the folded zone of its
+ * dimension, and at most one gate outside linked to it, in the same dimension.
  */
 public final class GateRegistry extends WorldSavedData {
 
@@ -25,10 +25,15 @@ public final class GateRegistry extends WorldSavedData {
 
     public static final class Entry {
 
-        public final int id, dim, x, y, z, facing, plot;
+        public final int id, dim, x, y, z, facing;
+        public int plot;
         public final boolean inside;
         /** The gate on the other side, 0 for none. */
         public int partner;
+        /** For a room's own gate: the room's shape ({@link com.fluxecho.logic.RoomPlan} template). */
+        public String room = "";
+        /** The room's blocks, worked out once (a room's own gate never moves). */
+        GateGeometry.Box roomBox;
 
         Entry(int id, int dim, int x, int y, int z, int facing, int plot, boolean inside, int partner) {
             this.id = id;
@@ -84,13 +89,17 @@ public final class GateRegistry extends WorldSavedData {
         return null;
     }
 
+    public List<Entry> all() {
+        return new ArrayList<>(byId.values());
+    }
+
     public List<Entry> inDim(int dim) {
         List<Entry> l = new ArrayList<>();
         for (Entry e : byId.values()) if (e.dim == dim) l.add(e);
         return l;
     }
 
-    /** The gate inside a plot, null when the plot was never made. */
+    /** The gate inside a room, null when the room was never made. */
     public Entry insideOf(int plot) {
         for (Entry e : byId.values()) if (e.inside && e.plot == plot) return e;
         return null;
@@ -140,6 +149,7 @@ public final class GateRegistry extends WorldSavedData {
                 g.getInteger("plot"),
                 g.getBoolean("inside"),
                 g.getInteger("partner"));
+            e.room = g.getString("room");
             byId.put(e.id, e);
             nextId = Math.max(nextId, e.id + 1);
         }
@@ -161,6 +171,7 @@ public final class GateRegistry extends WorldSavedData {
             g.setInteger("plot", e.plot);
             g.setBoolean("inside", e.inside);
             g.setInteger("partner", e.partner);
+            if (!e.room.isEmpty()) g.setString("room", e.room);
             l.appendTag(g);
         }
         t.setTag("gates", l);
