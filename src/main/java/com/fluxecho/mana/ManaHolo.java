@@ -13,6 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.Config;
+import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.HoloStore;
 import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.codex.EchoNet;
@@ -37,7 +38,9 @@ public final class ManaHolo {
     private ManaHolo() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new ManaHolo());
+        ManaHolo h = new ManaHolo();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     @SubscribeEvent

@@ -38,7 +38,9 @@ public final class MachineHolo {
     private MachineHolo() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new MachineHolo());
+        MachineHolo h = new MachineHolo();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     @SubscribeEvent

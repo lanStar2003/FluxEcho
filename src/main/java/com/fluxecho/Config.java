@@ -408,7 +408,7 @@ public final class Config {
             "realView",
             GATES,
             gateRealView,
-            "Client, with Angelica and no shader pack: the game draws the world a second time from the far side of each gate in sight, so the membrane shows everything there (machines, mobs, players, holograms, weather) and walking through is seamless. Costs about one more frame's drawing while a gate is in sight. Off: the simpler view of blocks only.");
+            "Client, with Angelica: walking through a gate is seamless, the far side built before you step in. Without a shader pack the game also draws the world a second time from the far side of each gate in sight, so the membrane shows everything there (machines, mobs, players, holograms, weather); that costs about one more frame's drawing while a gate is in sight. With a shader pack the gate keeps the simpler view (blocks, machines, mobs and FluxEcho's holograms, without the pack's lighting). Off: the 0.8.2 behaviour, with a ripple when walking through.");
         gateHoldBase = c.getBoolean(
             "holdBase",
             GATES,

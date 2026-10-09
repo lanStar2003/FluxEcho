@@ -18,6 +18,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.Config;
+import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.Compact;
@@ -44,7 +45,9 @@ public final class PedestalHolo {
     private PedestalHolo() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new PedestalHolo());
+        PedestalHolo h = new PedestalHolo();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     /** From {@link TileVisPedestal#updateEntity} on the client. */

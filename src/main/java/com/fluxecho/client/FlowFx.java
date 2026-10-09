@@ -18,7 +18,9 @@ public final class FlowFx {
     private FlowFx() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new FlowFx());
+        FlowFx h = new FlowFx();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     @SubscribeEvent

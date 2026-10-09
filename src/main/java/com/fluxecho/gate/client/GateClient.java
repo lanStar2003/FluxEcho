@@ -18,9 +18,12 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.IWorldAccess;
 import net.minecraft.world.World;
@@ -35,6 +38,7 @@ import org.lwjgl.opengl.GL30;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.gate.GateNet;
 import com.fluxecho.gate.TileLightGate;
@@ -128,7 +132,7 @@ public final class GateClient {
             IMessage m;
             while ((m = GateNet.INBOX.poll()) != null) handle(mc, m);
         } else {
-            if (!Portal.running()) notice(mc);
+            if (!Portal.seamless()) notice(mc);
             if (++ticks % 10 == 0) views(mc);
         }
     }
@@ -143,26 +147,26 @@ public final class GateClient {
         if (w != null) w.addWorldAccess(new Listener(w));
     }
 
-    /** Keeps a view for each linked gate near the player, and lets go of the rest. */
+    /**
+     * Keeps a view for each linked gate near the player, and for the gate on the far side of each (the one behind the
+     * player once through, so its view is built before they turn round), and lets go of the rest.
+     */
     private static void views(Minecraft mc) {
         EntityPlayer p = mc.thePlayer;
         if (p == null || mc.theWorld == null) return;
         double range = Config.gateViewRange + 8;
         Set<Long> keep = new HashSet<>();
         // the real view needs none
-        if (Config.gateViewRange > 0 && Config.gateLiveView && !broken && !Portal.running())
+        if (Config.gateViewRange > 0 && Config.gateLiveView && !broken && !Portal.real())
             for (TileLightGate t : gates(mc.theWorld)) {
                 if (!t.linked || t.far == null) continue;
                 double dx = t.xCoord + 0.5 - p.posX, dy = t.yCoord + 1.5 - p.posY, dz = t.zCoord + 0.5 - p.posZ;
                 long k = key(t.xCoord, t.yCoord, t.zCoord);
-                FarView v = VIEWS.get(k);
                 double d = dx * dx + dy * dy + dz * dz;
-                if (d > (range + 16) * (range + 16) || v == null && d > range * range) continue;
-                keep.add(k);
-                GateGeometry.Gate g = t.gate(), source = t.partner();
-                if (v != null && v.sameAs(g, source, t.far)) continue;
-                if (v != null) v.free();
-                VIEWS.put(k, new FarView(g, source, t.far));
+                if (d > (range + 16) * (range + 16) || !VIEWS.containsKey(k) && d > range * range) continue;
+                view(t, keep);
+                TileEntity other = mc.theWorld.getTileEntity(t.partnerX, t.partnerY, t.partnerZ);
+                if (other instanceof TileLightGate o && o.linked && o.far != null) view(o, keep);
             }
         for (Iterator<Map.Entry<Long, FarView>> it = VIEWS.entrySet()
             .iterator(); it.hasNext();) {
@@ -174,10 +178,20 @@ public final class GateClient {
         }
     }
 
+    private static void view(TileLightGate t, Set<Long> keep) {
+        long k = key(t.xCoord, t.yCoord, t.zCoord);
+        if (!keep.add(k)) return;
+        FarView v = VIEWS.get(k);
+        GateGeometry.Gate g = t.gate(), source = t.partner();
+        if (v != null && v.sameAs(g, source, t.far)) return;
+        if (v != null) v.free();
+        VIEWS.put(k, new FarView(g, source, t.far));
+    }
+
     private static void handle(Minecraft mc, IMessage msg) {
         if (mc.theWorld == null || mc.thePlayer == null) return;
         if (msg instanceof GateNet.Transit t && transit == null
-            && !Portal.running()
+            && !Portal.seamless()
             && t.dim == mc.theWorld.provider.dimensionId) begin(mc, key(t.x, t.y, t.z));
     }
 
@@ -289,7 +303,7 @@ public final class GateClient {
         Frustrum frustum = new Frustrum();
         frustum.setPosition(cx, cy, cz);
         // drawn from beyond a gate: that gate is the hole being looked through, and no gate shows another for real
-        boolean inPass = Portal.inPass(), real = !inPass && Portal.running();
+        boolean inPass = Portal.inPass(), real = !inPass && Portal.real();
         GateGeometry.Gate hole = Portal.passGate();
         int budget = 3;
         for (TileLightGate t : list) {
@@ -421,6 +435,7 @@ public final class GateClient {
             v.draw(1);
             GL11.glDepthMask(true);
             mc.entityRenderer.disableLightmap(pt);
+            far(mc, v, g, cx, cy, cz, pt);
             GL11.glDisable(GL11.GL_CLIP_PLANE0);
         } finally {
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
@@ -430,6 +445,58 @@ public final class GateClient {
             OpenGlHelper.func_153171_g(OpenGlHelper.field_153198_e, prevFbo);
             GL11.glViewport(vx, vy, vw, vh);
             GL11.glEnable(GL11.GL_TEXTURE_2D);
+        }
+    }
+
+    /**
+     * What lives on the far side, into the picture: its mobs, players and dropped items, then FluxEcho's holograms and
+     * effects there ({@link FarDraw}). {@code RenderManager}'s camera stands where the player's comes out for the
+     * moment, so each draws as it does in the world. The picture is turned to the far gate already.
+     */
+    private static void far(Minecraft mc, FarView v, GateGeometry.Gate g, double cx, double cy, double cz, float pt) {
+        GateGeometry.Gate src = v.source;
+        double[] cam = GateGeometry.carry(g, src, cx, cy, cz);
+        RenderManager rm = RenderManager.instance;
+        double rx = RenderManager.renderPosX, ry = RenderManager.renderPosY, rz = RenderManager.renderPosZ;
+        double vx = rm.viewerPosX, vy = rm.viewerPosY, vz = rm.viewerPosZ;
+        double tx = TileEntityRendererDispatcher.staticPlayerX, ty = TileEntityRendererDispatcher.staticPlayerY,
+            tz = TileEntityRendererDispatcher.staticPlayerZ;
+        float yaw = rm.playerViewY;
+        GL11.glPushMatrix();
+        try {
+            GL11.glTranslated(cam[0] - src.cx(), cam[1] - src.y, cam[2] - src.cz());
+            RenderManager.renderPosX = rm.viewerPosX = TileEntityRendererDispatcher.staticPlayerX = cam[0];
+            RenderManager.renderPosY = rm.viewerPosY = TileEntityRendererDispatcher.staticPlayerY = cam[1];
+            RenderManager.renderPosZ = rm.viewerPosZ = TileEntityRendererDispatcher.staticPlayerZ = cam[2];
+            rm.playerViewY = GateGeometry.exitYaw(g, src, yaw);
+            GateGeometry.Box b = v.box;
+            RenderHelper.enableStandardItemLighting();
+            mc.entityRenderer.enableLightmap(pt);
+            for (Object o : mc.theWorld.loadedEntityList) {
+                Entity e = (Entity) o;
+                if (e == mc.thePlayer || e == mc.renderViewEntity
+                    || !b.contains(
+                        MathHelper.floor_double(e.posX),
+                        MathHelper.floor_double(e.posY),
+                        MathHelper.floor_double(e.posZ))
+                    || src.front(e.posX, e.posZ) < -1) continue;
+                rm.renderEntitySimple(e, pt);
+            }
+            mc.entityRenderer.disableLightmap(pt);
+            RenderHelper.disableStandardItemLighting();
+            FarDraw.draw(new RenderWorldLastEvent(mc.renderGlobal, pt));
+        } finally {
+            RenderManager.renderPosX = rx;
+            RenderManager.renderPosY = ry;
+            RenderManager.renderPosZ = rz;
+            rm.viewerPosX = vx;
+            rm.viewerPosY = vy;
+            rm.viewerPosZ = vz;
+            TileEntityRendererDispatcher.staticPlayerX = tx;
+            TileEntityRendererDispatcher.staticPlayerY = ty;
+            TileEntityRendererDispatcher.staticPlayerZ = tz;
+            rm.playerViewY = yaw;
+            GL11.glPopMatrix();
         }
     }
 

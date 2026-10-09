@@ -42,7 +42,8 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
 /**
- * The real view through a light gate. With Angelica (and no shader pack) the game draws the whole world a second time
+ * The real view through a light gate, and walking through it without a seam. With Angelica (and no shader pack) the
+ * game draws the whole world a second time
  * for each gate in sight, from where the player's eye comes out on the far side, into an off-screen picture the
  * membrane shows: blocks, machines, mobs and players, particles, holograms, sky and weather, all as the player would
  * see them standing there. What lies between that camera and the far gate is cut away with the projection's near
@@ -52,6 +53,12 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * the far side is ready long before the player steps in. The step itself is never seen: from the moment the eye
  * passes the membrane the world is drawn from the far side's camera, and when the server moves the player there they
  * come out exactly where that camera was, still walking.
+ * <p>
+ * <p>
+ * With a shader pack the world cannot be drawn twice in a frame (the pack's passes and its memory of the last frame
+ * would mix the two cameras), so the gate keeps its simpler picture, but the renderer still walks the far side from
+ * the far camera every other frame without drawing it: the meshes are built all the same, and the step through is just
+ * as seamless.
  * <p>
  * Everything here runs on the render thread; the mixins in {@code com.fluxecho.mixins.early} call in.
  */
@@ -130,18 +137,30 @@ public final class Portal {
     // ---- state the rest of the client reads
 
     /** Whether gates are seen through for real: Angelica's renderer, no shader pack, and the hooks running. */
-    public static boolean running() {
-        return System.nanoTime() - lastHook < 500_000_000L && usable(Minecraft.getMinecraft());
+    public static boolean real() {
+        return hooked() && usable(Minecraft.getMinecraft()) && drawing();
+    }
+
+    /**
+     * Whether walking through a gate is seamless (the far side built ahead, the camera through first): with Angelica,
+     * with or without a shader pack.
+     */
+    public static boolean seamless() {
+        return hooked() && usable(Minecraft.getMinecraft()) && (drawing() || Angelica.canWalk());
+    }
+
+    private static boolean hooked() {
+        return System.nanoTime() - lastHook < 500_000_000L;
     }
 
     private static boolean usable(Minecraft mc) {
-        return !broken && Config.gateLiveView
-            && Config.gateRealView
-            && Config.gateViewRange > 0
-            && mc.theWorld != null
-            && mc.thePlayer != null
+        return !broken && Config.gateRealView && mc.theWorld != null && mc.thePlayer != null && Angelica.ready();
+    }
+
+    /** The far side can be drawn for real: no shader pack. */
+    private static boolean drawing() {
+        return Config.gateLiveView && Config.gateViewRange > 0
             && OpenGlHelper.isFramebufferEnabled()
-            && Angelica.ready()
             && !ShaderCompat.packInUse();
     }
 
@@ -199,10 +218,16 @@ public final class Portal {
             lastEye = null;
             return;
         }
+        boolean drawing = drawing();
+        if (!drawing && !Angelica.canWalk()) {
+            transit = null;
+            lastEye = null;
+            return;
+        }
         try {
             if (world != mc.theWorld) newWorld(mc.theWorld);
             transit(mc, pt);
-            passes(mc, pt);
+            passes(mc, pt, drawing);
         } catch (Throwable t) {
             fail(mc, t);
         }
@@ -308,14 +333,17 @@ public final class Portal {
     /**
      * Draws the gates in sight, nearest first. A gate close by but not in sight still gets drawn now and then, too
      * small to see, so its far side is built before anyone walks in backwards; and a room is drawn a few times from
-     * all round, so it is all there whichever way the player turns inside.
+     * all round, so it is all there whichever way the player turns inside. With a shader pack nothing is drawn: the
+     * renderer only walks the same views every other frame.
      */
-    private static void passes(Minecraft mc, float pt) {
+    private static void passes(Minecraft mc, float pt, boolean drawing) throws Exception {
         EntityLivingBase viewer = mc.renderViewEntity;
         Pose v = pose(viewer, pt);
         int w = mc.displayWidth, h = mc.displayHeight;
         if (w <= 0 || h <= 0) return;
-        double[] proj = PortalMath.perspective(mc.entityRenderer.getFOVModifier(pt, true), w / (double) h, 0.05, 512);
+        double[] proj = drawing
+            ? PortalMath.perspective(mc.entityRenderer.getFOVModifier(pt, true), w / (double) h, 0.05, 512)
+            : null;
         double[] view = PortalMath.view(v.yaw, v.pitch);
         double range = Config.gateViewRange + 4;
         List<Seen> seen = new ArrayList<>();
@@ -326,7 +354,9 @@ public final class Portal {
             double dx = g.cx() - v.ex, dy = g.y + 1.5 - v.ey, dz = g.cz() - v.ez;
             double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (d > range) continue;
-            int[] rect = PortalMath.screenRect(proj, view, PortalMath.corners(g, v.ex, v.ey, v.ez, 0.3), w, h, 0.04);
+            int[] rect = drawing
+                ? PortalMath.screenRect(proj, view, PortalMath.corners(g, v.ex, v.ey, v.ez, 0.3), w, h, 0.04)
+                : null;
             seen.add(new Seen(t, g, d, rect));
         }
         seen.sort((a, b) -> Double.compare(a.distance, b.distance));
@@ -334,19 +364,41 @@ public final class Portal {
         int slot = 0;
         for (Seen s : seen) {
             if (s.distance <= 24) close.add(s.key);
-            if (s.rect != null && slot < PASSES) draw(mc, s, slot++, false, s.rect, pt, viewer, v);
+            if (slot >= PASSES) continue;
+            if (drawing && s.rect != null) draw(mc, s, slot++, false, s.rect, pt, viewer, v);
+            else if (!drawing && frame % 2 == 0) {
+                walk(mc, s, false, pt, viewer, v);
+                slot++;
+            }
         }
         WARMED.keySet()
             .retainAll(close);
-        if (slot >= PASSES) return;
+        if (drawing && slot >= PASSES) return;
         for (Seen s : seen) {
             if (s.distance > 16) break;
             int n = WARMED.getOrDefault(s.key, 0);
             if (!s.tile.inside && n < 4 && frame % 5 == 0) {
                 WARMED.put(s.key, n + 1);
-                draw(mc, s, slot, true, TINY, pt, viewer, v);
-            } else if (s.rect == null && frame % 3 == 0) draw(mc, s, slot, false, TINY, pt, viewer, v);
+                if (drawing) draw(mc, s, slot, true, TINY, pt, viewer, v);
+                else walk(mc, s, true, pt, viewer, v);
+            } else if (drawing && s.rect == null && frame % 3 == 0) draw(mc, s, slot, false, TINY, pt, viewer, v);
             break;
+        }
+    }
+
+    /** The renderer walks the far side of one gate from where the player's camera comes out, building, not drawing. */
+    private static void walk(Minecraft mc, Seen s, boolean all, float pt, EntityLivingBase viewer, Pose v)
+        throws Exception {
+        GateGeometry.Gate g = s.gate, f = s.tile.partner();
+        double[] q = GateGeometry.carry(g, f, v.x, v.y, v.z);
+        passCam.place(viewer, q[0], q[1], q[2], GateGeometry.exitYaw(g, f, v.yaw), v.pitch);
+        Angelica.enter(s.key);
+        pass = new Pass(f, all, null, q);
+        try {
+            Angelica.walk(passCam, viewer, pt);
+        } finally {
+            pass = null;
+            Angelica.leave(s.key);
         }
     }
 
@@ -493,7 +545,7 @@ public final class Portal {
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer p = mc.thePlayer;
         WorldClient w = mc.theWorld;
-        if (p == null || w == null || mc.isGamePaused() || !running()) return;
+        if (p == null || w == null || mc.isGamePaused() || !real()) return;
         if (world != w || mc.renderViewEntity != p) return;
         TileLightGate best = null;
         double nearest = 16 * 16;

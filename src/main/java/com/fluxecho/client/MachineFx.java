@@ -45,7 +45,9 @@ public final class MachineFx {
     private MachineFx() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new MachineFx());
+        MachineFx h = new MachineFx();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     /** From a working machine's client tick. */

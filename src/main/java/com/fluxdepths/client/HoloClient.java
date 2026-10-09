@@ -22,6 +22,7 @@ import com.fluxdepths.shard.MTEFluxCollector;
 import com.fluxdepths.shard.ShardState;
 import com.fluxdepths.shard.ShardText;
 import com.fluxdepths.shard.ShardTier;
+import com.fluxecho.client.FarDraw;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -58,7 +59,9 @@ public final class HoloClient {
     private HoloClient() {}
 
     public static void register() {
-        MinecraftForge.EVENT_BUS.register(new HoloClient());
+        HoloClient h = new HoloClient();
+        MinecraftForge.EVENT_BUS.register(h);
+        FarDraw.add(h::onRenderLast);
     }
 
     /** From the network thread. */

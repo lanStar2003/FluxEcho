@@ -6,6 +6,9 @@ import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.minecraft.client.renderer.culling.Frustrum;
+import net.minecraft.entity.EntityLivingBase;
+
 import com.fluxecho.FluxEcho;
 
 /**
@@ -16,7 +19,9 @@ import com.fluxecho.FluxEcho;
  * a second time from far away costs no rebuild (the vanilla renderer moves its chunks round the camera);</li>
  * <li>the projection its chunk shader uses, which it captured from OpenGL before the gate's cut was put in;</li>
  * <li>where it last sorted see-through blocks from: each camera keeps its own, so two cameras a world apart do not
- * have every pane of glass sorted again every frame.</li>
+ * have every pane of glass sorted again every frame;</li>
+ * <li>its chunk updater on its own, from another camera and without drawing anything: that builds the meshes of what
+ * the camera would see, which is all a shader pack's frame needs to find the far side ready.</li>
  * </ul>
  */
 final class Angelica {
@@ -25,7 +30,11 @@ final class Angelica {
     private static Object state;
     private static Method setProjection, rendererInstance;
     private static Field manager, sortX, sortY, sortZ;
-    private static boolean sortBroken;
+    private static boolean sortBroken, walkBroken;
+    private static Object camera;
+    private static Method cameraUpdate, cameraPos, updateChunks, enterManaged, exitManaged;
+    private static Field posX, posY, posZ;
+    private static int walks = -1_000_000_000;
     private static final float[] NOWHERE = { 3e7f, 3e7f, 3e7f };
     private static final Map<Long, float[]> SORTED = new HashMap<>();
     private static float[] main;
@@ -68,7 +77,57 @@ final class Angelica {
         } catch (Throwable t) {
             sortBroken = true;
         }
+        try {
+            Class<?> cam = Class.forName("com.gtnewhorizons.angelica.compat.mojang.Camera");
+            camera = cam.getField("INSTANCE")
+                .get(null);
+            cameraUpdate = cam.getMethod("update", EntityLivingBase.class, float.class);
+            cameraPos = cam.getMethod("getPos");
+            Class<?> v = Class.forName("org.joml.Vector3d");
+            posX = v.getField("x");
+            posY = v.getField("y");
+            posZ = v.getField("z");
+            Class<?> swr = Class.forName("me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer");
+            updateChunks = swr.getMethod("updateChunks", cam, Frustrum.class, boolean.class, int.class, boolean.class);
+            Class<?> device = Class.forName("me.jellysquid.mods.sodium.client.gl.device.RenderDevice");
+            enterManaged = device.getMethod("enterManagedCode");
+            exitManaged = device.getMethod("exitManagedCode");
+        } catch (Throwable t) {
+            walkBroken = true;
+            FluxEcho.LOG.warn(
+                "Angelica's chunk updater is not as the light gates know it; with a shader pack the far side builds only when looked at",
+                t);
+        }
         return true;
+    }
+
+    /** Whether {@link #walk} can be used. */
+    static boolean canWalk() {
+        return ready() && !walkBroken;
+    }
+
+    /**
+     * Lets the chunk updater walk the world from {@code from}, as if the frame were drawn from there, without drawing:
+     * whatever that camera would see gets its mesh built. The frustum is whatever {@code ClippingHelperImpl} gives
+     * while this runs. The camera is the {@code back} entity's again afterwards.
+     */
+    static void walk(EntityLivingBase from, EntityLivingBase back, float pt) throws Exception {
+        Object renderer = rendererInstance == null ? null : rendererInstance.invoke(null);
+        if (renderer == null) return;
+        cameraUpdate.invoke(camera, from, pt);
+        try {
+            Object pos = cameraPos.invoke(camera);
+            Frustrum f = new Frustrum();
+            f.setPosition(posX.getDouble(pos), posY.getDouble(pos), posZ.getDouble(pos));
+            enterManaged.invoke(null);
+            try {
+                updateChunks.invoke(renderer, camera, f, false, walks--, false);
+            } finally {
+                exitManaged.invoke(null);
+            }
+        } finally {
+            cameraUpdate.invoke(camera, back, pt);
+        }
     }
 
     /** The projection the chunks are drawn with from now on, in this frame. */
