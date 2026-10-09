@@ -86,11 +86,17 @@ public final class MobModule {
     }
 
     /**
-     * NEI: one page per mob MobsInfo knows (it builds its tables in its own loadComplete, before this one): the
-     * imprint, up to four of its drops, and the EU and time of a kill.
+     * NEI: one page per mob MobsInfo knows: the imprint, up to four of its drops, and the EU and time of a kill.
+     * MobsInfo builds its drop tables when a world starts, so the pages are made the first time NEI shows the Prey
+     * Echo's page after that.
      */
     public static void loadComplete() {
-        if (!Config.mobsEnabled || MobRecipe.MobNameToRecipeMap == null) return;
+        if (Config.mobsEnabled) EchoRecipeMaps.later(MachineId.MOB_ECHO, MobModule::neiPages);
+    }
+
+    /** Makes the pages; false while MobsInfo has no drop tables yet. */
+    private static boolean neiPages() {
+        if (MobRecipe.MobNameToRecipeMap == null || MobRecipe.MobNameToRecipeMap.isEmpty()) return false;
         int pages = 0;
         for (Map.Entry<String, MobRecipe> e : new TreeMap<>(MobRecipe.MobNameToRecipeMap).entrySet()) {
             MobRecipe r = e.getValue();
@@ -120,5 +126,6 @@ public final class MobModule {
             pages++;
         }
         FluxEcho.LOG.info("Prey Echo: {} mobs in NEI", pages);
+        return true;
     }
 }

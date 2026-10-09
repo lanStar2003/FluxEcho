@@ -57,6 +57,11 @@ import vazkii.botania.common.block.tile.mana.TilePool;
 public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInventoryUI, IGetTitleColor {
 
     static final int CYCLE = 20, BUFFERED_CYCLES = 3, RESCAN_TICKS = 100, SHOWN_POOLS = 4;
+    /**
+     * Waila's key for what it shows; not {@code feSpring}, the saved marker of a migrated spring, which Waila's data
+     * carries too.
+     */
+    private static final String WAILA = "feSpringWaila";
     /** The core circuit sits in GT's special slot. */
     public static final int CORE = 3;
 
@@ -563,7 +568,7 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
-        tag.setTag("feSpring", holoData());
+        tag.setTag(WAILA, holoData());
     }
 
     @Override
@@ -571,7 +576,7 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
         IWailaConfigHandler config) {
         super.getWailaBody(stack, tip, accessor, config);
         NBTTagCompound tag = accessor.getNBTData();
-        if (tag.hasKey("feSpring")) ManaText.waila(tag.getCompoundTag("feSpring"), tip);
+        if (tag.hasKey(WAILA, 10)) ManaText.waila(tag.getCompoundTag(WAILA), tip);
     }
 
     /** What the hologram and Waila show. */
