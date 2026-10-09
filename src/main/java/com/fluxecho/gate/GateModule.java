@@ -15,23 +15,26 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.registry.GameRegistry;
 
 /**
- * Light gates (prototype): the gate, the plot floor, the flux interior dimension and its chunk loading. Always
- * registered, so placed gates and the plots stay in a world; the recipe can be switched off.
+ * Light gates (prototype): the gate, the rooms' shell and glass, the folded zone and the rooms' chunk loading. Always
+ * registered, so placed gates and the rooms stay in a world; the recipe can be switched off.
  */
 public final class GateModule {
 
     public static BlockLightGate gate;
-    public static BlockInteriorFloor floor;
-    /** False when the interior's dimension id was taken: gates then open nothing. */
-    public static boolean dimensionReady;
+    public static BlockInteriorShell shell;
+    public static BlockInteriorGlass glass;
+    /** The 0.8.1 prototype's interior dimension is registered, so worlds from then load; nothing leads there now. */
+    public static boolean oldInterior;
 
     private GateModule() {}
 
     public static void preInit() {
         gate = new BlockLightGate();
         GameRegistry.registerBlock(gate, ItemBlockLightGate.class, "light_gate");
-        floor = new BlockInteriorFloor();
-        GameRegistry.registerBlock(floor, "interior_floor");
+        shell = new BlockInteriorShell();
+        GameRegistry.registerBlock(shell, "interior_floor");
+        glass = new BlockInteriorGlass();
+        GameRegistry.registerBlock(glass, "interior_glass");
         GameRegistry.registerTileEntity(TileLightGate.class, "fluxecho:light_gate");
         GateNet.init();
     }
@@ -41,18 +44,18 @@ public final class GateModule {
             if (!DimensionManager.registerProviderType(Config.gateProvider, InteriorProvider.class, false))
                 throw new IllegalStateException("world provider id " + Config.gateProvider + " is taken");
             DimensionManager.registerDimension(Config.gateDimension, Config.gateProvider);
-            dimensionReady = true;
+            oldInterior = true;
         } catch (RuntimeException e) {
-            FluxEcho.LOG.error(
-                "The flux interior could not be registered ({}); light gates open nothing. Pick free ids in config/fluxecho.cfg, gates.dimensionId and gates.providerId.",
+            FluxEcho.LOG.warn(
+                "The 0.8.1 flux interior dimension could not be registered ({}). Light gates do not need it any more; only a world from 0.8.1 with someone standing in it would miss it.",
                 e.getMessage());
         }
         ForgeChunkManager.setForcedChunkLoadingCallback(FluxEcho.instance, new Gates.Tickets());
         GateServer server = new GateServer();
-        MinecraftForge.EVENT_BUS.register(server);
         FMLCommonHandler.instance()
             .bus()
             .register(server);
+        MinecraftForge.EVENT_BUS.register(new Zone());
     }
 
     /** Glass to look through, ender pearls for the link to the flux layer, obsidian to stand on. */
@@ -74,5 +77,9 @@ public final class GateModule {
         } catch (Throwable t) {
             FluxEcho.LOG.error("Failed to register the Light Gate recipe", t);
         }
+    }
+
+    public static void serverStopped() {
+        GateServer.stopped();
     }
 }

@@ -123,6 +123,7 @@ public class FluxEcho {
     @Mod.EventHandler
     public void serverStopped(FMLServerStoppedEvent e) {
         EchoLedger.reset();
+        GateModule.serverStopped();
         if (Mods.thaumcraft) TCModule.serverStopped();
     }
 }

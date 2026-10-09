@@ -3,8 +3,9 @@ import java.io.File;
 import javax.imageio.ImageIO;
 
 /**
- * Draws the light gate's threshold plate and the flux interior's floor and rim, in the colours of
- * {@code tools/FluxTextures.java}. Run from the repository root: {@code java tools/GateTextures.java}.
+ * Draws the light gate's threshold plate and its rooms' shell (floor, rim, wall, ceiling, pillar, light, trim) and
+ * glass, in the colours of {@code tools/FluxTextures.java}. Run from the repository root:
+ * {@code java tools/GateTextures.java}.
  */
 public class GateTextures {
 
@@ -18,6 +19,12 @@ public class GateTextures {
         thresholdSide();
         floor();
         rim();
+        wall();
+        ceiling();
+        pillar();
+        light();
+        trim();
+        glass();
     }
 
     static int rgb(int c) {
@@ -79,6 +86,86 @@ public class GateTextures {
             img.setRGB(x, y, rgb(c));
         }
         save(img, "rim");
+    }
+
+    /** Tall dark panels: a seam down one side and across the middle, a faint grain. */
+    static void wall() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            int c = ((x * 5 + y * 3) % 13 == 0) ? GRID : DEEP;
+            if (x == 0 || y == 0) c = SEAM;
+            else if (y == 8) c = mix(DEEP, SEAM, 0.7);
+            if (x == 0 && (y == 4 || y == 12)) c = mix(SEAM, CYAN, 0.5);
+            img.setRGB(x, y, rgb(c));
+        }
+        save(img, "wall");
+    }
+
+    /** Coffered: a sunken square in each tile, lit at its corners. */
+    static void ceiling() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            int c = PANE;
+            boolean edge = x == 0 || y == 0 || x == 15 || y == 15;
+            boolean inner = (x == 3 || x == 12) && y >= 3 && y <= 12 || (y == 3 || y == 12) && x >= 3 && x <= 12;
+            if (edge) c = SEAM;
+            else if (inner) c = mix(SEAM, CYAN, 0.25);
+            else if (x > 3 && x < 12 && y > 3 && y < 12) c = DEEPER;
+            if ((x == 3 || x == 12) && (y == 3 || y == 12)) c = mix(SEAM, CYAN, 0.7);
+            img.setRGB(x, y, rgb(c));
+        }
+        save(img, "ceiling");
+    }
+
+    /** A rib: dark edges, a violet-to-cyan core running up it. */
+    static void pillar() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            double core = 1 - Math.abs(x - 7.5) / 7.5;
+            int c = mix(DEEPER, mix(VIOLET, CYAN, y / 15.0), Math.pow(core, 3) * 0.85);
+            if (x == 0 || x == 15) c = SEAM;
+            if (y == 0 || y == 15) c = mix(c, SEAM, 0.6);
+            img.setRGB(x, y, rgb(c));
+        }
+        save(img, "pillar");
+    }
+
+    /** A light panel: pale cyan, brightest in the middle, in a thin dark frame. */
+    static void light() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            double d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)) / 7.5;
+            int c = mix(0xF2FEFF, CYAN, Math.pow(d, 2) * 0.8);
+            if (x == 0 || y == 0 || x == 15 || y == 15) c = SEAM;
+            else if (x == 1 || y == 1 || x == 14 || y == 14) c = mix(SEAM, CYAN, 0.6);
+            img.setRGB(x, y, rgb(c));
+        }
+        save(img, "light");
+    }
+
+    /** A glowing band across the wall. */
+    static void trim() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            double band = Math.max(0, 1 - Math.abs(y - 7.5) / 3.5);
+            int c = mix(DEEP, mix(CYAN, 0xF2FEFF, band * 0.5), Math.pow(band, 1.4));
+            if (y == 0 || y == 15) c = SEAM;
+            if (band == 0 && x == 0) c = SEAM;
+            img.setRGB(x, y, rgb(c));
+        }
+        save(img, "trim");
+    }
+
+    /** Clear glass with a faint teal tint and a thin frame. */
+    static void glass() throws Exception {
+        BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            boolean frame = x == 0 || y == 0 || x == 15 || y == 15;
+            int a = frame ? 210 : (x + y == 6 || x + y == 7 ? 70 : 34);
+            int c = frame ? mix(SEAM, CYAN, 0.45) : mix(0x9FE8F2, 0xFFFFFF, x + y == 6 || x + y == 7 ? 0.6 : 0);
+            img.setRGB(x, y, a << 24 | c);
+        }
+        save(img, "glass");
     }
 
     static void save(BufferedImage img, String name) throws Exception {

@@ -87,16 +87,6 @@ class GateGeometryTest {
     }
 
     @Test
-    void plotsAreFarApartAndFindable() {
-        for (int plot = 0; plot < 5; plot++) {
-            Gate g = GateGeometry.plotGate(plot);
-            assertEquals(plot, GateGeometry.plotOf(g.cx()));
-            assertEquals(plot, GateGeometry.plotOf(GateGeometry.plotX(plot) - 500));
-            assertEquals(2, g.facing);
-        }
-    }
-
-    @Test
     void projectsThroughOpenGlMatrices() {
         float[] identity = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
         // a perspective with 90 degrees of view, near 0.05, far 100, square screen

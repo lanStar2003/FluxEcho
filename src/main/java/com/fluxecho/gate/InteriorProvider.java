@@ -17,15 +17,13 @@ import net.minecraft.world.biome.WorldChunkManagerHell;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 
-import com.fluxecho.logic.GateGeometry;
-
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * The flux interior: empty space under a real sky, with the overworld's day and night but never rain, where each
- * light gate's plot floats far from the next. Nothing spawns, and no mod's world generation runs here: a new chunk
- * counts as populated already.
+ * The 0.8.1 prototype's flux interior: empty space under a real sky, where each light gate's plot floated. Light
+ * gates' rooms are in the folded zone of their own dimension now; this stays registered so worlds from 0.8.1 load.
+ * Nothing spawns, and no mod's world generation runs here: a new chunk counts as populated already.
  */
 public class InteriorProvider extends WorldProvider {
 
@@ -61,13 +59,12 @@ public class InteriorProvider extends WorldProvider {
 
     @Override
     public ChunkCoordinates getSpawnPoint() {
-        GateGeometry.Gate g = GateGeometry.plotGate(0);
-        return new ChunkCoordinates(g.x, g.y, 0);
+        return new ChunkCoordinates(0, 64, 0);
     }
 
     @Override
     public int getAverageGroundLevel() {
-        return GateGeometry.FLOOR_Y + 1;
+        return 64;
     }
 
     @Override
