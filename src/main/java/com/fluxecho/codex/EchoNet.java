@@ -15,6 +15,7 @@ import com.fluxecho.FluxEcho;
 import com.fluxecho.client.FlowStore;
 import com.fluxecho.client.HoloStore;
 import com.fluxecho.core.Owners;
+import com.fluxecho.gate.Sight;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -89,23 +90,19 @@ public final class EchoNet {
     public static void flow(World w, int x, int y, int z, int tx, int ty, int tz, int color) {
         if (channel == null || w == null) return;
         int dim = w.provider.dimensionId;
-        channel.sendToAllAround(
-            new MsgFlow(dim, x, y, z, tx, ty, tz, color),
-            new NetworkRegistry.TargetPoint(dim, x + 0.5, y + 0.5, z + 0.5, FLOW_RANGE));
+        MsgFlow m = new MsgFlow(dim, x, y, z, tx, ty, tz, color);
+        for (EntityPlayerMP p : Sight.near(w, x + 0.5, y + 0.5, z + 0.5, FLOW_RANGE)) channel.sendTo(m, p);
     }
 
     /** Tells the players within {@code range} (plus a margin) of the machine what its hologram shows. */
     public static void holo(IGregTechTileEntity b, byte kind, NBTTagCompound data, int range) {
         if (channel == null || b == null || b.getWorld() == null) return;
         int dim = b.getWorld().provider.dimensionId;
-        channel.sendToAllAround(
-            new MsgHolo(kind, dim, b.getXCoord(), b.getYCoord(), b.getZCoord(), data),
-            new NetworkRegistry.TargetPoint(
-                dim,
-                b.getXCoord() + 0.5,
-                b.getYCoord() + 0.5,
-                b.getZCoord() + 0.5,
-                range + 8));
+        MsgHolo m = new MsgHolo(kind, dim, b.getXCoord(), b.getYCoord(), b.getZCoord(), data);
+        // also to whoever looks at it through a light gate
+        for (EntityPlayerMP p : Sight
+            .near(b.getWorld(), b.getXCoord() + 0.5, b.getYCoord() + 0.5, b.getZCoord() + 0.5, range + 8))
+            channel.sendTo(m, p);
     }
 
     public static final class Events {
