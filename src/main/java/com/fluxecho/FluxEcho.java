@@ -14,6 +14,7 @@ import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.RecipeCheck;
 import com.fluxecho.crops.CropModule;
+import com.fluxecho.gate.GateModule;
 import com.fluxecho.mana.ManaModule;
 import com.fluxecho.mobs.MobModule;
 import com.fluxecho.quest.QuestInstaller;
@@ -50,6 +51,9 @@ public class FluxEcho {
     public static final String NAME = "FluxEcho";
     public static final Logger LOG = LogManager.getLogger("FluxEcho");
 
+    @Mod.Instance(MODID)
+    public static FluxEcho instance;
+
     @SidedProxy(clientSide = "com.fluxecho.ClientProxy", serverSide = "com.fluxecho.CommonProxy")
     public static CommonProxy proxy;
 
@@ -68,6 +72,7 @@ public class FluxEcho {
         Mods.detect();
         QuestInstaller.preInit(e.getModConfigurationDirectory());
         CodexModule.preInit();
+        GateModule.preInit();
         if (Mods.forestry) BeeModule.preInit();
         if (Mods.thaumcraft) TCModule.preInit();
         if (Mods.mobsInfo) MobModule.preInit();
@@ -84,12 +89,14 @@ public class FluxEcho {
         if (Mods.mobsInfo) MobModule.machines();
         if (Mods.ic2) CropModule.machines();
         if (Mods.botania) ManaModule.machines();
+        GateModule.init();
         proxy.init();
     }
 
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent e) {
         CodexModule.postInit();
+        GateModule.postInit();
         if (Mods.forestry) BeeModule.postInit();
         if (Mods.thaumcraft) TCModule.postInit();
         if (Mods.bloodMagic) BloodModule.postInit();
