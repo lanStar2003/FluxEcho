@@ -298,7 +298,7 @@ def shards():
         "深层里沉着的不只是矿脉。GT 的地下流体（石油、天然气、盐水……）也是碎片的投影，每个区块一种。\n\n"
         "拿着印记拓印器 [潜行右键]，就拓下脚下这个区块的地下流体，耗一张纸。印记记下的是这块碎片原本的储量，"
         "已经被抽走多少都不影响。\n\n"
-        "[note]先用探矿工具或 VisualProspecting 地图找一块流体多的区块。需要 FluxDepths 0.2.0。[/note]",
+        "[note]先用探矿工具或 VisualProspecting 地图找一块流体多的区块。[/note]",
         item("fluxdepths:imprint"),
         [checkbox()],
         pre=["shards/imprinter"], main=False)
