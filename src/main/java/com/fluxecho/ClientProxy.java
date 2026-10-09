@@ -10,6 +10,7 @@ import com.fluxecho.client.MachineFx;
 import com.fluxecho.client.MachineHolo;
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
+import com.fluxecho.gate.client.GateClient;
 import com.fluxecho.mana.ManaHolo;
 import com.fluxecho.nei.NeiCheck;
 import com.fluxecho.thaumcraft.TCClient;
@@ -29,6 +30,7 @@ public class ClientProxy extends CommonProxy {
         MachineFx.register();
         MachineHolo.register();
         FlowFx.register();
+        GateClient.register();
         if (Mods.thaumcraft) TCClient.init();
         if (Mods.botania) ManaHolo.register();
         if (Loader.isModLoaded("NotEnoughItems")) ClientCommandHandler.instance.registerCommand(new NeiCheck());

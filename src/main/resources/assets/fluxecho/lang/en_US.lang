@@ -357,3 +357,12 @@ fluxecho.nei.note.seed_echo=Crop sticks into fully scanned seed bags with the im
 # 0.7.2
 fluxecho.gene.yes=Yes
 fluxecho.gene.no=No
+
+# 0.8.1 light gates (prototype)
+tile.fluxecho.light_gate.name=Light Gate (Prototype)
+tile.fluxecho.interior_floor.name=Flux Interior Floor
+fluxecho.gate.item.new=Put down, it opens a new plot in the flux interior.\nClose to it you see inside; walk in to go there.
+fluxecho.gate.item.plot=Opens onto plot %s of the flux interior.\nClose to it you see inside; walk in to go there.
+fluxecho.gate.opened=The light gate opens onto plot %s of the flux interior.
+fluxecho.gate.not_inside=A light gate goes outside the flux interior; each plot has its own gate already.
+fluxecho.gate.no_interior=The flux interior is not available (see the log), so the gate opens nothing.

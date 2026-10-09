@@ -21,6 +21,7 @@ GT New Horizons 2.8.4 的私货模组。0.8.0 起，原来的 [FluxLite](docs/Fl
 | 任务书：懒人AE、碎片采集器、通量回响各条线 | BetterQuesting | 0.1.0 |
 | [通量网络](docs/FluxLite.md)（原 FluxLite）：通量连接器、通量监控台、通量终端，GT 无线电网和团队蒸汽网络 | 无 | 0.8.0 并入 |
 | [通量深层](docs/FluxDepths.md)（原 FluxDepths）：通量碎片采集器、流体回响泵 | VisualProspecting（GTNH 自带） | 0.8.0 并入 |
+| [光门（原型）](#光门原型)：通往通量内境的门，走近能看到门里，走进去就到了 | 无 | 0.8.1 |
 
 ## 世界观
 
@@ -345,6 +346,22 @@ GTNH 里没有任何机器能直接用 EU 合成要素；EMT 的工业充能台�
 
 配置里关掉 `general.enableDefaultRecipes` 就可以改用 CraftTweaker 脚本自己写。
 
+## 光门（原型）
+
+整体规划里"通量内境"的第一步（见 [docs/BLUEPRINT.md](docs/BLUEPRINT.md) 3.10），先验证效果：
+
+- **放下光门**（在通量内境外面的任何地方），它就在**通量内境**这个维度里开出一块属于它的地块：25×25 的发光地面，真天空、有昼夜、不下雨、不刷怪。地块里有一扇和它配对的门。
+- **走近就能看到门里**：站在门前 32 格内，服务器把门后那片区域实时发给你，光膜上显示的就是门另一边的样子，视角和远近都是真实的；里面放方块、拆方块，门外几乎立刻能看到。
+- **走进去就到了**：穿过光膜的那一刻，画面停在门里看到的样子，过一道涟漪，另一边准备好就淡出。从地块里的门走出来，回到外面的门前。
+- **地块会一直加载**，在里面搭的东西你不在也照常运转。从地块边上掉下去会被接回门前。
+- 拆掉外面的门，掉落的物品记得它的地块，放到别处还是通往同一块地；地块里的门不能拆。
+- 配方：玻璃 ×4、末影珍珠 ×4、黑曜石 ×1（`GEG / EOE / GEG`）。
+
+原型的限制：
+- 门里只画方块，需要方块实体才能画对的东西（GT 机器的面、箱子、魔力池等）在门里先显示成默认样子或不显示；门里也还看不到生物和其他玩家。
+- 开光影包时，门里的画面不经过光影，没有光影的阴影和泛光。
+- 穿门换维度时，Minecraft 会把整个客户端世界换掉，有一小段卡顿，涟漪就是用来盖住它的。**建议在启动器的 JVM 参数里加上 `-XX:+DisableExplicitGC`**：Minecraft 每次换世界都会强制做一次完整的垃圾回收，8 GB 内存时这一下可能要一两秒，加了这个参数就没有了（对平时游戏没有坏处）。
+
 ## 任务书
 
 FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导入，不用执行任何命令：
@@ -421,6 +438,11 @@ FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导�
 | `effects.effectRange` | 32 | 动效和轨迹在多少格内可见（客户端） |
 | `effects.hologramRange` | 16 | 回响机器的全息投影在多少格内可见（0 = 全部关闭） |
 | `ae2.enabled` | true | 回响 ME 供应器开关 |
+| `gates.enableRecipe` | true | 光门的配方 |
+| `gates.dimensionId` / `gates.providerId` | 7270 / 7270 | 通量内境的维度 ID 和世界类型 ID。只在新世界或和别的模组冲突时修改；地块存在存档的 `DIM7270` 里 |
+| `gates.viewRange` | 32 | 玩家离门多少格内，服务器发门后的内容（0 = 全部关闭透视） |
+| `gates.liveView` | true | 在光膜上画门后的样子（客户端；关掉后光膜只发光，给显卡弱或和光影包不合的情况） |
+| `gates.prefill` | true | 穿门时先用门里看到的方块填好另一边，不等服务器发区块（客户端） |
 
 GT 机器 ID：24520–24529 是通量深层的采集器和流体泵，24530–24569 是回响机器；这些 ID 在 GTNH 2.8.4 里没有被别的模组占用（扫描过整合包所有 jar）。启动时如果发现被占用，会报错并提示修改配置，不会悄悄覆盖。
 
@@ -431,7 +453,8 @@ GT 机器 ID：24520–24529 是通量深层的采集器和流体泵，24530–2
 - 回响图鉴的账本在 `com.fluxecho.codex`（`EchoLedger`，存在存档的 `data/fluxecho_ledger.dat`），各模块记账、注册图标；回响 ME 供应器通过 `MTEEchoMachine.echoPatterns()` 问机器能做什么，只用 AE2 的公开 API。
 - `./gradlew build`：编译、格式检查、单元测试（含语言文件：中英文键一致、代码里写到的键都在）。
 - `/fluxecho_nei`（客户端命令）：按玩家按 U、按 R 的方式查一遍每个回响机器的 NEI 页面，在聊天栏报告哪个页面出错。
-- 纹理由 `tools/` 下的脚本生成：`java tools/Textures.java`（通量深层是 `tools/DepthsTextures.java`、`tools/DepthsGuiTextures.java`）。
+- 纹理由 `tools/` 下的脚本生成：`java tools/Textures.java`（通量深层是 `tools/DepthsTextures.java`、`tools/DepthsGuiTextures.java`，光门是 `tools/GateTextures.java`）。
+- 光门的几何（穿门判定、两扇门之间的位移和转向、门后显示的范围、屏幕投影）在 `logic/GateGeometry`，门后内容的打包在 `logic/MirrorSection`，都有单元测试；画面只能进游戏看。
 - 0.8.0 合并的做法：`com.fluxlite`、`com.fluxdepths` 两个包原样搬进来，各自仍是一个 `@Mod`（`fluxlite`、`fluxdepths`，在 `mcmod.info` 里挂在 `fluxecho` 下面）。Forge 只允许模组改写自己名下的注册名，强制加载区块的票据和配置文件也按模组 ID 存，所以保留原来的模组 ID 是旧存档零迁移的唯一稳妥做法。
 - 任务书由 `quests/build_quests.py` 生成到 `src/main/resources/assets/fluxecho/quests/`：`python quests/build_quests.py`。任务 ID 由固定的键算出来，重新生成后 ID 不变，进度也不会丢。
 - 推送 `X.Y.Z` 标签后，CI 会构建并发布 GitHub Release，更新说明取自 CHANGELOG 的对应小节。
