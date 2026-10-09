@@ -46,6 +46,10 @@ public class NexusTextures {
         still(fr + "shelf_top", NexusTextures::shelfTop);
         still(fr + "shelf_side", NexusTextures::shelfSide);
         anim(fr + "shelf_side_glow", NexusTextures::shelfGlow);
+        still(fr + "console_top", NexusTextures::consoleTop);
+        still(fr + "console_side", NexusTextures::consoleSide);
+        anim(fr + "console_top_glow", NexusTextures::consoleTopGlow);
+        anim(fr + "console_side_glow", NexusTextures::consoleSideGlow);
 
         still("blocks/nexus/front", (x, y, f) -> coreFront(x, y, f, false, CYAN, NexusTextures::hexEmblem));
         anim("blocks/nexus/front_on", (x, y, f) -> coreFront(x, y, f, true, CYAN, NexusTextures::hexEmblem));
@@ -153,6 +157,35 @@ public class NexusTextures {
         if (y <= 1 || y >= 14) c = 0x3A4452;
         if ((y == 2 || y == 13) && x >= 5 && x <= 10) c = CYAN_DARK;
         return c;
+    }
+
+    /** The console stand's plate: dark glass in a steel rim, a groove for the ring of light. */
+    static int consoleTop(int x, int y, int f) {
+        double d = dist(x, y);
+        if (d < 4.2) return mix(0x16283A, DEEPER, d / 4.2);
+        if (d < 5.6) return 0x0A1A24;
+        return rim(x, y, d < 7 ? STEEL : STEEL_DARK);
+    }
+
+    /** The console's column and foot: steel, a channel up the middle where the light runs. */
+    static int consoleSide(int x, int y, int f) {
+        if (y >= 14) return x % 3 == 0 ? STEEL_LIGHT : STEEL;
+        if (x == 7 || x == 8) return 0x0A2632;
+        if (x == 6 || x == 9) return STEEL_DARK;
+        int c = mix(STEEL_LIGHT, STEEL_DARK, Math.abs(x - 7.5) / 7.5);
+        return (y == 4 || y == 10) ? mix(c, CYAN_DARK, 0.4) : c;
+    }
+
+    static int consoleTopGlow(int x, int y, int f) {
+        double d = dist(x, y);
+        if (d < 4.4 || d >= 5.4) return 0;
+        double a = (Math.atan2(y - 7.5, x - 7.5) / (Math.PI * 2) + 1) % 1;
+        return mix(CYAN, WHITE, wave(a, f));
+    }
+
+    static int consoleSideGlow(int x, int y, int f) {
+        if (x != 7 && x != 8 || y >= 14) return 0;
+        return mix(CYAN, WHITE, wave((15 - y) / 16.0, f));
     }
 
     static int conduitTop(int x, int y, int f) {

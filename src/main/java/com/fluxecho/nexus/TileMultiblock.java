@@ -27,6 +27,7 @@ import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 
 /**
@@ -63,7 +64,17 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
 
     protected abstract Blueprint blueprint();
 
+    /** The structure as it is checked: its parts note where StructureLib finds them ({@link Recorded}). */
     protected abstract IStructureDefinition<TileMultiblock> definition();
+
+    /**
+     * The structure as it is built and previewed: the same parts unwrapped, so the NEI preview (blockrenderer6343) can
+     * tell which blocks it is made of, and any further shapes the subclass builds ({@link #buildShape}).
+     */
+    protected abstract IStructureDefinition<TileMultiblock> buildDefinition();
+
+    /** The controller's own block, which a preview world has to be given before it can show the structure. */
+    protected abstract Block coreBlock();
 
     /** The {@link Formed} flags of a part once formed. */
     protected abstract int flags(char ch);
@@ -88,8 +99,30 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         return new Recorded(ch, StructureUtility.ofBlock(block, meta));
     }
 
+    /**
+     * A structure of shapes (named as given) whose parts are {@code char, Block, meta} triples; with {@code record} the
+     * parts note where they are found ({@link #definition}), without they are plain ({@link #buildDefinition}).
+     */
+    protected static IStructureDefinition<TileMultiblock> define(boolean record, String[] names, Blueprint[] shapes,
+        Object... parts) {
+        StructureDefinition.Builder<TileMultiblock> b = StructureDefinition.builder();
+        for (int i = 0; i < names.length; i++) b.addShape(names[i], StructureUtility.transpose(shapes[i].shape()));
+        for (int i = 0; i + 2 < parts.length; i += 3) {
+            char ch = (Character) parts[i];
+            Block block = (Block) parts[i + 1];
+            int meta = (Integer) parts[i + 2];
+            b.addElement(ch, record ? recorded(ch, block, meta) : StructureUtility.ofBlock(block, meta));
+        }
+        return b.build();
+    }
+
     void record(char ch, int x, int y, int z) {
         seen.add(new int[] { x, y, z, ch });
+    }
+
+    /** Whether the console stand at the position is this structure's own, which opens its GUI. */
+    public boolean consoleAt(int x, int y, int z) {
+        return false;
     }
 
     public ForgeDirection front() {
@@ -294,16 +327,26 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
 
     @Override
     public IStructureDefinition<?> getStructureDefinition() {
-        return definition();
+        return buildDefinition();
     }
 
     @Override
     public void construct(ItemStack trigger, boolean hintsOnly) {
-        Blueprint bp = blueprint();
-        definition().buildOrHints(
+        if (!realWorld()) placeOwnBlock();
+        buildShape(trigger, hintsOnly);
+    }
+
+    /** Builds (or shows) the structure for the trigger: by default the one shape, {@link #MAIN}. */
+    protected void buildShape(ItemStack trigger, boolean hintsOnly) {
+        build(MAIN, blueprint(), trigger, hintsOnly);
+    }
+
+    /** Builds (or shows) one shape of {@link #buildDefinition} round the controller. */
+    protected void build(String shape, Blueprint bp, ItemStack trigger, boolean hintsOnly) {
+        buildDefinition().buildOrHints(
             this,
             trigger,
-            MAIN,
+            shape,
             worldObj,
             extendedFacing(),
             xCoord,
@@ -315,11 +358,28 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             hintsOnly);
     }
 
+    /**
+     * In a preview world the tile stands alone: the NEI preview takes the multiblock's item from the block at the
+     * controller, so it gets its own block (and stays the tile there).
+     */
+    private void placeOwnBlock() {
+        Block core = coreBlock();
+        if (worldObj == null || core == null || worldObj.getBlock(xCoord, yCoord, zCoord) == core) return;
+        worldObj.setBlock(xCoord, yCoord, zCoord, core, 0, 2);
+        if (worldObj.getTileEntity(xCoord, yCoord, zCoord) != this)
+            worldObj.setTileEntity(xCoord, yCoord, zCoord, this);
+    }
+
     @Override
     public int survivalConstruct(ItemStack trigger, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (!realWorld()) {
+            // previews build the whole of it at once
+            construct(trigger, false);
+            return -1;
+        }
         if (formed) return -1;
         Blueprint bp = blueprint();
-        return definition().survivalBuild(
+        return buildDefinition().survivalBuild(
             this,
             trigger,
             MAIN,

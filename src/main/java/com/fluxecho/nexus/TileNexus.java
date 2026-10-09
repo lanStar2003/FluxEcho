@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.ISidedInventory;
@@ -33,8 +34,6 @@ import com.fluxecho.research.ResearchData;
 import com.fluxlite.backend.GTWirelessBackend;
 import com.fluxlite.core.ServerEvents;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
 import com.gtnewhorizons.modularui.api.screen.ITileWithModularUI;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
@@ -51,7 +50,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     /** What the client copy shows is going on. */
     public static final int POWERED = 1, RESEARCHING = 2, MANIFESTING = 4;
 
-    private static IStructureDefinition<TileMultiblock> definition;
+    private static IStructureDefinition<TileMultiblock> definition, buildDefinition;
 
     final ItemStackHandler inv = new ItemStackHandler(INPUTS + OUTPUTS) {
 
@@ -105,25 +104,93 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     @Override
     protected IStructureDefinition<TileMultiblock> definition() {
-        if (definition == null) definition = build();
+        if (definition == null)
+            definition = define(true, new String[] { MAIN }, new Blueprint[] { blueprint() }, parts());
         return definition;
     }
 
-    private static IStructureDefinition<TileMultiblock> build() {
+    /** Phase I as {@link #MAIN}, and every phase as {@code phase1} to {@code phase5} for the projector and NEI. */
+    @Override
+    protected IStructureDefinition<TileMultiblock> buildDefinition() {
+        if (buildDefinition == null) {
+            String[] names = new String[NexusShape.PHASES + 1];
+            Blueprint[] shapes = new Blueprint[names.length];
+            names[0] = MAIN;
+            shapes[0] = blueprint();
+            for (int p = 1; p <= NexusShape.PHASES; p++) {
+                names[p] = "phase" + p;
+                shapes[p] = NexusShape.phase(p);
+            }
+            buildDefinition = define(false, names, shapes, parts());
+        }
+        return buildDefinition;
+    }
+
+    private static Object[] parts() {
         BlockFrame f = FrameModule.frame;
-        return StructureDefinition.<TileMultiblock>builder()
-            .addShape(MAIN, StructureUtility.transpose(NexusShape.PHASE_1.shape()))
-            .addElement(NexusShape.BASE, new Recorded(NexusShape.BASE, StructureUtility.ofBlock(f, BlockFrame.BASE)))
-            .addElement(NexusShape.LIT, new Recorded(NexusShape.LIT, StructureUtility.ofBlock(f, BlockFrame.BASE_LIT)))
-            .addElement(
-                NexusShape.PILLAR,
-                new Recorded(NexusShape.PILLAR, StructureUtility.ofBlock(f, BlockFrame.PILLAR)))
-            .addElement(
-                NexusShape.CONDUIT,
-                new Recorded(NexusShape.CONDUIT, StructureUtility.ofBlock(f, BlockFrame.CONDUIT)))
-            .addElement(NexusShape.RING, new Recorded(NexusShape.RING, StructureUtility.ofBlock(f, BlockFrame.RING)))
-            .addElement(NexusShape.SEAT, new Recorded(NexusShape.SEAT, StructureUtility.ofBlock(f, BlockFrame.SEAT)))
-            .build();
+        return new Object[] { NexusShape.BASE, f, BlockFrame.BASE, NexusShape.LIT, f, BlockFrame.BASE_LIT,
+            NexusShape.PILLAR, f, BlockFrame.PILLAR, NexusShape.CONDUIT, f, BlockFrame.CONDUIT, NexusShape.RING, f,
+            BlockFrame.RING, NexusShape.SEAT, f, BlockFrame.SEAT, NexusShape.CONSOLE, f, BlockFrame.CONSOLE };
+    }
+
+    @Override
+    protected Block coreBlock() {
+        return NexusModule.core;
+    }
+
+    /**
+     * The projector's (and NEI's) tier picks what it shows: 1 to 5 the nexus of that phase, 6 to 10 the same with its
+     * open inner ring slots holding modules (previews only). In the world the projector builds only the phases the
+     * nexus can reach today.
+     */
+    @Override
+    protected void buildShape(ItemStack trigger, boolean hintsOnly) {
+        // tiers past the last show the last, so NEI finds where its slider ends
+        int tier = trigger == null ? 1 : Math.max(1, Math.min(2 * NexusShape.PHASES, trigger.stackSize));
+        int phase = (tier - 1) % NexusShape.PHASES + 1;
+        if (realWorld()) phase = Math.min(phase, PHASE);
+        build("phase" + phase, NexusShape.phase(phase), trigger, hintsOnly);
+        if (tier > NexusShape.PHASES && !realWorld()) previewModules(phase, trigger, hintsOnly);
+    }
+
+    /** Stands a module on each slot the phase opens, its front towards the nexus, for the preview. */
+    private void previewModules(int phase, ItemStack trigger, boolean hintsOnly) {
+        List<NexusModule.Preview> kinds = NexusModule.previews();
+        if (kinds.isEmpty() || worldObj == null) return;
+        int[] c = centre();
+        int fx = front().offsetX, fz = front().offsetZ;
+        for (int k = 0; k < RingSlots.open(phase); k++) {
+            NexusModule.Preview kind = kinds.get(k % kinds.size());
+            int[] o = RingSlots.offset(k, Config.innerRadius, fx, fz);
+            int[] f = RingSlots.facing(-o[0], -o[1]);
+            TileModule m = kind.tile.get();
+            int[] cc = m.centreCell();
+            // where its controller stands for its foundation's centre to sit on the slot
+            int[] rel = m.blueprint()
+                .world(cc[0], cc[1], cc[2], 0, 0, 0, f[0], f[1]);
+            int x = c[0] + o[0] - rel[0], y = c[1] - rel[1], z = c[2] + o[1] - rel[2];
+            worldObj.setBlock(x, y, z, kind.core, 0, 2);
+            worldObj.setTileEntity(x, y, z, m);
+            m.facing = facingOf(f[0], f[1]);
+            ItemStack one = trigger == null ? null : trigger.copy();
+            if (one != null) one.stackSize = 1;
+            m.construct(one, hintsOnly);
+        }
+    }
+
+    private static int facingOf(int fx, int fz) {
+        for (int d = 2; d <= 5; d++) {
+            net.minecraftforge.common.util.ForgeDirection f = net.minecraftforge.common.util.ForgeDirection
+                .getOrientation(d);
+            if (f.offsetX == fx && f.offsetZ == fz) return d;
+        }
+        return 2;
+    }
+
+    /** The console stand under the controller. */
+    @Override
+    public boolean consoleAt(int x, int y, int z) {
+        return x == xCoord && y == yCoord - 1 && z == zCoord;
     }
 
     @Override
@@ -139,7 +206,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     /** The middle of its base: x, y (the base's level), z. */
     public int[] centre() {
         Blueprint b = blueprint();
-        return cellPos(b.ctrlA, b.ctrlB, b.ctrlC + b.centreBack());
+        return cellPos(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack());
     }
 
     // ---- teams and research

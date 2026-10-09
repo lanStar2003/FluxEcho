@@ -33,6 +33,8 @@ public final class LibraryModule {
     public static void init() {
         IMultiblockInfoContainer
             .registerTileClass(TileLibrary.class, com.fluxecho.nexus.NexusModule.infoContainer("library.structure"));
+        com.fluxecho.nexus.NexusModule.previewModule(core, TileLibrary::new);
+        com.fluxecho.frame.BlockFrame.onUse(Shelves::use);
     }
 
     /**

@@ -33,18 +33,25 @@ import com.fluxecho.render.Shapes;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * What a formed Flux Nexus is (blueprint 3.3): its pillars, conduits, seat and ring have given way to a crystal core
- * floating over the base, a column of light, a ring turning above with a thinner one against it, and four struts
- * hanging in the air; light runs round the base. While it researches, a constellation turns above the ring with data
- * streaming up to it; while it manifests, motes spiral in to the core. Bridges of light run out to the modules
- * docked on its ring, and the open slots show their outline to whoever holds a terminal or a module's core. Forming,
- * a sweep of light runs up the structure as its blocks give way.
+ * What a formed Flux Nexus is (blueprint 3.3): its pillars, conduits, seat and ring have given way to four curved,
+ * segmented ribs rising from the base's corners and leaning in to hold a turning ring, a thinner one against it, and
+ * the crystal core floating in the ring's middle over a cradle of light. Seams of light breathe in the ribs' joints.
+ * While powered, a beam runs from the core up into the sky, pulses climbing it, seen from as far as the nexus is
+ * loaded. While it researches, a constellation turns above the ring with data streaming up to it; while it
+ * manifests, motes spiral in to the core. Bridges of light run out to the modules docked on its ring, and the open
+ * slots show their outline to whoever holds a terminal or a module's core. Forming, a sweep of light runs up the
+ * structure as its blocks give way.
  * <p>
  * Drawn after the world in the shader-safe way ({@link Shapes}), and again behind light gates ({@link FarDraw}).
  */
 public final class NexusRender {
 
-    private static final int STEEL = 0x1C3446, STEEL_LIGHT = 0x2C5470, CORE = 0xE8FBFF;
+    private static final int STEEL = 0x1C3446, STEEL_LIGHT = 0x2C5470, STEEL_DARK = 0x0E1C28, CORE = 0xE8FBFF;
+    /** How far (blocks) a powered nexus's sky beam is drawn when the rest of it is not. */
+    private static final double BEAM_RANGE = 512;
+    /** Rib segments, and the rib's path in (out from the centre, up from the base): a curve through three points. */
+    private static final int RIB_SEGMENTS = 7;
+    private static final double[] RIB_FOOT = { 4.5, 0.0 }, RIB_BEND = { 4.7, 3.0 }, RIB_HEAD = { 3.0, 4.4 };
 
     private NexusRender() {}
 
@@ -68,7 +75,15 @@ public final class NexusRender {
             double dx = m.xCoord + 0.5 - RenderManager.renderPosX, dy = m.yCoord + 0.5 - RenderManager.renderPosY,
                 dz = m.zCoord + 0.5 - RenderManager.renderPosZ;
             double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist > range + 48) continue;
+            if (dist > range + 48) {
+                // past the effects' range only the sky beam is drawn
+                if (m instanceof TileNexus n && dist < BEAM_RANGE) try {
+                    farBeam(n, t, (float) Math.min(1, (BEAM_RANGE - dist) / 64));
+                } finally {
+                    Shapes.end();
+                }
+                continue;
+            }
             float fade = (float) Math.min(1, (range + 48 - dist) / 16);
             try {
                 if (m instanceof TileNexus n) nexus(n, t, fade, hints);
@@ -114,21 +129,9 @@ public final class NexusRender {
         p *= 0.2f + 0.8f * appear;
         double spin = on ? t * 0.004 : 0;
 
-        // the solid parts: struts and the ring
+        // the solid parts: ribs and the ring
         Shapes.begin(false);
-        for (int i = 0; i < 4; i++) {
-            double sx = cx + (i % 2 == 0 ? -2 : 2), sz = cz + (i < 2 ? -2 : 2);
-            double bob = Math.sin(t * 0.05 + i * 1.7) * 0.12;
-            Shapes.strut(
-                sx,
-                base + 0.55 + bob,
-                sz,
-                base + 3.25 + bob,
-                0.13,
-                Math.PI / 4 + i,
-                STEEL_LIGHT,
-                0.95f * appear * fade);
-        }
+        for (int i = 0; i < 4; i++) rib(cx, base, cz, i, 0.95f * appear * fade);
         double ry = base + 4.5;
         for (int k = 0; k < 8; k++) {
             double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
@@ -159,18 +162,9 @@ public final class NexusRender {
                 0.95f * appear * fade);
             Shapes.band(cx, cz, 2.6, ry - 0.12, ry + 0.12, a0, a1, STEEL, 0.95f * appear * fade, 0.95f * appear * fade);
         }
-        double bob = Math.sin(t * 0.04) * 0.1;
+        double bob = Math.sin(t * 0.04) * 0.1, core = ry + bob;
         boolean making = (n.clientActivity & TileNexus.MANIFESTING) != 0;
-        Shapes.crystal(
-            cx,
-            base + 3.5 + bob,
-            cz,
-            0.5,
-            0.85,
-            t * 0.03,
-            CORE,
-            making ? VIOLET : CYAN,
-            0.92f * appear * fade);
+        Shapes.crystal(cx, core, cz, 0.5, 0.85, t * 0.03, CORE, making ? VIOLET : CYAN, 0.92f * appear * fade);
 
         // the glows
         Shapes.additive(true);
@@ -178,10 +172,11 @@ public final class NexusRender {
         Shapes.disc(cx, base + 0.03, cz, 5.6, CYAN, 0.12f * p, 0f);
         Shapes.ring(cx, base + 0.04, cz, 4.55, 4.9, 0, Math.PI * 2, CYAN, 0f, CYAN, 0.4f * p * pulse);
         Shapes.ring(cx, base + 0.04, cz, 2.05, 2.25, 0, Math.PI * 2, VIOLET, 0.5f * p, VIOLET, 0f);
-        if (on) {
-            Shapes.beam(cx, base, cz, base + 14, 0.32, 0xC8F8FF, 0.9f * p, 0f);
-            Shapes.beam(cx, base, cz, base + 10, 1.1, CYAN, 0.22f * p, 0f);
-        }
+        // the cradle the core floats over, the column feeding it from the base
+        Shapes.ring(cx, base + 3.1, cz, 0.55, 0.95, 0, Math.PI * 2, CYAN, 0.5f * p * pulse, CYAN, 0f);
+        Shapes.ring(cx, base + 3.1, cz, 0.95, 1.05, 0, Math.PI * 2, WHITE, 0.6f * p, WHITE, 0.6f * p);
+        Shapes.beam(cx, base, cz, base + 3.1, 0.3, CORE, 0.5f * p, 0.8f * p);
+        if (on) skyBeam(cx, core, cz, n.yCoord, t, p);
         for (int k = 0; k < 8; k++) {
             double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
             Shapes.ring(cx, ry + 0.13, cz, 3.34, 3.44, a0, a1, CYAN, 0.9f * p, CYAN, 0.9f * p);
@@ -192,10 +187,7 @@ public final class NexusRender {
             double a0 = counter + k * Math.PI / 12, a1 = a0 + Math.PI / 12 * 0.8;
             Shapes.ring(cx, ry, cz, 3.78, 3.88, a0, a1, VIOLET, 0.65f * p, VIOLET, 0.65f * p);
         }
-        for (int i = 0; i < 4; i++) {
-            double sx = cx + (i % 2 == 0 ? -2 : 2), sz = cz + (i < 2 ? -2 : 2), b = Math.sin(t * 0.05 + i * 1.7) * 0.12;
-            Shapes.strut(sx, base + 0.6 + b, sz, base + 3.2 + b, 0.035, Math.PI / 4 + i, CYAN, 0.8f * p);
-        }
+        for (int i = 0; i < 4; i++) seams(cx, base, cz, i, t, p);
         boolean researching = (n.clientActivity & TileNexus.RESEARCHING) != 0;
         if (researching) constellation(n, cx, base + 8.5, cz, t, p);
         if (sweep != Double.MAX_VALUE) sweep(cx, ry(sweep), cz, appear);
@@ -204,11 +196,11 @@ public final class NexusRender {
 
         // motes: the core's halo, the column, the orbit, the making
         Motes.begin();
-        Motes.add(cx, base + 3.5 + bob, cz, 1.3, making ? VIOLET : CYAN, 0.55f * p * pulse);
+        Motes.add(cx, core, cz, 1.3, making ? VIOLET : CYAN, 0.55f * p * pulse);
         if (on) for (int k = 0; k < 10; k++) {
             double f = (t * 0.012 + k / 10.0) % 1;
             double a = k * 2.4 + t * 0.02;
-            Motes.add(cx + Math.cos(a) * 0.4, base + f * 12, cz + Math.sin(a) * 0.4, 0.12, CORE, (float) (1 - f) * p);
+            Motes.add(cx + Math.cos(a) * 0.4, core + f * 16, cz + Math.sin(a) * 0.4, 0.12, CORE, (float) (1 - f) * p);
         }
         for (int k = 0; k < 3; k++) {
             double a = t * 0.05 + k * Math.PI * 2 / 3;
@@ -220,7 +212,7 @@ public final class NexusRender {
             double r = 4.7 * (1 - f);
             Motes.add(
                 cx + Math.cos(a) * r,
-                base + 0.2 + f * 3.3,
+                base + 0.2 + f * 4.3,
                 cz + Math.sin(a) * r,
                 0.18,
                 VIOLET,
@@ -230,7 +222,7 @@ public final class NexusRender {
             double f = (t * 0.02 + k / 6.0) % 1;
             Motes.add(
                 cx + Math.sin(k * 2.1 + t * 0.05) * 0.3 * f,
-                base + 3.5 + f * 5,
+                core + f * 4,
                 cz + Math.cos(k * 1.3) * 0.3 * f,
                 0.14,
                 branchColor(n),
@@ -249,6 +241,117 @@ public final class NexusRender {
         Motes.end();
 
         if (n.clientHologram) hologram(n, t, fade);
+    }
+
+    /** A point of a rib's curve, {@code f} from its foot (0) to its head (1): {out, up}. */
+    private static double[] ribAt(double f) {
+        double g = 1 - f;
+        return new double[] { g * g * RIB_FOOT[0] + 2 * g * f * RIB_BEND[0] + f * f * RIB_HEAD[0],
+            g * g * RIB_FOOT[1] + 2 * g * f * RIB_BEND[1] + f * f * RIB_HEAD[1] };
+    }
+
+    /** Rib {@code i}'s way out from the centre: a diagonal, {x, z}. */
+    private static double[] ribDir(int i) {
+        double s = Math.sqrt(0.5);
+        return new double[] { (i % 2 == 0 ? -s : s), (i < 2 ? -s : s) };
+    }
+
+    /** A rib: segments of steel along the curve, a small gap between each, thinning towards the head. */
+    private static void rib(double cx, double base, double cz, int i, float a) {
+        double[] u = ribDir(i);
+        double[] side = { -u[1], 0, u[0] };
+        for (int k = 0; k < RIB_SEGMENTS; k++) {
+            double f0 = (k + 0.06) / RIB_SEGMENTS, f1 = (k + 0.94) / RIB_SEGMENTS;
+            double[] p = ribAt(f0), q = ribAt(f1);
+            double dr = q[0] - p[0], dh = q[1] - p[1], len = Math.hypot(dr, dh);
+            // across the rib in the plane it bends in, away from the centre
+            double[] out = { u[0] * dh / len, -dr / len, u[1] * dh / len };
+            double w = 0.2 - 0.06 * k / (double) RIB_SEGMENTS, d = 0.16 - 0.04 * k / (double) RIB_SEGMENTS;
+            prism(
+                new double[] { cx + u[0] * p[0], base + p[1], cz + u[1] * p[0] },
+                new double[] { cx + u[0] * q[0], base + q[1], cz + u[1] * q[0] },
+                side,
+                out,
+                w,
+                d,
+                a);
+        }
+    }
+
+    /**
+     * A square bar from {@code a} to {@code b}: half-width {@code w} along {@code side}, {@code d} along {@code out}.
+     */
+    private static void prism(double[] a, double[] b, double[] side, double[] out, double w, double d, float alpha) {
+        double[][] c = new double[8][];
+        int[][] signs = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+        for (int k = 0; k < 4; k++) {
+            double sw = signs[k][0] * w, sd = signs[k][1] * d;
+            c[k] = new double[] { a[0] + side[0] * sw + out[0] * sd, a[1] + side[1] * sw + out[1] * sd,
+                a[2] + side[2] * sw + out[2] * sd };
+            c[k + 4] = new double[] { b[0] + side[0] * sw + out[0] * sd, b[1] + side[1] * sw + out[1] * sd,
+                b[2] + side[2] * sw + out[2] * sd };
+        }
+        // the outer face catches the light, the inner one is in shadow, the sides between
+        int[] shade = { STEEL_DARK, STEEL, STEEL_LIGHT, STEEL };
+        for (int k = 0; k < 4; k++) {
+            int n = (k + 1) % 4;
+            Shapes.quadShade(c[k], c[n], c[n + 4], c[k + 4], shade[k], Shapes.mix(shade[k], STEEL_DARK, 0.3), alpha);
+        }
+        Shapes.quadShade(c[0], c[1], c[2], c[3], STEEL_DARK, STEEL_DARK, alpha);
+        Shapes.quadShade(c[4], c[5], c[6], c[7], STEEL_LIGHT, STEEL_LIGHT, alpha);
+    }
+
+    /** The light in a rib: its joints and a line up its inner edge, breathing slowly. */
+    private static void seams(double cx, double base, double cz, int i, double t, float p) {
+        double[] u = ribDir(i);
+        float breath = 0.35f + 0.65f * (float) (0.5 + 0.5 * Math.sin(t * 0.035 + i * Math.PI / 2));
+        for (int k = 0; k <= RIB_SEGMENTS; k++) {
+            double[] q = ribAt(k / (double) RIB_SEGMENTS);
+            double x = cx + u[0] * q[0], y = base + q[1], z = cz + u[1] * q[0];
+            double sx = -u[1] * 0.24, sz = u[0] * 0.24;
+            Shapes.string(x - sx, y, z - sz, x + sx, y, z + sz, 0.07, CYAN, 0.9f * p * breath, 0.9f * p * breath);
+        }
+        for (int k = 0; k < RIB_SEGMENTS * 2; k++) {
+            double[] a = ribAt(k / (RIB_SEGMENTS * 2.0)), b = ribAt((k + 1) / (RIB_SEGMENTS * 2.0));
+            // a hair inside the rib's inner face
+            double ia = a[0] - 0.17, ib = b[0] - 0.17;
+            Shapes.string(
+                cx + u[0] * ia,
+                base + a[1],
+                cz + u[1] * ia,
+                cx + u[0] * ib,
+                base + b[1],
+                cz + u[1] * ib,
+                0.04,
+                CYAN,
+                0.5f * p * breath,
+                0.5f * p * breath);
+        }
+    }
+
+    /** The beam from the core up into the sky, its top at least at y 320, with pulses climbing it. */
+    private static void skyBeam(double cx, double core, double cz, int yCoord, double t, float p) {
+        double top = ry(Math.max(320, yCoord + 160)), mid = core + 64;
+        Shapes.beam(cx, core, cz, mid, 0.34, 0xC8F8FF, 0.9f * p, 0.6f * p);
+        Shapes.beam(cx, mid, cz, top, 0.34, 0xC8F8FF, 0.6f * p, 0f);
+        Shapes.beam(cx, core, cz, core + 40, 1.3, CYAN, 0.25f * p, 0f);
+        double span = top - core;
+        for (int k = 0; k < 5; k++) {
+            double f = (t * 0.0025 + k / 5.0) % 1;
+            double y = core + f * span;
+            float a = 0.7f * p * (float) (1 - f);
+            Shapes.beam(cx, y, cz, y + 4, 0.7, WHITE, 0f, a);
+            Shapes.beam(cx, y + 4, cz, y + 8, 0.7, WHITE, a, 0f);
+        }
+    }
+
+    /** The sky beam alone, for a nexus past the effects' range. */
+    private static void farBeam(TileNexus n, double t, float fade) {
+        if (!n.formed() || (n.clientActivity & TileNexus.POWERED) == 0 || fade <= 0) return;
+        int[] c = n.centre();
+        Shapes.begin(true);
+        skyBeam(rx(c[0] + 0.5), ry(c[1] + 1.0) + 4.5, rz(c[2] + 0.5), n.yCoord, t, fade);
+        Shapes.end();
     }
 
     private static int branchColor(TileNexus n) {
@@ -323,7 +426,7 @@ public final class NexusRender {
 
     /** The nexus's state over its controller, turned to the viewer. */
     private static void hologram(TileNexus n, double t, float fade) {
-        double x = rx(n.xCoord + 0.5), y = ry(n.yCoord + 2.6), z = rz(n.zCoord + 0.5);
+        double x = rx(n.xCoord + 0.5), y = ry(n.yCoord + 1.4), z = rz(n.zCoord + 0.5);
         double dist = Math.sqrt(x * x + y * y + z * z);
         float a = (float) Math.min(1, (24 - dist) / 4) * fade;
         if (a <= 0.05f) return;

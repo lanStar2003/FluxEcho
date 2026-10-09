@@ -105,8 +105,23 @@ public final class FrameModule {
                 'E',
                 echo);
             EchoRecipes.shaped(
+                "Console Stand",
+                part(BlockFrame.CONSOLE, 2),
+                "SCS",
+                " P ",
+                " L ",
+                'S',
+                ss,
+                'C',
+                crystal,
+                'P',
+                part(BlockFrame.PILLAR, 1),
+                'L',
+                part(BlockFrame.BASE_LIT, 1));
+            // a library's hall takes 167 of them
+            EchoRecipes.shaped(
                 "Echo Shelf",
-                part(BlockFrame.SHELF, 8),
+                part(BlockFrame.SHELF, 16),
                 "SBS",
                 "BEB",
                 "SBS",

@@ -2,80 +2,78 @@ package com.fluxecho.library.client;
 
 import static com.fluxecho.client.FluxDraw.*;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.IIcon;
+import net.minecraft.util.MovingObjectPosition;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import org.lwjgl.opengl.GL11;
 
+import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.Motifs;
+import com.fluxecho.core.EchoText;
 import com.fluxecho.library.TileLibrary;
+import com.fluxecho.logic.LibraryShape;
 import com.fluxecho.render.Shapes;
 
 /**
- * The formed Echo Library (blueprint 3.7, "the five-dimensional bookshelf"): its shelf faces open, and behind each one
- * a corridor of glowing shelves runs on into the depth. The corridors narrow faster than perspective would, so the
- * seven-block cube looks endless from outside; each sits in its own pyramid towards the cube's middle, so they never
- * meet. Above, the codex it embodies floats open, glyphs rising into it. Undocked or without power it dims.
+ * The formed Echo Library (blueprint 3.7, "the five-dimensional bookshelf"). Outside, the codex it embodies floats open
+ * over its roof, glyphs rising into it, and its foundation's rim glows in its dock state. Inside the hall, drawn only
+ * while the camera is in it: each shelf's book shows its sample on the shelf's face, the book looked at names itself,
+ * a small codex turns over the reading desk, and the opening in the ceiling becomes a shaft of shelves that rises
+ * further than the attic could hold: it narrows faster than perspective would, to a light at its end. Undocked or
+ * without power it dims.
  */
 public final class LibraryRender {
 
-    private static final int WALL = 0x0B1424, WALL_DEEP = 0x05070E, GOLD = 0xFFD27A;
-    /** Corridor depth and the half-size of its far end, in blocks. */
-    private static final double DEPTH = 3.0, END = 0.4;
+    private static final int WALL = 0x0B1424, WALL_DEEP = 0x05070E, GOLD = 0xFFD27A, COVER = 0x120A28;
+    /** The shaft's depth (ceiling to roof, a hair short) and the half-size of its far end, in blocks. */
+    private static final double DEPTH = 1.98, END = 0.35;
     private static final int SEGMENTS = 6;
 
     private LibraryRender() {}
 
     public static void draw(TileLibrary l, double t, float fade) {
         if (!l.formed()) return;
-        int[] b = l.bounds();
-        if (b == null) return;
-        // the cube stands on the foundation, inset one block all round
-        double x0 = b[0] + 1, x1 = b[3], y0 = b[1] + 1, y1 = b[4] + 1, z0 = b[2] + 1, z1 = b[5];
-        double cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+        int[] c = l.centre();
+        // the foundation's centre block: the hall from one above it, the ceiling at six, the roof's top at nine
+        double cx = c[0] + 0.5, cz = c[2] + 0.5, floor = c[1] + 1.0;
         boolean docked = "docked".equals(l.clientDock), on = docked && l.clientPowered;
         float p = (on ? 1f : 0.35f) * fade;
         double sweep = l.sweepLevel();
         float appear = sweep == Double.MAX_VALUE ? 1f
             : (float) Math.max(0, Math.min(1, (System.currentTimeMillis() - l.formedAt) / 2000.0));
         double camX = RenderManager.renderPosX, camY = RenderManager.renderPosY, camZ = RenderManager.renderPosZ;
+        double half = LibraryShape.SIZE / 2.0, wall = half - 1;
+        boolean inside = Math.abs(camX - cx) < wall && Math.abs(camZ - cz) < wall
+            && camY >= floor
+            && camY < floor + LibraryShape.CEILING - 1;
 
-        // faces: outward normal, the face's centre
-        double[][] faces = { { -1, 0, 0, x0, cy, cz }, { 1, 0, 0, x1, cy, cz }, { 0, 0, -1, cx, cy, z0 },
-            { 0, 0, 1, cx, cy, z1 }, { 0, 1, 0, cx, y1, cz } };
+        double roof = floor + LibraryShape.ROOF;
         Shapes.begin(false);
-        GL11.glDepthMask(true);
-        for (int f = 0; f < faces.length; f++) {
-            double[] fc = faces[f];
-            double side = (camX - fc[3]) * fc[0] + (camY - fc[4]) * fc[1] + (camZ - fc[5]) * fc[2];
-            if (side <= 0) continue;
-            corridorWalls(fc, appear * fade);
-        }
-        GL11.glDepthMask(false);
         Shapes.additive(true);
-        for (int f = 0; f < faces.length; f++) {
-            double[] fc = faces[f];
-            double side = (camX - fc[3]) * fc[0] + (camY - fc[4]) * fc[1] + (camZ - fc[5]) * fc[2];
-            if (side <= 0) continue;
-            corridorLights(fc, f, t, p * appear);
-        }
-        double top = y1 - camY;
-        codex(cx - camX, top + 2.2, cz - camZ, t, p);
+        codex(cx - camX, roof + 2.2 - camY, cz - camZ, 1.0, t, p);
         if (sweep != Double.MAX_VALUE) {
             double sy = sweep - camY;
-            Shapes.plane(x0 - 1 - camX, sy, z0 - 1 - camZ, x1 + 1 - camX, z1 + 1 - camZ, VIOLET, 0.35f * (1 - appear));
-            Shapes.square(cx - camX, sy, cz - camZ, (x1 - x0) / 2 + 1, 0.15, WHITE, 0.8f * (1 - appear));
+            Shapes.plane(
+                cx - half - camX,
+                sy,
+                cz - half - camZ,
+                cx + half - camX,
+                cz + half - camZ,
+                VIOLET,
+                0.35f * (1 - appear));
+            Shapes.square(cx - camX, sy, cz - camZ, half, 0.15, WHITE, 0.8f * (1 - appear));
         }
         float ring = docked ? (l.clientLends > 0 ? 0.5f + 0.3f * (float) Math.sin(t * 0.15) : 0.25f)
             : 0.3f * (float) (0.5 + 0.5 * Math.sin(t * 0.1));
-        Shapes.square(
-            cx - camX,
-            y0 - camY + 0.03,
-            cz - camZ,
-            (x1 - x0) / 2 + 1,
-            0.18,
-            docked ? VIOLET : AMBER,
-            ring * fade);
+        Shapes.square(cx - camX, floor - camY + 0.03, cz - camZ, half, 0.18, docked ? VIOLET : AMBER, ring * fade);
         Shapes.end();
 
         Motes.begin();
@@ -85,52 +83,193 @@ public final class LibraryRender {
             double r = 1.6 * (1 - f);
             Motes.add(
                 cx - camX + Math.cos(a) * r,
-                top - 1.5 + f * 3.4,
+                roof - camY - 0.5 + f * 2.8,
                 cz - camZ + Math.sin(a) * r,
                 0.1,
                 k % 3 == 0 ? GOLD : VIOLET,
                 (float) Math.sin(f * Math.PI) * p);
         }
-        Motes.add(cx - camX, top + 2.2, cz - camZ, 1.1, VIOLET, 0.35f * p);
+        Motes.add(cx - camX, roof + 2.2 - camY, cz - camZ, 1.1, VIOLET, 0.35f * p);
         Motes.end();
+
+        if (inside) hall(l, cx, floor, cz, t, p, appear * fade);
     }
 
-    /** A point on a face's corridor: {@code u, v} across the face, {@code d} in from it. */
-    private static double[] at(double[] fc, double u, double v, double d) {
-        double nx = fc[0], ny = fc[1], nz = fc[2];
-        // two directions across the face
-        double ux, uy, uz, vx, vy, vz;
-        if (ny != 0) {
-            ux = 1;
-            uy = 0;
-            uz = 0;
-            vx = 0;
-            vy = 0;
-            vz = 1;
-        } else {
-            ux = -nz;
-            uy = 0;
-            uz = nx;
-            vx = 0;
-            vy = 1;
-            vz = 0;
+    /** The inside of the hall: the shaft, the desk's codex, the books, the label of the one looked at. */
+    private static void hall(TileLibrary l, double cx, double floor, double cz, double t, float p, float a) {
+        double camX = RenderManager.renderPosX, camY = RenderManager.renderPosY, camZ = RenderManager.renderPosZ;
+        // the opening's face, looking down into the hall: its normal and its centre
+        double[] fc = { 0, -1, 0, cx, floor + LibraryShape.CEILING - 1, cz };
+        Shapes.begin(false);
+        GL11.glDepthMask(true);
+        shaftWalls(fc, a);
+        GL11.glDepthMask(false);
+        Shapes.additive(true);
+        shaftLights(fc, t, p * a);
+        codex(cx - camX, floor + 1.9 - camY, cz - camZ, 0.55, t, p);
+        books(l, t, p);
+        Shapes.end();
+
+        Motes.begin();
+        for (int k = 0; k < 12; k++) {
+            double f = (t * 0.006 + k / 12.0) % 1;
+            double ang = k * 2.1 + t * 0.004;
+            double r = 0.6 + 1.6 * Motifs.hash(k * 7 + 3);
+            Motes.add(
+                cx - camX + Math.cos(ang) * r,
+                floor + 1.2 + f * 5.2 - camY,
+                cz - camZ + Math.sin(ang) * r,
+                0.08,
+                k % 4 == 0 ? GOLD : VIOLET,
+                (float) Math.sin(f * Math.PI) * 0.7f * p);
         }
-        return new double[] { fc[3] - nx * d + ux * u + vx * v - RenderManager.renderPosX,
-            fc[4] - ny * d + uy * u + vy * v - RenderManager.renderPosY,
-            fc[5] - nz * d + uz * u + vz * v - RenderManager.renderPosZ };
+        Motes.end();
+
+        icons(l);
+        label(l);
+    }
+
+    /**
+     * Where shelf {@code i}'s book is: its face's centre (a hair off the shelf), the way out of it and to the right.
+     */
+    private static double[] face(TileLibrary l, int i, double off) {
+        int[] s = l.shelfPos(i);
+        ForgeDirection d = ForgeDirection.getOrientation(l.shelfFace(i));
+        double x = s[0] + 0.5 + d.offsetX * (0.5 + off), y = s[1] + 0.5, z = s[2] + 0.5 + d.offsetZ * (0.5 + off);
+        // the right of someone in the hall looking at the shelf
+        return new double[] { x - RenderManager.renderPosX, y - RenderManager.renderPosY, z - RenderManager.renderPosZ,
+            d.offsetZ, -d.offsetX, d.offsetX, d.offsetZ };
+    }
+
+    private static double[] corner(double[] f, double right, double up) {
+        return new double[] { f[0] + f[3] * right, f[1] + up, f[2] + f[4] * right };
+    }
+
+    /** Each book's cover: a rim of light and a dark plate the sample's picture goes on. */
+    private static void books(TileLibrary l, double t, float p) {
+        for (int i = 0; i < l.capacity(); i++) {
+            ItemStack s = l.book(i);
+            if (s == null) continue;
+            double[] f = face(l, i, 0.011);
+            float glow = (0.45f + 0.25f * (float) Math.sin(t * 0.05 + i * 0.7)) * p;
+            Shapes.quad3(
+                corner(f, -0.42, 0.42),
+                corner(f, -0.42, -0.42),
+                corner(f, 0.42, -0.42),
+                corner(f, 0.42, 0.42),
+                i % 5 == 0 ? GOLD : VIOLET,
+                glow,
+                glow,
+                glow,
+                glow);
+        }
+        Shapes.additive(false);
+        for (int i = 0; i < l.capacity(); i++) {
+            if (l.book(i) == null) continue;
+            double[] f = face(l, i, 0.012);
+            Shapes.quad3(
+                corner(f, -0.36, 0.36),
+                corner(f, -0.36, -0.36),
+                corner(f, 0.36, -0.36),
+                corner(f, 0.36, 0.36),
+                COVER,
+                0.95f,
+                0.95f,
+                0.95f,
+                0.95f);
+        }
+    }
+
+    /** The samples' pictures on their books: blocks' first, then items', each pass in its colour. */
+    private static void icons(TileLibrary l) {
+        Minecraft mc = Minecraft.getMinecraft();
+        FluxDraw.worldBegin();
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        for (int sheet = 0; sheet <= 1; sheet++) {
+            mc.getTextureManager()
+                .bindTexture(sheet == 0 ? TextureMap.locationBlocksTexture : TextureMap.locationItemsTexture);
+            Tessellator tes = Tessellator.instance;
+            tes.startDrawingQuads();
+            for (int i = 0; i < l.capacity(); i++) {
+                ItemStack s = l.book(i);
+                if (s == null || s.getItem() == null) continue;
+                try {
+                    if (s.getItem()
+                        .getSpriteNumber() != sheet) continue;
+                    icon(tes, s, face(l, i, 0.013));
+                } catch (RuntimeException e) {
+                    // a modded item whose picture cannot be had here keeps a bare cover
+                }
+            }
+            tes.draw();
+        }
+        FluxDraw.worldEnd();
+    }
+
+    private static void icon(Tessellator tes, ItemStack s, double[] f) {
+        Item item = s.getItem();
+        int passes = item.requiresMultipleRenderPasses() ? item.getRenderPasses(s.getItemDamage()) : 1;
+        double h = 0.3;
+        for (int pass = 0; pass < passes; pass++) {
+            IIcon ic = item.getIcon(s, pass);
+            if (ic == null) continue;
+            int rgb = item.getColorFromItemStack(s, pass);
+            tes.setColorRGBA_I(rgb & 0xFFFFFF, 255);
+            tes.setNormal((float) f[5], 0f, (float) f[6]);
+            double[] tl = corner(f, -h, h), bl = corner(f, -h, -h), br = corner(f, h, -h), tr = corner(f, h, h);
+            tes.addVertexWithUV(tl[0], tl[1], tl[2], ic.getMinU(), ic.getMinV());
+            tes.addVertexWithUV(bl[0], bl[1], bl[2], ic.getMinU(), ic.getMaxV());
+            tes.addVertexWithUV(br[0], br[1], br[2], ic.getMaxU(), ic.getMaxV());
+            tes.addVertexWithUV(tr[0], tr[1], tr[2], ic.getMaxU(), ic.getMinV());
+        }
+    }
+
+    /** The name of the book the player looks at (or what an empty shelf takes), over its shelf. */
+    private static void label(TileLibrary l) {
+        MovingObjectPosition hit = Minecraft.getMinecraft().objectMouseOver;
+        if (hit == null || hit.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) return;
+        int i = l.shelfAt(hit.blockX, hit.blockY, hit.blockZ);
+        if (i < 0 || hit.sideHit != l.shelfFace(i)) return;
+        ItemStack s = l.book(i);
+        String line = s == null ? EchoText.t("library.shelf.label_empty") : s.getDisplayName();
+        double[] f = face(l, i, 0.3);
+        float px = 1 / 96f;
+        int w = Math.min(220, font().getStringWidth(line) + 10), h = 12;
+        FluxDraw.worldBegin();
+        GL11.glPushMatrix();
+        GL11.glTranslated(f[0], f[1] + 0.62, f[2]);
+        GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
+        GL11.glRotatef(RenderManager.instance.playerViewX, 1f, 0f, 0f);
+        GL11.glScalef(-px, -px, px);
+        GL11.glTranslatef(-w / 2f, -h / 2f, 0);
+        FluxDraw.begin();
+        pane(0, 0, w, h, 0.85f);
+        rect(1, h - 1, w - 1, h, s == null ? SEAM : VIOLET, 0.8f);
+        FluxDraw.end();
+        text(fit(line, w - 8), 5, 2, s == null ? DIM : WHITE, 1f);
+        GL11.glPopMatrix();
+        FluxDraw.worldEnd();
+    }
+
+    /** A point of the shaft: {@code u, v} across the opening, {@code d} up into it. */
+    private static double[] at(double[] fc, double u, double v, double d) {
+        return new double[] { fc[3] + u - RenderManager.renderPosX, fc[4] + d - RenderManager.renderPosY,
+            fc[5] + v - RenderManager.renderPosZ };
     }
 
     private static double depth(int i) {
         return DEPTH * i / SEGMENTS;
     }
 
-    /** Half-size of the corridor at segment boundary {@code i}: from the 5-wide opening down to the far end. */
+    /** Half-size of the shaft at segment boundary {@code i}: from the 5-wide opening down to the far end. */
     private static double half(int i) {
         double f = i / (double) SEGMENTS;
         return 2.5 + (END - 2.5) * Math.pow(f, 0.8);
     }
 
-    private static void corridorWalls(double[] fc, float a) {
+    private static void shaftWalls(double[] fc, float a) {
         for (int i = 0; i < SEGMENTS; i++) {
             double d0 = depth(i), d1 = depth(i + 1), h0 = half(i), h1 = half(i + 1);
             int c0 = Shapes.mix(WALL, WALL_DEEP, i / (double) SEGMENTS),
@@ -154,15 +293,15 @@ public final class LibraryRender {
             a);
     }
 
-    /** Corner {@code k} (0..3, round the square) of the corridor's cross-section at depth {@code d}. */
+    /** Corner {@code k} (0..3, round the square) of the shaft's cross-section at depth {@code d}. */
     private static double[] corner(double[] fc, int k, double h, double d) {
         int[][] signs = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
         int[] sg = signs[Math.floorMod(k, 4)];
         return at(fc, sg[0] * h, sg[1] * h, d);
     }
 
-    /** The shelves' light: a glowing rim at each step in, rows of book spines on the walls, the far end shining. */
-    private static void corridorLights(double[] fc, int face, double t, float a) {
+    /** The shelves' light: a glowing rim at each step up, rows of book spines on the walls, the far end shining. */
+    private static void shaftLights(double[] fc, double t, float a) {
         for (int i = 0; i <= SEGMENTS; i++) {
             double h = half(i) - 0.02, d = depth(i);
             float fa = a * (1f - i / (float) (SEGMENTS + 2));
@@ -171,15 +310,15 @@ public final class LibraryRender {
                 Shapes.string(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], 0.05, VIOLET, 0.55f * fa, 0.55f * fa);
             }
         }
-        // book spines: short bright strokes across the walls, a hue each
+        // book spines: short bright strokes up the walls, a hue each
         for (int i = 0; i < SEGMENTS; i++) {
             double dm = (depth(i) + depth(i + 1)) / 2, hm = (half(i) + half(i + 1)) / 2 - 0.03;
             float fa = a * (0.6f - 0.08f * i);
             for (int s = 0; s < 4; s++) for (int k = 0; k < 7; k++) {
-                double hash = Motifs.hash(face * 997 + i * 131 + s * 17 + k);
+                double hash = Motifs.hash(i * 131 + s * 17 + k);
                 if (hash < 0.25) continue;
                 double u = -hm + (k + 0.5) * hm * 2 / 7;
-                double len = 0.25 + 0.3 * hash;
+                double len = (0.25 + 0.3 * hash) * DEPTH / 3;
                 double[] a0 = wallPoint(fc, s, u, hm, dm - len / 2), a1 = wallPoint(fc, s, u, hm, dm + len / 2);
                 int col = hash < 0.5 ? VIOLET : hash < 0.8 ? CYAN : GOLD;
                 float tw = 0.6f + 0.4f * (float) Math.sin(t * 0.05 + hash * 20);
@@ -187,7 +326,7 @@ public final class LibraryRender {
             }
         }
         double h = half(SEGMENTS), d = depth(SEGMENTS) - 0.02;
-        float pulse = 0.6f + 0.4f * (float) Math.sin(t * 0.07 + face);
+        float pulse = 0.6f + 0.4f * (float) Math.sin(t * 0.07);
         for (int r = 0; r < 3; r++) {
             double rr = h * (0.4 + r * 0.3);
             Shapes.quad3(
@@ -203,9 +342,7 @@ public final class LibraryRender {
         }
     }
 
-    /**
-     * A point on wall {@code s} of the corridor: {@code u} along the wall, at half-size {@code h} and depth {@code d}.
-     */
+    /** A point on wall {@code s} of the shaft: {@code u} along the wall, at half-size {@code h} and depth {@code d}. */
     private static double[] wallPoint(double[] fc, int s, double u, double h, double d) {
         switch (Math.floorMod(s, 4)) {
             case 0:
@@ -219,26 +356,27 @@ public final class LibraryRender {
         }
     }
 
-    /** The codex floating open above the library, its pages turning. */
-    private static void codex(double x, double y, double z, double t, float a) {
+    /** The codex floating open, its pages turning; {@code k} scales it. */
+    private static void codex(double x, double y, double z, double k, double t, float a) {
         double spin = t * 0.01, open = Math.toRadians(70 + 35 * Math.sin(t * 0.03));
         double ax = Math.cos(spin), az = Math.sin(spin);
-        double bob = Math.sin(t * 0.04) * 0.12;
-        double[] s0 = { x - ax * 0.5, y + bob, z - az * 0.5 }, s1 = { x + ax * 0.5, y + bob, z + az * 0.5 };
+        double bob = Math.sin(t * 0.04) * 0.12 * k;
+        double[] s0 = { x - ax * 0.5 * k, y + bob, z - az * 0.5 * k },
+            s1 = { x + ax * 0.5 * k, y + bob, z + az * 0.5 * k };
         for (int side = -1; side <= 1; side += 2) {
             double ang = side * open / 2;
             // the page runs out from the spine, tilted up by the open angle
-            double ox = -az * Math.cos(ang) * 0.7 * side, oz = ax * Math.cos(ang) * 0.7 * side,
-                oy = Math.sin(Math.abs(ang)) * 0.7;
+            double ox = -az * Math.cos(ang) * 0.7 * k * side, oz = ax * Math.cos(ang) * 0.7 * k * side,
+                oy = Math.sin(Math.abs(ang)) * 0.7 * k;
             double[] p2 = { s1[0] + ox, s1[1] + oy, s1[2] + oz }, p3 = { s0[0] + ox, s0[1] + oy, s0[2] + oz };
             Shapes.quad3(s0, s1, p2, p3, VIOLET, 0.5f * a, 0.5f * a, 0.15f * a, 0.15f * a);
             for (int l = 1; l <= 4; l++) {
                 double f = l / 5.0;
                 double[] q0 = { s0[0] + ox * f, s0[1] + oy * f, s0[2] + oz * f },
                     q1 = { s1[0] + ox * f, s1[1] + oy * f, s1[2] + oz * f };
-                Shapes.string(q0[0], q0[1], q0[2], q1[0], q1[1], q1[2], 0.03, GOLD, 0.5f * a, 0.5f * a);
+                Shapes.string(q0[0], q0[1], q0[2], q1[0], q1[1], q1[2], 0.03 * k, GOLD, 0.5f * a, 0.5f * a);
             }
         }
-        Shapes.string(s0[0], s0[1], s0[2], s1[0], s1[1], s1[2], 0.08, WHITE, 0.7f * a, 0.7f * a);
+        Shapes.string(s0[0], s0[1], s0[2], s1[0], s1[1], s1[2], 0.08 * k, WHITE, 0.7f * a, 0.7f * a);
     }
 }

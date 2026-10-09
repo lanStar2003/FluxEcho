@@ -62,7 +62,7 @@ public final class Config {
     public static boolean nexusEnabled = true, nexusEffects = true;
     public static double gritChance = 0.15, researchScale = 1.0;
     public static int crystalGrit = 3, nexusUpkeep = 512, nexusCompute = 20, innerRadius = 32, recordCooldown = 24000,
-        manifestEut = 480, libraryUpkeep = 128, libraryCapacity = 27, nexusEffectRange = 128;
+        manifestEut = 480, libraryUpkeep = 128, nexusEffectRange = 128;
 
     public static boolean machineEffects = true, flowTrails = true;
     public static int effectRange = 32, machineHologramRange = 16;
@@ -73,7 +73,7 @@ public final class Config {
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.7.0";
+    private static final String VERSION = "0.9.2";
 
     private Config() {}
 
@@ -433,8 +433,6 @@ public final class Config {
             0,
             Integer.MAX_VALUE,
             "EU/t an Echo Library draws while it is docked on a nexus.");
-        libraryCapacity = c
-            .getInt("librarySamples", NEXUS, libraryCapacity, 1, 54, "Samples an Echo Library keeps (one of each).");
         nexusEffects = c.getBoolean(
             "effects",
             NEXUS,
@@ -542,6 +540,9 @@ public final class Config {
             ConfigCategory m = c.getCategory(MANA);
             for (String k : new String[] { "manaPerTick", "manaPerPetal" }) m.remove(k);
         }
+        // 0.9.2: a library keeps one sample on each shelf of its hall
+        if (older(was, "0.9.2") && c.hasCategory(NEXUS)) c.getCategory(NEXUS)
+            .remove("librarySamples");
     }
 
     /** Whether a file written by version {@code was} (null: before versions were written) predates {@code v}. */

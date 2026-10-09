@@ -1,10 +1,15 @@
 package com.fluxecho.library;
 
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.Config;
 import com.fluxecho.core.Directory;
@@ -20,24 +25,29 @@ import com.fluxecho.research.Research;
 import com.fluxlite.backend.GTWirelessBackend;
 import com.fluxlite.core.ServerEvents;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
 import com.gtnewhorizons.modularui.api.screen.ITileWithModularUI;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
 
 /**
- * The Echo Library (blueprint 3.7), the first module of the Flux Nexus: it keeps one of each sample, and writes index
- * cards for them. Docked on its nexus's ring and powered, it lends its samples to every echo machine of its team that
- * holds a card for one ({@link Lending}): in the same dimension, or anywhere once the team researched
- * {@code library_reach}.
+ * The Echo Library (blueprint 3.7), the first module of the Flux Nexus: a hall whose shelves each keep one sample as a
+ * book, and a reading desk that writes index cards for them. Players walk in and use the shelves themselves
+ * ({@link Shelves}); the desk (or the controller) opens the same shelves as a GUI. Docked on its nexus's ring and
+ * powered, it lends its samples to every echo machine of its team that holds a card for one ({@link Lending}): in the
+ * same dimension, or anywhere once the team researched {@code library_reach}.
  */
 public class TileLibrary extends TileModule implements ITileWithModularUI {
 
-    public static final int MAX = 54, COLOR = 0x8A5CFF;
+    /** One sample a shelf. */
+    public static final int MAX = LibraryShape.SHELVES.size(), COLOR = 0x8A5CFF;
+    /**
+     * How much item NBT the books take to the client at most (characters of its text form, about its size in bytes):
+     * a hall full of bees would not fit in one packet. Books past it show their item without the NBT.
+     */
+    private static final int BOOK_NBT = 48_000;
 
-    private static IStructureDefinition<TileMultiblock> definition;
+    private static IStructureDefinition<TileMultiblock> definition, buildDefinition;
 
     final ItemStackHandler samples = new ItemStackHandler(MAX) {
 
@@ -55,6 +65,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
         protected void onContentsChanged(int slot) {
             markDirty();
             count = -1;
+            booksChanged = true;
         }
     };
     /** The card desk: blank cards in, written cards out. */
@@ -72,13 +83,18 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     };
 
     int selected;
-    private boolean powered;
+    private boolean powered, booksChanged;
     private int lends, lendsShown, count = -1;
+    /** Shelf block -> sample slot, for the position and facing it was worked out for. */
+    private Map<Long, Integer> shelfMap;
+    private final int[] shelfMapFor = new int[4];
 
     // the client's copy
     public boolean clientPowered;
     public int clientSamples, clientLends;
     public String clientDock = "unformed";
+    /** The books on the shelves, by slot. */
+    public final ItemStack[] clientBooks = new ItemStack[MAX];
 
     // the GUI's
     public String guiDock = "unformed";
@@ -97,7 +113,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
 
     @Override
     protected int[] centreCell() {
-        return new int[] { 4, 7, 4 };
+        return LibraryShape.cellOf(LibraryShape.SIZE / 2, 0, LibraryShape.SIZE / 2);
     }
 
     @Override
@@ -107,21 +123,34 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
 
     @Override
     protected IStructureDefinition<TileMultiblock> definition() {
-        if (definition == null) {
-            BlockFrame f = FrameModule.frame;
-            definition = StructureDefinition.<TileMultiblock>builder()
-                .addShape(MAIN, StructureUtility.transpose(LibraryShape.BLUEPRINT.shape()))
-                .addElement(LibraryShape.FOUNDATION, recorded(LibraryShape.FOUNDATION, f, BlockFrame.FOUNDATION))
-                .addElement(LibraryShape.PILLAR, recorded(LibraryShape.PILLAR, f, BlockFrame.PILLAR))
-                .addElement(LibraryShape.SHELF, recorded(LibraryShape.SHELF, f, BlockFrame.SHELF))
-                .build();
-        }
+        if (definition == null)
+            definition = define(true, new String[] { MAIN }, new Blueprint[] { LibraryShape.BLUEPRINT }, parts());
         return definition;
     }
 
     @Override
+    protected IStructureDefinition<TileMultiblock> buildDefinition() {
+        if (buildDefinition == null)
+            buildDefinition = define(false, new String[] { MAIN }, new Blueprint[] { LibraryShape.BLUEPRINT }, parts());
+        return buildDefinition;
+    }
+
+    private static Object[] parts() {
+        BlockFrame f = FrameModule.frame;
+        return new Object[] { LibraryShape.FOUNDATION, f, BlockFrame.FOUNDATION, LibraryShape.PILLAR, f,
+            BlockFrame.PILLAR, LibraryShape.SHELF, f, BlockFrame.SHELF, LibraryShape.BASE, f, BlockFrame.BASE,
+            LibraryShape.CONSOLE, f, BlockFrame.CONSOLE };
+    }
+
+    @Override
+    protected Block coreBlock() {
+        return LibraryModule.core;
+    }
+
+    /** Nothing gives way: the hall is walked into as it stands. */
+    @Override
     protected int flags(char ch) {
-        return LibraryShape.opens(ch) ? Formed.HIDE : 0;
+        return 0;
     }
 
     @Override
@@ -130,7 +159,69 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     }
 
     public int capacity() {
-        return Math.max(1, Math.min(MAX, Config.libraryCapacity));
+        return MAX;
+    }
+
+    // ---- the hall
+
+    /** Its samples, one a shelf (the GUI's copy on the client). */
+    public com.gtnewhorizons.modularui.api.forge.IItemHandlerModifiable samples() {
+        return samples;
+    }
+
+    /** Where shelf {@code i} (a sample slot) stands. */
+    public int[] shelfPos(int i) {
+        LibraryShape.Shelf s = LibraryShape.SHELVES.get(i);
+        int[] c = LibraryShape.cellOf(s.x, s.y, s.z);
+        return cellPos(c[0], c[1], c[2]);
+    }
+
+    /** The side (a ForgeDirection ordinal) of shelf {@code i} that faces into the hall, where its book is. */
+    public int shelfFace(int i) {
+        LibraryShape.Shelf s = LibraryShape.SHELVES.get(i);
+        int[] a = shelfPos(i), c = LibraryShape.cellOf(s.x + s.inX, s.y, s.z + s.inZ), b = cellPos(c[0], c[1], c[2]);
+        for (ForgeDirection d : ForgeDirection.VALID_DIRECTIONS)
+            if (d.offsetX == b[0] - a[0] && d.offsetZ == b[2] - a[2] && d.offsetY == 0) return d.ordinal();
+        return ForgeDirection.UNKNOWN.ordinal();
+    }
+
+    /** The sample slot of the shelf at the position, or -1 when it is not one of the hall's shelves. */
+    public int shelfAt(int x, int y, int z) {
+        if (shelfMap == null || shelfMapFor[0] != xCoord
+            || shelfMapFor[1] != yCoord
+            || shelfMapFor[2] != zCoord
+            || shelfMapFor[3] != facing) {
+            Map<Long, Integer> m = new HashMap<>();
+            for (int i = 0; i < MAX; i++) {
+                int[] p = shelfPos(i);
+                m.put(Formed.key(p[0], p[1], p[2]), i);
+            }
+            shelfMap = m;
+            shelfMapFor[0] = xCoord;
+            shelfMapFor[1] = yCoord;
+            shelfMapFor[2] = zCoord;
+            shelfMapFor[3] = facing;
+        }
+        Integer i = shelfMap.get(Formed.key(x, y, z));
+        return i == null ? -1 : i;
+    }
+
+    /** Where the reading desk stands. */
+    public int[] deskPos() {
+        int[] c = LibraryShape.cellOf(LibraryShape.SIZE / 2, LibraryShape.HALL_LOW, LibraryShape.SIZE / 2);
+        return cellPos(c[0], c[1], c[2]);
+    }
+
+    @Override
+    public boolean consoleAt(int x, int y, int z) {
+        int[] d = deskPos();
+        return d[0] == x && d[1] == y && d[2] == z;
+    }
+
+    /** The book on shelf {@code i}: the sample on the server, the client's copy on the client. */
+    public ItemStack book(int i) {
+        if (i < 0 || i >= MAX) return null;
+        return worldObj != null && worldObj.isRemote ? clientBooks[i] : samples.getStackInSlot(i);
     }
 
     // ---- lending
@@ -148,7 +239,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
         return holdsElsewhere(s, -1);
     }
 
-    private boolean holdsElsewhere(ItemStack s, int except) {
+    boolean holdsElsewhere(ItemStack s, int except) {
         if (s == null) return false;
         for (int i = 0; i < capacity(); i++) {
             if (i == except) continue;
@@ -183,7 +274,8 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     public ItemStack selectedSample(int from) {
         int cap = capacity();
         for (int k = 0; k < cap; k++) {
-            ItemStack s = samples.getStackInSlot(Math.floorMod(from + k, cap));
+            int i = Math.floorMod(from + k, cap);
+            ItemStack s = worldObj != null && worldObj.isRemote ? clientBooks[i] : samples.getStackInSlot(i);
             if (s != null) return s;
         }
         return null;
@@ -241,7 +333,10 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
             }
             lends = 0;
         }
-        if (was != powered) sync();
+        if (was != powered || booksChanged) {
+            booksChanged = false;
+            sync();
+        }
     }
 
     /** The desk writes one card per blank one for the chosen sample. */
@@ -263,6 +358,26 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
         t.setInteger("S", sampleCount());
         t.setInteger("L", lendsShown);
         t.setString("Dk", dockStatus());
+        NBTTagList books = new NBTTagList();
+        int nbt = 0;
+        for (int i = 0; i < MAX; i++) {
+            ItemStack s = samples.getStackInSlot(i);
+            if (s == null) continue;
+            ItemStack shown = s;
+            if (s.hasTagCompound()) {
+                nbt += s.getTagCompound()
+                    .toString()
+                    .length();
+                if (nbt > BOOK_NBT) {
+                    shown = s.copy();
+                    shown.setTagCompound(null);
+                }
+            }
+            NBTTagCompound b = shown.writeToNBT(new NBTTagCompound());
+            b.setShort("At", (short) i);
+            books.appendTag(b);
+        }
+        t.setTag("B", books);
     }
 
     @Override
@@ -272,6 +387,13 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
         clientSamples = t.getInteger("S");
         clientLends = t.getInteger("L");
         clientDock = t.getString("Dk");
+        java.util.Arrays.fill(clientBooks, null);
+        NBTTagList books = t.getTagList("B", 10);
+        for (int k = 0; k < books.tagCount(); k++) {
+            NBTTagCompound b = books.getCompoundTagAt(k);
+            int i = b.getShort("At");
+            if (i >= 0 && i < MAX) clientBooks[i] = ItemStack.loadItemStackFromNBT(b);
+        }
     }
 
     @Override
@@ -285,12 +407,15 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     @Override
     public void readFromNBT(NBTTagCompound t) {
         super.readFromNBT(t);
-        samples.deserializeNBT(t.getCompoundTag("Samples"));
-        if (samples.getSlots() != MAX) samples.setSize(MAX);
+        // read through a handler of the saved size: before 0.9.2 a library kept 54 (setSize would empty it)
+        ItemStackHandler saved = new ItemStackHandler(0);
+        saved.deserializeNBT(t.getCompoundTag("Samples"));
+        for (int i = 0; i < MAX; i++) samples.setStackInSlot(i, i < saved.getSlots() ? saved.getStackInSlot(i) : null);
         desk.deserializeNBT(t.getCompoundTag("Desk"));
         if (desk.getSlots() != 2) desk.setSize(2);
         selected = t.getInteger("Selected");
         count = -1;
+        booksChanged = false;
     }
 
     @Override

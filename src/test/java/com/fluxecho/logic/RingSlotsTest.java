@@ -53,4 +53,17 @@ class RingSlotsTest {
         assertEquals(4, RingSlots.open(2));
         assertEquals(8, RingSlots.open(3));
     }
+
+    @Test
+    void modulesTurnToTheNexus() {
+        // from each slot, the way back to the nexus's centre
+        for (int k = 0; k < RingSlots.SLOTS; k++) {
+            int[] o = RingSlots.offset(k, 32, 0, -1);
+            int[] f = RingSlots.facing(-o[0], -o[1]);
+            assertEquals(1, Math.abs(f[0]) + Math.abs(f[1]), "a horizontal unit vector");
+            assertTrue(f[0] * -o[0] + f[1] * -o[1] > 0, "slot " + k + " looks towards the nexus");
+        }
+        assertArrayEquals(new int[] { 0, 1 }, RingSlots.facing(0, 32));
+        assertArrayEquals(new int[] { -1, 0 }, RingSlots.facing(-23, 23), "diagonals go along x");
+    }
 }

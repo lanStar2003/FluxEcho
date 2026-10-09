@@ -63,6 +63,23 @@ public final class NexusRegistry {
         return null;
     }
 
+    /**
+     * The FluxEcho multiblocks loaded in the world: on the server those signed up here, on the client those the client
+     * has ({@link ClientTiles}).
+     */
+    public static List<TileMultiblock> loaded(net.minecraft.world.World w) {
+        List<TileMultiblock> out = new ArrayList<>();
+        if (w == null) return out;
+        if (w.isRemote) {
+            for (TileMultiblock m : ClientTiles.all()) if (m.getWorldObj() == w && !m.isInvalid()) out.add(m);
+            return out;
+        }
+        int dim = w.provider.dimensionId;
+        for (TileMultiblock m : nexuses(dim)) if (m.getWorldObj() == w && !m.isInvalid()) out.add(m);
+        for (TileMultiblock m : modules(dim)) if (m.getWorldObj() == w && !m.isInvalid()) out.add(m);
+        return out;
+    }
+
     public static synchronized void clear() {
         NEXUSES.clear();
         MODULES.clear();

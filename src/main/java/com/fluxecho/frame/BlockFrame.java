@@ -1,5 +1,6 @@
 package com.fluxecho.frame;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -8,6 +9,7 @@ import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
@@ -30,10 +32,23 @@ import cpw.mods.fml.relauncher.SideOnly;
 public class BlockFrame extends Block {
 
     public static final int BASE = 0, BASE_LIT = 1, PILLAR = 2, CONDUIT = 3, RING = 4, SEAT = 5, FOUNDATION = 6,
-        SHELF = 7, TYPES = 8;
+        SHELF = 7, CONSOLE = 8, TYPES = 9;
     public static final String[] NAMES = { "base", "base_lit", "pillar", "conduit", "ring", "seat", "foundation",
-        "shelf" };
-    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8 };
+        "shelf", "console" };
+    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8, 10 };
+
+    /** What a formed multiblock does when one of its frame blocks is used (a library's shelf, its desk). */
+    public interface Use {
+
+        /** Whether it handled the click; called on both sides. */
+        boolean use(World w, int x, int y, int z, EntityPlayer p, int side, int meta);
+    }
+
+    private static final List<Use> USES = new ArrayList<>();
+
+    public static void onUse(Use u) {
+        USES.add(u);
+    }
 
     /** Set by the client proxy. */
     public static int renderId = -1;
@@ -70,6 +85,8 @@ public class BlockFrame extends Block {
                 return new float[] { 0, 5 / 16f, 0, 1, 11 / 16f, 1 };
             case SEAT:
                 return new float[] { 0, 0, 0, 1, 8 / 16f, 1 };
+            case CONSOLE:
+                return new float[] { 1 / 16f, 0, 1 / 16f, 15 / 16f, 1, 15 / 16f };
             default:
                 return new float[] { 0, 0, 0, 1, 1, 1 };
         }
@@ -138,6 +155,14 @@ public class BlockFrame extends Block {
     }
 
     @Override
+    public boolean onBlockActivated(World w, int x, int y, int z, EntityPlayer p, int side, float hx, float hy,
+        float hz) {
+        int meta = w.getBlockMetadata(x, y, z);
+        for (Use u : USES) if (u.use(w, x, y, z, p, side, meta)) return true;
+        return false;
+    }
+
+    @Override
     public void onBlockPlacedBy(World w, int x, int y, int z, EntityLivingBase placer, ItemStack stack) {
         super.onBlockPlacedBy(w, x, y, z, placer, stack);
         FrameEvents.changed(w, x, y, z);
@@ -177,6 +202,8 @@ public class BlockFrame extends Block {
         glowTop[FOUNDATION] = r.registerIcon(FluxEcho.MODID + ":frame/foundation_top_glow");
         glowSide[RING] = r.registerIcon(FluxEcho.MODID + ":frame/ring_side_glow");
         glowSide[SHELF] = r.registerIcon(FluxEcho.MODID + ":frame/shelf_side_glow");
+        glowTop[CONSOLE] = r.registerIcon(FluxEcho.MODID + ":frame/console_top_glow");
+        glowSide[CONSOLE] = r.registerIcon(FluxEcho.MODID + ":frame/console_side_glow");
         core = r.registerIcon(FluxEcho.MODID + ":frame/conduit_core");
         crystal = r.registerIcon(FluxEcho.MODID + ":frame/seat_crystal");
     }

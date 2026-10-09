@@ -1,5 +1,10 @@
 package com.fluxecho.nexus;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 
 import com.fluxecho.Config;
@@ -22,7 +27,30 @@ public final class NexusModule {
 
     public static BlockNexusCore core;
 
+    /** A kind of module the nexus's preview can show docked on its ring: its core block and a fresh tile. */
+    public static final class Preview {
+
+        final Block core;
+        final Supplier<TileModule> tile;
+
+        Preview(Block core, Supplier<TileModule> tile) {
+            this.core = core;
+            this.tile = tile;
+        }
+    }
+
+    private static final List<Preview> PREVIEWS = new ArrayList<>();
+
     private NexusModule() {}
+
+    /** Lets the nexus's NEI preview dock the module on its ring (the higher tiers of its preview). */
+    public static void previewModule(Block core, Supplier<TileModule> tile) {
+        PREVIEWS.add(new Preview(core, tile));
+    }
+
+    static List<Preview> previews() {
+        return PREVIEWS;
+    }
 
     public static void preInit() {
         core = new BlockNexusCore();
@@ -32,6 +60,7 @@ public final class NexusModule {
 
     public static void init() {
         IMultiblockInfoContainer.registerTileClass(TileNexus.class, new InfoContainer<TileNexus>("nexus.structure"));
+        com.fluxecho.frame.BlockFrame.onUse(Consoles::use);
         if (Mods.waila) FMLInterModComms.sendMessage("Waila", "register", "com.fluxecho.nexus.NexusWaila.register");
     }
 

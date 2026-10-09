@@ -60,16 +60,21 @@ public abstract class BlockNexus extends BlockContainer {
         if (w.isRemote) return true;
         TileEntity te = w.getTileEntity(x, y, z);
         if (!(te instanceof TileMultiblock m)) return false;
-        if (!mayUse(m, p)) {
-            p.addChatMessage(new ChatComponentTranslation("fluxecho.nexus.not_yours", m.ownerName()));
-            return true;
-        }
-        UIInfos.TILE_MODULAR_UI.open(p, w, x, y, z);
+        open(m, p);
         return true;
     }
 
-    /** Whether the player may open it. */
-    protected boolean mayUse(TileMultiblock m, EntityPlayer p) {
+    /** Opens the multiblock's GUI for the player, or tells them it is not theirs. Server side. */
+    public static void open(TileMultiblock m, EntityPlayer p) {
+        if (!mayUse(m, p)) {
+            p.addChatMessage(new ChatComponentTranslation("fluxecho.nexus.not_yours", m.ownerName()));
+            return;
+        }
+        UIInfos.TILE_MODULAR_UI.open(p, m.getWorldObj(), m.xCoord, m.yCoord, m.zCoord);
+    }
+
+    /** Whether the player may use it. */
+    public static boolean mayUse(TileMultiblock m, EntityPlayer p) {
         if (m.owner() == null) return true;
         if (p.capabilities.isCreativeMode && p.canCommandSenderUseCommand(2, "")) return true;
         return m instanceof TileNexus n ? n.member(p)

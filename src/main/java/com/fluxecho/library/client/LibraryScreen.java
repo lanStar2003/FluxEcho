@@ -42,7 +42,7 @@ public final class LibraryScreen {
             double hw = (162 / 2.0) * (1 - f), hh = rows * 9 * (1 - f);
             frame(cx - hw, cy - hh, cx + hw, cy + hh, VIOLET, 0.12f * (float) f);
         }
-        int deskY = LibraryGui.deskY(l);
+        int deskY = LibraryGui.DESK_Y;
         rect(8, deskY - 4, w - 8, deskY - 3, SEAM, 1f);
         end();
         GL11.glPopMatrix();
@@ -80,6 +80,25 @@ public final class LibraryScreen {
             rect(cx + dx * 1 - 0.5, cy - (3 - i), cx + dx * 1 + 0.5, cy + (3 - i), CYAN, 1f);
         }
         end();
+        GL11.glPopMatrix();
+    }
+
+    /** Which level of the hall's shelves the page shows, and how many of them hold a book. */
+    public static void page(TileLibrary l, int page, float x, float y, float w, float h) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        begin();
+        gradient(0, 0, w, h, PANE, 1f, DEEP, 1f);
+        frame(0, 0, w, h, SEAM, 1f);
+        // the levels as steps, this one lit
+        for (int k = 0; k < LibraryGui.PAGES; k++)
+            rect(4 + k * 5, h - 4 - k * 2, 8 + k * 5, h - 3, k == page ? VIOLET : SEAM, 1f);
+        end();
+        int kept = 0;
+        for (int i = 0; i < l.capacity(); i++) if (LibraryGui.pageOf(i) == page && l.samples()
+            .getStackInSlot(i) != null) kept++;
+        String s = EchoText.t("library.gui.page", page + 1, kept, LibraryGui.onPage(page));
+        centered(fit(s, (int) w - 34), w / 2 + 12, 4, WHITE, 1f);
         GL11.glPopMatrix();
     }
 

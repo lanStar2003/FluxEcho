@@ -39,4 +39,13 @@ public final class RingSlots {
     public static int open(int phase) {
         return phase <= 0 ? 0 : phase == 1 ? 2 : phase == 2 ? 4 : SLOTS;
     }
+
+    /**
+     * The horizontal unit vector {fx, fz} closest to {@code (dx, dz)}: the way a module on a slot faces to look at the
+     * nexus. Ties (the diagonal slots) go along x.
+     */
+    public static int[] facing(int dx, int dz) {
+        if (Math.abs(dx) >= Math.abs(dz)) return new int[] { dx >= 0 ? 1 : -1, 0 };
+        return new int[] { 0, dz >= 0 ? 1 : -1 };
+    }
 }

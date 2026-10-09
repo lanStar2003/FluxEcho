@@ -37,6 +37,7 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
         if (!(block instanceof BlockFrame frame)) return false;
         if ((Formed.clientFlags(x, y, z) & Formed.HIDE) != 0) return false;
         int meta = w.getBlockMetadata(x, y, z);
+        if (meta == BlockFrame.CONSOLE) return console(w, x, y, z, frame, r);
         float[] b = BlockFrame.box(meta);
         r.setRenderBounds(b[0], b[1], b[2], b[3], b[4], b[5]);
         r.renderStandardBlock(block, x, y, z);
@@ -53,6 +54,33 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
             glowBox(r, block, x, y, z, frame.core, 6.5f / 16, 0, 6.5f / 16, 9.5f / 16, 1, 9.5f / 16);
         if (meta == BlockFrame.SEAT)
             glowBox(r, block, x, y, z, frame.crystal, 5 / 16f, 8 / 16f, 5 / 16f, 11 / 16f, 15 / 16f, 11 / 16f);
+        r.enableAO = ao;
+        r.setRenderBounds(0, 0, 0, 1, 1, 1);
+        return true;
+    }
+
+    /** The console's three parts: foot, column, top plate. */
+    private static final float[][] CONSOLE = { { 0, 0, 0, 1, 2 / 16f, 1 },
+        { 4 / 16f, 2 / 16f, 4 / 16f, 12 / 16f, 13 / 16f, 12 / 16f },
+        { 1 / 16f, 13 / 16f, 1 / 16f, 15 / 16f, 1, 15 / 16f } };
+
+    /** A console stand: a foot, a column with a lit channel up each side, a plate with a glowing ring on top. */
+    private static boolean console(IBlockAccess w, int x, int y, int z, BlockFrame frame, RenderBlocks r) {
+        for (float[] b : CONSOLE) {
+            r.setRenderBounds(b[0], b[1], b[2], b[3], b[4], b[5]);
+            r.renderStandardBlock(frame, x, y, z);
+        }
+        boolean ao = r.enableAO;
+        r.enableAO = false;
+        Tessellator t = Tessellator.instance;
+        t.setBrightness(BRIGHT);
+        t.setColorOpaque_F(1f, 1f, 1f);
+        float[] col = CONSOLE[1], top = CONSOLE[2];
+        r.setRenderBounds(col[0] - 0.002, col[1], col[2] - 0.002, col[3] + 0.002, col[4], col[5] + 0.002);
+        for (int s = 2; s < 6; s++) face(r, frame, x, y, z, s, frame.glow(s, BlockFrame.CONSOLE));
+        r.setRenderBounds(top[0], top[1], top[2], top[3], top[4] + 0.002, top[5]);
+        if (r.renderAllFaces || faceShows(w, x, y, z, frame, 1))
+            face(r, frame, x, y, z, 1, frame.glow(1, BlockFrame.CONSOLE));
         r.enableAO = ao;
         r.setRenderBounds(0, 0, 0, 1, 1, 1);
         return true;
@@ -98,9 +126,19 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
     public void renderInventoryBlock(Block block, int meta, int modelId, RenderBlocks r) {
         if (!(block instanceof BlockFrame frame)) return;
         GL11.glTranslatef(-0.5f, -0.5f, -0.5f);
+        Tessellator t = Tessellator.instance;
+        if (meta == BlockFrame.CONSOLE) {
+            t.startDrawingQuads();
+            for (float[] p : CONSOLE) inventoryBox(r, block, null, p[0], p[1], p[2], p[3], p[4], p[5], meta);
+            float[] top = CONSOLE[2];
+            inventoryBox(r, block, frame.glow(1, meta), top[0], top[1], top[2], top[3], top[4] + 0.002f, top[5], meta);
+            t.draw();
+            r.setRenderBounds(0, 0, 0, 1, 1, 1);
+            GL11.glTranslatef(0.5f, 0.5f, 0.5f);
+            return;
+        }
         float[] b = BlockFrame.box(meta);
         r.setRenderBounds(b[0], b[1], b[2], b[3], b[4], b[5]);
-        Tessellator t = Tessellator.instance;
         t.startDrawingQuads();
         for (int s = 0; s < 6; s++) {
             normal(t, s);
@@ -124,6 +162,18 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
         for (int s = 0; s < 6; s++) {
             normal(t, s);
             face(r, block, 0, 0, 0, s, icon);
+        }
+    }
+
+    /** A box of the console in the inventory, with the part's own icons ({@code icon} null) or one icon on top. */
+    private static void inventoryBox(RenderBlocks r, Block block, IIcon icon, float x0, float y0, float z0, float x1,
+        float y1, float z1, int meta) {
+        r.setRenderBounds(x0, y0, z0, x1, y1, z1);
+        Tessellator t = Tessellator.instance;
+        for (int s = 0; s < 6; s++) {
+            if (icon != null && s != 1) continue;
+            normal(t, s);
+            face(r, block, 0, 0, 0, s, icon != null ? icon : block.getIcon(s, meta));
         }
     }
 
