@@ -432,7 +432,7 @@ public final class Config {
             libraryUpkeep,
             0,
             Integer.MAX_VALUE,
-            "EU/t a docked Echo Library draws while it lends samples.");
+            "EU/t an Echo Library draws while it is docked on a nexus.");
         libraryCapacity = c
             .getInt("librarySamples", NEXUS, libraryCapacity, 1, 54, "Samples an Echo Library keeps (one of each).");
         nexusEffects = c.getBoolean(

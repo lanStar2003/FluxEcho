@@ -729,7 +729,7 @@ def echo_nexus():
     grit = quest(
         "echo_nexus/grit", "§d通量碎屑",
         "通量碎片采集器每凝结一次矿石，有 15% 的几率多出一份通量碎屑，放在第二个输出槽。\n\n"
-        "[note]只有碎片采集器会出碎屑。研究「碎屑产出」以后几率 ×1.5。[/note]",
+        "[note]只有碎片采集器会出碎屑。研究「碎屑富集」以后几率 ×1.5。[/note]",
         item("fluxecho:flux_grit"),
         [retrieval(item("fluxecho:flux_grit", 0, 6))],
         pre=["echo_nexus/lore"])
@@ -775,7 +775,7 @@ def echo_nexus():
         pre=["echo_nexus/core"])
     echo = quest(
         "echo_nexus/echo_crystal", "§d回响晶",
-        "研究「回响晶」要团队的图鉴里至少有 5 条记录。\n\n"
+        "研究「回响结晶」要团队的图鉴里至少有 5 条记录。\n\n"
         "研究完，中枢的显化台就能做回响晶：1 块通量结晶加一条图鉴记录，把这条记录压进结晶里。"
         "记录本身不消耗，但同一条记录压过一次要休息 20 分钟；所有记录都在休息时显化台就等着。\n\n"
         "NEI 里查回响晶或中枢核心能看到显化台的全部配方。",
@@ -799,7 +799,7 @@ def echo_nexus():
         "显化台：1 块回响晶、8 张纸，出 8 张空白索引卡。\n\n"
         "空白卡放进书库的写卡台，用箭头选一个样本，书库就给它写卡。写好的卡放进回响机器的样本槽，"
         "就当作那个样本用：一份样本，全队的机器都能借。\n\n"
-        "[note]要书库停靠着、有电。研究「书库远借」以后，别的维度的机器也能借。[/note]",
+        "[note]要书库停靠着、有电。研究「跨维度借阅」以后，别的维度的机器也能借。[/note]",
         item("fluxecho:library_card"),
         [retrieval(item("fluxecho:library_card"), ignore_nbt=True)],
         pre=["echo_nexus/library"])
