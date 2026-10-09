@@ -87,7 +87,7 @@ public class GuiCodex extends GuiScreen {
             boolean over = mx >= x0 + 4 && mx < x0 + LIST_W && my >= ry && my < ry + ROW;
             if (i == selected) drawRect(x0 + 4, ry, x0 + LIST_W, ry + ROW, SELECTED);
             else if (over) drawRect(x0 + 4, ry, x0 + LIST_W, ry + ROW, HOVER);
-            String name = fontRendererObj.trimStringToWidth(EchoText.t("codex.cat." + c.id), LIST_W - 34);
+            String name = com.fluxecho.client.FluxDraw.fit(EchoText.t("codex.cat." + c.id), LIST_W - 34);
             fontRendererObj.drawString(name, x0 + 8, ry + 5, 0xE0E0E0);
             String n = String.valueOf(
                 ClientLedger.keys(c.id)

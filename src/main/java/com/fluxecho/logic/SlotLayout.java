@@ -19,7 +19,7 @@ public final class SlotLayout {
      * @param rightAligned whether {@code x} is the right edge
      */
     public static int[][] grid(int n, int x, int areaTop, int areaHeight, boolean rightAligned) {
-        int cols = n <= 2 ? 1 : n <= 4 ? 2 : 3, rows = (n + cols - 1) / cols;
+        int cols = columns(n), rows = rows(n);
         int[][] at = new int[n][];
         int top = areaTop + (areaHeight - rows * SLOT) / 2;
         for (int i = 0; i < n; i++) {
@@ -27,6 +27,17 @@ public final class SlotLayout {
             at[i] = new int[] { rightAligned ? x - (cols - col) * SLOT : x + col * SLOT, top + row * SLOT };
         }
         return at;
+    }
+
+    /** How many columns {@code n} slots take. */
+    public static int columns(int n) {
+        return n <= 2 ? 1 : n <= 4 ? 2 : 3;
+    }
+
+    /** How many rows {@code n} slots take. */
+    public static int rows(int n) {
+        int cols = columns(n);
+        return (n + cols - 1) / cols;
     }
 
     /** The right edge of the rightmost slot. */

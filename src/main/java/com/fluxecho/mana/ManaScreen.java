@@ -153,10 +153,10 @@ final class ManaScreen {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         int lw = (int) w - 8;
-        if (tier > 0) text(f.trimStringToWidth(ManaText.rate(m.guiMana, m.guiEUt), lw), 4, 3, WHITE, 1f);
-        else text(f.trimStringToWidth(ManaText.t("gui.insert_core"), lw), 4, 3, AMBER, 1f);
+        if (tier > 0) text(fit(ManaText.rate(m.guiMana, m.guiEUt), lw), 4, 3, WHITE, 1f);
+        else text(fit(ManaText.t("gui.insert_core"), lw), 4, 3, AMBER, 1f);
         text(
-            f.trimStringToWidth(
+            fit(
                 ManaText.petalLine(m.guiPetal, m.credit()) + " · " + ManaText.t("gui.per_minute", ManaText.perMinute()),
                 lw),
             4,
@@ -164,7 +164,7 @@ final class ManaScreen {
             DIM,
             1f);
         text(
-            f.trimStringToWidth(
+            fit(
                 ManaText.poolLine(m.poolCount, m.poolMana, m.poolCap) + " · "
                     + ManaText.chargeOrSent(m.chargeFill(), m.delivered()),
                 lw),

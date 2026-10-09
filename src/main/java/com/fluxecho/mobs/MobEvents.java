@@ -42,15 +42,14 @@ public final class MobEvents {
         String mob = MobImprints.name(target);
         if (mob == null) return;
         if (MobImprints.recipe(mob) == null) {
-            p.addChatMessage(
-                new ChatComponentTranslation("fluxecho.mob_imprint.no_drops", MobImprints.displayName(mob)));
+            p.addChatMessage(new ChatComponentTranslation("fluxecho.mob_imprint.no_drops", MobImprints.chatName(mob)));
             return;
         }
         StatBase kills = StatList.func_151177_a("stat.killEntity." + mob);
         if (kills == null || p.func_147099_x()
             .writeStat(kills) <= 0) {
             p.addChatMessage(
-                new ChatComponentTranslation("fluxecho.mob_imprint.not_killed", MobImprints.displayName(mob)));
+                new ChatComponentTranslation("fluxecho.mob_imprint.not_killed", MobImprints.chatName(mob)));
             return;
         }
         write(p, blank, mob);
@@ -67,7 +66,7 @@ public final class MobEvents {
         p.inventoryContainer.detectAndSendChanges();
         EchoLedger.get()
             .record(Owners.team(p.getUniqueID()), Categories.MOB, mob);
-        p.addChatMessage(new ChatComponentTranslation("fluxecho.mob_imprint.written", MobImprints.displayName(mob)));
+        p.addChatMessage(new ChatComponentTranslation("fluxecho.mob_imprint.written", MobImprints.chatName(mob)));
         p.worldObj.playSoundAtEntity(p, "random.orb", 0.4f, 0.6f);
     }
 }

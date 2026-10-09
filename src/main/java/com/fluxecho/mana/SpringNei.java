@@ -18,6 +18,7 @@ import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ManaSpring;
+import com.fluxecho.nei.NeiCheck;
 
 import codechicken.nei.NEIServerUtils;
 import codechicken.nei.PositionedStack;
@@ -36,6 +37,8 @@ public class SpringNei extends TemplateRecipeHandler {
 
     public static final String ID = "fluxecho.spring";
     public static final int WIDTH = 166, HEIGHT = 80;
+    /** NEI keeps the right edge of each recipe's lower part for its bookmark and overlay buttons. */
+    private static final int BUTTONS = 17;
 
     public class CachedTier extends CachedRecipe {
 
@@ -84,6 +87,7 @@ public class SpringNei extends TemplateRecipeHandler {
             info.setDisplayStack(spring);
             API.addRecipeCatalyst(spring, ID);
         }
+        NeiCheck.track(h, spring);
         HandlerInfo built = info.build();
         GuiRecipeTab.handlerMap.put(ID, built);
         GuiRecipeTab.handlerAdderFromIMC.put(ID, built);
@@ -165,7 +169,14 @@ public class SpringNei extends TemplateRecipeHandler {
             return;
         }
         ItemStack spring = Machines.get(MachineId.MANA_ECHO);
-        if (spring != null && NEIServerUtils.areStacksSameTypeCrafting(spring, ingredient)) addAll();
+        if (spring != null && NEIServerUtils.areStacksSameTypeCrafting(spring, ingredient)) {
+            addAll();
+            return;
+        }
+        // a core circuit: the page of the tier it gives the spring
+        int tier = CoreCircuits.tier(ingredient);
+        if (Config.manaEnabled && tier >= ManaSpring.MIN_TIER && tier <= ManaSpring.MAX_TIER)
+            arecipes.add(new CachedTier(tier));
     }
 
     // ---- drawing
@@ -248,6 +259,6 @@ public class SpringNei extends TemplateRecipeHandler {
     /** A label on the left of the stats column, its value on the right. */
     private static void stat(String label, String value, double x, double y, int color) {
         small(label, x, y, 0.6f, DIM, 1f);
-        smallRight(value, WIDTH - 5, y, 0.6f, color, 1f);
+        smallRight(value, WIDTH - BUTTONS, y, 0.6f, color, 1f);
     }
 }

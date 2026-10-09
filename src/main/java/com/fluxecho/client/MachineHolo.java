@@ -92,13 +92,13 @@ public final class MachineHolo {
     private static void content(MachineId k, int tier, NBTTagCompound d, float t, float a) {
         int l = 5, r = W - 5;
         String name = StatCollector.translateToLocal("gt.blockmachines.fluxecho." + k.key + ".name");
-        text(font().trimStringToWidth(name, W - 40), l, 4, CYAN, a);
+        text(fit(name, W - 40), l, 4, CYAN, a);
         right(EchoText.tier(tier), r, 4, k.accent, a);
 
         String status = d.getString("s");
         String shown = EchoText.status(status);
         if ("working".equals(status)) shown += "...".substring(0, (int) (t / 6) % 4);
-        text(font().trimStringToWidth(shown, 100), l, 19, EchoText.statusColor(status), a);
+        text(fit(shown, 100), l, 19, EchoText.statusColor(status), a);
         int eut = d.getInteger("u");
         if (eut > 0) right(Compact.si(eut) + " EU/t", r, 19, WHITE, a);
 
@@ -116,7 +116,7 @@ public final class MachineHolo {
         int tx = l + 45, tw = r - tx;
         ItemStack sample = stack(d, "sm"), out = stack(d, "o");
         if (k.sample) small(
-            font().trimStringToWidth(
+            fit(
                 sample == null ? EchoText.t("gui.no_sample") : EchoText.t("gui.sample", sample.getDisplayName()),
                 (int) (tw / 0.75f)),
             tx,
@@ -125,16 +125,14 @@ public final class MachineHolo {
             sample == null ? AMBER : WHITE,
             a);
         if (out != null) small(
-            font()
-                .trimStringToWidth(EchoText.t("holo.output", out.getDisplayName(), out.stackSize), (int) (tw / 0.75f)),
+            fit(EchoText.t("holo.output", out.getDisplayName(), out.stackSize), (int) (tw / 0.75f)),
             tx,
             k.sample ? 43 : 32,
             0.75f,
             DIM,
             a);
         String info = EchoText.decode(d.getString("i"));
-        if (!info.isEmpty())
-            small(font().trimStringToWidth(info, (int) (tw / 0.75f)), tx, k.sample ? 54 : 43, 0.75f, CYAN, a);
+        if (!info.isEmpty()) small(fit(info, (int) (tw / 0.75f)), tx, k.sample ? 54 : 43, 0.75f, CYAN, a);
 
         // the cycle and the buffer
         begin();

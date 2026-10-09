@@ -17,4 +17,7 @@ dependencies {
     // IC2 (com.fluxecho.crops) and AE2 (com.fluxecho.ae) come with GT's own dependencies
     // Quest injection (com.fluxecho.quest.bq) only
     compileOnly("com.github.GTNewHorizons:BetterQuesting:3.7.15-GTNH:dev") { transitive = false }
+
+    // NEI's recipe handler classes touch LWJGL when they load; the NEI tests construct our handlers
+    testRuntimeOnly("org.lwjgl.lwjgl:lwjgl:2.9.4-nightly-20150209")
 }

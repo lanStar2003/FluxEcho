@@ -7,6 +7,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 
 import com.fluxecho.FluxEcho;
 import com.fluxecho.core.EchoText;
@@ -17,6 +18,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import forestry.api.genetics.AlleleManager;
 import forestry.api.genetics.IAllele;
+import forestry.api.genetics.IAlleleBoolean;
 
 /**
  * A gene sample: the genes a programmed circuit picked out of a real bee, sapling or butterfly in the Bee Imprinter.
@@ -38,9 +40,17 @@ public class ItemGeneSample extends Item {
         return "bee";
     }
 
+    /**
+     * A trait's value as the player reads it. Forestry names most alleles in the player's language already; its
+     * yes/no alleles only carry a lang key ("forestry.allele.false") that Forestry never shows, writing yes or no
+     * itself, and so does this.
+     */
     static String allele(String uid) {
         IAllele a = uid == null ? null : AlleleManager.alleleRegistry.getAllele(uid);
-        return a != null ? a.getName() : EnumChatFormatting.RED + String.valueOf(uid);
+        if (a == null) return EnumChatFormatting.RED + String.valueOf(uid);
+        if (a instanceof IAlleleBoolean b) return EchoText.t(b.getValue() ? "gene.yes" : "gene.no");
+        String name = a.getName();
+        return name != null && StatCollector.canTranslate(name) ? StatCollector.translateToLocal(name) : name;
     }
 
     @Override

@@ -28,6 +28,13 @@ public final class FluxDraw {
         return Minecraft.getMinecraft().fontRenderer;
     }
 
+    /** The text cut to fit the width (in font pixels), with "…" when anything was cut. */
+    public static String fit(String text, int width) {
+        FontRenderer f = font();
+        if (text == null || f.getStringWidth(text) <= width) return text;
+        return f.trimStringToWidth(text, Math.max(0, width - f.getStringWidth("…"))) + "…";
+    }
+
     /**
      * Sets up drawing a hologram in the world: no lighting or fog, full brightness (sky light off under a shader pack,
      * as FluxLite's hologram does), blending, no depth writes. Pair with {@link #worldEnd}.

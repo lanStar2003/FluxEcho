@@ -2,6 +2,7 @@ package com.fluxecho;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 
 import com.fluxecho.client.FlowFx;
@@ -10,9 +11,11 @@ import com.fluxecho.client.MachineHolo;
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
 import com.fluxecho.mana.ManaHolo;
+import com.fluxecho.nei.NeiCheck;
 import com.fluxecho.thaumcraft.TCClient;
 
 import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Loader;
 
 public class ClientProxy extends CommonProxy {
 
@@ -28,6 +31,7 @@ public class ClientProxy extends CommonProxy {
         FlowFx.register();
         if (Mods.thaumcraft) TCClient.init();
         if (Mods.botania) ManaHolo.register();
+        if (Loader.isModLoaded("NotEnoughItems")) ClientCommandHandler.instance.registerCommand(new NeiCheck());
     }
 
     @Override
