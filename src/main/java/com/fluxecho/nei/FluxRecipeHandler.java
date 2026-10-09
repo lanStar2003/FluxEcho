@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.FluxEcho;
 import com.fluxecho.client.Motifs;
+import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.FluxMachineGui;
 import com.fluxecho.core.MachineId;
@@ -90,6 +91,15 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
         this.id = FluxMachineGui.neiId(kind);
     }
 
+    /**
+     * NEI answers every lookup with a fresh copy of the handler, made by default through a constructor without
+     * arguments, which this one (one per machine) does not have: hand it a copy for the same machine.
+     */
+    @Override
+    public TemplateRecipeHandler newInstance() {
+        return new FluxRecipeHandler(kind, map);
+    }
+
     /** Registers the page of every echo machine whose map GT made; called by FluxEcho's NEI plugin. */
     public static void registerAll(Iterable<MachineId> kinds,
         java.util.function.Function<MachineId, RecipeMap<?>> maps) {
@@ -119,9 +129,7 @@ public class FluxRecipeHandler extends TemplateRecipeHandler {
     }
 
     private List<GTRecipe> recipes() {
-        List<GTRecipe> l = new ArrayList<>();
-        for (GTRecipe r : map.getAllRecipes()) if (!r.mHidden) l.add(r);
-        return l;
+        return EchoRecipeMaps.examples(kind);
     }
 
     @Override

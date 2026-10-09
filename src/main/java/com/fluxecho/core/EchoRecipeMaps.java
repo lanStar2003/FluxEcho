@@ -1,9 +1,12 @@
 package com.fluxecho.core;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.UnaryOperator;
 
 import net.minecraft.item.ItemStack;
@@ -15,6 +18,7 @@ import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMapBackend;
 import gregtech.api.recipe.RecipeMapBuilder;
+import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTRecipeBuilder;
 
 /**
@@ -56,8 +60,8 @@ public final class EchoRecipeMaps {
      * Adds an example to the machine's NEI page: the sample in the special slot (or none), inputs, outputs, and its
      * power and time (0 when they depend on the case; the page explains them in words then).
      */
-    public static void page(MachineId kind, ItemStack special, ItemStack[] inputs, ItemStack[] outputs, int eut,
-        int ticks) {
+    public static synchronized void page(MachineId kind, ItemStack special, ItemStack[] inputs, ItemStack[] outputs,
+        int eut, int ticks) {
         RecipeMap<?> map = get(kind);
         if (map == null) return;
         try {
@@ -72,6 +76,36 @@ public final class EchoRecipeMaps {
         } catch (RuntimeException e) {
             FluxEcho.LOG.debug("No NEI page for an example of {}", kind, e);
         }
+    }
+
+    private static final Map<MachineId, BooleanSupplier> LATE = new EnumMap<>(MachineId.class);
+
+    /**
+     * Examples that can only be made later than the game's start (MobsInfo builds its drop tables when a world
+     * starts): {@code builder} is asked before the page is shown until it says it is done.
+     */
+    public static synchronized void later(MachineId kind, BooleanSupplier builder) {
+        LATE.put(kind, builder);
+    }
+
+    /**
+     * The examples of a machine's page, with the late ones made first if they can be by now. NEI asks from its own
+     * threads, so this and the late builders hold the lock while the map is read or filled.
+     */
+    public static synchronized List<GTRecipe> examples(MachineId kind) {
+        BooleanSupplier late = LATE.get(kind);
+        if (late != null) {
+            try {
+                if (late.getAsBoolean()) LATE.remove(kind);
+            } catch (RuntimeException e) {
+                LATE.remove(kind);
+                FluxEcho.LOG.warn("Could not make the late NEI examples of {}", kind, e);
+            }
+        }
+        RecipeMap<?> map = MAPS.get(kind);
+        List<GTRecipe> out = new ArrayList<>();
+        if (map != null) for (GTRecipe r : map.getAllRecipes()) if (!r.mHidden) out.add(r);
+        return out;
     }
 
     /** The machine's map if it was made, without making it. */
