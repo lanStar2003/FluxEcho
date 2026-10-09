@@ -4,10 +4,8 @@ import java.lang.reflect.Field;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -66,7 +64,6 @@ public final class Portal {
 
     /** Gates drawn for real in one frame. */
     private static final int PASSES = 2;
-    private static final int[] TINY = { 0, 0, 1, 1 };
 
     private static Pass pass;
     private static boolean broken;
@@ -75,7 +72,6 @@ public final class Portal {
     private static GateCamera passCam, transitCam;
     private static final Framebuffer[] FBOS = new Framebuffer[PASSES];
     private static final Map<Long, Integer> PICTURES = new HashMap<>();
-    private static final Map<Long, Integer> WARMED = new HashMap<>();
     private static Transit transit;
     private static boolean swapped;
     /** The eye last frame: x, feet, z. */
@@ -261,7 +257,6 @@ public final class Portal {
         transitCam = new GateCamera(w);
         transit = null;
         lastEye = null;
-        WARMED.clear();
         Angelica.forget();
     }
 
@@ -331,10 +326,11 @@ public final class Portal {
     }
 
     /**
-     * Draws the gates in sight, nearest first. A gate close by but not in sight still gets drawn now and then, too
-     * small to see, so its far side is built before anyone walks in backwards; and a room is drawn a few times from
-     * all round, so it is all there whichever way the player turns inside. With a shader pack nothing is drawn: the
-     * renderer only walks the same views every other frame.
+     * Draws the gates in sight, nearest first; with a shader pack, only walks them every other frame. And the gate
+     * close by is walked from all round now and then, without drawing, so its far side is built whichever way the
+     * player looks or turns once through: often for a room, which is small, and less often for the outside seen from
+     * a room. The renderer builds only a few chunks a frame and forgets the rest of its list each frame, so this goes
+     * on for as long as the player is near.
      */
     private static void passes(Minecraft mc, float pt, boolean drawing) throws Exception {
         EntityLivingBase viewer = mc.renderViewEntity;
@@ -360,30 +356,19 @@ public final class Portal {
             seen.add(new Seen(t, g, d, rect));
         }
         seen.sort((a, b) -> Double.compare(a.distance, b.distance));
-        Set<Long> close = new HashSet<>();
-        int slot = 0;
+        boolean walks = Angelica.canWalk();
+        int slot = 0, walked = 0;
         for (Seen s : seen) {
-            if (s.distance <= 24) close.add(s.key);
-            if (slot >= PASSES) continue;
-            if (drawing && s.rect != null) draw(mc, s, slot++, false, s.rect, pt, viewer, v);
-            else if (!drawing && frame % 2 == 0) {
+            if (drawing && s.rect != null) {
+                if (slot < PASSES) draw(mc, s, slot++, s.rect, pt, viewer, v);
+            } else if (walks && walked < PASSES && (drawing ? frame % 3 == 0 : frame % 2 == 0)) {
                 walk(mc, s, false, pt, viewer, v);
-                slot++;
+                walked++;
             }
         }
-        WARMED.keySet()
-            .retainAll(close);
-        if (drawing && slot >= PASSES) return;
-        for (Seen s : seen) {
-            if (s.distance > 16) break;
-            int n = WARMED.getOrDefault(s.key, 0);
-            if (!s.tile.inside && n < 4 && frame % 5 == 0) {
-                WARMED.put(s.key, n + 1);
-                if (drawing) draw(mc, s, slot, true, TINY, pt, viewer, v);
-                else walk(mc, s, true, pt, viewer, v);
-            } else if (drawing && s.rect == null && frame % 3 == 0) draw(mc, s, slot, false, TINY, pt, viewer, v);
-            break;
-        }
+        if (!walks || seen.isEmpty()) return;
+        Seen near = seen.get(0);
+        if (near.distance <= 16 && frame % (near.tile.inside ? 8 : 4) == 1) walk(mc, near, true, pt, viewer, v);
     }
 
     /** The renderer walks the far side of one gate from where the player's camera comes out, building, not drawing. */
@@ -412,8 +397,7 @@ public final class Portal {
     }
 
     /** The world from the far side of one gate, into the picture in {@code slot}, inside {@code rect} only. */
-    private static void draw(Minecraft mc, Seen s, int slot, boolean all, int[] rect, float pt, EntityLivingBase viewer,
-        Pose v) {
+    private static void draw(Minecraft mc, Seen s, int slot, int[] rect, float pt, EntityLivingBase viewer, Pose v) {
         GateGeometry.Gate g = s.gate, f = s.tile.partner();
         double[] q = GateGeometry.carry(g, f, v.x, v.y, v.z);
         passCam.place(viewer, q[0], q[1], q[2], GateGeometry.exitYaw(g, f, v.yaw), v.pitch);
@@ -425,7 +409,7 @@ public final class Portal {
         MovingObjectPosition over = mc.objectMouseOver;
         Entity pointed = mc.pointedEntity;
         Angelica.enter(s.key);
-        pass = new Pass(f, all, medium, q);
+        pass = new Pass(f, false, medium, q);
         mc.renderViewEntity = passCam;
         try {
             fbo.bindFramebuffer(true);
@@ -442,7 +426,7 @@ public final class Portal {
             OpenGlHelper.func_153171_g(OpenGlHelper.field_153198_e, prevFbo);
             GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
         }
-        if (rect != TINY) PICTURES.put(s.key, slot);
+        PICTURES.put(s.key, slot);
     }
 
     // ---- inside a drawing (called from the mixins)

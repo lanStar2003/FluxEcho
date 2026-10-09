@@ -12,6 +12,9 @@ import java.util.Set;
  * <li>inside a room: the whole room, and the square around the room's outside gate, as wide as the server's view,
  * so going back out finds everything where it was.</li>
  * </ul>
+ * Each of these comes with the chunks all round it: the renderer only builds a chunk's mesh once all its neighbours
+ * are there, so without them the edge of a room would only be built after walking in.
+ * <p>
  * Chunks are keyed as Minecraft's {@code ChunkCoordIntPair.chunkXZ2Int} keys them.
  */
 public final class GatePins {
@@ -39,8 +42,13 @@ public final class GatePins {
     }
 
     public static void addBox(Set<Long> out, GateGeometry.Box b) {
-        for (int cx = b.minX >> 4; cx <= b.maxX >> 4; cx++)
-            for (int cz = b.minZ >> 4; cz <= b.maxZ >> 4; cz++) out.add(key(cx, cz));
+        addBox(out, b, 0);
+    }
+
+    /** The chunks of a box and {@code border} chunks more all round. */
+    public static void addBox(Set<Long> out, GateGeometry.Box b, int border) {
+        for (int cx = (b.minX >> 4) - border; cx <= (b.maxX >> 4) + border; cx++)
+            for (int cz = (b.minZ >> 4) - border; cz <= (b.maxZ >> 4) + border; cz++) out.add(key(cx, cz));
     }
 
     public static void addSquare(Set<Long> out, int cx, int cz, int radius) {
@@ -78,11 +86,11 @@ public final class GatePins {
     public static Set<Long> wanted(double x, double y, double z, Iterable<Linked> gates, double range,
         GateGeometry.Box room, GateGeometry.Gate outside, int hold) {
         Set<Long> out = new HashSet<>();
-        for (Linked g : gates) if (g.near(x, y, z, range)) addBox(out, g.far);
+        for (Linked g : gates) if (g.near(x, y, z, range)) addBox(out, g.far, 1);
         if (room != null) {
-            addBox(out, room);
+            addBox(out, room, 1);
             if (outside != null) {
-                addBox(out, outsideView(outside));
+                addBox(out, outsideView(outside), 1);
                 if (hold > 0) addSquare(out, outside.x >> 4, outside.z >> 4, hold);
             }
         }

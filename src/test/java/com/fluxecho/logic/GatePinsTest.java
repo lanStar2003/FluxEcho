@@ -84,6 +84,35 @@ class GatePinsTest {
         }
     }
 
+    /** Angelica (Sodium) builds a chunk's mesh only when the eight chunks round it are loaded too. */
+    private static void assertMeshable(Set<Long> loaded, Set<Long> shown, String what) {
+        for (long k : shown) for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) assertTrue(
+            loaded.contains(GatePins.key(GatePins.keyX(k) + dx, GatePins.keyZ(k) + dz)),
+            what + ": a neighbour of chunk " + GatePins.keyX(k) + ", " + GatePins.keyZ(k) + " is missing");
+    }
+
+    @Test
+    void whatAGateShowsCanBeBuiltBeforeWalkingThrough() {
+        for (String shape : new String[] { "hall", "gallery", "spring", "observatory" })
+            for (int facing = 0; facing < 4; facing++) {
+                RoomPlan plan = new RoomPlan(shape);
+                int cx = FoldedZone.centerX(7), cz = FoldedZone.centerZ(7);
+                GateGeometry.Gate inside = plan.gate(cx, FoldedZone.FLOOR_Y, cz);
+                GateGeometry.Box room = plan.box(cx, FoldedZone.FLOOR_Y, cz);
+                GateGeometry.Gate o = new GateGeometry.Gate(200 + facing * 37, 70, -90 + facing * 51, facing);
+                List<Linked> gates = Arrays.asList(new Linked(o, room), new Linked(inside, GatePins.outsideView(o)));
+                // outside, in front of the gate: the whole room can be built
+                double[] at = { o.cx() + GateGeometry.dx(o.facing) * 3, 70, o.cz() + GateGeometry.dz(o.facing) * 3 };
+                Set<Long> out = union(square(at), GatePins.wanted(at[0], at[1], at[2], gates, RANGE, null, null, 0));
+                assertMeshable(out, chunks(room), shape + " " + facing + " outside");
+                // inside, without the outside kept for them: what the room's gate shows can be built
+                double[] in = GateGeometry.exit(o, inside, o.cx(), 70, o.cz(), 0.35);
+                Set<Long> kept = union(square(in), GatePins.wanted(in[0], in[1], in[2], gates, RANGE, room, o, 0));
+                assertMeshable(kept, chunks(GatePins.outsideView(o)), shape + " " + facing + " inside");
+                assertMeshable(kept, chunks(room), shape + " " + facing + " the room itself");
+            }
+    }
+
     @Test
     void farFromAnyGateNothingIsKept() {
         Pair pair = new Pair(new GateGeometry.Gate(0, 64, 0, 2));
