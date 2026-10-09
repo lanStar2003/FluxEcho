@@ -6,6 +6,8 @@ dependencies {
         exclude(group: "com.github.GTNewHorizons", module: "ThaumicTinkerer")
     }
     compileOnly("com.github.GTNewHorizons:waila:1.8.14:dev") { transitive = false }
+    // where the ore veins of a world are (com.fluxdepths needs it): GTNH 2.8.4 ships visualprospecting-1.4.8
+    implementation("com.github.GTNewHorizons:VisualProspecting:1.4.8:dev") { transitive = false }
     // Optional mods, each behind its own module package (com.fluxecho.bees / .thaumcraft / .blood / .mobs / .mana /
     // .crops / .ae); IsolationTest fails the build when a class outside that package refers to them. Versions are
     // the ones GTNH 2.8.4 ships.

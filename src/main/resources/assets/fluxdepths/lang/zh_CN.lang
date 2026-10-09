@@ -1,0 +1,127 @@
+itemGroup.fluxdepths=通量深层
+
+item.fluxdepths.imprinter.name=印记拓印器
+item.fluxdepths.imprint.name=矿脉印记
+item.fluxdepths.imprint.of=矿脉印记：%s
+fluxdepths.imprint.blank=空白印记：用印记拓印器在矿脉上方右键制作
+fluxdepths.imprint.dims=出产于：%s
+fluxdepths.imprint.world=拓自 %s（矿脉中心 %d, %d）
+fluxdepths.imprint.lore=深层碎片的回响频率，放进碎片采集器
+fluxdepths.imprinter.tip=站在矿脉所在的区域（以矿脉为中心的 3×3 区块）右键，\n拓下这条矿脉在通量深层对应碎片的频率。\n每次消耗 1 张纸；只认世界生成时真实存在的矿脉。
+潜行右键：拓下脚下区块的地下流体（石油、天然气等），给流体回响泵用。
+fluxdepths.imprinter.none=这里没有矿脉。先用探矿工具或地图找到矿脉，站到它的范围里再试。
+fluxdepths.imprinter.paper=需要一张纸来拓印。
+fluxdepths.imprinter.ok=已拓下：%s（%s）
+
+
+
+fluxdepths.head.bronze=青铜钻头
+fluxdepths.head.steel=钢钻头
+fluxdepths.head.aluminium=铝钻头
+fluxdepths.head.stainless_steel=不锈钢钻头
+fluxdepths.head.titanium=钛钻头
+fluxdepths.head.tungsten_steel=钨钢钻头
+
+fluxdepths.status.idle=空闲
+fluxdepths.status.working=工作中
+fluxdepths.status.no_imprint=没有矿脉印记
+fluxdepths.status.wrong_world=印记不属于这个世界
+fluxdepths.status.no_head=需要开孔头（GT 钻头）
+fluxdepths.status.no_fluid=需要钻井液
+fluxdepths.status.output_full=输出已满
+fluxdepths.status.disabled=已在配置中关闭
+
+item.fluxdepths.imprint.fluid=流体印记：%s
+fluxdepths.imprint.amount=原始储量：%d L（GT 钻井每次作业的产量）
+fluxdepths.imprint.chunk=拓自 %s（区块 %d, %d）
+fluxdepths.imprint.fluid_lore=深层流体的回响频率，放进流体回响泵
+fluxdepths.imprinter.no_fluid=这个区块下面没有地下流体。
+fluxdepths.imprinter.fluid_ok=已拓下流体：%s（原始储量 %d L）
+
+gt.blockmachines.fluxdepths.pump.lv.name=基础流体回响泵
+gt.blockmachines.fluxdepths.pump.mv.name=进阶流体回响泵
+gt.blockmachines.fluxdepths.pump.hv.name=高级流体回响泵
+fluxdepths.recipe.fluid_pump=流体回响
+
+fluxdepths.pump.lore=透过针孔回响一个区块的地下流体，区块本身永不枯竭
+fluxdepths.pump.speed=每秒产出印记原始储量的 %s%%
+fluxdepths.pump.head=开孔头：%s或更好的 GT 钻头，放进输入槽，平时一直留在槽里，按概率磨损，平均约 %d 分钟一个
+fluxdepths.pump.world=只回响在本世界拓下的流体印记
+fluxdepths.pump.drill_wear=开孔头：按概率磨损，平均约 %d 分钟一个
+fluxdepths.pump.status.idle=空闲
+fluxdepths.pump.status.working=工作中
+fluxdepths.pump.status.disabled=已在配置中关闭
+fluxdepths.pump.status.no_imprint=没有流体印记
+fluxdepths.pump.status.wrong_world=印记不属于这个世界
+fluxdepths.pump.status.dry=印记上的区块没有流体
+fluxdepths.pump.status.no_head=需要开孔头（GT 钻头）
+fluxdepths.pump.status.output_full=输出已满
+
+fluxdepths.pump.type=地下流体抽取
+
+# Flux Shard Collector
+gt.blockmachines.fluxdepths.shard.collector.name=通量碎片采集器
+gt.blockmachines.fluxdepths.shard.hp_steam.name=旧碎片采集器（高压蒸汽）
+gt.blockmachines.fluxdepths.shard.lv.name=旧碎片采集器（LV）
+gt.blockmachines.fluxdepths.shard.mv.name=旧碎片采集器（MV）
+gt.blockmachines.fluxdepths.shard.hv.name=旧碎片采集器（HV）
+gt.blockmachines.fluxdepths.shard.ev.name=旧碎片采集器（EV）
+gt.blockmachines.fluxdepths.shard.iv.name=旧碎片采集器（IV）
+fluxdepths.shard.type=虚空采矿
+fluxdepths.shard.eu=耗电：%d EU/t
+fluxdepths.shard.lore=透过针孔聆听通量深层的矿脉碎片，一次凝结一块矿石
+fluxdepths.shard.core=§b核心电路§r决定等级：空着烧蒸汽；放 LV–LuV 电路，就按那一级的电压、速度、印记数运行
+fluxdepths.shard.shift=按住 Shift 看各级性能
+fluxdepths.shard.row.steam=%d L/t 蒸汽
+fluxdepths.shard.row.eu=%d V · %d EU/t
+fluxdepths.shard.row.speed=%s 秒/块（%d 块/分）
+fluxdepths.shard.row.imprints=%d 张印记
+fluxdepths.shard.head=§e钻头§r：任意 GT 钻头都能用，越好的钻头磨损概率越低（青铜 0.78%%、钢 0.39%%、钨钢 0.098%%/块）
+fluxdepths.shard.fluid=MV 起每块矿石消耗 %d L 钻井液
+fluxdepths.shard.holo=§3全息投影§r：界面按钮或螺丝刀开关，默认关闭
+fluxdepths.shard.voltage=和 GT 机器一样，电压高于核心电路的等级会爆炸：换低级电路前先断开高压线
+fluxdepths.shard.world=只回响在本世界拓下的印记
+fluxdepths.shard.cap=最快（LuV）为虚空采矿机 I 的 %d%%
+fluxdepths.shard.echoing=正在回响：%s
+fluxdepths.shard.drill_wear=钻头：每块矿石 %s%% 概率磨损（平均 %d 块一个）
+fluxdepths.shard.gui.steam_core=无核心 · 蒸汽驱动
+fluxdepths.shard.gui.core=%s 核心 · %d V
+fluxdepths.shard.gui.imprints=印记 %d / %d
+fluxdepths.shard.gui.per_minute=%d 块/分
+fluxdepths.shard.gui.power_steam=蒸汽 %d L/t · %s 秒/块
+fluxdepths.shard.gui.power=耗电 %d EU/t · %s 秒/块
+fluxdepths.shard.gui.wear=钻头 %s%%/块（平均 %d 块）· 已凝结 %d
+fluxdepths.shard.gui.no_head=没有钻头 · 已凝结 %d
+fluxdepths.shard.gui.vein=矿脉：%s
+fluxdepths.shard.gui.no_vein=矿脉：还没开始回响
+fluxdepths.shard.gui.energy=%s / %s EU
+fluxdepths.shard.gui.steam=蒸汽 %s / %s L
+fluxdepths.shard.holo.title=通量碎片采集器
+fluxdepths.shard.holo.cycle=凝结 %d%%
+fluxdepths.shard.holo.produced=已凝结 %s 块
+fluxdepths.shard.holo.fluid=钻井液 %s L
+fluxdepths.shard.holo.steam_use=%d L/t
+fluxdepths.shard.holo.eu_use=%d EU/t
+fluxdepths.shard.holo.drill=钻头 %s%%/块
+fluxdepths.shard.holo.no_head=没有钻头
+fluxdepths.shard.waila.imprints=印记：%d / %d
+fluxdepths.shard.waila.no_head=钻头：没有
+fluxdepths.shard.waila.produced=已凝结：%d 块
+fluxdepths.shard.waila.holo.on=全息投影：开
+fluxdepths.shard.waila.holo.off=全息投影：关
+fluxdepths.shard.nei.per_minute=%d 块/分
+fluxdepths.nei.title=通量碎片采集
+fluxdepths.nei.tag=矿脉回响
+fluxdepths.nei.imprint=矿脉印记
+fluxdepths.nei.dims=出产于：%s
+fluxdepths.status.no_power=能量不足
+fluxdepths.gui.core=§b核心电路§r\n空着：蒸汽驱动\n放 LV–LuV 电路：按那一级运行
+fluxdepths.gui.head=§e钻头§r\n任意 GT 钻头，越好磨损越少
+fluxdepths.gui.imprint=§3矿脉印记§r\n等级越高，能同时用的印记越多
+fluxdepths.gui.fluid=§6钻井液§r\nMV 起每块矿石 20 L
+fluxdepths.gui.holo.on=全息投影：开（点一下关闭）
+fluxdepths.gui.holo.off=全息投影：关（点一下打开）
+fluxdepths.gui.output.on=自动输出：开（输出到输出面）
+fluxdepths.gui.output.off=自动输出：关
+fluxdepths.holo.on=通量碎片采集器：全息投影已打开
+fluxdepths.holo.off=通量碎片采集器：全息投影已关闭

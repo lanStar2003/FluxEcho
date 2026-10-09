@@ -1,5 +1,22 @@
 # 更新日志
 
+## 0.8.0
+
+**FluxLite 和 FluxDepths 并进 FluxEcho：以后只要一个 jar。**
+
+- **升级方法**：
+  1. 先备份存档；
+  2. 删掉 mods 里的 `fluxlite-*.jar`、`fluxdepths-*.jar` 和旧的 `fluxecho-*.jar`；
+  3. 放进 `fluxecho-0.8.0.jar`。
+
+  服务器和客户端都要换。旧 jar 留在 mods 里时，游戏会提示模组重复并停止加载，删掉就好。
+- **旧存档原样能用，不用转换**：通量连接器、通量监控台、通量终端、碎片采集器、流体回响泵、印记、已放下的机器和里面的东西、团队的电网和蒸汽、强制加载的区块、任务进度全都保留。FluxLite 和 FluxDepths 在 FluxEcho 里仍是各自的子模组（模组列表里挂在 FluxEcho 下面），注册名、机器 ID 都没变。
+- **配置不变**：仍是 `config/fluxlite.cfg`、`config/fluxdepths.cfg`、`config/fluxecho.cfg`，原来的设置继续有效。
+- **通量控制中心改名为「通量监控台」**（英文 Flux Monitor），只改显示名，方块本身不变。
+- **修复**：通量深层（原 FluxDepths）启动时日志里的「Forge cannot read the recipe」警告消失，和 FluxEcho 0.7.2 是同一个原因。合成表本身一直正常。
+- **说明文档**：通量网络和通量深层的说明搬到 [docs/FluxLite.md](https://github.com/lanStar2003/FluxEcho/blob/main/docs/FluxLite.md) 和 [docs/FluxDepths.md](https://github.com/lanStar2003/FluxEcho/blob/main/docs/FluxDepths.md)；整体规划见 [docs/BLUEPRINT.md](https://github.com/lanStar2003/FluxEcho/blob/main/docs/BLUEPRINT.md)（通量中枢、环形模块、研究星图等后续内容）。
+- **测试**：三边的单元测试合在一起跑，共 180 个。
+
 ## 0.7.2
 
 - **修复 NEI 依旧报「加载合成表过程中出现错误」**：在 NEI 里对回响机器按 U（查用途）时，NEI 会顺着页面上的点击区域去查「这台机器的全部配方」，而这个区域在页面还没设好自己的名字时就被创建了，名字是空的，于是每次都报错。现在点击区域在名字确定后才加上。

@@ -51,7 +51,7 @@ public final class EchoRecipes {
      * The recipe in words Forge reads: GT's ore names ({@code OrePrefixes.plate.get(...)}) are GT objects that only
      * spell the name, which Forge turns down; it gets the name itself.
      */
-    static Object[] forForge(Object[] recipe) {
+    public static Object[] forForge(Object[] recipe) {
         Object[] out = recipe.clone();
         for (int i = 0; i < out.length; i++) {
             Object o = out[i];
