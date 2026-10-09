@@ -1,10 +1,14 @@
 package com.fluxdepths.holo;
 
+import java.util.List;
+
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 
 import com.fluxdepths.Config;
 import com.fluxdepths.client.HoloClient;
 import com.fluxdepths.shard.MTEFluxCollector;
+import com.fluxecho.gate.Sight;
 
 import cpw.mods.fml.common.network.ByteBufUtils;
 import cpw.mods.fml.common.network.NetworkRegistry;
@@ -35,14 +39,15 @@ public final class HoloNet {
         IGregTechTileEntity b = m.getBaseMetaTileEntity();
         if (net == null || b == null || b.getWorld() == null) return;
         int dim = b.getWorld().provider.dimensionId;
-        net.sendToAllAround(
-            new Message(dim, b.getXCoord(), b.getYCoord(), b.getZCoord(), m.holoData()),
-            new NetworkRegistry.TargetPoint(
-                dim,
-                b.getXCoord() + 0.5,
-                b.getYCoord() + 0.5,
-                b.getZCoord() + 0.5,
-                Config.hologramRange + 8));
+        List<EntityPlayerMP> near = Sight.near(
+            b.getWorld(),
+            b.getXCoord() + 0.5,
+            b.getYCoord() + 0.5,
+            b.getZCoord() + 0.5,
+            Config.hologramRange + 8);
+        if (near.isEmpty()) return;
+        Message msg = new Message(dim, b.getXCoord(), b.getYCoord(), b.getZCoord(), m.holoData());
+        for (EntityPlayerMP p : near) net.sendTo(msg, p);
     }
 
     public static final class Message implements IMessage {

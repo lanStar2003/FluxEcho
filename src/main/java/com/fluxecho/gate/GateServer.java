@@ -17,6 +17,7 @@ import com.fluxecho.FluxEcho;
 import com.fluxecho.logic.FoldedZone;
 import com.fluxecho.logic.GateGeometry;
 import com.fluxecho.logic.GatePins;
+import com.fluxecho.logic.GateSight;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
@@ -25,7 +26,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 /**
  * The server side of the light gates, once a tick, for each player: takes them through a gate they walked into (a
  * step within the same world: their client keeps everything), keeps both sides of the gates near them loaded for
- * them ({@link Pins}), and catches anyone who got out of a room.
+ * them ({@link Pins}) and in their sight ({@link Sight}), and catches anyone who got out of a room.
  */
 public final class GateServer {
 
@@ -49,6 +50,7 @@ public final class GateServer {
         UUID id = e.player.getUniqueID();
         LAST.remove(id);
         COOLDOWN.remove(id);
+        if (e.player instanceof EntityPlayerMP p) Sight.forget(p);
     }
 
     @SubscribeEvent
@@ -75,6 +77,7 @@ public final class GateServer {
         LAST.clear();
         COOLDOWN.clear();
         Pins.clear();
+        Sight.clear();
         oldPlotsMoved = false;
     }
 
@@ -137,13 +140,23 @@ public final class GateServer {
         COOLDOWN.put(id, 10);
     }
 
-    /** Works out which chunks the player keeps where they are now (see {@link GatePins#wanted}). */
+    /**
+     * Works out which chunks the player keeps where they are now (see {@link GatePins#wanted}), and which gates they
+     * see through.
+     */
     private static void keep(GateRegistry r, EntityPlayerMP p, List<GateRegistry.Entry> gates) {
         List<GatePins.Linked> linked = new ArrayList<>();
+        List<GateSight.Line> sight = new ArrayList<>();
+        double range = keepRange();
         for (GateRegistry.Entry g : gates) {
             GateGeometry.Box far = g.partner == 0 ? null : Gates.farBox(r, g);
-            if (far != null) linked.add(new GatePins.Linked(g.gate(), far));
+            if (far == null) continue;
+            linked.add(new GatePins.Linked(g.gate(), far));
+            GateRegistry.Entry to = r.partnerOf(g);
+            if (to != null && to.dim == p.dimension && near(p, g, range))
+                sight.add(new GateSight.Line(g.gate(), to.gate()));
         }
+        Sight.set(p, sight);
         GateGeometry.Box room = null;
         GateGeometry.Gate outside = null;
         int plot = FoldedZone.plotAt(p.posX, p.posZ);

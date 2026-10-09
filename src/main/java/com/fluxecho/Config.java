@@ -64,7 +64,7 @@ public final class Config {
 
     public static boolean aeEnabled = true;
 
-    public static boolean gateRecipe = true, gateLiveView = true, gateHoldBase = true;
+    public static boolean gateRecipe = true, gateLiveView = true, gateRealView = true, gateHoldBase = true;
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
@@ -404,6 +404,11 @@ public final class Config {
             GATES,
             gateLiveView,
             "Client: draw what lies behind a gate on its membrane. Off: the membrane only glows (for weak graphics cards or a shader pack it does not get along with).");
+        gateRealView = c.getBoolean(
+            "realView",
+            GATES,
+            gateRealView,
+            "Client, with Angelica and no shader pack: the game draws the world a second time from the far side of each gate in sight, so the membrane shows everything there (machines, mobs, players, holograms, weather) and walking through is seamless. Costs about one more frame's drawing while a gate is in sight. Off: the simpler view of blocks only.");
         gateHoldBase = c.getBoolean(
             "holdBase",
             GATES,

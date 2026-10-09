@@ -48,13 +48,16 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
 /**
  * The light gates on the client. Both sides of every gate near the player are loaded in the player's own world (the
  * server keeps them so), and a gate's room is in the same world as the gate.
+ * <p>
+ * With Angelica and no shader pack, {@link Portal} draws the far side for real and walks the player through without a
+ * seam; the membrane here shows its picture. Otherwise, the simple way:
  * <ul>
  * <li>Keeps a {@link FarView} of what lies behind each gate near the player, built from the world itself and built
  * again where a block changes.</li>
  * <li>Draws it: the view, turned and moved through the gate, goes into an off-screen picture with the player's own
  * camera, cut at the gate's pane; the membrane then shows that picture's pixels where it covers the screen, so it is
- * a hole into the other side. Off-screen, so Angelica's renderer and a shader pack's pipeline are left alone: the
- * picture only uses plain OpenGL that Angelica's state tracking follows.</li>
+ * a hole into the other side. Off-screen, so a shader pack's pipeline is left alone: the picture only uses plain
+ * OpenGL that Angelica's state tracking follows.</li>
  * <li>Walking through moves the player within the same world, so nothing reloads; the picture holds the screen with a
  * ripple for a moment, while the renderer builds what it has not drawn yet at the new place.</li>
  * </ul>
@@ -100,13 +103,14 @@ public final class GateClient {
         FMLCommonHandler.instance()
             .bus()
             .register(c);
+        Portal.register();
     }
 
-    private static long key(int x, int y, int z) {
+    static long key(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
     }
 
-    private static List<TileLightGate> gates(World w) {
+    static List<TileLightGate> gates(World w) {
         List<TileLightGate> l = new ArrayList<>();
         synchronized (TileLightGate.CLIENT) {
             for (TileLightGate t : TileLightGate.CLIENT) if (t.getWorldObj() == w && !t.isInvalid()) l.add(t);
@@ -124,7 +128,7 @@ public final class GateClient {
             IMessage m;
             while ((m = GateNet.INBOX.poll()) != null) handle(mc, m);
         } else {
-            notice(mc);
+            if (!Portal.running()) notice(mc);
             if (++ticks % 10 == 0) views(mc);
         }
     }
@@ -145,19 +149,21 @@ public final class GateClient {
         if (p == null || mc.theWorld == null) return;
         double range = Config.gateViewRange + 8;
         Set<Long> keep = new HashSet<>();
-        if (Config.gateViewRange > 0 && Config.gateLiveView && !broken) for (TileLightGate t : gates(mc.theWorld)) {
-            if (!t.linked || t.far == null) continue;
-            double dx = t.xCoord + 0.5 - p.posX, dy = t.yCoord + 1.5 - p.posY, dz = t.zCoord + 0.5 - p.posZ;
-            long k = key(t.xCoord, t.yCoord, t.zCoord);
-            FarView v = VIEWS.get(k);
-            double d = dx * dx + dy * dy + dz * dz;
-            if (d > (range + 16) * (range + 16) || v == null && d > range * range) continue;
-            keep.add(k);
-            GateGeometry.Gate g = t.gate(), source = t.partner();
-            if (v != null && v.sameAs(g, source, t.far)) continue;
-            if (v != null) v.free();
-            VIEWS.put(k, new FarView(g, source, t.far));
-        }
+        // the real view needs none
+        if (Config.gateViewRange > 0 && Config.gateLiveView && !broken && !Portal.running())
+            for (TileLightGate t : gates(mc.theWorld)) {
+                if (!t.linked || t.far == null) continue;
+                double dx = t.xCoord + 0.5 - p.posX, dy = t.yCoord + 1.5 - p.posY, dz = t.zCoord + 0.5 - p.posZ;
+                long k = key(t.xCoord, t.yCoord, t.zCoord);
+                FarView v = VIEWS.get(k);
+                double d = dx * dx + dy * dy + dz * dz;
+                if (d > (range + 16) * (range + 16) || v == null && d > range * range) continue;
+                keep.add(k);
+                GateGeometry.Gate g = t.gate(), source = t.partner();
+                if (v != null && v.sameAs(g, source, t.far)) continue;
+                if (v != null) v.free();
+                VIEWS.put(k, new FarView(g, source, t.far));
+            }
         for (Iterator<Map.Entry<Long, FarView>> it = VIEWS.entrySet()
             .iterator(); it.hasNext();) {
             Map.Entry<Long, FarView> en = it.next();
@@ -170,8 +176,9 @@ public final class GateClient {
 
     private static void handle(Minecraft mc, IMessage msg) {
         if (mc.theWorld == null || mc.thePlayer == null) return;
-        if (msg instanceof GateNet.Transit t && transit == null && t.dim == mc.theWorld.provider.dimensionId)
-            begin(mc, key(t.x, t.y, t.z));
+        if (msg instanceof GateNet.Transit t && transit == null
+            && !Portal.running()
+            && t.dim == mc.theWorld.provider.dimensionId) begin(mc, key(t.x, t.y, t.z));
     }
 
     /** The player stepped into the gate with this key: hold the picture until the other side is drawn. */
@@ -281,38 +288,48 @@ public final class GateClient {
         readMatrices();
         Frustrum frustum = new Frustrum();
         frustum.setPosition(cx, cy, cz);
+        // drawn from beyond a gate: that gate is the hole being looked through, and no gate shows another for real
+        boolean inPass = Portal.inPass(), real = !inPass && Portal.running();
+        GateGeometry.Gate hole = Portal.passGate();
         int budget = 3;
         for (TileLightGate t : list) {
             double dx = t.xCoord + 0.5 - cx, dy = t.yCoord + 1.5 - cy, dz = t.zCoord + 0.5 - cz;
             if (dx * dx + dy * dy + dz * dz > 96 * 96 || !frustum.isBoundingBoxInFrustum(t.getRenderBoundingBox()))
                 continue;
             GateGeometry.Gate g = t.gate();
+            if (hole != null && hole.x == g.x && hole.y == g.y && hole.z == g.z) continue;
             long k = key(t.xCoord, t.yCoord, t.zCoord);
-            FarView v = t.linked ? VIEWS.get(k) : null;
+            FarView v = t.linked && !inPass ? VIEWS.get(k) : null;
             double front = g.front(cx, cz);
             boolean drawn = false;
-            if (v != null && Config.gateLiveView
+            int picture = real && front > 0 ? Portal.picture(k) : -1;
+            if (picture >= 0) {
+                membrane(g, cx, cy, cz, picture);
+                pictured = k;
+                drawn = true;
+            } else if (v != null && !real
+                && Config.gateLiveView
                 && !broken
                 && transit == null
                 && front > 0
                 && OpenGlHelper.isFramebufferEnabled()) {
-                budget -= v.build(mc.theWorld, Math.max(0, budget));
-                if (v.hasAny()) try {
-                    live(mc, v, g, cx, cy, cz, e.partialTicks);
-                    pictured = k;
-                    drawn = true;
-                } catch (Throwable ex) {
-                    broken = true;
-                    FluxEcho.LOG.error(
-                        "Drawing the view through a light gate failed; the gates only glow from now on (gates.liveView in config/fluxecho.cfg turns the view off for good)",
-                        ex);
+                    budget -= v.build(mc.theWorld, Math.max(0, budget));
+                    if (v.hasAny()) try {
+                        live(mc, v, g, cx, cy, cz, e.partialTicks);
+                        pictured = k;
+                        drawn = true;
+                    } catch (Throwable ex) {
+                        broken = true;
+                        FluxEcho.LOG.error(
+                            "Drawing the view through a light gate failed; the gates only glow from now on (gates.liveView in config/fluxecho.cfg turns the view off for good)",
+                            ex);
+                    }
                 }
-            }
             if (!drawn) GateDraw.membrane(g, cx, cy, cz, time, t.linked, front);
             GateDraw.frame(g, cx, cy, cz, time, t.linked);
         }
         // what is left goes to views not in sight yet, so they are ready when looked at
-        if (budget > 1 && !broken && transit == null) for (FarView v : VIEWS.values()) {
+        if (budget > 1 && !broken && transit == null && !inPass && !real) for (FarView v : VIEWS.values()) {
             budget -= v.build(mc.theWorld, budget - 1);
             if (budget <= 1) break;
         }
@@ -345,7 +362,7 @@ public final class GateClient {
         if (w <= 0 || h <= 0) return;
         ensureFbo(w, h);
         picture(mc, v, g, cx, cy, cz, pt);
-        membrane(g, cx, cy, cz);
+        membrane(g, cx, cy, cz, fbo.framebufferTexture);
     }
 
     /** The far side, through the gate, from the player's camera, into the off-screen picture. */
@@ -434,7 +451,7 @@ public final class GateClient {
     }
 
     /** The membrane showing the picture: each point gets the pixel it covers, so it is a window into it. */
-    private static void membrane(GateGeometry.Gate g, double cx, double cy, double cz) {
+    private static void membrane(GateGeometry.Gate g, double cx, double cy, double cz, int texture) {
         GL11.glPushAttrib(
             GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT
                 | GL11.GL_DEPTH_BUFFER_BIT
@@ -451,7 +468,7 @@ public final class GateClient {
             OpenGlHelper
                 .setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, ShaderCompat.packInUse() ? 0f : 240f);
             GL11.glEnable(GL11.GL_TEXTURE_2D);
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, fbo.framebufferTexture);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
             GL11.glColor4f(1f, 1f, 1f, 1f);
             if (onPane(g, cx, cy, cz)) fullScreen();
             else grid(g, cx, cy, cz);

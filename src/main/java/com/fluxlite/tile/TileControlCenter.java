@@ -1,6 +1,5 @@
 package com.fluxlite.tile;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,6 +11,7 @@ import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 
+import com.fluxecho.gate.Sight;
 import com.fluxlite.Config;
 import com.fluxlite.backend.GTWirelessBackend;
 import com.fluxlite.core.registry.Registry;
@@ -77,11 +77,8 @@ public class TileControlCenter extends TileEntity {
     private void pushHologram() {
         float range = holoRange();
         double r = range + 4;
-        List<EntityPlayerMP> near = new ArrayList<>();
-        for (Object o : worldObj.playerEntities) {
-            if (o instanceof EntityPlayerMP p && p.getDistanceSq(xCoord + 0.5, yCoord + 1.5, zCoord + 0.5) <= r * r)
-                near.add(p);
-        }
+        // also whoever looks at it through a light gate
+        List<EntityPlayerMP> near = Sight.near(worldObj, xCoord + 0.5, yCoord + 1.5, zCoord + 0.5, r);
         if (near.isEmpty()) return;
         NBTTagCompound d = HoloView.build(this);
         if (d == null) return;
