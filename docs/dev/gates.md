@@ -184,7 +184,6 @@ AT（`META-INF/fluxecho_at.cfg`）开放：`PlayerManager$PlayerInstance`、`Pla
 ## 9. 限制与文档出入
 
 - 光影包下门里用简单画法：不经过光影、看不到别的模组在世界上画的东西和粒子（进出照样无缝）。门那边的声音听不到。门里的门不递归。
-- BLUEPRINT 3.10 说"偶尔用一个像素的剪裁框画一次"——现在是 `Angelica.walk`（不画）+ 16 格内 all-walk。
 - `BlockLightGate` 的 Javadoc 还用 0.8.1 的说法。
 - `Sight.LINES` 以 `EntityPlayerMP` 为 key，但重生**不会**留下旧条目：1.7.10 的 `Entity.equals/hashCode` 按 `entityId`，`respawnPlayer` 把旧 id 设给新实例，所以新旧实例是同一个 key（已用 javap 核对），登出时 `Sight.forget` 一并清掉。
 
