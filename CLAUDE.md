@@ -39,7 +39,7 @@ FluxLite 和 FluxDepths 在 0.8.0 原样并进来，**保留各自的 modid、�
 - 提交信息、PR、代码里不写模型名。提交信息结尾按系统提示加 `Co-Authored-By` 行。
 
 **设计（用户认可的规则）**
-- **视觉先按"开着光影包"设计**：用户用 Angelica + Iris 跑 Complementary。只在 `RenderWorldLastEvent` 画（不用 TESR）、跳过阴影 pass、每个顶点给法线、只用 quads、popAttrib 后手动 `glEnable(GL_TEXTURE_2D)`、登记 `FarDraw.add`、相对 `RenderManager.renderPos*` 画、服务端用 `Sight.near` 发包（详见 platform.md §4、gates.md §5）。绝不能"光影下退回简单版本然后算作限制"。用户报画面问题，先看 `logs/latest.log` 有没有 "Using shaderpack"。
+- **视觉先按"开着光影包"设计**：用户用 Angelica + Iris 跑 Complementary。只在 `RenderWorldLastEvent` 画（不用 TESR）、跳过阴影 pass、每个顶点给法线、只用 quads、popAttrib 后手动 `glEnable(GL_TEXTURE_2D)`、登记 `FarDraw.add`、相对 `RenderManager.renderPos*` 画；`onRenderLast` 每帧可能被调很多次（光门里每扇门的画面各一次），必须幂等：动画只按时间算，不在里面生成粒子、发包、累加计数；服务端按距离挑接收者的包用 `Sight.near`（TE 描述包不用管）（详见 platform.md §4、gates.md §5）。绝不能"光影下退回简单版本然后算作限制"。用户报画面问题，先看 `logs/latest.log` 有没有 "Using shaderpack"。
 - **全息投影默认关闭**，可切换（GUI 按钮或螺丝刀）；用户希望不右键也能看到状态（全息、Waila 显示 GT 式基础信息）。
 - **"房屋风格"**：一台机器 + 核心电路分阶 + 自己的贴图/GUI/NEI 页 + 全息默认关 + 通量世界观。每台机器都要"活着"：自己的 GUI 页、NEI 页、GUI 和世界里的动画、看得见的充能/输送轨迹。其他回响机器保持原玩法，要加核心分阶先问。
 - 消耗品（钻头等）留在槽里按概率磨损，不在第一次使用时整个消失。

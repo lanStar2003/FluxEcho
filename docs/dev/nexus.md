@@ -178,7 +178,7 @@
 
 ## 8. 渲染
 
-- **NexusRender**（`EVENT_BUS` + `FarDraw.add`）：`!nexusEffects` 或 shadow pass 跳过；距离 > `range+48` 不画，16 格淡出；每个 tile try/finally 保证 `Shapes.end()`。悬浮支撑件 (±2,±2)、环（base+4.5，半径 2.6–3.4，有电时转）、晶核（显化时紫色）、地面圆盘和环、两道光柱、反转虚线环、研究星座、扫光盘；光桥到停靠的槽（模块色，走光点）；手持核心物品或终端时画槽位轮廓；全息（默认关）在控制器上方。
+- **NexusRender**（`EVENT_BUS` + `FarDraw.add`；光门里每扇门的画面都会再调一次，所以任何逐帧状态（扫光等）都要按时间算，不能按调用次数）：`!nexusEffects` 或 shadow pass 跳过；距离 > `range+48` 不画，16 格淡出；每个 tile try/finally 保证 `Shapes.end()`。悬浮支撑件 (±2,±2)、环（base+4.5，半径 2.6–3.4，有电时转）、晶核（显化时紫色）、地面圆盘和环、两道光柱、反转虚线环、研究星座、扫光盘；光桥到停靠的槽（模块色，走光点）；手持核心物品或终端时画槽位轮廓；全息（默认关）在控制器上方。
 - **LibraryRender**：立方体五个面（四侧 + 顶）只画朝向相机的面，每面往里一条书廊：深 3.0、6 段、半宽从 2.5 收到 0.4（`pow(f,0.8)`，比透视收得快，所以显得无限深）；墙不透明、写深度，光线加法混合不写深度；书脊颜色 hash；尽头三层方形光；顶上浮着翻页的图鉴；没停靠/没电时亮度 0.35。
 - **FrameRender**（ISBRH）：HIDE 返回 false；先画碰撞盒，再关 AO 用 `0xF000F0` 画发光叠层；物品栏里带法线画 3D。
 - **`Shapes` API**（坐标相对相机）：`begin(additive)`、`additive(bool)`、`end()`（幂等）；`ring`、`band`、`disc`、`beam`（十字面）、`string`、`crystal`（八面体）、`strut`、`square`、`plane`、`quad`、`quad3`、`quadShade`、`mix`。**只用 `GL_QUADS`**（"triangles as quads with a doubled corner: Angelica's tessellator takes quads everywhere"），法线指向视线，不用纹理（`Motes` 除外）。
