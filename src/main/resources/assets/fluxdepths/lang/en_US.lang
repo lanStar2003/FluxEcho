@@ -1,0 +1,127 @@
+itemGroup.fluxdepths=FluxDepths
+
+item.fluxdepths.imprinter.name=Depth Imprinter
+item.fluxdepths.imprint.name=Vein Imprint
+item.fluxdepths.imprint.of=Vein Imprint: %s
+fluxdepths.imprint.blank=Blank: right-click with a Vein Imprinter above a vein
+fluxdepths.imprint.dims=Found in: %s
+fluxdepths.imprint.world=Taken in %s (vein centre %d, %d)
+fluxdepths.imprint.lore=The echo of a shard in the depths. Put it into a shard collector.
+fluxdepths.imprinter.tip=Right-click inside a vein's area (the 3x3 chunks around it)\nto take the frequency of its shard in the flux depths.\nUses one sheet of paper; only veins the world really generated count.
+Sneak-right-click: take the underground fluid (oil, gas, ...) of the chunk underfoot, for a fluid pump.
+fluxdepths.imprinter.none=There is no vein here. Find one with a prospecting tool or the map, then stand inside its area.
+fluxdepths.imprinter.paper=You need a sheet of paper to take an imprint.
+fluxdepths.imprinter.ok=Imprinted: %s (%s)
+
+
+
+fluxdepths.head.bronze=Bronze Drill Head
+fluxdepths.head.steel=Steel Drill Head
+fluxdepths.head.aluminium=Aluminium Drill Head
+fluxdepths.head.stainless_steel=Stainless Steel Drill Head
+fluxdepths.head.titanium=Titanium Drill Head
+fluxdepths.head.tungsten_steel=Tungstensteel Drill Head
+
+fluxdepths.status.idle=Idle
+fluxdepths.status.working=Working
+fluxdepths.status.no_imprint=No vein imprint
+fluxdepths.status.wrong_world=The imprint is from another world
+fluxdepths.status.no_head=Needs a drill head
+fluxdepths.status.no_fluid=Needs drilling fluid
+fluxdepths.status.output_full=Output full
+fluxdepths.status.disabled=Switched off in the config
+
+item.fluxdepths.imprint.fluid=Fluid Imprint: %s
+fluxdepths.imprint.amount=Pristine amount: %d L (what GT's drilling rigs get per operation)
+fluxdepths.imprint.chunk=Taken in %s (chunk %d, %d)
+fluxdepths.imprint.fluid_lore=The echo of a fluid in the depths. Put it into a fluid pump.
+fluxdepths.imprinter.no_fluid=There is no underground fluid under this chunk.
+fluxdepths.imprinter.fluid_ok=Imprinted fluid: %s (pristine amount %d L)
+
+gt.blockmachines.fluxdepths.pump.lv.name=Basic Fluid Echo Pump
+gt.blockmachines.fluxdepths.pump.mv.name=Advanced Fluid Echo Pump
+gt.blockmachines.fluxdepths.pump.hv.name=Advanced Fluid Echo Pump II
+fluxdepths.recipe.fluid_pump=Fluid Echo
+
+fluxdepths.pump.lore=Echoes a chunk's underground fluid through a pinhole; the chunk itself never runs dry
+fluxdepths.pump.speed=Gives %s%% of the imprint's pristine amount per second
+fluxdepths.pump.head=Drill tip: %s or better GT drill head, in the input slot; it stays there and wears out by chance, one per %d min on average
+fluxdepths.pump.world=Only echoes fluid imprints taken in this world
+fluxdepths.pump.drill_wear=Drill head: wears out by chance, one per %d min on average
+fluxdepths.pump.status.idle=Idle
+fluxdepths.pump.status.working=Working
+fluxdepths.pump.status.disabled=Switched off in the config
+fluxdepths.pump.status.no_imprint=No fluid imprint
+fluxdepths.pump.status.wrong_world=The imprint is from another world
+fluxdepths.pump.status.dry=The imprinted chunk has no fluid
+fluxdepths.pump.status.no_head=Needs a drill head
+fluxdepths.pump.status.output_full=Output full
+
+fluxdepths.pump.type=Underground Fluid Pumping
+
+# Flux Shard Collector
+gt.blockmachines.fluxdepths.shard.collector.name=Flux Shard Collector
+gt.blockmachines.fluxdepths.shard.hp_steam.name=Old Shard Collector (High Pressure Steam)
+gt.blockmachines.fluxdepths.shard.lv.name=Old Shard Collector (LV)
+gt.blockmachines.fluxdepths.shard.mv.name=Old Shard Collector (MV)
+gt.blockmachines.fluxdepths.shard.hv.name=Old Shard Collector (HV)
+gt.blockmachines.fluxdepths.shard.ev.name=Old Shard Collector (EV)
+gt.blockmachines.fluxdepths.shard.iv.name=Old Shard Collector (IV)
+fluxdepths.shard.type=Void Mining
+fluxdepths.shard.eu=Power: %d EU/t
+fluxdepths.shard.lore=Listens through a pinhole to a vein's shard deep in the flux layer and condenses one ore at a time
+fluxdepths.shard.core=The §bcore circuit§r sets the tier: empty runs on steam; an LV to LuV circuit runs it at that voltage, speed and imprint count
+fluxdepths.shard.shift=Hold Shift for each tier
+fluxdepths.shard.row.steam=%d L/t steam
+fluxdepths.shard.row.eu=%d V · %d EU/t
+fluxdepths.shard.row.speed=%s s per ore (%d a minute)
+fluxdepths.shard.row.imprints=%d imprints
+fluxdepths.shard.head=§eDrill head§r: any GT drill head works; the better it is, the rarer it wears (bronze 0.78%%, steel 0.39%%, tungstensteel 0.098%% per ore)
+fluxdepths.shard.fluid=From MV on, %d L of drilling fluid per ore
+fluxdepths.shard.holo=§3Hologram§r: switch it with the GUI button or a screwdriver; off by default
+fluxdepths.shard.voltage=Like a GT machine it explodes on a voltage above its core circuit's: unplug high voltage before fitting a lower circuit
+fluxdepths.shard.world=Only echoes imprints taken in this world
+fluxdepths.shard.cap=At its fastest (LuV) %d%% of a Void Miner I
+fluxdepths.shard.echoing=Echoing: %s
+fluxdepths.shard.drill_wear=Drill head: %s%% chance to wear per ore (one lasts %d ores on average)
+fluxdepths.shard.gui.steam_core=No core · steam
+fluxdepths.shard.gui.core=%s core · %d V
+fluxdepths.shard.gui.imprints=Imprints %d / %d
+fluxdepths.shard.gui.per_minute=%d ores/min
+fluxdepths.shard.gui.power_steam=Steam %d L/t · %s s per ore
+fluxdepths.shard.gui.power=Power %d EU/t · %s s per ore
+fluxdepths.shard.gui.wear=Drill %s%%/ore (%d ores) · made %d
+fluxdepths.shard.gui.no_head=No drill head · made %d
+fluxdepths.shard.gui.vein=Vein: %s
+fluxdepths.shard.gui.no_vein=Vein: not echoing yet
+fluxdepths.shard.gui.energy=%s / %s EU
+fluxdepths.shard.gui.steam=Steam %s / %s L
+fluxdepths.shard.holo.title=Flux Shard Collector
+fluxdepths.shard.holo.cycle=Condensing %d%%
+fluxdepths.shard.holo.produced=%s ores made
+fluxdepths.shard.holo.fluid=Drilling fluid %s L
+fluxdepths.shard.holo.steam_use=%d L/t
+fluxdepths.shard.holo.eu_use=%d EU/t
+fluxdepths.shard.holo.drill=Drill %s%%/ore
+fluxdepths.shard.holo.no_head=No drill head
+fluxdepths.shard.waila.imprints=Imprints: %d / %d
+fluxdepths.shard.waila.no_head=Drill head: none
+fluxdepths.shard.waila.produced=Ores made: %d
+fluxdepths.shard.waila.holo.on=Hologram: on
+fluxdepths.shard.waila.holo.off=Hologram: off
+fluxdepths.shard.nei.per_minute=%d/min
+fluxdepths.nei.title=Flux Shard Collector
+fluxdepths.nei.tag=Vein echo
+fluxdepths.nei.imprint=Imprint
+fluxdepths.nei.dims=Generates in: %s
+fluxdepths.status.no_power=Not enough power
+fluxdepths.gui.core=§bCore circuit§r\nEmpty: runs on steam\nLV to LuV circuit: runs at that tier
+fluxdepths.gui.head=§eDrill head§r\nAny GT drill head; better ones wear less
+fluxdepths.gui.imprint=§3Vein imprint§r\nHigher tiers use more imprints at once
+fluxdepths.gui.fluid=§6Drilling fluid§r\n20 L per ore from MV on
+fluxdepths.gui.holo.on=Hologram: on (click to switch off)
+fluxdepths.gui.holo.off=Hologram: off (click to switch on)
+fluxdepths.gui.output.on=Auto output: on (to the output side)
+fluxdepths.gui.output.off=Auto output: off
+fluxdepths.holo.on=Flux Shard Collector: hologram on
+fluxdepths.holo.off=Flux Shard Collector: hologram off

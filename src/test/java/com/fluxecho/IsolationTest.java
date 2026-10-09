@@ -60,6 +60,8 @@ class IsolationTest {
             String name = root.relativize(p)
                 .toString()
                 .replace('\\', '/');
+            // com.fluxlite and com.fluxdepths came in with 0.8.0 and keep their own rules (IC2 is required by GT)
+            if (!name.startsWith("com/fluxecho/")) continue;
             for (String constant : utf8Constants(p)) {
                 Matcher m = REF.matcher(constant);
                 while (m.find()) {

@@ -1,6 +1,8 @@
 # 通量回响 FluxEcho
 
-GT New Horizons 2.8.4 的懒人私货模组，和 [FluxLite](https://github.com/lanStar2003/FluxLite)、[FluxDepths](https://github.com/lanStar2003/FluxDepths) 同一个世界观。
+GT New Horizons 2.8.4 的私货模组。0.8.0 起，原来的 [FluxLite](docs/FluxLite.md)（通量网络）和 [FluxDepths](docs/FluxDepths.md)（通量深层）也并进了这个 jar：一个 FluxEcho 就是全部。
+
+> **从旧版本升级**：先备份存档；把 mods 里的 `fluxlite-*.jar`、`fluxdepths-*.jar` 和旧的 `fluxecho-*.jar` 都删掉，只放新的 `fluxecho-0.8.0.jar`。旧存档里的方块、机器、物品、配置和任务进度原样保留，不需要任何转换。三个旧 jar 留在 mods 里时游戏会提示模组重复并停止加载，删掉就好。
 
 原则只有一条：**亲手做过一次的事，之后交给机器。**养蜂、神秘、血魔法、刷怪、作物杂交这些前期又重复又磨人的流程，你只要按原版走通一次，回响机器就能替你无限重复。机器只认真东西：蜂要从真蜂身上拓，要素要从真的要素里学，血要从你亲手做出的宝珠里来，怪要你亲手杀过。
 
@@ -17,6 +19,8 @@ GT New Horizons 2.8.4 的懒人私货模组，和 [FluxLite](https://github.com/
 | 回响图鉴：团队做过什么，物品提示和 Waila 里也标出来 | 无 | 0.2.0 |
 | 回响 ME 供应器：回响机器直接接进 AE 自动合成 | AE2 | 0.2.0 |
 | 任务书：懒人AE、碎片采集器、通量回响各条线 | BetterQuesting | 0.1.0 |
+| [通量网络](docs/FluxLite.md)（原 FluxLite）：通量连接器、通量监控台、通量终端，GT 无线电网和团队蒸汽网络 | 无 | 0.8.0 并入 |
+| [通量深层](docs/FluxDepths.md)（原 FluxDepths）：通量碎片采集器、流体回响泵 | VisualProspecting（GTNH 自带） | 0.8.0 并入 |
 
 ## 世界观
 
@@ -348,7 +352,7 @@ FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导�
 | 任务线 | 需要 | 内容 |
 |---|---|---|
 | 私货 · 懒人AE | AE2、ae2fc | 开局勾选就送一整套 AE2：自供能控制器加普通控制器、驱动器、物品元件和多重流体元件、终端、自动合成、线缆（原来在 FluxDepths 里） |
-| 通量深层 · 碎片采集器 | FluxDepths | 世界观、拓印、通量碎片采集器和核心电路、钻头、全息投影（原来在 FluxDepths 里；0.5.0 起对应 FluxDepths 0.3.0 的单台采集器） |
+| 通量深层 · 碎片采集器 | 无 | 世界观、拓印、通量碎片采集器和核心电路、钻头、全息投影（原来在 FluxDepths 里；0.5.0 起对应 FluxDepths 0.3.0 的单台采集器） |
 | 通量回响 · 养蜂 | Forestry | 世界观、拓印、编辑基因、培育 |
 | 通量回响 · 神秘 | Thaumcraft | 要素记忆、回响仪和回响口、充能器、灵感回响仪、回响釜 |
 | 通量回响 · 血魔法 | Blood Magic | 第一颗宝珠、鲜血回响器、灵魂网络模式 |
@@ -357,7 +361,7 @@ FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导�
 | 通量回响 · 植物魔法 | Botania | 魔力回响泉、升级核心 |
 | 通量回响 · 通用 | 无 | 回响图鉴（送一本） |
 
-0.2.0 还往老线里加了任务：养蜂线加「树和蝴蝶」，神秘线加「注魔回响台」，懒人AE 加「回响 ME 供应器」，碎片采集器线加「流体印记」和三台流体回响泵（需要 FluxDepths 0.2.0）。老任务的 ID 和进度都不变。
+0.2.0 还往老线里加了任务：养蜂线加「树和蝴蝶」，神秘线加「注魔回响台」，懒人AE 加「回响 ME 供应器」，碎片采集器线加「流体印记」和三台流体回响泵（0.8.0 起就在 FluxEcho 里）。老任务的 ID 和进度都不变。
 
 - **进存档就有**：每次开服时（单人游戏就是进世界时），FluxEcho 把这几条任务线直接写进这个存档的任务数据库。缺的任务补上，内容变了的就地更新，已有进度和领奖记录都保留。新旧存档都一样，有改动时进游戏会在聊天栏提示一次。
 - **重新载入也不会丢**：启动时还会把同样的文件装进 `config/betterquesting/DefaultQuests`，并在 `QuestLinesOrder.txt` 里加上自己的那几行。以后不管是手动执行 `/bq_admin default load`，还是 GTNH 更新整合包后自动重新载入，这几条线都还在。
@@ -368,7 +372,7 @@ FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导�
 
 ## 配置
 
-`config/fluxecho.cfg`：
+`config/fluxecho.cfg`（通量网络和通量深层的配置仍在原来的 `config/fluxlite.cfg`、`config/fluxdepths.cfg`，见各自的说明页）：
 
 | 项 | 默认 | 说明 |
 |---|---|---|
@@ -418,15 +422,16 @@ FluxEcho 自带这些任务线。需要的模组装了，任务线就自动导�
 | `effects.hologramRange` | 16 | 回响机器的全息投影在多少格内可见（0 = 全部关闭） |
 | `ae2.enabled` | true | 回响 ME 供应器开关 |
 
-GT 机器 ID 24521–24575 在 GTNH 2.8.4 里除了 FluxDepths（24520–24526）都没有被占用（扫描过整合包所有 jar）。启动时如果发现被占用，会报错并提示修改配置，不会悄悄覆盖。
+GT 机器 ID：24520–24529 是通量深层的采集器和流体泵，24530–24569 是回响机器；这些 ID 在 GTNH 2.8.4 里没有被别的模组占用（扫描过整合包所有 jar）。启动时如果发现被占用，会报错并提示修改配置，不会悄悄覆盖。
 
 ## 开发
 
-- 依赖：GT5-Unofficial 5.09.51.482；可选 Forestry 4.10.17、Thaumcraft 4.2.3.5、Blood Magic 1.7.52、MobsInfo 0.5.6、Botania 1.12.28，IC2 和 AE2 随 GT 一起进来（都是 GTNH 2.8.4 自带的版本）。
+- 依赖：GT5-Unofficial 5.09.51.482、VisualProspecting 1.4.8（通量深层用）；可选 Forestry 4.10.17、Thaumcraft 4.2.3.5、Blood Magic 1.7.52、MobsInfo 0.5.6、Botania 1.12.28，IC2 和 AE2 随 GT 一起进来（都是 GTNH 2.8.4 自带的版本）。
 - 可选模组只在各自的模块包里使用（`com.fluxecho.bees`、`.thaumcraft`、`.blood`、`.mobs`、`.crops`、`.mana`、`.ae`，BetterQuesting 在 `.quest.bq`）。`IsolationTest` 会扫描编译出的类，模块包以外引用了它们就让构建失败。
 - 回响图鉴的账本在 `com.fluxecho.codex`（`EchoLedger`，存在存档的 `data/fluxecho_ledger.dat`），各模块记账、注册图标；回响 ME 供应器通过 `MTEEchoMachine.echoPatterns()` 问机器能做什么，只用 AE2 的公开 API。
 - `./gradlew build`：编译、格式检查、单元测试（含语言文件：中英文键一致、代码里写到的键都在）。
 - `/fluxecho_nei`（客户端命令）：按玩家按 U、按 R 的方式查一遍每个回响机器的 NEI 页面，在聊天栏报告哪个页面出错。
-- 纹理由 `tools/Textures.java` 生成：`java tools/Textures.java`。
+- 纹理由 `tools/` 下的脚本生成：`java tools/Textures.java`（通量深层是 `tools/DepthsTextures.java`、`tools/DepthsGuiTextures.java`）。
+- 0.8.0 合并的做法：`com.fluxlite`、`com.fluxdepths` 两个包原样搬进来，各自仍是一个 `@Mod`（`fluxlite`、`fluxdepths`，在 `mcmod.info` 里挂在 `fluxecho` 下面）。Forge 只允许模组改写自己名下的注册名，强制加载区块的票据和配置文件也按模组 ID 存，所以保留原来的模组 ID 是旧存档零迁移的唯一稳妥做法。
 - 任务书由 `quests/build_quests.py` 生成到 `src/main/resources/assets/fluxecho/quests/`：`python quests/build_quests.py`。任务 ID 由固定的键算出来，重新生成后 ID 不变，进度也不会丢。
 - 推送 `X.Y.Z` 标签后，CI 会构建并发布 GitHub Release，更新说明取自 CHANGELOG 的对应小节。
