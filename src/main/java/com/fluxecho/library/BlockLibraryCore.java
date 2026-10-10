@@ -1,13 +1,15 @@
 package com.fluxecho.library;
 
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import com.fluxecho.nexus.BlockNexus;
 
-/** The Echo Library's core: the middle of the front face of its cube of shelves. */
+/**
+ * The Echo Library's core: the controller in the front wall, between the doors. Taking it down puts the library's
+ * books into the team's vault ({@link LibraryVault}), where the next library of the team takes them in again; a library
+ * without a team drops them.
+ */
 public class BlockLibraryCore extends BlockNexus {
 
     public BlockLibraryCore() {
@@ -21,9 +23,7 @@ public class BlockLibraryCore extends BlockNexus {
 
     @Override
     protected void dropsMore(TileEntity te, World w, int x, int y, int z) {
-        if (!(te instanceof TileLibrary l)) return;
-        for (ItemStack s : l.contents()) w.spawnEntityInWorld(new EntityItem(w, x + 0.5, y + 0.5, z + 0.5, s.copy()));
-        for (int i = 0; i < l.samples.getSlots(); i++) l.samples.setStackInSlot(i, null);
-        for (int i = 0; i < l.desk.getSlots(); i++) l.desk.setStackInSlot(i, null);
+        if (w.isRemote || !(te instanceof TileLibrary l)) return;
+        l.takeDown(w, x, y, z);
     }
 }

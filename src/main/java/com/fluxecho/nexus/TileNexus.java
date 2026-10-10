@@ -30,6 +30,7 @@ import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.frame.FrameModule;
 import com.fluxecho.logic.Blueprint;
+import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.ResearchTree;
@@ -158,9 +159,9 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * The projector's (and NEI's) tier picks what it shows: 1 to 5 the nexus of that phase, 6 to 10 the same with its
-     * open inner ring slots holding modules (previews only). In the world the projector builds only the phases the
-     * nexus can reach today.
+     * The projector's (and NEI's) tier picks what it shows: 1 to 5 the nexus of that phase, 6 to 10 the same with
+     * modules standing where the campus raises them (previews only). In the world the projector builds only the phases
+     * the nexus can reach today.
      */
     @Override
     protected void buildShape(ItemStack trigger, boolean hintsOnly) {
@@ -172,25 +173,46 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         if (tier > NexusShape.PHASES && !realWorld()) previewModules(phase, trigger, hintsOnly);
     }
 
-    /** Stands a module on each slot the phase opens, its front towards the nexus, for the preview. */
+    /**
+     * Stands modules round the nexus for the preview, one on each hall site the phase opens (at most the three hall
+     * sites, behind the nexus first, then right and left): each where the campus builder raises it, its controller at
+     * the spec's place for the site ({@link BuildPlan#archiveController} for the Echo Archive) and its front towards
+     * the nexus. The campus floor is left out, as the preview would grow too heavy. A module kind the campus does not
+     * build stands on the inner ring slot of the same number instead, as in 0.9.2.
+     */
     private void previewModules(int phase, ItemStack trigger, boolean hintsOnly) {
         List<NexusModule.Preview> kinds = NexusModule.previews();
         if (kinds.isEmpty() || worldObj == null) return;
         int[] c = centre();
         int fx = front().offsetX, fz = front().offsetZ;
-        for (int k = 0; k < RingSlots.open(phase); k++) {
+        int count = Math.min(RingSlots.open(phase), CampusPlan.HALL_SITES.length);
+        for (int k = 0; k < count; k++) {
+            int site = CampusPlan.HALL_SITES[k];
             NexusModule.Preview kind = kinds.get(k % kinds.size());
-            int[] o = RingSlots.offset(k, Config.innerRadius, fx, fz);
-            int[] f = RingSlots.facing(-o[0], -o[1]);
             TileModule m = kind.tile.get();
-            int[] cc = m.centreCell();
-            // where its controller stands for its foundation's centre to sit on the slot
-            int[] rel = m.blueprint()
-                .world(cc[0], cc[1], cc[2], 0, 0, 0, f[0], f[1]);
-            int x = c[0] + o[0] - rel[0], y = c[1] - rel[1], z = c[2] + o[1] - rel[2];
+            ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+            int x, y, z, front;
+            if (spec != null && spec.hasSite(site)) {
+                int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
+                x = at[0];
+                y = at[1];
+                z = at[2];
+                front = at[3];
+            } else {
+                int[] o = RingSlots.offset(site, Config.innerRadius, fx, fz);
+                int[] f = RingSlots.facing(-o[0], -o[1]);
+                int[] cc = m.centreCell();
+                // where its controller stands for its foundation's centre to sit on the slot
+                int[] rel = m.current()
+                    .world(cc[0], cc[1], cc[2], 0, 0, 0, f[0], f[1]);
+                x = c[0] + o[0] - rel[0];
+                y = c[1] - rel[1];
+                z = c[2] + o[1] - rel[2];
+                front = facingOf(f[0], f[1]);
+            }
             worldObj.setBlock(x, y, z, kind.core, 0, 2);
             worldObj.setTileEntity(x, y, z, m);
-            m.facing = facingOf(f[0], f[1]);
+            m.facing = front;
             ItemStack one = trigger == null ? null : trigger.copy();
             if (one != null) one.stackSize = 1;
             m.construct(one, hintsOnly);

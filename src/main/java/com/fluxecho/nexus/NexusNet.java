@@ -40,7 +40,8 @@ public final class NexusNet {
     public static final int MAP = 0, RESULT = 1;
     /**
      * Server to client: the campus builder's launches and clears, its progress numbers ({@link CampusNet}), and the
-     * library's slot changes (reserved for the Echo Archive's books).
+     * books an Echo Library put on or took off its shelves since the last packet
+     * ({@link com.fluxecho.library.TileLibrary#receiveDelta}).
      */
     public static final int BUILD_FX = 2, BUILD_STATE = 3, LIB_DELTA = 4;
 
@@ -215,6 +216,15 @@ public final class NexusNet {
                         CampusNet.receive(kind, (NBTTagCompound) m[1]);
                     } catch (RuntimeException ex) {
                         com.fluxecho.FluxEcho.LOG.warn("Campus packet failed", ex);
+                    }
+                    continue;
+                }
+                if (kind == LIB_DELTA) {
+                    // a library's books, whether its GUI is open or not
+                    try {
+                        com.fluxecho.library.TileLibrary.receiveDelta((NBTTagCompound) m[1]);
+                    } catch (RuntimeException ex) {
+                        com.fluxecho.FluxEcho.LOG.warn("Library packet failed", ex);
                     }
                     continue;
                 }

@@ -42,6 +42,9 @@ public final class LibraryModule {
             .registerTileClass(TileLibrary.class, com.fluxecho.nexus.NexusModule.infoContainer("library.structure"));
         com.fluxecho.nexus.NexusModule.previewModule(core, TileLibrary::new);
         com.fluxecho.frame.BlockFrame.onUse(Shelves::use);
+        // the Echo Archive's bookcases: shelf bodies are frame blocks, posts, plinths and crowns campus fittings
+        com.fluxecho.frame.BlockFrame.onUse(Units::use);
+        com.fluxecho.campus.BlockFitting.onUse(Units::use);
         ModuleSpecs.register(spec());
     }
 

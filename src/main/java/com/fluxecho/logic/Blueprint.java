@@ -121,6 +121,31 @@ public final class Blueprint {
         return new int[] { x + across * rx - back * fx, y + up, z + across * rz - back * fz };
     }
 
+    /**
+     * The cell a block is in, for a controller at {@code (x, y, z)} whose front faces {@code (fx, 0, fz)}: {across,
+     * layer from the top, row from the front}, the inverse of {@link #world}. The result may lie outside the drawn part
+     * (a negative row, a layer below the bottom); callers test the range.
+     */
+    public int[] cell(int bx, int by, int bz, int x, int y, int z, int fx, int fz) {
+        int dx = bx - x, dz = bz - z;
+        // world() maps across onto (fz, -fx) and back onto (-fx, -fz); both are unit vectors at right angles
+        int across = dx * fz - dz * fx, back = -(dx * fx + dz * fz);
+        return new int[] { ctrlA + across, ctrlB - (by - y), ctrlC + back };
+    }
+
+    /**
+     * A point in the world as a point of the blueprint's cell space, for a controller at {@code (x, y, z)} facing
+     * {@code (fx, 0, fz)}: {across, height, row}, where the cell {@code (a, b, c)} covers across {@code [a, a + 1)},
+     * row {@code [c, c + 1)} and height {@code [height() - 1 - b, height() - b)} (height counts up from the bottom of
+     * the lowest layer). The centre of a block maps to the centre of its {@link #cell}.
+     */
+    public double[] point(double px, double py, double pz, int x, int y, int z, int fx, int fz) {
+        // measured from the middle of the controller's block, which is the middle of the controller's cell
+        double dx = px - (x + 0.5), dz = pz - (z + 0.5);
+        double across = dx * fz - dz * fx, back = -(dx * fx + dz * fz);
+        return new double[] { ctrlA + 0.5 + across, height() - 1 - ctrlB + (py - y), ctrlC + 0.5 + back };
+    }
+
     /** The centre of the layer the controller is in, in blocks from the controller (the across axis ignored). */
     public int centreBack() {
         return (depth() - 1) / 2 - ctrlC;

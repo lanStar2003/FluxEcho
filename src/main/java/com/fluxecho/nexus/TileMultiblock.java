@@ -1,9 +1,11 @@
 package com.fluxecho.nexus;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.block.Block;
@@ -34,14 +36,33 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
  * A FluxEcho multiblock's controller: who owns it, which way it faces, whether its structure stands. The structure is
  * a {@link Blueprint} checked with StructureLib every few seconds, and at once when a frame block nearby is placed or
  * broken ({@link FrameEvents}); StructureLib's hologram projector builds or previews it
- * ({@link ISurvivalConstructable}).
+ * ({@link ISurvivalConstructable}). A formed structure part of which lies in an unloaded chunk is not checked until all
+ * of it is loaded again, as StructureLib would take the unloaded blocks for missing ones.
  * <p>
  * While formed, the blocks the subclass names ({@link #flags}) give way to its drawing ({@link Formed}). The client
  * runs the same check on its own copy of the blocks, so both sides agree on where each part is.
+ * <p>
+ * A multiblock may stand as one of several shapes ({@link #shapes}): the Echo Library forms as the Echo Archive or as
+ * the 0.9.2 hall. Formation tries the shape it stood as last, then the others in order, and remembers the one that
+ * matched ({@link #shapeName}, saved as {@code Shape} and sent to the client as {@code Sh}); everything that maps
+ * blueprint cells to blocks follows that shape ({@link #current}). A multiblock that names no shapes has one,
+ * {@link #MAIN}.
  */
 public abstract class TileMultiblock extends TileEntity implements ISurvivalConstructable, FrameEvents.Watcher {
 
     protected static final String MAIN = "main";
+
+    /** One shape a multiblock can stand as: its name in the structure definitions and its blueprint. */
+    public static final class Shape {
+
+        public final String name;
+        public final Blueprint bp;
+
+        public Shape(String name, Blueprint bp) {
+            this.name = name;
+            this.bp = bp;
+        }
+    }
 
     /** The way the controller's front faces (a horizontal ForgeDirection ordinal). */
     protected int facing = 2;
@@ -50,11 +71,22 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     protected boolean formed;
     /** World time it last formed. */
     protected long formedTime;
+    /**
+     * The name of the shape it stands (or last stood) as; null for the first of {@link #shapes}. A subclass may start
+     * it at another shape, and a save from before shapes were remembered gets {@link #legacyShape}.
+     */
+    protected String shape;
 
     private int recheck = 1;
     private final List<int[]> seen = new ArrayList<>();
     /** Block range of the last formed structure: x0, y0, z0, x1, y1, z1. */
     private int[] bounds;
+    /** The cells last handed to {@link Formed} on this side; null for none. */
+    private Map<Long, Integer> formedCells;
+    /** The single shape of a multiblock that does not name its shapes, made once. */
+    private List<Shape> mainOnly;
+    /** How far from the controller any of its shapes reaches, once worked out. */
+    private int reach = -1;
 
     // client
     /** When the client saw it form (ms), for the forming sweep; 0 when not formed. */
@@ -63,6 +95,49 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     private int clientRetry, sweptTo = Integer.MIN_VALUE;
 
     protected abstract Blueprint blueprint();
+
+    /**
+     * Every shape it may stand as, in the order formation tries them after the remembered one; the first is what a
+     * preview (NEI) shows. By default the one shape {@link #MAIN}, {@link #blueprint()}. Both structure definitions
+     * must hold a shape of each name.
+     */
+    protected List<Shape> shapes() {
+        if (mainOnly == null) mainOnly = Collections.singletonList(new Shape(MAIN, blueprint()));
+        return mainOnly;
+    }
+
+    /** Whether the server's formation may try the shape now (a config switch may rule one out). */
+    protected boolean tries(Shape s) {
+        return true;
+    }
+
+    /** The shape a save from before shapes were remembered stood as; null for the first. */
+    protected String legacyShape() {
+        return null;
+    }
+
+    /** The shape it stands (or last stood) as: the remembered one, else the first. */
+    protected Shape currentShape() {
+        List<Shape> all = shapes();
+        if (shape != null) for (Shape s : all) if (s.name.equals(shape)) return s;
+        return all.get(0);
+    }
+
+    /** The name of the shape it stands (or last stood) as. */
+    public String shapeName() {
+        return currentShape().name;
+    }
+
+    /** The blueprint of the shape it stands (or last stood) as. */
+    protected Blueprint current() {
+        return currentShape().bp;
+    }
+
+    /**
+     * It formed as another shape than the one it remembered (server side, right before {@link #formedChanged}); the
+     * new shape is already the current one.
+     */
+    protected void shapeChanged(String was) {}
 
     /** The structure as it is checked: its parts note where StructureLib finds them ({@link Recorded}). */
     protected abstract IStructureDefinition<TileMultiblock> definition();
@@ -82,7 +157,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     /** The lang key (under {@code fluxecho.}) of the structure's description lines for the projector. */
     protected abstract String descriptionKey();
 
-    /** After the structure formed or fell apart, server side. */
+    /** After the structure formed or fell apart, or formed as another shape (then {@code now} is true), server side. */
     protected void formedChanged(boolean now) {}
 
     protected void serverTick() {}
@@ -172,29 +247,67 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         markDirty();
     }
 
-    /** The block a cell of the blueprint is at: its own position math, for drawing. */
+    /** The block a cell of the current shape's blueprint is at: its own position math, for drawing. */
     public int[] cellPos(int a, int b, int c) {
         ForgeDirection f = front();
-        return blueprint().world(a, b, c, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
+        return current().world(a, b, c, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
     }
 
-    private boolean check() {
+    /**
+     * The cell of the current shape's blueprint a block is in, {across, layer from the top, row from the front}: the
+     * inverse of {@link #cellPos}. It may lie outside the blueprint; callers test the range.
+     */
+    public int[] cellAt(int x, int y, int z) {
+        ForgeDirection f = front();
+        return current().cell(x, y, z, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
+    }
+
+    /** Checks the structure as one shape, noting the parts StructureLib finds there. */
+    private boolean check(Shape s) {
         seen.clear();
-        Blueprint bp = blueprint();
-        return definition()
-            .check(this, MAIN, worldObj, extendedFacing(), xCoord, yCoord, zCoord, bp.ctrlA, bp.ctrlB, bp.ctrlC, false);
+        Blueprint bp = s.bp;
+        return definition().check(
+            this,
+            s.name,
+            worldObj,
+            extendedFacing(),
+            xCoord,
+            yCoord,
+            zCoord,
+            bp.ctrlA,
+            bp.ctrlB,
+            bp.ctrlC,
+            false);
+    }
+
+    /**
+     * The shape the structure stands as: the remembered one first, then the others in order (those {@link #tries}
+     * allows); null when none does. After a match {@link #seen} holds that shape's parts.
+     */
+    private Shape match() {
+        Shape cur = currentShape();
+        if (tries(cur) && check(cur)) return cur;
+        for (Shape s : shapes()) if (s != cur && tries(s) && check(s)) return s;
+        return null;
     }
 
     private long ownKey() {
         return Formed.key(xCoord, yCoord, zCoord);
     }
 
-    /** Hands the parts StructureLib found to {@link Formed}; on the client, redraws them. */
+    /**
+     * Hands the parts StructureLib found to {@link Formed}; on the client, redraws the structure when that changes
+     * which of its blocks give way.
+     */
     private void applyCells() {
         applyCells(Integer.MAX_VALUE);
     }
 
-    /** As {@link #applyCells()}, only the parts up to height {@code level} (the forming sweep). */
+    /**
+     * As {@link #applyCells()}, only the parts up to height {@code level} (the forming sweep). The chunk mesh is built
+     * again only when the cells changed: a multiblock none of whose blocks give way (the library) has none, and
+     * re-meshing all of the Echo Archive's sections on every layer of the sweep would only cost frames.
+     */
     private void applyCells(int level) {
         Map<Long, Integer> cells = new HashMap<>();
         int[] b = { Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
@@ -208,8 +321,11 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             }
         }
         if (seen.isEmpty()) b = null;
-        Formed.set(worldObj, ownKey(), cells);
-        redraw(b);
+        Map<Long, Integer> now = cells.isEmpty() ? null : cells;
+        boolean changed = !Objects.equals(now, formedCells);
+        Formed.set(worldObj, ownKey(), now);
+        formedCells = now;
+        if (changed) redraw(b);
         bounds = b;
     }
 
@@ -225,8 +341,10 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     }
 
     private void clearCells() {
+        boolean had = formedCells != null;
         Formed.set(worldObj, ownKey(), null);
-        redraw(bounds);
+        formedCells = null;
+        if (had) redraw(bounds);
     }
 
     private void redraw(int[] b) {
@@ -234,9 +352,26 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         worldObj.markBlockRangeForRenderUpdate(b[0], b[1], b[2], b[3], b[4], b[5]);
     }
 
-    /** The block range the structure takes up, once checked; null before. */
+    /**
+     * The block range the structure takes up: x0, y0, z0, x1, y1, z1. Once checked, the range of the parts it was
+     * found with; before, the whole box of the current shape round the controller.
+     */
     public int[] bounds() {
-        return bounds;
+        if (bounds != null) return bounds;
+        Blueprint bp = current();
+        int[] b = { Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
+            Integer.MIN_VALUE };
+        for (int k = 0; k < 8; k++) {
+            int[] p = cellPos(
+                (k & 1) == 0 ? 0 : bp.width() - 1,
+                (k & 2) == 0 ? 0 : bp.height() - 1,
+                (k & 4) == 0 ? 0 : bp.depth() - 1);
+            for (int i = 0; i < 3; i++) {
+                b[i] = Math.min(b[i], p[i]);
+                b[i + 3] = Math.max(b[i + 3], p[i]);
+            }
+        }
+        return b;
     }
 
     @Override
@@ -244,7 +379,8 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         if (!realWorld()) return;
         if (worldObj.isRemote) {
             if (formed && !cellsSet && --clientRetry <= 0) {
-                if (check()) {
+                // the client checks the shape the server found; its own config does not decide
+                if (check(currentShape())) {
                     cellsSet = true;
                     sweptTo = Integer.MIN_VALUE;
                     applyCells(Integer.MIN_VALUE);
@@ -263,19 +399,40 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             return;
         }
         if (--recheck <= 0) {
-            recheck = formed ? 100 : 40;
-            boolean ok = check();
-            if (ok) applyCells();
-            if (ok != formed) {
-                formed = ok;
-                if (ok) formedTime = worldObj.getTotalWorldTime();
-                else clearCells();
-                markDirty();
-                worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-                formedChanged(ok);
-            }
+            if (formed && !loaded(bounds())) {
+                // StructureLib takes a block in an unloaded chunk for a wrong one: a formed structure stays as it is
+                // until all of it is loaded again, rather than coming apart (and forming anew) with the chunks
+                recheck = 20;
+            } else recheckNow();
         }
         serverTick();
+    }
+
+    /** Checks the structure (server side): formed or not, and as which shape. */
+    private void recheckNow() {
+        recheck = formed ? 100 : 40;
+        Shape s = match();
+        boolean ok = s != null;
+        String was = shapeName();
+        boolean switched = ok && !s.name.equals(was);
+        if (switched) shape = s.name;
+        if (ok) applyCells();
+        if (ok != formed || switched) {
+            formed = ok;
+            if (ok) formedTime = worldObj.getTotalWorldTime();
+            else clearCells();
+            markDirty();
+            worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+            if (switched) shapeChanged(was);
+            formedChanged(ok);
+        }
+    }
+
+    /** Whether every chunk of a block range (x0, y0, z0, x1, y1, z1) is loaded. */
+    private boolean loaded(int[] b) {
+        if (b == null) return true;
+        int y0 = Math.max(0, b[1]), y1 = Math.min(255, b[4]);
+        return y0 > y1 || worldObj.checkChunksExist(b[0], y0, b[2], b[3], y1, b[5]);
     }
 
     /** Sends the client copy again (formed state, the subclass's sync data). */
@@ -322,12 +479,16 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         cellsSet = false;
     }
 
+    /** Whether the block could belong to any of its shapes: a cube round the controller as large as the largest. */
     @Override
     public boolean covers(World w, int x, int y, int z) {
         if (w != worldObj) return false;
-        Blueprint bp = blueprint();
-        int r = Math.max(bp.width(), Math.max(bp.depth(), bp.height())) + 1;
-        return Math.abs(x - xCoord) <= r && Math.abs(y - yCoord) <= r && Math.abs(z - zCoord) <= r;
+        if (reach < 0) {
+            int r = 0;
+            for (Shape s : shapes()) r = Math.max(r, Math.max(s.bp.width(), Math.max(s.bp.depth(), s.bp.height())));
+            reach = r + 1;
+        }
+        return Math.abs(x - xCoord) <= reach && Math.abs(y - yCoord) <= reach && Math.abs(z - zCoord) <= reach;
     }
 
     @Override
@@ -348,9 +509,13 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         buildShape(trigger, hintsOnly);
     }
 
-    /** Builds (or shows) the structure for the trigger: by default the one shape, {@link #MAIN}. */
+    /**
+     * Builds (or shows) the structure for the trigger: in a real world the shape it stands (or last stood) as, in a
+     * preview the first of its shapes.
+     */
     protected void buildShape(ItemStack trigger, boolean hintsOnly) {
-        build(MAIN, blueprint(), trigger, hintsOnly);
+        Shape s = realWorld() ? currentShape() : shapes().get(0);
+        build(s.name, s.bp, trigger, hintsOnly);
     }
 
     /** Builds (or shows) one shape of {@link #buildDefinition} round the controller. */
@@ -382,6 +547,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             worldObj.setTileEntity(xCoord, yCoord, zCoord, this);
     }
 
+    /** The projector builds the shape it stands (or last stood) as; a preview builds the whole of the first at once. */
     @Override
     public int survivalConstruct(ItemStack trigger, int elementBudget, ISurvivalBuildEnvironment env) {
         if (!realWorld()) {
@@ -390,11 +556,12 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             return -1;
         }
         if (formed) return -1;
-        Blueprint bp = blueprint();
+        Shape s = currentShape();
+        Blueprint bp = s.bp;
         return buildDefinition().survivalBuild(
             this,
             trigger,
-            MAIN,
+            s.name,
             worldObj,
             extendedFacing(),
             xCoord,
@@ -427,6 +594,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         t.setString("OwnerName", ownerName);
         t.setBoolean("Formed", formed);
         t.setLong("FormedTime", formedTime);
+        if (shape != null) t.setString("Shape", shape);
     }
 
     @Override
@@ -438,6 +606,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         ownerName = t.getString("OwnerName");
         formed = t.getBoolean("Formed");
         formedTime = t.getLong("FormedTime");
+        shape = t.hasKey("Shape") ? t.getString("Shape") : legacyShape();
     }
 
     @Override
@@ -447,6 +616,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         t.setBoolean("On", formed);
         t.setLong("T", formedTime);
         t.setString("O", ownerName);
+        t.setString("Sh", shapeName());
         writeSync(t);
         return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, t);
     }
@@ -456,11 +626,20 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         NBTTagCompound t = pkt.func_148857_g();
         int f = t.getByte("F");
         boolean was = formed;
+        String wasShape = shapeName();
         facing = f >= 2 && f <= 5 ? f : 2;
         formed = t.getBoolean("On");
         ownerName = t.getString("O");
+        if (t.hasKey("Sh")) shape = t.getString("Sh");
+        boolean switched = !wasShape.equals(shapeName());
         readSync(t);
-        if (formed != was) {
+        if (formed && was && switched) {
+            // it stands as another shape now: its parts are another set, found and swept in anew
+            clearCells();
+            formedAt = System.currentTimeMillis();
+            cellsSet = false;
+            clientRetry = 0;
+        } else if (formed != was) {
             if (formed) {
                 // a structure seen for the first time long after it formed does not play the forming sweep again
                 long age = worldObj == null ? 1000 : worldObj.getTotalWorldTime() - t.getLong("T");

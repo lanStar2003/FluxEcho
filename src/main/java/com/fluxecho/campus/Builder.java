@@ -408,7 +408,10 @@ public final class Builder {
         o.waiting = true;
         if (job.formSince < 0) {
             job.formSince = now;
-            if (t != null) t.frameChanged();
+            if (t != null) {
+                recommission(job, t);
+                t.frameChanged();
+            }
             return false;
         }
         if (now - job.formSince < FORM_WAIT) return false;
@@ -1009,16 +1012,41 @@ public final class Builder {
             TileEntity te = w.getTileEntity(st.x, st.y, st.z);
             if (te instanceof TileMultiblock m && c != null && c.length > 3) {
                 TileNexus n = campus.nexus();
-                m.place(n.owner(), n.ownerName(), c[3]);
-                m.markDirty();
-                w.markBlockForUpdate(st.x, st.y, st.z);
-                FrameEvents.changed(w, st.x, st.y, st.z);
-                m.frameChanged();
-                campus.recordSite(job.site, st.x, st.y, st.z);
+                commission(job, m, n.owner(), n.ownerName(), c[3]);
             }
         } else if (st.part == Parts.SUPPLY_PORT) {
             TileSupplyPort.linkAt(w, st.x, st.y, st.z, campus.nexus());
         }
+    }
+
+    /**
+     * Gives a module controller standing on the job's controller cell its owner and its front towards the nexus, makes
+     * it look at its structure again and records it on the job's site.
+     */
+    private void commission(BuildJob job, TileMultiblock m, UUID owner, String ownerName, int front) {
+        World w = campus.world();
+        m.place(owner, ownerName, front);
+        m.markDirty();
+        w.markBlockForUpdate(m.xCoord, m.yCoord, m.zCoord);
+        FrameEvents.changed(w, m.xCoord, m.yCoord, m.zCoord);
+        m.frameChanged();
+        campus.recordSite(job.site, m.xCoord, m.yCoord, m.zCoord);
+    }
+
+    /**
+     * A module controller that was already standing on its cell when the job reached it (put there by hand, or while
+     * the nexus was unloaded) was never commissioned: it may face the wrong way, so its structure never forms. Turns
+     * it to face the nexus, keeping a player owner it has (the nexus's owner when it has none).
+     */
+    private void recommission(BuildJob job, TileMultiblock t) {
+        if (job.raisesNexus()) return;
+        int[] c = campus.moduleController(job);
+        if (c == null || c.length < 4 || t.xCoord != c[0] || t.yCoord != c[1] || t.zCoord != c[2]) return;
+        if (t.owner() != null && t.front()
+            .ordinal() == c[3]) return;
+        TileNexus n = campus.nexus();
+        if (t.owner() != null) commission(job, t, t.owner(), t.ownerName(), c[3]);
+        else commission(job, t, n.owner(), n.ownerName(), c[3]);
     }
 
     // ---- world edits

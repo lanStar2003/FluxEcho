@@ -13,9 +13,11 @@ import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
 import com.gtnewhorizons.modularui.common.widget.SlotWidget;
 
 /**
- * The Echo Library's GUI: one level of the hall's shelves at a time (the arrows walk up and down the levels, each
- * shelf where it stands in the GUI's order), the card desk below (blank cards in, the chosen sample between the
- * arrows, written cards out), its state, and the player's inventory.
+ * The Echo Library's GUI. A library standing as the Echo Archive gets the Archive's window ({@link ArchiveGui}: a
+ * bookcase at a time, the floor plans, the catalogue). A 0.9.2 hall keeps its own window, unchanged: one level of the
+ * hall's shelves at a time (the arrows walk up and down the levels, each shelf where it stands in the GUI's order), the
+ * card desk below (blank cards in, the chosen sample between the arrows, written cards out), its state, and the
+ * player's inventory.
  */
 public final class LibraryGui {
 
@@ -25,12 +27,12 @@ public final class LibraryGui {
 
     private LibraryGui() {}
 
-    /** The page (shelf level) of each sample slot and its place on that page. */
-    private static final int[] PAGE = new int[TileLibrary.MAX], PLACE = new int[TileLibrary.MAX];
+    /** The page (shelf level) of each of the hall's sample slots and its place on that page. */
+    private static final int[] PAGE = new int[TileLibrary.HALL_BOOKS], PLACE = new int[TileLibrary.HALL_BOOKS];
     private static final int[] ON_PAGE = new int[PAGES];
 
     static {
-        for (int i = 0; i < TileLibrary.MAX; i++) {
+        for (int i = 0; i < TileLibrary.HALL_BOOKS; i++) {
             int p = LibraryShape.SHELVES.get(i).y - LibraryShape.HALL_LOW;
             PAGE[i] = p;
             PLACE[i] = ON_PAGE[p]++;
@@ -48,6 +50,10 @@ public final class LibraryGui {
     }
 
     static ModularWindow window(TileLibrary l, UIBuildContext ctx) {
+        // the window closes once the library is broken (or its chunk goes): it would keep working on a removed tile,
+        // whose books and vault pulls are never saved
+        ctx.setValidator(l::standing);
+        if (l.isArchive()) return ArchiveGui.window(l, ctx);
         int stateY = DESK_Y + 24, invY = stateY + 30;
         ModularWindow.Builder b = ModularWindow.builder(W, invY + 82);
         b.setBackground((x, y, w, h, partial) -> LibraryScreen.background(l, x, y, w, h, ROWS));
@@ -58,9 +64,10 @@ public final class LibraryGui {
         b.widget(new FakeSyncWidget.BooleanSyncer(l::powered, v -> l.guiPowered = v));
 
         int left = (W - 162) / 2;
-        SlotWidget[] slots = new SlotWidget[l.capacity()];
+        SlotWidget[] slots = new SlotWidget[TileLibrary.HALL_BOOKS];
         for (int i = 0; i < slots.length; i++) {
-            slots[i] = new SlotWidget(l.samples, i).setAccess(true, true);
+            // one item a shelf, even from a hotbar key over an empty shelf
+            slots[i] = new SlotWidget(new BookSlot(l.samples, i, ctx.getPlayer())).setAccess(true, true);
             slots[i].setBackground(FluxMachineGui.SLOT_SAMPLE)
                 .setPos(left + PLACE[i] % 9 * 18, SLOTS_Y + PLACE[i] / 9 * 18);
             // the client turns the pages; the slot tells the server itself

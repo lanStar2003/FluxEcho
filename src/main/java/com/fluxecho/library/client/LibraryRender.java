@@ -23,12 +23,18 @@ import com.fluxecho.logic.LibraryShape;
 import com.fluxecho.render.Shapes;
 
 /**
- * The formed Echo Library (blueprint 3.7, "the five-dimensional bookshelf"). Outside, the codex it embodies floats open
- * over its roof, glyphs rising into it, and its foundation's rim glows in its dock state. Inside the hall, drawn only
- * while the camera is in it: each shelf's book shows its sample on the shelf's face, the book looked at names itself,
- * a small codex turns over the reading desk, and the opening in the ceiling becomes a shaft of shelves that rises
- * further than the attic could hold: it narrows faster than perspective would, to a light at its end. Undocked or
- * without power it dims.
+ * The formed Echo Library (blueprint 3.7, "the five-dimensional bookshelf"). Standing as the Echo Archive (0.10.0) it
+ * is drawn by {@link ArchiveRender}, formed or not (unformed, its plinth light shows that state): its books are in its
+ * bookcases' chunk mesh, and the room around them lives. The rest of this class is the 0.9.2 hall, drawn as it was.
+ * Outside, the codex it embodies floats open over its roof,
+ * glyphs rising into it, and its foundation's rim glows in its dock state. Inside the hall, drawn only while the camera
+ * is in it: each shelf's book shows its sample on the shelf's face, the book looked at names itself, a small codex
+ * turns over the reading desk, and the opening in the ceiling becomes a shaft of shelves that rises further than the
+ * attic could hold: it narrows faster than perspective would, to a light at its end. Undocked or without power it
+ * dims.
+ * <p>
+ * Every GL state it pushes (the world state, a matrix, a motes batch, an open quad batch) is popped or closed on every
+ * path, so an error part-way leaves nothing behind for the caller ({@code NexusRender}, which logs it once).
  */
 public final class LibraryRender {
 
@@ -40,6 +46,11 @@ public final class LibraryRender {
     private LibraryRender() {}
 
     public static void draw(TileLibrary l, double t, float fade) {
+        // the Archive shows its unformed state too (a dim plinth light where its walls stand); the hall does not
+        if (l.isArchive()) {
+            ArchiveRender.draw(l, t, fade);
+            return;
+        }
         if (!l.formed()) return;
         int[] c = l.centre();
         // the foundation's centre block: the hall from one above it, the ceiling at six, the roof's top at nine
@@ -57,40 +68,49 @@ public final class LibraryRender {
 
         double roof = floor + LibraryShape.ROOF;
         Shapes.begin(false);
-        Shapes.additive(true);
-        codex(cx - camX, roof + 2.2 - camY, cz - camZ, 1.0, t, p);
-        if (sweep != Double.MAX_VALUE) {
-            double sy = sweep - camY;
-            Shapes.plane(
-                cx - half - camX,
-                sy,
-                cz - half - camZ,
-                cx + half - camX,
-                cz + half - camZ,
-                VIOLET,
-                0.35f * (1 - appear));
-            Shapes.square(cx - camX, sy, cz - camZ, half, 0.15, WHITE, 0.8f * (1 - appear));
+        try {
+            Shapes.additive(true);
+            codex(cx - camX, roof + 2.2 - camY, cz - camZ, 1.0, t, p);
+            if (sweep != Double.MAX_VALUE) {
+                double sy = sweep - camY;
+                Shapes.plane(
+                    cx - half - camX,
+                    sy,
+                    cz - half - camZ,
+                    cx + half - camX,
+                    cz + half - camZ,
+                    VIOLET,
+                    0.35f * (1 - appear));
+                Shapes.square(cx - camX, sy, cz - camZ, half, 0.15, WHITE, 0.8f * (1 - appear));
+            }
+            float ring = docked ? (l.clientLends > 0 ? 0.5f + 0.3f * (float) Math.sin(t * 0.15) : 0.25f)
+                : 0.3f * (float) (0.5 + 0.5 * Math.sin(t * 0.1));
+            Shapes.square(cx - camX, floor - camY + 0.03, cz - camZ, half, 0.18, docked ? VIOLET : AMBER, ring * fade);
+        } catch (Throwable x) {
+            abandon();
+            throw x;
+        } finally {
+            Shapes.end();
         }
-        float ring = docked ? (l.clientLends > 0 ? 0.5f + 0.3f * (float) Math.sin(t * 0.15) : 0.25f)
-            : 0.3f * (float) (0.5 + 0.5 * Math.sin(t * 0.1));
-        Shapes.square(cx - camX, floor - camY + 0.03, cz - camZ, half, 0.18, docked ? VIOLET : AMBER, ring * fade);
-        Shapes.end();
 
         Motes.begin();
-        for (int k = 0; k < 10; k++) {
-            double f = (t * 0.01 + k / 10.0) % 1;
-            double a = k * 2.3 + t * 0.01;
-            double r = 1.6 * (1 - f);
-            Motes.add(
-                cx - camX + Math.cos(a) * r,
-                roof - camY - 0.5 + f * 2.8,
-                cz - camZ + Math.sin(a) * r,
-                0.1,
-                k % 3 == 0 ? GOLD : VIOLET,
-                (float) Math.sin(f * Math.PI) * p);
+        try {
+            for (int k = 0; k < 10; k++) {
+                double f = (t * 0.01 + k / 10.0) % 1;
+                double a = k * 2.3 + t * 0.01;
+                double r = 1.6 * (1 - f);
+                Motes.add(
+                    cx - camX + Math.cos(a) * r,
+                    roof - camY - 0.5 + f * 2.8,
+                    cz - camZ + Math.sin(a) * r,
+                    0.1,
+                    k % 3 == 0 ? GOLD : VIOLET,
+                    (float) Math.sin(f * Math.PI) * p);
+            }
+            Motes.add(cx - camX, roof + 2.2 - camY, cz - camZ, 1.1, VIOLET, 0.35f * p);
+        } finally {
+            Motes.end();
         }
-        Motes.add(cx - camX, roof + 2.2 - camY, cz - camZ, 1.1, VIOLET, 0.35f * p);
-        Motes.end();
 
         if (inside) hall(l, cx, floor, cz, t, p, appear * fade);
     }
@@ -101,32 +121,54 @@ public final class LibraryRender {
         // the opening's face, looking down into the hall: its normal and its centre
         double[] fc = { 0, -1, 0, cx, floor + LibraryShape.CEILING - 1, cz };
         Shapes.begin(false);
-        GL11.glDepthMask(true);
-        shaftWalls(fc, a);
-        GL11.glDepthMask(false);
-        Shapes.additive(true);
-        shaftLights(fc, t, p * a);
-        codex(cx - camX, floor + 1.9 - camY, cz - camZ, 0.55, t, p);
-        books(l, t, p);
-        Shapes.end();
+        try {
+            GL11.glDepthMask(true);
+            shaftWalls(fc, a);
+            GL11.glDepthMask(false);
+            Shapes.additive(true);
+            shaftLights(fc, t, p * a);
+            codex(cx - camX, floor + 1.9 - camY, cz - camZ, 0.55, t, p);
+            books(l, t, p);
+        } catch (Throwable x) {
+            abandon();
+            throw x;
+        } finally {
+            // popping the state puts the depth mask back as well
+            Shapes.end();
+        }
 
         Motes.begin();
-        for (int k = 0; k < 12; k++) {
-            double f = (t * 0.006 + k / 12.0) % 1;
-            double ang = k * 2.1 + t * 0.004;
-            double r = 0.6 + 1.6 * Motifs.hash(k * 7 + 3);
-            Motes.add(
-                cx - camX + Math.cos(ang) * r,
-                floor + 1.2 + f * 5.2 - camY,
-                cz - camZ + Math.sin(ang) * r,
-                0.08,
-                k % 4 == 0 ? GOLD : VIOLET,
-                (float) Math.sin(f * Math.PI) * 0.7f * p);
+        try {
+            for (int k = 0; k < 12; k++) {
+                double f = (t * 0.006 + k / 12.0) % 1;
+                double ang = k * 2.1 + t * 0.004;
+                double r = 0.6 + 1.6 * Motifs.hash(k * 7 + 3);
+                Motes.add(
+                    cx - camX + Math.cos(ang) * r,
+                    floor + 1.2 + f * 5.2 - camY,
+                    cz - camZ + Math.sin(ang) * r,
+                    0.08,
+                    k % 4 == 0 ? GOLD : VIOLET,
+                    (float) Math.sin(f * Math.PI) * 0.7f * p);
+            }
+        } finally {
+            Motes.end();
         }
-        Motes.end();
 
         icons(l);
         label(l);
+    }
+
+    /**
+     * Ends a quad batch an error broke off, so the tessellator is not left drawing (it refuses to start another while
+     * one is open, which would take every later drawing with it).
+     */
+    private static void abandon() {
+        try {
+            Tessellator.instance.draw();
+        } catch (Throwable ignored) {
+            // nothing was open
+        }
     }
 
     /**
@@ -180,32 +222,42 @@ public final class LibraryRender {
         }
     }
 
-    /** The samples' pictures on their books: blocks' first, then items', each pass in its colour. */
+    /**
+     * The samples' pictures on their books: blocks' first, then items', each pass in its colour. The world state is
+     * ended and an open batch closed whatever happens.
+     */
     private static void icons(TileLibrary l) {
         Minecraft mc = Minecraft.getMinecraft();
+        Tessellator tes = Tessellator.instance;
+        boolean drawing = false;
         FluxDraw.worldBegin();
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-        for (int sheet = 0; sheet <= 1; sheet++) {
-            mc.getTextureManager()
-                .bindTexture(sheet == 0 ? TextureMap.locationBlocksTexture : TextureMap.locationItemsTexture);
-            Tessellator tes = Tessellator.instance;
-            tes.startDrawingQuads();
-            for (int i = 0; i < l.capacity(); i++) {
-                ItemStack s = l.book(i);
-                if (s == null || s.getItem() == null) continue;
-                try {
-                    if (s.getItem()
-                        .getSpriteNumber() != sheet) continue;
-                    icon(tes, s, face(l, i, 0.013));
-                } catch (RuntimeException e) {
-                    // a modded item whose picture cannot be had here keeps a bare cover
+        try {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+            for (int sheet = 0; sheet <= 1; sheet++) {
+                mc.getTextureManager()
+                    .bindTexture(sheet == 0 ? TextureMap.locationBlocksTexture : TextureMap.locationItemsTexture);
+                tes.startDrawingQuads();
+                drawing = true;
+                for (int i = 0; i < l.capacity(); i++) {
+                    ItemStack s = l.book(i);
+                    if (s == null || s.getItem() == null) continue;
+                    try {
+                        if (s.getItem()
+                            .getSpriteNumber() != sheet) continue;
+                        icon(tes, s, face(l, i, 0.013));
+                    } catch (RuntimeException e) {
+                        // a modded item whose picture cannot be had here keeps a bare cover
+                    }
                 }
+                drawing = false;
+                tes.draw();
             }
-            tes.draw();
+        } finally {
+            if (drawing) abandon();
+            FluxDraw.worldEnd();
         }
-        FluxDraw.worldEnd();
     }
 
     private static void icon(Tessellator tes, ItemStack s, double[] f) {
@@ -238,19 +290,29 @@ public final class LibraryRender {
         float px = 1 / 96f;
         int w = Math.min(220, font().getStringWidth(line) + 10), h = 12;
         FluxDraw.worldBegin();
-        GL11.glPushMatrix();
-        GL11.glTranslated(f[0], f[1] + 0.62, f[2]);
-        GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
-        GL11.glRotatef(RenderManager.instance.playerViewX, 1f, 0f, 0f);
-        GL11.glScalef(-px, -px, px);
-        GL11.glTranslatef(-w / 2f, -h / 2f, 0);
-        FluxDraw.begin();
-        pane(0, 0, w, h, 0.85f);
-        rect(1, h - 1, w - 1, h, s == null ? SEAM : VIOLET, 0.8f);
-        FluxDraw.end();
-        text(fit(line, w - 8), 5, 2, s == null ? DIM : WHITE, 1f);
-        GL11.glPopMatrix();
-        FluxDraw.worldEnd();
+        try {
+            GL11.glPushMatrix();
+            // the matrix is popped on every path, so a failing label cannot leave the stack one deeper
+            try {
+                GL11.glTranslated(f[0], f[1] + 0.62, f[2]);
+                GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
+                GL11.glRotatef(RenderManager.instance.playerViewX, 1f, 0f, 0f);
+                GL11.glScalef(-px, -px, px);
+                GL11.glTranslatef(-w / 2f, -h / 2f, 0);
+                FluxDraw.begin();
+                pane(0, 0, w, h, 0.85f);
+                rect(1, h - 1, w - 1, h, s == null ? SEAM : VIOLET, 0.8f);
+                FluxDraw.end();
+                text(fit(line, w - 8), 5, 2, s == null ? DIM : WHITE, 1f);
+            } catch (Throwable x) {
+                abandon();
+                throw x;
+            } finally {
+                GL11.glPopMatrix();
+            }
+        } finally {
+            FluxDraw.worldEnd();
+        }
     }
 
     /** A point of the shaft: {@code u, v} across the opening, {@code d} up into it. */
@@ -356,8 +418,11 @@ public final class LibraryRender {
         }
     }
 
-    /** The codex floating open, its pages turning; {@code k} scales it. */
-    private static void codex(double x, double y, double z, double k, double t, float a) {
+    /**
+     * The codex floating open, its pages turning; {@code k} scales it. Camera-relative, inside a {@link Shapes#begin};
+     * the Echo Archive's desk shows it too ({@link ArchiveRender}).
+     */
+    static void codex(double x, double y, double z, double k, double t, float a) {
         double spin = t * 0.01, open = Math.toRadians(70 + 35 * Math.sin(t * 0.03));
         double ax = Math.cos(spin), az = Math.sin(spin);
         double bob = Math.sin(t * 0.04) * 0.12 * k;

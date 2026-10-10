@@ -15,7 +15,10 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.library.LibraryGui;
 import com.fluxecho.library.TileLibrary;
 
-/** The drawn parts of the Echo Library's GUI ({@code LibraryGui}). Client only. */
+/**
+ * The drawn parts of the 0.9.2 hall library's GUI ({@code LibraryGui}), some of which (the desk's arrows, the chosen
+ * sample, the press) the Echo Archive's window reuses ({@link ArchiveScreen} draws the rest). Client only.
+ */
 public final class LibraryScreen {
 
     private static final RenderItem ITEMS = new RenderItem();
@@ -94,8 +97,8 @@ public final class LibraryScreen {
         for (int k = 0; k < LibraryGui.PAGES; k++)
             rect(4 + k * 5, h - 4 - k * 2, 8 + k * 5, h - 3, k == page ? VIOLET : SEAM, 1f);
         end();
-        int kept = 0;
-        for (int i = 0; i < l.capacity(); i++) if (LibraryGui.pageOf(i) == page && l.samples()
+        int kept = 0, places = Math.min(l.capacity(), TileLibrary.HALL_BOOKS);
+        for (int i = 0; i < places; i++) if (LibraryGui.pageOf(i) == page && l.samples()
             .getStackInSlot(i) != null) kept++;
         String s = EchoText.t("library.gui.page", page + 1, kept, LibraryGui.onPage(page));
         centered(fit(s, (int) w - 34), w / 2 + 12, 4, WHITE, 1f);

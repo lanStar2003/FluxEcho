@@ -11,10 +11,11 @@ import com.fluxecho.nexus.NexusRegistry;
 import com.fluxecho.nexus.TileMultiblock;
 
 /**
- * The Echo Library's shelves, used by hand from inside the hall: each shelf of a formed library keeps one sample as a
- * book on its face into the hall. A sample in hand goes onto an empty shelf, an empty hand takes the book down, and a
+ * The 0.9.2 hall's shelves, used by hand from inside the hall: each shelf of a formed hall library keeps one sample as
+ * a book on its face into the hall. A sample in hand goes onto an empty shelf, an empty hand takes the book down, and a
  * blank index card held to a book is written for it. The shelves' outer faces, and the shelves of a library that has
- * not formed, are plain blocks.
+ * not formed, are plain blocks. The Echo Archive's bookcases are used a whole bookcase at a time instead
+ * ({@link Units}).
  */
 public final class Shelves {
 
@@ -24,7 +25,7 @@ public final class Shelves {
     public static boolean use(World w, int x, int y, int z, EntityPlayer p, int side, int meta) {
         if (meta != BlockFrame.SHELF) return false;
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
-            if (!(m instanceof TileLibrary l) || !l.formed()) continue;
+            if (!(m instanceof TileLibrary l) || !l.formed() || l.isArchive()) continue;
             int i = l.shelfAt(x, y, z);
             if (i < 0) continue;
             if (side != l.shelfFace(i)) return false;
@@ -79,12 +80,12 @@ public final class Shelves {
     }
 
     /** Takes one of the held stack, as placing a block would (not in creative). */
-    private static void useUp(EntityPlayer p, ItemStack held) {
+    static void useUp(EntityPlayer p, ItemStack held) {
         if (p.capabilities.isCreativeMode) return;
         if (--held.stackSize <= 0) p.inventory.setInventorySlotContents(p.inventory.currentItem, null);
     }
 
-    private static void sound(World w, int x, int y, int z, float pitch) {
+    static void sound(World w, int x, int y, int z, float pitch) {
         w.playSoundEffect(x + 0.5, y + 0.5, z + 0.5, "dig.cloth", 0.7f, pitch);
     }
 

@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
 
 import com.fluxecho.frame.Formed;
+import com.fluxecho.library.TileLibrary;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -17,28 +18,40 @@ import cpw.mods.fml.relauncher.SideOnly;
  * book (one body is one book place), the book's spine colour. The frame's shelf renderer reads it while it builds the
  * chunk mesh, possibly on another thread, so the table is an immutable map swapped whole, like {@code Formed}'s client
  * table; replacing it re-meshes only the cells whose book changed.
+ * <p>
+ * Each library hands in its own cells ({@link #put}, keyed by its controller), so one library's update leaves the
+ * others' books alone; the table the renderer reads is all of them together. Client thread only, apart from
+ * {@link #colour}.
  */
 @SideOnly(Side.CLIENT)
 public final class LibraryBooks {
 
     private static volatile Map<Long, Integer> books = Collections.emptyMap();
+    /** Per library (its controller's {@link Formed#key}), its cells and their colours. */
+    private static final Map<Long, Map<Long, Integer>> OWNERS = new HashMap<>();
 
     private LibraryBooks() {}
 
     /**
-     * Replaces every book the client knows of: keys are {@link Formed#key} cell positions, values ARGB spine colours
-     * (0 or absent: no book). Call on the client thread; the chunk mesh is redrawn where a book came, went or changed.
+     * Replaces one library's books: keys are {@link Formed#key} cell positions, values ARGB spine colours (0 or
+     * absent: no book). The chunk mesh is redrawn where a book came, went or changed colour.
      */
-    public static void set(Map<Long, Integer> next) {
+    public static void put(long owner, Map<Long, Integer> cells) {
         Map<Long, Integer> copy = new HashMap<>();
-        if (next != null) for (Map.Entry<Long, Integer> e : next.entrySet()) {
+        if (cells != null) for (Map.Entry<Long, Integer> e : cells.entrySet()) {
             Integer c = e.getValue();
             if (e.getKey() != null && c != null && c != 0) copy.put(e.getKey(), c);
         }
-        Map<Long, Integer> old = books;
-        Map<Long, Integer> now = copy.isEmpty() ? Collections.emptyMap() : Collections.unmodifiableMap(copy);
-        books = now;
-        remesh(old, now);
+        Map<Long, Integer> was = OWNERS.get(owner);
+        if (copy.equals(was == null ? Collections.emptyMap() : was)) return;
+        if (copy.isEmpty()) OWNERS.remove(owner);
+        else OWNERS.put(owner, copy);
+        rebuild();
+    }
+
+    /** Takes one library's books off the shelves (it unloaded, broke, or stands as a hall). */
+    public static void forget(long owner) {
+        if (OWNERS.remove(owner) != null) rebuild();
     }
 
     /** The spine colour of the book in the shelf body at x, y, z (ARGB), or 0 when it holds none. */
@@ -49,7 +62,19 @@ public final class LibraryBooks {
 
     /** Leaving a world: the next one sends its books again. */
     public static void clear() {
+        OWNERS.clear();
         books = Collections.emptyMap();
+        TileLibrary.clearClient();
+    }
+
+    /** Joins every library's books into the table the renderer reads and re-meshes the cells that differ. */
+    private static void rebuild() {
+        Map<Long, Integer> all = new HashMap<>();
+        for (Map<Long, Integer> m : OWNERS.values()) all.putAll(m);
+        Map<Long, Integer> old = books;
+        Map<Long, Integer> now = all.isEmpty() ? Collections.emptyMap() : Collections.unmodifiableMap(all);
+        books = now;
+        remesh(old, now);
     }
 
     private static void remesh(Map<Long, Integer> old, Map<Long, Integer> now) {
