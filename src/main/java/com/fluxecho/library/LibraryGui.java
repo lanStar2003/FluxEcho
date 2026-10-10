@@ -1,9 +1,12 @@
 package com.fluxecho.library;
 
+import net.minecraft.entity.player.EntityPlayer;
+
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.FluxMachineGui;
 import com.fluxecho.library.client.LibraryScreen;
 import com.fluxecho.logic.LibraryShape;
+import com.fluxecho.nexus.client.NexusScreen;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
@@ -14,10 +17,10 @@ import com.gtnewhorizons.modularui.common.widget.SlotWidget;
 
 /**
  * The Echo Library's GUI. A library standing as the Echo Archive gets the Archive's window ({@link ArchiveGui}: a
- * bookcase at a time, the floor plans, the catalogue). A 0.9.2 hall keeps its own window, unchanged: one level of the
- * hall's shelves at a time (the arrows walk up and down the levels, each shelf where it stands in the GUI's order), the
- * card desk below (blank cards in, the chosen sample between the arrows, written cards out), its state, and the
- * player's inventory.
+ * bookcase at a time, the floor plans, the catalogue). A 0.9.2 hall keeps its own window: one level of the hall's
+ * shelves at a time (the arrows walk up and down the levels, each shelf where it stands in the GUI's order), the card
+ * desk below (blank cards in, the chosen sample between the arrows, written cards out) with the 取回 button beside it
+ * while the team's book vault holds books, its state with the vault's line, and the player's inventory.
  */
 public final class LibraryGui {
 
@@ -62,6 +65,7 @@ public final class LibraryGui {
         b.widget(new FakeSyncWidget.IntegerSyncer(l::lendsShown, v -> l.guiLends = v));
         b.widget(new FakeSyncWidget.IntegerSyncer(() -> l.selected, v -> l.guiSelected = v));
         b.widget(new FakeSyncWidget.BooleanSyncer(l::powered, v -> l.guiPowered = v));
+        b.widget(new FakeSyncWidget.IntegerSyncer(l::vaultCount, v -> l.guiVault = v));
 
         int left = (W - 162) / 2;
         SlotWidget[] slots = new SlotWidget[TileLibrary.HALL_BOOKS];
@@ -120,6 +124,21 @@ public final class LibraryGui {
             new SlotWidget(l.desk, 1).setAccess(true, false)
                 .setBackground(FluxMachineGui.SLOT_OUT)
                 .setPos(left + 106, DESK_Y));
+        // 取回, as in the Archive's window: the library checks the player and tells them what came back
+        int refillX = left + 128;
+        b.widget(new ButtonWidget().setOnClick((click, widget) -> {
+            if (widget.isClient()) return;
+            EntityPlayer p = widget.getContext()
+                .getPlayer();
+            if (p != null) l.refill(p);
+        })
+            .setBackground(
+                (x, y, w, h, partial) -> NexusScreen
+                    .button(EchoText.t("library.gui.refill"), x, y, w, h, false, false, TileLibrary.COLOR))
+            .dynamicTooltip(() -> EchoText.lines("library.gui.refill.tip"))
+            .setPos(refillX, DESK_Y + 3)
+            .setSize(W - 6 - refillX, 12)
+            .setEnabled(widget -> l.guiVault > 0));
         b.widget(
             new DrawableWidget().setDrawable((x, y, w, h, partial) -> LibraryScreen.header(l, x, y, w, h))
                 .setPos(6, 5)

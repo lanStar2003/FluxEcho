@@ -40,26 +40,30 @@ public final class CampusNet {
     private CampusNet() {}
 
     /**
-     * The launches and clears of the last few ticks (called every four ticks while the batch is not empty). The
-     * builder resets the batch right after this returns, so everything is copied out here.
+     * The launches and clears of the last few ticks (called every four ticks while the batch is not empty, and at once
+     * when a page of it filled up): one packet a page, so each stays small. The builder resets the batch right after
+     * this returns, so everything is copied out here.
      */
     public static void sendFx(TileNexus nexus, FxBatch batch) {
         if (batch == null || batch.isEmpty()) return;
         List<EntityPlayerMP> to = audience(nexus);
         if (to.isEmpty()) return;
-        NBTTagCompound t = head(nexus);
-        t.setLong("T", batch.base());
-        if (batch.launches() > 0) {
-            t.setIntArray("P", batch.launchCells());
-            t.setByteArray("M", batch.launchParts());
-            t.setByteArray("L", batch.launchFlights());
-            t.setByteArray("O", batch.launchOffsets());
+        for (FxBatch.Page page : batch.pages()) {
+            if (page.launches() == 0 && page.clears() == 0) continue;
+            NBTTagCompound t = head(nexus);
+            t.setLong("T", page.base());
+            if (page.launches() > 0) {
+                t.setIntArray("P", page.launchCells());
+                t.setByteArray("M", page.launchParts());
+                t.setByteArray("L", page.launchFlights());
+                t.setByteArray("O", page.launchOffsets());
+            }
+            if (page.clears() > 0) {
+                t.setIntArray("C", page.clearCells());
+                t.setIntArray("Cb", page.clearBlocks());
+            }
+            for (EntityPlayerMP p : to) NexusNet.tell(p, NexusNet.BUILD_FX, t);
         }
-        if (batch.clears() > 0) {
-            t.setIntArray("C", batch.clearCells());
-            t.setIntArray("Cb", batch.clearBlocks());
-        }
-        for (EntityPlayerMP p : to) NexusNet.tell(p, NexusNet.BUILD_FX, t);
     }
 
     /** The job's progress numbers changed, or a heartbeat is due (called at most every ten ticks). */

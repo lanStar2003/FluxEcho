@@ -10,7 +10,14 @@ import java.util.Locale;
  * The rules protect the player's things first: anything with a tile entity (except GT ores), anything built by hand
  * (cobblestone, planks, bricks, smooth stone), another nexus's campus and blocks of ours that belong to another
  * structure are never broken. Natural terrain (stone, dirt, logs, leaves, plants, ores) is cleared, and our own wrong
- * parts in this campus are replaced.
+ * parts in this campus are replaced. Rock is taken for natural terrain only when something positively says so
+ * ({@link #natural}): players build with rock far more often than with dirt, and a block the builder is not sure of
+ * is left standing.
+ * <p>
+ * A module job (one that builds or repairs a module on a hall site) also takes down our own frame, deck, fitting and
+ * supply port blocks that no formed structure could use ({@link Probe#loose}), such as what is left of a 0.9.2 hall
+ * whose core was broken, crediting each to the ledger as its part ({@link Verdict#REPLACE}); the nexus's own jobs
+ * never do.
  */
 public final class TerrainRule {
 
@@ -23,7 +30,8 @@ public final class TerrainRule {
         /** The cell holds natural terrain or a GT ore: break it (keeping ore and log drops), then place if needed. */
         CLEAR,
         /**
-         * The cell holds one of our own parts of this campus that is the wrong one: swap it, crediting the old part.
+         * The cell holds one of our own parts of this campus that is the wrong one: swap it (or, in a cell that must be
+         * empty, take it away), crediting the old part to the ledger.
          */
         REPLACE,
         /** The builder must not touch the cell: pause (or skip with 跳过受阻) and show it red. */
@@ -56,6 +64,13 @@ public final class TerrainRule {
         public boolean gtOre;
         /** The block is one of our deck, fitting or frame blocks. */
         public boolean ours;
+        /** The block is our supply port (it has a tile entity, so {@link #ours} leaves it out). */
+        public boolean port;
+        /**
+         * The block is ours ({@link #ours} or {@link #port}) and lies inside no formed structure's reach (no formed
+         * nexus's or module's {@code covers()}): left over, as a 0.9.2 hall's blocks are after its core was broken.
+         */
+        public boolean loose;
         /** The block is ours but lies inside another formed structure (for example a 0.9.2 library hall). */
         public boolean oursInOtherStructure;
         /** The cell lies inside another nexus's campus area. */
@@ -66,15 +81,15 @@ public final class TerrainRule {
         /** Resets every fact to false. */
         public Probe clear() {
             air = replaceable = target = fluid = lava = hasTile = unbreakable = false;
-            natural = gtOre = ours = oursInOtherStructure = otherNexusArea = crafted = false;
+            natural = gtOre = ours = port = loose = oursInOtherStructure = otherNexusArea = crafted = false;
             return this;
         }
     }
 
     /**
-     * The inputs that decide whether a block is natural terrain, filled by the server from Forge hooks and the block's
-     * material (never from its name, except through {@link #crafted} and the two config lists). All fields default to
-     * false.
+     * The inputs that decide whether a block is natural terrain, filled by the server from Forge hooks, the block's
+     * material, the ore dictionary and a short list of rock known to be generated ({@link TerrainRule#naturalRock},
+     * {@link TerrainRule#mesaClay}, {@link TerrainRule#rawGtStone}). All fields default to false.
      */
     public static final class Nature {
 
@@ -99,13 +114,21 @@ public final class TerrainRule {
         public boolean rock;
         /**
          * The block is not a full opaque cube (stairs, slabs, walls, buttons, pressure plates). Natural rock always is
-         * one, so a shaped rock block is treated as built by a player. Left false, rock is judged by name alone.
+         * one, so a shaped rock block is treated as built by a player.
          */
         public boolean shaped;
         /** The block was built by a player (see {@link TerrainRule#craftedName(String)}); only matters for rock. */
         public boolean crafted;
         /** The block matches the {@code buildClearable} config list. */
         public boolean clearable;
+        /** Vanilla rock the world generates: stone, netherrack, end stone, plain sandstone. */
+        public boolean naturalRock;
+        /** Hardened or stained clay in a mesa biome. */
+        public boolean mesaClay;
+        /** GT's raw granite, marble or basalt; never its concrete. */
+        public boolean rawGtStone;
+        /** An ore of the ore dictionary (one of its names starts with {@code ore}). */
+        public boolean ore;
         /**
          * The block matches the {@code buildBlocked} config list. The server should also set {@link Probe#crafted} for
          * such a block, so that neither {@link TerrainRule#forBuild} nor {@link TerrainRule#forClear} breaks it.
@@ -115,17 +138,25 @@ public final class TerrainRule {
 
     private TerrainRule() {}
 
+    /** {@link #forBuild(Probe, boolean)} for a job of the nexus itself (not a module job). */
+    public static Verdict forBuild(Probe p) {
+        return forBuild(p, false);
+    }
+
     /**
      * The verdict for the target cell of a HARD or SOFT step, in this order: the target block already → ALREADY; air,
      * replaceable or fluid, but not lava → PLACE; lava, unbreakable, another nexus's area or ours inside another
-     * structure → BLOCKED; a GT ore → CLEAR; any other tile entity → BLOCKED; ours → REPLACE; crafted → BLOCKED;
-     * natural → CLEAR; anything else → BLOCKED.
+     * structure → BLOCKED; a GT ore → CLEAR; for a module job, a loose supply port of ours → REPLACE; any other tile
+     * entity → BLOCKED; ours → REPLACE; crafted → BLOCKED; natural → CLEAR; anything else → BLOCKED.
+     *
+     * @param module whether the job builds or repairs a module (not the nexus, its campus or its forum)
      */
-    public static Verdict forBuild(Probe p) {
+    public static Verdict forBuild(Probe p, boolean module) {
         if (p.target) return Verdict.ALREADY;
         if (!p.lava && (p.air || p.replaceable || p.fluid)) return Verdict.PLACE;
         if (p.lava || p.unbreakable || p.otherNexusArea || p.oursInOtherStructure) return Verdict.BLOCKED;
         if (p.gtOre) return Verdict.CLEAR;
+        if (module && p.port && p.loose) return Verdict.REPLACE;
         if (p.hasTile) return Verdict.BLOCKED;
         if (p.ours) return Verdict.REPLACE;
         if (p.crafted) return Verdict.BLOCKED;
@@ -133,17 +164,26 @@ public final class TerrainRule {
         return Verdict.BLOCKED;
     }
 
+    /** {@link #forClear(Probe, boolean)} for a job of the nexus itself (not a module job). */
+    public static Verdict forClear(Probe p) {
+        return forClear(p, false);
+    }
+
     /**
      * The verdict for a cell of a clearance or grading volume, which must end up empty: air or a replaceable block
      * that is not a fluid (tall grass, snow layers) → ALREADY, it may stay; unbreakable, another nexus's area or ours
-     * inside another structure → BLOCKED; a GT ore → CLEAR (its drops go to the spoils, as in {@link #forBuild});
-     * any other tile entity, our own blocks, crafted blocks and lava → BLOCKED; natural (water included, it is
-     * replaceable) → CLEAR; anything else → BLOCKED.
+     * inside another structure → BLOCKED; a GT ore → CLEAR (its drops go to the spoils, as in {@link #forBuild}); for
+     * a module job, a loose block of ours (frame, deck, fitting or supply port: {@link Probe#loose}) → REPLACE, taken
+     * away and credited as its part; any other tile entity, our own blocks, crafted blocks and lava → BLOCKED; natural
+     * (water included, it is replaceable) → CLEAR; anything else → BLOCKED.
+     *
+     * @param module whether the job builds or repairs a module (not the nexus, its campus or its forum)
      */
-    public static Verdict forClear(Probe p) {
+    public static Verdict forClear(Probe p, boolean module) {
         if (p.air || (p.replaceable && !p.fluid)) return Verdict.ALREADY;
         if (p.unbreakable || p.otherNexusArea || p.oursInOtherStructure) return Verdict.BLOCKED;
         if (p.gtOre) return Verdict.CLEAR;
+        if (module && (p.ours || p.port) && p.loose) return Verdict.REPLACE;
         if (p.hasTile || p.ours || p.crafted || p.lava) return Verdict.BLOCKED;
         if (p.natural) return Verdict.CLEAR;
         return Verdict.BLOCKED;
@@ -153,14 +193,58 @@ public final class TerrainRule {
      * Whether a block is natural terrain the builder may break: never when it is on the {@code buildBlocked} list or
      * has a tile entity (GT ores are handled by {@link Probe#gtOre} instead); always when it is on the
      * {@code buildClearable} list; otherwise when a Forge hook or the material says so (wood, leaves, replaceable,
-     * plants, ore-generation stone, the soft materials), or when it is rock that was not built by a player (neither
-     * crafted nor shaped).
+     * plants, ore-generation stone, the soft materials). Any other rock is natural only when it is a whole, uncrafted
+     * cube known to be generated: vanilla stone, netherrack, end stone or plain sandstone, hardened clay in a mesa,
+     * GT's raw granite, marble or basalt, or an ore of the ore dictionary. Everything else made of rock (quartz,
+     * smooth sandstone, obsidian, GT concrete, hardened clay outside a mesa, other mods' stones) may have been built
+     * by a player and is left standing.
      */
     public static boolean natural(Nature n) {
         if (n.blocked || n.hasTile) return false;
         if (n.clearable) return true;
         if (n.wood || n.leaves || n.replaceable || n.plant || n.oreGenStone || n.softMaterial) return true;
-        return n.rock && !n.crafted && !n.shaped;
+        if (!n.rock || n.crafted || n.shaped) return false;
+        return n.naturalRock || n.mesaClay || n.rawGtStone || n.ore;
+    }
+
+    /**
+     * Whether a vanilla block is rock the world generates as terrain: {@code minecraft:stone}, {@code netherrack},
+     * {@code end_stone}, and {@code sandstone} of meta 0 (the plain kind; the chiselled and smooth kinds are crafted).
+     */
+    public static boolean naturalRock(String registryName, int meta) {
+        if (registryName == null) return false;
+        switch (registryName) {
+            case "minecraft:stone":
+            case "minecraft:netherrack":
+            case "minecraft:end_stone":
+                return true;
+            case "minecraft:sandstone":
+                return meta == 0;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Whether a block is hardened clay a mesa generates: {@code minecraft:hardened_clay} or
+     * {@code minecraft:stained_hardened_clay}, and only in a mesa biome (elsewhere a player baked it).
+     */
+    public static boolean mesaClay(String registryName, boolean mesaBiome) {
+        return mesaBiome && ("minecraft:hardened_clay".equals(registryName)
+            || "minecraft:stained_hardened_clay".equals(registryName));
+    }
+
+    /** GT's granites (black and red) and stones (marble and basalt): the classes whose raw variants are terrain. */
+    public static final String GT_GRANITES = "gregtech.common.blocks.BlockGranites",
+        GT_STONES = "gregtech.common.blocks.BlockStones";
+
+    /**
+     * Whether a block is one of GT's raw stones: of the class {@link #GT_GRANITES} or {@link #GT_STONES} exactly (GT's
+     * concrete, {@code BlockConcretes}, shares their parent class but is always built) and of a raw meta (0 or 8; the
+     * others are cobblestone, bricks, chiselled and smooth stone).
+     */
+    public static boolean rawGtStone(String className, int meta) {
+        return (GT_GRANITES.equals(className) || GT_STONES.equals(className)) && meta % 8 == 0;
     }
 
     /**

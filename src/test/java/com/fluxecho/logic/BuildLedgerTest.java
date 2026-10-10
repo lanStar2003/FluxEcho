@@ -405,4 +405,37 @@ class BuildLedgerTest {
             l.partView()
                 .isEmpty());
     }
+
+    @Test
+    void aStackFeedsEveryLineItMatches() {
+        Map<String, Long> need = new java.util.LinkedHashMap<>();
+        need.put("item:minecraft:glowstone_dust", 3 * U);
+        need.put("part:" + DECK, 5 * U);
+        need.put("ore:ingotSteel", 7 * U);
+        need.put("ore:dustGlowstone", 2 * U + 1);
+        need.put("ore:dustRedstone", 0L);
+        // glowstone dust is both an item line and an ore line
+        java.util.function.Predicate<String> glowstone = k -> k.contains("lowstone") || k.startsWith("part:");
+        Map<String, Integer> got = BuildLedger.share(10, need, glowstone);
+        assertEquals(2, got.size(), "part lines are never fed raw items");
+        assertEquals(3, (int) got.get("item:minecraft:glowstone_dust"));
+        assertEquals(3, (int) got.get("ore:dustGlowstone"), "a part of an item rounds up to a whole one");
+        assertEquals(
+            new ArrayList<>(got.keySet()),
+            java.util.Arrays.asList("item:minecraft:glowstone_dust", "ore:dustGlowstone"),
+            "in the need's order");
+
+        // a stack smaller than the first line goes to it alone
+        got = BuildLedger.share(2, need, glowstone);
+        assertEquals(1, got.size());
+        assertEquals(2, (int) got.get("item:minecraft:glowstone_dust"));
+
+        // nothing it matches, or a line already met, takes nothing
+        assertTrue(
+            BuildLedger.share(10, need, k -> k.equals("ore:dustRedstone"))
+                .isEmpty());
+        assertTrue(
+            BuildLedger.share(0, need, glowstone)
+                .isEmpty());
+    }
 }

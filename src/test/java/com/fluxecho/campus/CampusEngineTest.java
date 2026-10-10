@@ -408,18 +408,141 @@ class CampusEngineTest {
         b.launch(FxCodec.pack(-3, 0, 5), Parts.frame(Parts.FR_BASE), 4, 1002);
         b.clear(FxCodec.pack(1, 1, 1), 1 << 4 | 2, 1003);
         assertEquals(1000, b.base());
-        assertArrayEquals(new byte[] { 0, 2 }, b.launchOffsets());
-        assertArrayEquals(new byte[] { 9, 4 }, b.launchFlights());
+        assertEquals(
+            1,
+            b.pages()
+                .size());
+        FxBatch.Page p = b.pages()
+            .get(0);
+        assertArrayEquals(new byte[] { 0, 2 }, p.launchOffsets());
+        assertArrayEquals(new byte[] { 9, 4 }, p.launchFlights());
         assertArrayEquals(
             new byte[] { (byte) Parts.deck(Parts.D_LIT), (byte) Parts.frame(Parts.FR_BASE) },
-            b.launchParts());
-        assertEquals(-5, FxCodec.dz(b.launchCells()[0]));
-        assertArrayEquals(new int[] { 1 << 4 | 2 }, b.clearBlocks());
-        for (int i = 0; i < 2 * FxBatch.MAX; i++) b.launch(0, 0, 4, 1004);
-        assertEquals(FxBatch.MAX, b.launches());
-        assertTrue(b.full());
+            p.launchParts());
+        assertEquals(-5, FxCodec.dz(p.launchCells()[0]));
+        assertArrayEquals(new int[] { 1 << 4 | 2 }, p.clearBlocks());
+        assertFalse(b.full());
         b.reset();
         assertTrue(b.isEmpty());
         assertEquals(-1, b.base());
+    }
+
+    @Test
+    void aBusyTickLosesNoEffect() {
+        // more launches and clears in one tick than one packet holds: they go on further pages, none is dropped
+        FxBatch b = new FxBatch();
+        int n = BuildJob.MAX_FLIGHTS + 44;
+        for (int i = 0; i < n; i++) b.launch(FxCodec.pack(i % 30, 1, i / 30), Parts.deck(Parts.D_DECK), 6, 2000);
+        for (int i = 0; i < n; i++) b.clear(FxCodec.pack(i % 30, 2, i / 30), 1 << 4, 2000);
+        assertEquals(n, b.launches());
+        assertEquals(n, b.clears());
+        assertTrue(b.full(), "a full page sends the batch at once");
+        int launches = 0, clears = 0;
+        for (FxBatch.Page p : b.pages()) {
+            assertTrue(p.launches() <= FxBatch.MAX && p.clears() <= FxBatch.MAX, "each packet stays small");
+            assertEquals(2000, p.base());
+            launches += p.launchCells().length;
+            clears += p.clearCells().length;
+        }
+        assertEquals(n, launches);
+        assertEquals(n, clears);
+        // every launch keeps its own cell, in order
+        int k = 0;
+        for (FxBatch.Page p : b.pages()) for (int cell : p.launchCells()) {
+            assertEquals(k % 30, FxCodec.dx(cell));
+            assertEquals(k / 30, FxCodec.dz(cell));
+            k++;
+        }
+        // an entry too late for the page's offsets starts a page of its own
+        FxBatch late = new FxBatch();
+        late.launch(0, 0, 4, 100);
+        late.launch(0, 0, 4, 100 + 200);
+        assertEquals(
+            2,
+            late.pages()
+                .size());
+        assertEquals(
+            300,
+            late.pages()
+                .get(1)
+                .base());
+        // a runaway batch is bounded
+        FxBatch huge = new FxBatch();
+        for (int i = 0; i < FxBatch.MAX * (FxBatch.MAX_PAGES + 3); i++) huge.launch(0, 0, 4, 5);
+        assertEquals(FxBatch.MAX * FxBatch.MAX_PAGES, huge.launches());
+    }
+
+    @Test
+    void aCarriedCampusSurvivesTheItem() {
+        Campus.Carried c = new Campus.Carried();
+        c.dim = -1;
+        c.core = new int[] { CX, Y0 + 2, CZ };
+        c.front = 5;
+        c.sites.put(4, new int[] { CX + 41, Y0 + 2, CZ });
+        c.kinds.put(4, "library");
+        c.sites.put(2, new int[] { CX, Y0 + 2, CZ - 41 });
+        c.kinds.put(2, "");
+        c.skip = true;
+        c.declined.put("library", 123_456L);
+        c.unfinished = BuildPlan.ESTABLISH;
+        // the item's tag is copied whenever the stack is
+        NBTTagCompound t = (NBTTagCompound) c.write()
+            .copy();
+        Campus.Carried back = Campus.Carried.read(t);
+        assertEquals(-1, back.dim);
+        assertArrayEquals(new int[] { CX, Y0 + 2, CZ }, back.core);
+        assertEquals(5, back.front);
+        assertEquals(2, back.sites.size());
+        assertArrayEquals(new int[] { CX + 41, Y0 + 2, CZ }, back.sites.get(4));
+        assertArrayEquals(new int[] { CX, Y0 + 2, CZ - 41 }, back.sites.get(2));
+        assertEquals("library", back.kinds.get(4));
+        assertEquals("", back.kinds.get(2));
+        assertTrue(back.skip);
+        assertEquals(123_456L, (long) back.declined.get("library"));
+        assertEquals(BuildPlan.ESTABLISH, back.unfinished);
+        assertTrue(back.at(-1, CX, Y0 + 2, CZ), "put back where it stood");
+        assertFalse(back.at(0, CX, Y0 + 2, CZ), "another dimension");
+        assertFalse(back.at(-1, CX, Y0 + 1, CZ), "a block lower, on the console stand's cell");
+        assertFalse(back.at(-1, CX + 1, Y0 + 2, CZ));
+
+        // the forum, nothing unfinished, and what a tag that makes no sense gives
+        c.unfinished = BuildPlan.FORUM;
+        assertEquals(BuildPlan.FORUM, Campus.Carried.read(c.write()).unfinished);
+        NBTTagCompound odd = c.write();
+        odd.setString("Job", "module:library@4");
+        odd.setByte("F", (byte) 9);
+        Campus.Carried o = Campus.Carried.read(odd);
+        assertEquals("", o.unfinished, "only the campus jobs are taken up again");
+        assertEquals(2, o.front);
+        assertNull(Campus.Carried.read(new NBTTagCompound()), "no campus without the core's position");
+        assertNull(Campus.Carried.read(null));
+        NBTTagCompound shortPos = c.write();
+        shortPos.setIntArray("Pos", new int[] { 1, 2 });
+        assertNull(Campus.Carried.read(shortPos));
+    }
+
+    @Test
+    void onlyTheCellsThatBreakPayForIt() {
+        // a bookcase of fifteen cells launched whole, one of which has a block to break first
+        long eu = 0;
+        int shelf = Parts.frame(Parts.FR_SHELF);
+        for (int k = 0; k < 15; k++) eu += Builder.stepEu(BuildPlan.HARD, shelf, k == 7, 256, 16);
+        assertEquals(15 * 256 + 16, eu);
+        assertEquals(256, Builder.stepEu(BuildPlan.SOFT, Parts.deck(Parts.D_LIT), false, 256, 16));
+        assertEquals(16, Builder.stepEu(BuildPlan.AIR, Parts.AIR, true, 256, 16), "a cell only cleared");
+        assertEquals(16, Builder.stepEu(BuildPlan.HARD, Parts.GRASS, true, 256, 16), "grass costs the clearing EU");
+        assertEquals(16, Builder.stepEu(BuildPlan.HARD, Parts.DIRT, false, 256, 16));
+    }
+
+    @Test
+    void theSkipSwitchReachesTheClientWithoutAJob() {
+        Campus c = new Campus(null);
+        c.setSkipBlocked(true);
+        NBTTagCompound t = new NBTTagCompound();
+        c.writeSync(t);
+        Campus.View v = new Campus.View();
+        v.read(t);
+        assertTrue(v.skipBlocked, "跳过受阻 is the campus's, shown with no job too");
+        assertFalse(v.hasJob());
     }
 }

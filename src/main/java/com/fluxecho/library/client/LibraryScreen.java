@@ -137,18 +137,24 @@ public final class LibraryScreen {
     }
 
     /** Samples kept, the machines it lends to, power. */
+    /**
+     * The hall's book count, its lending line (amber when not docked) and the team vault's line while it holds books.
+     */
     public static void state(TileLibrary l, float x, float y, float w, float h) {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         int lw = (int) w - 8;
         text(fit(EchoText.t("library.gui.kept", l.sampleCount(), l.capacity()), lw), 4, 2, WHITE, 1f);
+        String vault = l.guiVault > 0 ? EchoText.t("library.gui.vault", l.guiVault) : "";
+        int vw = vault.isEmpty() ? 0 : (int) Math.ceil(font().getStringWidth(vault) * 0.75f) + 6;
         String lend = EchoText.t("library.gui.lends", l.guiLends);
         text(
-            fit("docked".equals(l.guiDock) ? lend : EchoText.t("library.gui.undocked"), lw),
+            fit("docked".equals(l.guiDock) ? lend : EchoText.t("library.gui.undocked"), lw - vw),
             4,
             13,
             "docked".equals(l.guiDock) ? CYAN : AMBER,
             1f);
+        if (!vault.isEmpty()) smallRight(vault, w - 4, 14, 0.75f, VIOLET, 1f);
         GL11.glPopMatrix();
     }
 

@@ -422,7 +422,9 @@ public final class NexusScreen {
 
         small(EchoText.t("build.gui.eu", Compact.si(b.eu)), 2, 43, 0.75f, b.eu > 0 ? WHITE : DIM, 1f);
         smallRight(EchoText.t("build.gui.eta", eta(b.eta)), w - 2, 43, 0.75f, DIM, 1f);
-        small(EchoText.t("build.gui.cleared", b.cleared), 2, 52, 0.75f, DIM, 1f);
+        // before Start: how much the survey found to clear; after, how much was cleared
+        if (b.started) small(EchoText.t("build.gui.cleared", b.cleared), 2, 52, 0.75f, DIM, 1f);
+        else small(EchoText.t("build.gui.to_clear", b.natural), 2, 52, 0.75f, b.natural > 0 ? WHITE : DIM, 1f);
         smallRight(EchoText.t("build.gui.blocked", b.blocked), w - 2, 52, 0.75f, b.blocked > 0 ? AMBER : DIM, 1f);
         small(EchoText.t("build.gui.skipped", b.skipped), 2, 60, 0.75f, b.skipped > 0 ? AMBER : DIM, 1f);
         smallRight(EchoText.t("build.gui.unloaded", b.unloaded), w - 2, 60, 0.75f, b.unloaded > 0 ? AMBER : DIM, 1f);

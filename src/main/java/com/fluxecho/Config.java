@@ -461,7 +461,7 @@ public final class Config {
             "campusEnabled",
             NEXUS,
             campusEnabled,
-            "The campus builder: a nexus core placed on the ground (not sneaking) builds the nexus round itself, grades and paves its campus, and builds the modules its teams research (the Echo Archive) from the materials and EU it is given, once a member presses Start. Off: nothing is built or touched, and cores place as in 0.9.2.");
+            "The campus builder: a nexus core placed on the ground (not sneaking) builds the nexus round itself, grades and paves its campus, and builds the modules its teams research (the Echo Archive) from the materials and EU it is given, once a member presses Start. Off: nothing is built or touched and no campus is made (a core clicked on the ground still goes two blocks up, but it is a nexus to build by hand, as in 0.9.2).");
         archiveEnabled = c.getBoolean(
             "archiveEnabled",
             NEXUS,
@@ -517,7 +517,7 @@ public final class Config {
             buildFillDepth,
             0,
             16,
-            "How deep below the campus floor the builder fills holes and water with dirt when it grades; deeper holes and fluids are left.");
+            "How deep below the campus floor the builder fills holes and water when it grades (dirt, with grass at the floor level where nothing solid stands on it): only holes open to the sky, from the floor level down this far; lava and the cells below that depth are left.");
         buildMinSpacing = c.getInt(
             "buildMinSpacing",
             NEXUS,

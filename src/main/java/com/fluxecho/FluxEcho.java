@@ -11,6 +11,7 @@ import com.fluxecho.ae.AEModule;
 import com.fluxecho.bees.BeeModule;
 import com.fluxecho.blood.BloodModule;
 import com.fluxecho.campus.CampusModule;
+import com.fluxecho.campus.Terrain;
 import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.RecipeCheck;
@@ -150,6 +151,7 @@ public class FluxEcho {
         Formed.clearServer();
         FrameEvents.clear();
         NexusModule.serverStopped();
+        Terrain.serverStopped();
         GateModule.serverStopped();
         if (Mods.thaumcraft) TCModule.serverStopped();
     }

@@ -129,7 +129,7 @@
    ```java
    MinecraftForge.EVENT_BUS.register(h); FarDraw.add(h::onRenderLast);
    ```
-   现有登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`。
+   现有登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`BuildRender`、`BuildFx`、`Masterplan`（后三个是 0.10.0 营造的，`campus/client/`）、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`。书库（大厅和回响档案馆的 `ArchiveRender`）画在 `LibraryRender` 里，由 `NexusRender` 调用，跟着它一起画进门里，不单独登记。
 2. **相对 `RenderManager.renderPosX/Y/Z` 画**，距离和淡出也按它算，**不要用 `mc.thePlayer` 的位置**；朝向摄像机的公告板用 `RenderManager.instance.playerViewY/X`，不要用玩家的 `rotationYaw`。回退路径里 `FarDraw.draw` 被调用时（`GateClient.far`）：`renderPos*`、`RenderManager.viewerPos*`、`TileEntityRendererDispatcher.staticPlayer*` 都换成了门另一侧的摄像机，`playerViewY` 换成 carry 后的朝向；modelview 已经平移并旋转好，按 renderPos 相对坐标画的东西直接落在本门离屏图里的正确位置；绑着离屏 FBO、开着 CLIP_PLANE0、着色器程序为 0、`GL_TEXTURE_2D` 开着、光照和 lightmap 关着。
 3. `ShaderCompat.shadowPass()` 时直接返回。
 4. **容忍每帧被调用多次、而且不是站在玩家位置**：
@@ -139,8 +139,8 @@
 - 任何部件抛异常 → `FarDraw.failed=true`，**所有**部件在本次运行内都不再画进门里。
 
 **服务端**：
-- **按距离挑接收者的包**（全息、轨迹；自己遍历 `playerEntities` 算距离的、`sendToAllAround` 的）必须改用 `Sight.near(world, x, y, z, range)`（直接距离或隔门距离在 range 内）。现有调用方：`fluxdepths/holo/HoloNet.send`、`fluxlite/tile/TileControlCenter.pushHologram`、`codex/EchoNet.flow/holo`。
-- **走区块观察者的数据不用管**：TE 描述包（`markBlockForUpdate` → `getDescriptionPacket`）、方块更新都发给 watch 那个区块的人，而 `Pins` 让 keepRange 内隔门看的人本来就 watch 门另一侧的区块；实体由 `MixinEntityTrackerEntry` 管。中枢（`nexus/TileMultiblock`）就是走描述包，所以没有 `Sight` 调用。
+- **按距离挑接收者的包**（全息、轨迹；自己遍历 `playerEntities` 算距离的、`sendToAllAround` 的）必须改用 `Sight.near(world, x, y, z, range)`（直接距离或隔门距离在 range 内）。现有调用方：`fluxdepths/holo/HoloNet.send`、`fluxlite/tile/TileControlCenter.pushHologram`、`codex/EchoNet.flow/holo`、`campus/CampusNet.audience`（0.10.0 营造的 `BUILD_FX`/`BUILD_STATE`，园区中心 + `nexus.effectRange` + 64）、`library/TileLibrary.audience`（书位增量 `LIB_DELTA`，书库中心 + `effectRange` + 64，再并上 watch 控制器区块的人）。
+- **走区块观察者的数据不用管**：TE 描述包（`markBlockForUpdate` → `getDescriptionPacket`）、方块更新都发给 watch 那个区块的人，而 `Pins` 让 keepRange 内隔门看的人本来就 watch 门另一侧的区块；实体由 `MixinEntityTrackerEntry` 管。中枢和模块（`nexus/TileMultiblock`）的结构状态、园区的 `Cp`、书库的整套书都走描述包，这部分不用 `Sight`；只有上一条那些自己发的 `NexusNet` 包（建造特效和进度、书的增量）用它。
 - 两者的范围一致：`Pins` 和 `Sight` 都只算 keepRange（默认 48）内的门。
 
 ## 6. Mixin 与 AT

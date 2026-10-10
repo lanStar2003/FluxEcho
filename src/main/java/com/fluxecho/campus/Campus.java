@@ -75,6 +75,11 @@ public final class Campus {
     static final long DONE_LINGER = 100;
     /** Ticks between two sends of the progress numbers when nothing changed (for players who came near since). */
     static final long STATE_HEARTBEAT = 100;
+    /**
+     * Ticks after a core carrying its campus went back where it stood before the campus looks whether the nexus
+     * stands ({@link #resume}): by then the structure has been checked.
+     */
+    static final long RESUME_CHECK = 40;
 
     private static final String P = "fluxecho.build.";
     private static final String NO_JOB = P + "no_job", NOT_MEMBER = P + "not_member";
@@ -107,6 +112,12 @@ public final class Campus {
     /** Module keys whose job a member cancelled, until when they are not offered again. */
     private final Map<String, Long> declined = new HashMap<>();
     private CampusPlan plan;
+    /**
+     * A campus resumed by a core put back where it stood ({@link #resume}): the world tick it looks whether the nexus
+     * stands (-1: nothing to look at), and the plan key of the campus job that was not finished ("" for none).
+     */
+    private long resumeCheckAt = -1;
+    private String resumeJob = "";
 
     // ---- live, server
     private boolean loaded, changed, saveDirty, needDirty = true, failed;
@@ -242,6 +253,7 @@ public final class Campus {
             return;
         }
         creditIntake();
+        if (resumeCheckAt >= 0 && now >= resumeCheckAt) afterResume();
         if (now % 20 == 0) watchStructures(now);
         if (now % 100 == 0) autoJobs(now);
         if (job == null && !queue.isEmpty()) nextJob();
@@ -701,8 +713,9 @@ public final class Campus {
     }
 
     /**
-     * Tells the members of a legacy nexus whose teams have the library, once, that the forum can be laid now: on the
-     * first tick after a load, then every ten seconds until someone was online to hear it.
+     * Tells the members of a legacy nexus whose teams have the library, once, that the forum can be laid now and how
+     * the Echo Archive comes after it (only once no library is docked: a 0.9.2 hall counts as the library,
+     * {@link #exists}): on the first tick after a load, then every ten seconds until someone was online to hear it.
      */
     private void legacyHint(long now) {
         if (hinted || now < hintAt) return;
@@ -931,6 +944,184 @@ public final class Campus {
         if (job != null) builder.refundFlights(job);
     }
 
+    // ---- a core carried away and put back
+
+    /**
+     * What the core of an active campus takes along when it is broken, so the campus carries on when the core goes
+     * back where it stood ({@link #resume}): the dimension, the core's position and front, the recorded hall sites
+     * with their module kinds, 跳过受阻, the modules declined for a while, and the campus job (establish or forum)
+     * that was not finished. No job, no ledger: the credit travels separately. Null for a legacy campus.
+     */
+    public NBTTagCompound carried() {
+        if (!active) return null;
+        World w = world();
+        Carried c = new Carried();
+        c.dim = w == null ? 0 : w.provider.dimensionId;
+        c.core = controller();
+        c.front = nexus.front()
+            .ordinal();
+        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
+            c.sites.put(e.getKey(), e.getValue());
+            String kind = siteKinds.get(e.getKey());
+            c.kinds.put(e.getKey(), kind == null ? "" : kind);
+        }
+        c.skip = skipBlocked;
+        c.declined.putAll(declined);
+        for (BuildJob j : jobs()) {
+            if (!j.campusJob() || BuildState.ended(j.state)) continue;
+            if (j.raisesNexus()) c.unfinished = BuildPlan.ESTABLISH;
+            else if (c.unfinished.isEmpty()) c.unfinished = BuildPlan.FORUM;
+        }
+        return c.write();
+    }
+
+    /** Whether the last {@link #resume} found another campus too close: the core then grows no campus at all. */
+    private boolean resumeRefused;
+
+    /**
+     * Whether putting the core back where it stood was refused because another campus is now too close; a lifted
+     * placement then must not lay out a new campus there either (it would ignore the spacing). Not saved.
+     */
+    public boolean resumeRefused() {
+        return resumeRefused;
+    }
+
+    /**
+     * A core carrying its campus ({@link #carried}) was placed: this tile was just made for it (server side). Where the
+     * core stood before (the same dimension and block) the campus carries on, whichever way the core was placed: the
+     * core takes its old front, so the dais fits it again; the campus is active again with its hall sites, so its
+     * modules dock as before and 修复 works; and {@link #RESUME_CHECK} ticks later, once the structure was checked, a
+     * repair of the nexus is queued when the nexus does not stand (or its establish job was not finished), or a forum
+     * job that was not finished is queued again; neither grades the ground again, and both wait for 开始 like any
+     * job. Placed anywhere else the core is a new nexus and nothing is resumed. Returns a lang key for the placer, or
+     * null when there was nothing to resume here.
+     */
+    public String resume(NBTTagCompound tag) {
+        resumeRefused = false;
+        Carried c = Carried.read(tag);
+        World w = world();
+        if (c == null || w == null || w.isRemote || active || !Config.campusEnabled) return null;
+        if (!c.at(w.provider.dimensionId, nexus.xCoord, nexus.yCoord, nexus.zCoord)) return null;
+        // back on its own dais: it faces the way it did, whichever way the player stood
+        if (nexus.front()
+            .ordinal() != c.front) nexus.place(nexus.owner(), nexus.ownerName(), c.front);
+        int[] ce = centre();
+        if (CampusRegistry.tooClose(w, ce[0], ce[2], Config.buildMinSpacing) != null) {
+            resumeRefused = true;
+            return P + "resume_too_close";
+        }
+        active = true;
+        hinted = true;
+        skipBlocked = c.skip;
+        sites.clear();
+        siteKinds.clear();
+        for (Map.Entry<Integer, int[]> e : c.sites.entrySet()) {
+            sites.put(e.getKey(), e.getValue());
+            siteKinds.put(e.getKey(), c.kinds.containsKey(e.getKey()) ? c.kinds.get(e.getKey()) : "");
+        }
+        declined.putAll(c.declined);
+        resumeJob = c.unfinished;
+        resumeCheckAt = w.getTotalWorldTime() + RESUME_CHECK;
+        CampusRegistry.add(w, ce[0], ce[1], ce[2], CampusPlan.GRADE_R);
+        keepOutAt = Long.MIN_VALUE;
+        stateChanged();
+        return P + "resumed";
+    }
+
+    /** The resumed campus looks at its nexus: a repair when it does not stand, the unfinished campus job again. */
+    private void afterResume() {
+        resumeCheckAt = -1;
+        String unfinished = resumeJob;
+        resumeJob = "";
+        dirty();
+        boolean nexusJob = false, forumJob = false;
+        for (BuildJob j : jobs()) {
+            if (BuildState.ended(j.state)) continue;
+            if (j.raisesNexus()) nexusJob = true;
+            else if (j.campusJob()) forumJob = true;
+        }
+        if (!nexusJob && (!nexus.formed() || BuildPlan.ESTABLISH.equals(unfinished))) {
+            // the same plan as the establish job, without its grading: what stands comes free
+            enqueue(BuildJob.repairNexus(keepOut()));
+        } else if (!forumJob && BuildPlan.FORUM.equals(unfinished)) {
+            BuildJob f = BuildJob.forum(keepOut());
+            // its clearing was done before the core was broken
+            f.restart(true);
+            enqueue(f);
+        }
+    }
+
+    /**
+     * A campus as a broken core carries it ({@link #carried}), read and written without a world. Item NBT:
+     * {@code Dim}, {@code Pos} (the core, int[3]), {@code F} (its front), {@code Sites} [{S, P, K}] as the campus saves
+     * them, {@code Skip}, {@code Declined} {module: until}, {@code Job} (the plan key of the campus job not finished,
+     * "" for none).
+     */
+    static final class Carried {
+
+        int dim, front = 2;
+        int[] core = new int[3];
+        final Map<Integer, int[]> sites = new TreeMap<>();
+        final Map<Integer, String> kinds = new HashMap<>();
+        boolean skip;
+        final Map<String, Long> declined = new HashMap<>();
+        String unfinished = "";
+
+        NBTTagCompound write() {
+            NBTTagCompound t = new NBTTagCompound();
+            t.setInteger("Dim", dim);
+            t.setIntArray("Pos", core.clone());
+            t.setByte("F", (byte) front);
+            NBTTagList l = new NBTTagList();
+            for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
+                NBTTagCompound c = new NBTTagCompound();
+                c.setInteger("S", e.getKey());
+                c.setIntArray("P", e.getValue());
+                String kind = kinds.get(e.getKey());
+                c.setString("K", kind == null ? "" : kind);
+                l.appendTag(c);
+            }
+            t.setTag("Sites", l);
+            t.setBoolean("Skip", skip);
+            NBTTagCompound d = new NBTTagCompound();
+            for (Map.Entry<String, Long> e : declined.entrySet()) d.setLong(e.getKey(), e.getValue());
+            t.setTag("Declined", d);
+            t.setString("Job", unfinished);
+            return t;
+        }
+
+        /** The carried campus, or null when the tag holds none (no core position). */
+        static Carried read(NBTTagCompound t) {
+            if (t == null || !t.hasKey("Pos")) return null;
+            int[] pos = t.getIntArray("Pos");
+            if (pos.length != 3) return null;
+            Carried c = new Carried();
+            c.dim = t.getInteger("Dim");
+            c.core = pos;
+            int f = t.getByte("F");
+            c.front = f >= 2 && f <= 5 ? f : 2;
+            NBTTagList l = t.getTagList("Sites", 10);
+            for (int i = 0; i < l.tagCount(); i++) {
+                NBTTagCompound e = l.getCompoundTagAt(i);
+                int[] p = e.getIntArray("P");
+                if (p.length != 3) continue;
+                c.sites.put(e.getInteger("S"), p);
+                c.kinds.put(e.getInteger("S"), e.getString("K"));
+            }
+            c.skip = t.getBoolean("Skip");
+            NBTTagCompound d = t.getCompoundTag("Declined");
+            for (Object k : d.func_150296_c()) c.declined.put((String) k, d.getLong((String) k));
+            String job = t.getString("Job");
+            c.unfinished = BuildPlan.ESTABLISH.equals(job) || BuildPlan.FORUM.equals(job) ? job : "";
+            return c;
+        }
+
+        /** Whether the core stood at the block in the dimension. */
+        boolean at(int dimension, int x, int y, int z) {
+            return dim == dimension && core[0] == x && core[1] == y && core[2] == z;
+        }
+    }
+
     // ---- materials
 
     /**
@@ -962,19 +1153,20 @@ public final class Campus {
             }
             return rest(s, n);
         }
-        for (Map.Entry<String, Long> e : want.entrySet()) {
-            if (PartRecipes.isPart(e.getKey()) || e.getValue() <= 0) continue;
-            ResearchTree.Cost c = cost(e.getKey());
-            if (c == null || !Costs.matches(c, s)) continue;
-            int n = (int) Math.min(s.stackSize, (e.getValue() + PartRecipes.UNIT - 1) / PartRecipes.UNIT);
-            if (n <= 0) continue;
-            if (!simulate) {
-                ledger.addRaw(e.getKey(), n * PartRecipes.UNIT);
-                dirty();
-            }
-            return rest(s, n);
+        // every raw line the item matches takes what it lacks, the next one what is left (glowstone dust feeds both
+        // an item line and an ore line)
+        Map<String, Integer> shares = BuildLedger.share(s.stackSize, want, k -> {
+            ResearchTree.Cost c = cost(k);
+            return c != null && Costs.matches(c, s);
+        });
+        int taken = 0;
+        for (Map.Entry<String, Integer> e : shares.entrySet()) {
+            taken += e.getValue();
+            if (!simulate) ledger.addRaw(e.getKey(), e.getValue() * PartRecipes.UNIT);
         }
-        return s;
+        if (taken <= 0) return s;
+        if (!simulate) dirty();
+        return rest(s, taken);
     }
 
     private static ItemStack rest(ItemStack s, int taken) {
@@ -1168,6 +1360,10 @@ public final class Campus {
         NBTTagCompound d = new NBTTagCompound();
         for (Map.Entry<String, Long> e : declined.entrySet()) d.setLong(e.getKey(), e.getValue());
         t.setTag("Declined", d);
+        if (resumeCheckAt >= 0) {
+            t.setLong("Rc", resumeCheckAt);
+            t.setString("Rj", resumeJob);
+        }
         tile.setTag("Campus", t);
     }
 
@@ -1181,6 +1377,8 @@ public final class Campus {
         loaded = false;
         needDirty = true;
         hintAt = 0;
+        resumeCheckAt = -1;
+        resumeJob = "";
         intake.setStackInSlot(0, null);
         for (int i = 0; i < SPOILS; i++) spoils.setStackInSlot(i, null);
         if (tile == null || !tile.hasKey("Campus")) {
@@ -1232,18 +1430,25 @@ public final class Campus {
         }
         NBTTagCompound d = t.getCompoundTag("Declined");
         for (Object k : d.func_150296_c()) declined.put((String) k, d.getLong((String) k));
+        if (t.hasKey("Rc")) {
+            resumeCheckAt = t.getLong("Rc");
+            resumeJob = t.getString("Rj");
+        }
     }
 
     // ---- the client copy
 
     /**
-     * The small client copy for the nexus's description packet: the mode, the job (key, plan key, site, plan version,
-     * state, pause, stage, progress), when it was projected and finished, its top three missing items, its blocked
-     * cells ({@link FxCodec}, relative to the centre) and the keep-out boxes its plan was made with. Sent on state
-     * changes only; the progress numbers between them go over the network ({@link CampusNet#sendState}).
+     * The small client copy for the nexus's description packet: the mode and 跳过受阻, then with a job its key, plan
+     * key, site, plan version, state, pause, stage and progress, when it was projected and finished, its top three
+     * missing items, its blocked cells ({@link FxCodec}, relative to the centre) and the keep-out boxes its plan was
+     * made with. Sent on state changes only; the progress numbers between them go over the network
+     * ({@link CampusNet#sendState}).
      */
     public void writeSync(NBTTagCompound t) {
         t.setBoolean("Ac", active);
+        // the switch is the campus's, not the job's: it reaches the client with or without a job
+        t.setBoolean("Sk", skipBlocked);
         if (job == null) return;
         lastBlockedHash = job.blockedShownHash();
         t.setString("K", job.key);
@@ -1280,7 +1485,6 @@ public final class Campus {
         for (int i = 0; i < blocked.length; i++) blocked[i] = bl.get(i);
         t.setIntArray("Bl", blocked);
         t.setIntArray("Ko", BuildJob.boxes(job.keepOut));
-        t.setBoolean("Sk", skipBlocked);
     }
 
     /** The client's copy of {@link #writeSync}. */

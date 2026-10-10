@@ -1,5 +1,6 @@
 package com.fluxecho.campus;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,23 +13,33 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.biome.BiomeGenMesa;
+import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.common.IShearable;
 import net.minecraftforge.fluids.IFluidBlock;
+import net.minecraftforge.oredict.OreDictionary;
 
 import com.fluxecho.Config;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.TerrainRule;
+import com.fluxecho.nexus.NexusRegistry;
+import com.fluxecho.nexus.TileMultiblock;
 
 /**
  * Fills a {@link TerrainRule.Probe} from the world for one cell, so the pure rules can decide what the campus builder
  * may do there. Natural terrain is judged by Forge hooks and materials (wood, leaves, plants, ore-generation stone,
- * soft ground, uncut rock), never by names except for the player-built words of {@link TerrainRule#craftedName} and the
- * two config lists. GT, Bartworks and GT++ ores are recognised by class name, looked up once; GT's own stones count as
- * natural only in their raw variants. The caller must make sure the cell's chunk exists before probing (reading a
- * missing chunk on the server would load or generate it).
+ * soft ground), and rock only when it is known to be generated ({@link TerrainRule#natural}: vanilla stone, netherrack,
+ * end stone and plain sandstone, hardened clay in a mesa, GT's raw granite, marble and basalt, ores of the ore
+ * dictionary); other rock may be a player's and is left standing, unless the {@code buildClearable} list names it. GT,
+ * Bartworks and GT++ ores are recognised by class name, looked up once; GT's stones by their exact class, so its
+ * concrete never counts. The caller must make sure the cell's chunk exists before probing (reading a missing chunk on
+ * the server would load or generate it).
  * <p>
  * Players build with natural materials too, and the builder must not take another player's cabin or farm for terrain.
  * So a few natural-looking blocks count as built ({@link #builtByHand}): a log that is part of a group of logs
@@ -53,8 +64,10 @@ public final class Terrain {
     /** What a block is, worked out once per block. */
     private static final class Kind {
 
-        String name = "";
+        String name = "", className = "";
         boolean ore, gtStone, craftedName, vanillaCrafted, plant;
+        /** Per meta (0 to 15): whether the ore dictionary was asked, and whether it named an ore. */
+        int dictAsked, dictOre;
     }
 
     private static final Map<Block, Kind> KINDS = new IdentityHashMap<>();
@@ -87,13 +100,15 @@ public final class Terrain {
         p.gtOre = k.ore || (p.hasTile && bwOre(w.getTileEntity(x, y, z)));
         int code = PartBlocks.code(b, meta);
         p.ours = code >= 0 && (Parts.isFrame(code) || Parts.isDeck(code) || Parts.isFitting(code));
+        p.port = code == Parts.SUPPLY_PORT;
+        if ((p.ours || p.port) && !p.target) p.loose = !inFormedReach(w, x, y, z);
         if (campus != null) {
-            p.oursInOtherStructure = p.ours && campus.protectedCell(x, y, z);
+            p.oursInOtherStructure = (p.ours || p.port) && campus.protectedCell(x, y, z);
             p.otherNexusArea = campus.otherCampusAt(x, z);
         }
 
         boolean listedBlocked = TerrainRule.listed(k.name, Arrays.asList(Config.buildBlocked));
-        boolean rawGtStone = k.gtStone && meta % 8 == 0;
+        boolean rawGtStone = TerrainRule.rawGtStone(k.className, meta);
         boolean wood = b.isWood(w, x, y, z);
         p.crafted = listedBlocked || k.vanillaCrafted || (k.craftedName && !rawGtStone) || (k.gtStone && !rawGtStone);
         if (!p.crafted && !p.hasTile && builtByHand(w, x, y, z, b, meta, k, wood)) p.crafted = true;
@@ -109,10 +124,63 @@ public final class Terrain {
         n.rock = m == Material.rock;
         n.shaped = !b.isOpaqueCube() || !b.renderAsNormalBlock();
         n.crafted = p.crafted;
-        n.clearable = TerrainRule.listed(k.name, Arrays.asList(Config.buildClearable)) || rawGtStone;
+        n.clearable = TerrainRule.listed(k.name, Arrays.asList(Config.buildClearable));
         n.blocked = listedBlocked;
+        if (n.rock) {
+            // rock is natural only when it is known to be generated (the rest may be a player's)
+            n.naturalRock = TerrainRule.naturalRock(k.name, meta);
+            n.mesaClay = TerrainRule.mesaClay(k.name, true) && mesa(w, x, z);
+            n.rawGtStone = rawGtStone;
+            n.ore = dictOre(b, meta, k);
+        }
         p.natural = TerrainRule.natural(n);
         return p;
+    }
+
+    /** Whether a formed nexus or module of ours could use the cell ({@code covers}): its blocks are not left over. */
+    private static boolean inFormedReach(World w, int x, int y, int z) {
+        for (TileMultiblock m : NexusRegistry.loaded(w)) if (m.formed() && m.covers(w, x, y, z)) return true;
+        return false;
+    }
+
+    /** Whether the column lies in a mesa biome (vanilla's, or one a mod files under the mesa type). */
+    private static boolean mesa(World w, int x, int z) {
+        BiomeGenBase biome = w.getBiomeGenForCoords(x, z);
+        if (biome == null) return false;
+        if (biome instanceof BiomeGenMesa) return true;
+        try {
+            return BiomeDictionary.isBiomeOfType(biome, BiomeDictionary.Type.MESA);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** Whether the ore dictionary names the block (at the meta) an ore: one of its names starts with {@code ore}. */
+    private static boolean dictOre(Block b, int meta, Kind k) {
+        int bit = 1 << (meta & 15);
+        synchronized (Terrain.class) {
+            if ((k.dictAsked & bit) != 0) return (k.dictOre & bit) != 0;
+        }
+        boolean ore = false;
+        Item item = Item.getItemFromBlock(b);
+        if (item != null) {
+            try {
+                for (int id : OreDictionary.getOreIDs(new ItemStack(item, 1, meta))) {
+                    String name = OreDictionary.getOreName(id);
+                    if (name != null && name.startsWith("ore")) {
+                        ore = true;
+                        break;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // an item that cannot be asked about is not taken for an ore
+            }
+        }
+        synchronized (Terrain.class) {
+            k.dictAsked |= bit;
+            if (ore) k.dictOre |= bit;
+        }
+        return ore;
     }
 
     // ---- natural materials a player built with
@@ -125,8 +193,16 @@ public final class Terrain {
     private static final int[][] FACES = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 },
         { 0, 0, -1 } };
     private static final Map<Long, Boolean> BUILT_LOGS = new HashMap<>();
-    private static World logWorld;
+    /** The world the remembered verdicts belong to, held weakly so a stopped server's world is not kept alive. */
+    private static WeakReference<World> logWorld = new WeakReference<>(null);
     private static long logAt;
+
+    /** The server stopped: forget the remembered log verdicts and the world they were for. */
+    public static synchronized void serverStopped() {
+        BUILT_LOGS.clear();
+        logWorld = new WeakReference<>(null);
+        logAt = 0;
+    }
 
     /**
      * Whether a natural-looking block was most likely placed by a player: vanilla leaves placed by hand (they never
@@ -150,9 +226,9 @@ public final class Terrain {
      */
     static synchronized boolean builtLog(World w, int x, int y, int z) {
         long now = w.getTotalWorldTime();
-        if (logWorld != w || now - logAt > LOG_MEMORY || now < logAt || BUILT_LOGS.size() > 16384) {
+        if (logWorld.get() != w || now - logAt > LOG_MEMORY || now < logAt || BUILT_LOGS.size() > 16384) {
             BUILT_LOGS.clear();
-            logWorld = w;
+            logWorld = new WeakReference<>(w);
             logAt = now;
         }
         Boolean known = BUILT_LOGS.get(BuildJob.pos(x, y, z));
@@ -211,10 +287,15 @@ public final class Terrain {
             || m == Material.piston;
     }
 
-    /** Whether the block keeps its drops in the spoils when cleared (ores and logs). */
+    /**
+     * Whether the block keeps its drops in the spoils when cleared (ores, those of the ore dictionary too, and logs).
+     */
     public static boolean spoils(World w, int x, int y, int z, Block b) {
-        if (kind(b).ore || b.isWood(w, x, y, z)) return true;
-        return b.hasTileEntity(w.getBlockMetadata(x, y, z)) && bwOre(w.getTileEntity(x, y, z));
+        Kind k = kind(b);
+        if (k.ore || b.isWood(w, x, y, z)) return true;
+        int meta = w.getBlockMetadata(x, y, z);
+        if (b.hasTileEntity(meta)) return bwOre(w.getTileEntity(x, y, z));
+        return b.getMaterial() == Material.rock && dictOre(b, meta, k);
     }
 
     /** Whether the cell already holds the part (any meta for grass and the library core). */
@@ -246,6 +327,8 @@ public final class Terrain {
         k = new Kind();
         Object name = Block.blockRegistry.getNameForObject(b);
         k.name = name == null ? "" : name.toString();
+        k.className = b.getClass()
+            .getName();
         k.ore = isA(gtOre, b) || isA(gtppOre, b);
         k.gtStone = isA(gtStone, b);
         k.craftedName = TerrainRule.craftedName(k.name);

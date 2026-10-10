@@ -18,13 +18,13 @@
 
 依赖串：`required-after:gregtech;after:Forestry;after:Thaumcraft;after:AWWayofTime;after:betterquesting;after:fluxdepths;after:appliedenergistics2;after:ae2fc;after:mobsinfo;after:IC2;after:berriespp;after:Botania;after:Waila`。
 
-- **preInit**：`Config.load` → `Mods.detect` → `QuestInstaller.preInit` → `CodexModule.preInit`（物品 codex、`EchoNet.init`）→ `MatterModule` → `FrameModule` → `NexusModule` → `LibraryModule` → `NexusNet.init` → `GateModule` → 按在场：Bee/TC/Mob/Crop/AE `preInit`。
-- **init**：按在场调各模块 `.machines()`（GT ID 在这里 `claim`；"registered even when a module is off, so placed machines keep their blocks"）→ `GateModule.init` → `NexusModule.init` → `LibraryModule.init` → `proxy.init()`。
-- **postInit**：Codex、Matter、Frame、Nexus、Library、Gate，再按在场 Bee/TC/Blood/Mob/Crop/Mana/AE（注册图鉴类别和配方）。
+- **preInit**：`Config.load` → `Mods.detect` → `QuestInstaller.preInit` → `CodexModule.preInit`（物品 codex、`EchoNet.init`）→ `MatterModule` → `FrameModule` → `CampusModule`（地板、配件、补给口）→ `NexusModule` → `LibraryModule` → `NexusNet.init` → `GateModule` → 按在场：Bee/TC/Mob/Crop/AE `preInit`。
+- **init**：按在场调各模块 `.machines()`（GT ID 在这里 `claim`；"registered even when a module is off, so placed machines keep their blocks"）→ `GateModule.init` → `CampusModule.init`（空）→ `NexusModule.init` → `LibraryModule.init`（还登记营造的 `ModuleSpec`）→ `proxy.init()`。
+- **postInit**：Codex、Matter、Frame、Campus、Nexus、Library、Gate，再按在场 Bee/TC/Blood/Mob/Crop/Mana/AE（注册图鉴类别和配方）。
 - **loadComplete**：Bee/Crop/TC/Mob 补 NEI 示例 → `RecipeCheck.run()`。
 - **serverStarted**：`QuestInstaller.serverStarted()`（主模组没有服务端命令）。
-- **serverStopped**：`EchoLedger.reset`、`ResearchData.reset`、`Formed.clearServer`、`FrameEvents.clear`、`NexusModule.serverStopped`、`GateModule.serverStopped`、（神秘在场）`TCModule.serverStopped`。`Directory.clear()` 存在但没人调用。
-- **`ClientProxy.init()`**：`CodexTooltips`（Forge + FML 总线）→ `MachineFx` → `FrameClient` → `TileMultiblock.clientWorld = WorldClient.class` → `NexusRender` → `EchoCrystalRender` → `MachineHolo` → `FlowFx` → `GateClient` → （神秘）`TCClient.init`、（植物魔法）`ManaHolo` → NEI 在场时注册客户端命令 `NeiCheck`。
+- **serverStopped**：`EchoLedger.reset`、`ResearchData.reset`、`Formed.clearServer`、`FrameEvents.clear`、`NexusModule.serverStopped`、`Terrain.serverStopped`（营造记住的原木判定和它弱引用的世界）、`GateModule.serverStopped`、（神秘在场）`TCModule.serverStopped`。`Directory.clear()` 存在但没人调用。
+- **`ClientProxy.init()`**：`CodexTooltips`（Forge + FML 总线）→ `MachineFx` → `FrameClient` → `CampusClient`（地板/配件的 ISBRH、建造投影、发射特效、总图，见 [campus.md](campus.md) §11）→ `TileMultiblock.clientWorld = WorldClient.class` → `NexusRender` → `EchoCrystalRender` → `MachineHolo` → `FlowFx` → `GateClient` → （神秘）`TCClient.init`、（植物魔法）`ManaHolo` → NEI 在场时注册客户端命令 `NeiCheck`。
 
 ## 2. 配置约定（`Config.java`）
 
@@ -32,7 +32,7 @@
 - 每个类别要 `setCategoryComment`；只在客户端生效的项说明以 "Client:" 开头。
 - **删除某项或改默认值**：把 `VERSION` 提到新版本，在 `upgrade()` 里用 `older(was, "x.y.z")` 删掉旧 key（加载时按新默认值重建）。现有迁移：0.5.0 删 `enchanting` 类别和若干 thaum key；0.6.0 删 `manaPerTick`、`manaPerPetal`。`ConfigTest` 测 `older()`。
 - README「配置」一节的中文表要同步。
-- 类别：`general`（`firstMachineId` 24530、`enableDefaultRecipes`）、`quests`（`install`）、`bees`、`thaumcraft`、`bloodmagic`、`mobs`、`crops`、`botania`、`codex`（`tooltipHints`）、`nexus`、`effects`（`machineEffects`、`flowTrails`、`effectRange` 32、`hologramRange` 16）、`ae2`（`enabled`）、`gates`。各模块的键和默认值写在对应的手册里。
+- 类别：`general`（`firstMachineId` 24530、`enableDefaultRecipes`）、`quests`（`install`）、`bees`、`thaumcraft`、`bloodmagic`、`mobs`、`crops`、`botania`、`codex`（`tooltipHints`）、`nexus`（中枢见 nexus.md §9，0.10.0 的营造键 `campusEnabled`、`archiveEnabled`、`build*` 见 campus.md §14）、`effects`（`machineEffects`、`flowTrails`、`effectRange` 32、`hologramRange` 16）、`ae2`（`enabled`）、`gates`。各模块的键和默认值写在对应的手册里。现在 `VERSION="0.10.0"`（0.10.0 只加键，没有迁移步骤）。
 
 ## 3. 机器框架（`core/`）
 
@@ -45,11 +45,11 @@
 | `EchoTextures` | 机器方块面：通量外壳、各机器正面 `machines/<key>/front[_active[_glow]]`、顶面回响环；**图标必须在机器构造时创建**（"only those that exist before the block textures are stitched get an image"） |
 | `FluxMachineGui` | ModularUI 176×220（背包 y=138），`neiId(kind)="fluxecho.machine.<key>"` |
 | `EchoText` | 翻译工具，前缀固定 `fluxecho.`：`t`、`lines`（字面 `\n` 换行）、`machineType`、`status`、`statusColor`、`decode`、`tier`、`seconds`、`wailaBody` |
-| `EchoRecipes` | 配方先走 `GTModHandler`（`NOT_REMOVABLE`），GT 拒收退成 Forge 矿辞配方；`forForge()`；全部登记到 `RecipeCheck.expect`；缺材料只写日志 |
+| `EchoRecipes` | 配方先走 `GTModHandler`（`NOT_REMOVABLE`），GT 拒收退成 Forge 矿辞配方；`forForge()`；全部登记到 `RecipeCheck.expect`；缺材料只写日志。⚠ **GT 工具字母**：GT 5.09.51 把有序配方图案里的小写 `b c d f h i j k m p r s w x` 当成合成工具（c 撬棍、r 软锤……），把工具追加在调用方的键后面，Forge 的有序配方对同一个键取最后一个值——原料被工具顶掉，GT 还报成功（所以也不会退成 Forge 配方）。图案只用大写键；表驱动的配方先过 `logic/GtPattern.safe`（把所有小写键换成没用过的大写字母，行和键一起改，`GtPatternTest` 守着），`campus/PartBlocks.register` 就是这样做的 |
 | `RecipeCheck` | loadComplete 时补回丢失的配方，报告空矿辞名 |
 | `EchoRecipeMaps` | 每台机器一个 GT `RecipeMap` `fluxecho.recipe.<key>`（`disableRegisterNEI`，只给 NEI 当示例）；`map/page/later/examples/get`；全部 `synchronized`（"NEI asks from its own threads"） |
 | `EchoPattern` | 给 AE 的"现在能做什么" |
-| `Directory` | 内存里的机器登记表：键 `dim:x:y:z`，`Entry(team, dim, xyz, name 键, status 键, level, seen)`；`of(team)` 丢掉 1 小时没上报的，按 PROBLEM(2) > IDLE(1) > WORKING(0)、再按名字排序。上报方：`MTEEchoMachine`、`TileNexus`、`TileLibrary`、FluxDepths 的采集器和泵（每 100 tick）。读取方：`nexus.TerminalView` |
+| `Directory` | 内存里的机器登记表：键 `dim:x:y:z`，`Entry(team, dim, xyz, name 键, status 键, level, seen)`；`of(team)` 丢掉 1 小时没上报的，按 PROBLEM(2) > IDLE(1) > WORKING(0)、再按名字排序。上报方：`MTEEchoMachine`、`TileNexus`（有营造任务时状态换成 `building`/`build_paused`，`nexusStatus`）、`TileLibrary`、FluxDepths 的采集器和泵（每 100 tick）。读取方：`nexus.TerminalView` |
 | `Owners` | `team(uuid)` = GT `SpaceProjectManager.getLeader`（异常退回本人）；`online`、`loginName`（"Thaumcraft and Blood Magic key their player data by login name"） |
 | `CoreCircuits` | 矿辞 `circuitLV..circuitLuV` → 等级 1–6，`example/label/color`（FluxDepths 有自己的副本） |
 
@@ -61,8 +61,8 @@
 |---|---|
 | `client/FluxDraw` | 通量风格平面 GL 绘制（不用纹理）：`pane/bar/column/scan/frame/corners/gradient/text/small...`、调色板（DEEP 0x0A1622、SEAM 0x1F3C4E、CYAN 0x4FE3FF、VIOLET 0x8A5CFF…）、`worldBegin/worldEnd` |
 | `client/ShaderCompat` | 反射 Iris API：`packInUse()`、`shadowPass()` |
-| `client/FarDraw` | "画完世界后"部件的登记表，光门从另一侧再画一遍（见 [gates.md](gates.md) §5） |
-| `client/Motes` | 朝向相机的发光点（加法混合，`textures/effects/mote.png`） |
+| `client/FarDraw` | "画完世界后"部件的登记表，光门从另一侧再画一遍（见 [gates.md](gates.md) §5）。登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`BuildRender`、`BuildFx`、`Masterplan`（后三个是 0.10.0 营造的，`campus/client/`）、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`；书库由 `NexusRender` 经 `ModuleRender` → `LibraryRender` 画（档案馆的 `ArchiveRender` 由 `LibraryRender` 调用），不单独登记 |
+| `client/Motes` | 朝向相机的发光点（加法混合，`textures/effects/mote.png`）；`begin` 在打开批次前失败、`end` 画的时候出错，都会把 GL 状态出栈（0.10.0） |
 | `client/MachineFx`、`MachineHolo`、`HoloStore` | 机器头顶动效（每帧最多 48 台）；机器全息（150×104 px，`PX=1/90`）；全息数据（2500 ms 过期） |
 | `client/FlowFx`、`FlowStore` | 机器到目标的弧形轨迹（寿命 1600 ms） |
 | `client/MachineScreen`、`Motifs`、`Keys` | GUI 自绘部分；母题动画（GUI、NEI、全息共用，`hash/mix/dot/ring/hex`）；Shift |
@@ -75,8 +75,9 @@
 4. `worldEnd()`：popAttrib 后**手动** `glEnable(GL_TEXTURE_2D)` 和 `glColor4f(1,1,1,1)`（"Angelica only tells the shader pipeline about glEnable / glDisable, and whatever is drawn next would come out white"）。
 5. **只用 quads**（Angelica 的 tessellator 到处都按 quads；三角形用"重复一个角"的 quad），不用 QUAD_STRIP/TRIANGLE_FAN。⚠ `MachineHolo.beam()` 还在用 `GL_TRIANGLES`，未验证。
 6. 文字 alpha 下限 5（字体渲染器把接近 0 当不透明）。
-7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画，每帧可能被调用多次；服务端按距离挑接收者的包用 `gate.Sight.near`（TE 描述包不用）。细节见 [gates.md](gates.md) §5。
-8. 世界里的东西相对相机画、每处理器 try/finally 恢复状态；全息默认关、可切换。
+7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画，每帧可能被调用多次；服务端按距离挑接收者的包用 `gate.Sight.near`（TE 描述包不用；营造的 `CampusNet` 和书库的 `LIB_DELTA` 都用它）。细节见 [gates.md](gates.md) §5。
+8. 世界里的东西相对相机画、每处理器 try/finally 恢复状态；全息默认关、可切换。营造的**建造投影默认开**（`nexus.buildProjection`），和全息是两回事。
+9. 一个处理器里有好几部分时，每部分单独失败：出错记一次日志、本次运行关掉这一部分、关掉没结束的 tessellator 批次（否则后面所有绘制都会被拖下去）；营造和档案馆的渲染器都这样做（[campus.md](campus.md) §11）。
 
 ## 5. 图鉴与账本（`codex/`）
 
@@ -114,7 +115,7 @@
 | 频道 | 所属 | 消息 |
 |---|---|---|
 | `fluxecho` | `codex/EchoNet` | 0 ledger、1 holo、2 flow（S→C） |
-| `fluxecho_nx` | `nexus/NexusNet` | 0 ToServer（ASK_MAP/START/CANCEL）、1 ToClient（MAP/RESULT） |
+| `fluxecho_nx` | `nexus/NexusNet` | 0 ToServer（`ASK_MAP=0`/`START=1`/`CANCEL=2`）、1 ToClient（`MAP=0`、`RESULT=1`、`BUILD_FX=2`、`BUILD_STATE=3`（营造，`campus/CampusNet`）、`LIB_DELTA=4`（书库书位的增量，`TileLibrary`）） |
 | `fluxecho_gate` | `gate/GateNet` | 0 Transit（S→C） |
 | `fluxlite` | FluxLite | 见 fluxlite.md §4（终端的 TERM_REQUEST/TERM_DATA 也在这里） |
 | `fluxdepths` | FluxDepths `holo/HoloNet` | 0 全息（S→C） |
@@ -137,6 +138,7 @@
 | `SpringTextures.java` | 魔力回响泉方块面和 `gui/spring/*` |
 | `GateTextures.java` | `blocks/gate/*` |
 | `NexusTextures.java` | 构架、中枢、书库、通量物质、索引卡 |
+| `CampusTextures.java` | 0.10.0 营造：`blocks/deck/*`、`blocks/fitting/*`、书架单元（`frame/shelf_niche`、`shelf_board`、`book_spine`）、`blocks/supply_port/*`；深色科技调色板锁定 |
 | `DepthsTextures.java` / `DepthsGuiTextures.java` | FluxDepths 的方块、物品、GUI |
 
 - **资源**：`mcmod.info`（三个条目，后两个 `parent` 指向 fluxecho）；`assets/fluxecho/lang/{en_US,zh_CN}.lang`（行一一对应，按版本 `#` 分节）；`textures/{blocks,items,gui,effects}`；`quests/{index.json, DefaultQuests/...}`。
@@ -154,6 +156,9 @@
 | `nei/CatalystLookupTest`、`HandlerCopyTest`、`PageLayoutTest` | transfer rect、`newInstance()`、输出不压 NEI 按钮 |
 | `quest/QuestPackTest` | 每条线文件齐全、一个 QuestLine.json、任务和摆放一致 |
 | `logic/QuestOrderTest`、`QuestPlanTest` | 顺序文件合并、stale 文件 |
-| `logic/*Test` | 各纯逻辑类（见各子系统手册） |
+| `logic/GtPatternTest` | 表驱动的配方交给 GT 时没有小写（工具）字母，改名后原料和数量不变 |
+| `logic/*Test` | 各纯逻辑类（见各子系统手册；营造和档案馆的 `MixTest`、`PartRecipesTest`、`CampusPlanTest`、`PavingTest`、`ArchiveShapeTest`、`StairWalkTest`、`LibraryUnitsTest`、`UnitLookTest`、`TerrainRuleTest`、`BuildPlanTest`、`BuildLedgerTest`、`BuildStateTest`、`BuildPaceTest`、`FxCodecTest`、`LiftRuleTest`、`GhostCellsTest`、`LaunchPhaseTest`、`SpineColourTest`、`BlueprintTest` 见 [campus.md](campus.md) §15） |
+| `campus/CampusEngineTest` | 建造任务的存读、计划重算、飞行退款、换场地、修复、受阻格计数、特效批次和分页、核心带着的园区、逐格的拆除 EU、跳过受阻的同步（要用非逻辑类，所以不在 `logic`） |
+| `library/ArchiveMapTest`、`LibraryPacketTest`、`LibraryVaultTest`、`TileLibraryUnitsTest`、`HallRefillTest` | 档案馆平面图、书的包不超过 28000 字节、队伍书库仓库、书库 tile 的坐标和形状、两种形状第一次成型都从仓库取一次书 |
 
-FluxLite、FluxDepths 另有 20 个测试文件；共约 55 个测试类、234 个测试（0.9.0）。
+FluxLite、FluxDepths 另有 20 个测试文件；共 81 个测试类、484 个测试（0.10.0）。

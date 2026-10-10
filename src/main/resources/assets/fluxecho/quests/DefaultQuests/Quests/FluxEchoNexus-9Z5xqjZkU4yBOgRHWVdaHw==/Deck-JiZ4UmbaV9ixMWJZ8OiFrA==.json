@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -487390879970799143,
+      "questIDLow:4": -7985830019142941520
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "中枢铺园区、建档案馆用的是两族新方块，都能在工作台里合成（配方看 NEI）。中枢自己建时按配方从原料折算，不用先合成；拿来装饰自己的基地也行，铺了地板的地方不刷怪。\n\n• 地板和墙板：地砖、地缝钢、光带地砖、格栅地砖、深色地砖、踢脚光带、箭头地砖、光井、墙板、光缝墙板、深色墙裙、光檐；\n• 配件：书架立柱、书架底座、书架顶檐、栏杆、踏板、窗格、全息底座。\n\n地砖是 8 块石头加 1 块钢板（出 16 块），墙板是 8 块石砖加 1 块钢板（出 16 块），别的大多从它们做出来，带光的再加萤石粉或萤石；栏杆和窗格用钢杆、钢板和玻璃。\n\n[note]档案馆的一个书架，就是三个书架底座、3×3 个回响书格、三个书架顶檐叠起来的，两边夹着书架立柱。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 2,
+        "OreDict:8": "",
+        "id:8": "fluxecho:deck"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d地板与配件",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 2749016917864503256,
+  "questIDLow:4": -5678649516704102996,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

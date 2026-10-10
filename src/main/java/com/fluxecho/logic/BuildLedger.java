@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 
 /**
  * The material account of one nexus's builder: raw credit per ingredient spec (in {@link PartRecipes#UNIT}s of
@@ -194,6 +195,28 @@ public final class BuildLedger {
         });
         Map<String, Long> out = new LinkedHashMap<>();
         for (Map.Entry<String, Long> e : lines) out.put(e.getKey(), e.getValue());
+        return out;
+    }
+
+    /**
+     * How a stack of {@code count} items is shared out over the raw lines of a need ({@link #need}) that accept it, in
+     * the need's order: each accepting line takes the whole items it still lacks (its units rounded up), and what is
+     * left of the stack goes on to the next accepting line, so an item two lines take (glowstone dust for an item line
+     * and an ore line) feeds both. Part lines and lines already met are passed over. Returns key → items taken, in
+     * that order; empty when no line takes any.
+     */
+    public static Map<String, Integer> share(int count, Map<String, Long> need, Predicate<String> accepts) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        int left = count;
+        for (Map.Entry<String, Long> e : need.entrySet()) {
+            if (left <= 0) break;
+            Long units = e.getValue();
+            if (units == null || units <= 0 || PartRecipes.isPart(e.getKey()) || !accepts.test(e.getKey())) continue;
+            int n = (int) Math.min(left, (units + PartRecipes.UNIT - 1) / PartRecipes.UNIT);
+            if (n <= 0) continue;
+            out.put(e.getKey(), n);
+            left -= n;
+        }
         return out;
     }
 

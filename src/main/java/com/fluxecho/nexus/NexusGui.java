@@ -131,6 +131,8 @@ public final class NexusGui {
         /** The job key and its plan key; both empty without a job. */
         public String job = "", planKey = "";
         public int site = -1, state, pause, stage, stages, placed, total, cleared, blocked, skipped, unloaded;
+        /** Natural blocks the last survey found to clear (shown before a member presses Start). */
+        public int natural;
         /** EU per tick the builder drew lately, and the estimated ticks left (-1: cannot progress). */
         public long eu, eta;
         /** Whole items in the balance that can be taken out, finished parts held, items among the spoils. */
@@ -161,6 +163,7 @@ public final class NexusGui {
             blocked = t.getInteger("Bk");
             skipped = t.getInteger("Sp");
             unloaded = t.getInteger("Un");
+            natural = t.getInteger("Na");
             eu = t.getLong("Eu");
             eta = t.getLong("Et");
             balanceItems = t.getInteger("Bi");
@@ -685,6 +688,7 @@ public final class NexusGui {
         t.setInteger("Bk", c.blocked());
         t.setInteger("Sp", c.skipped());
         t.setInteger("Un", c.unloaded());
+        t.setInteger("Na", j.natural());
         t.setLong("Eu", eu);
         t.setLong("Et", ended ? 0 : c.etaTicks());
         t.setBoolean("Go", j.started());

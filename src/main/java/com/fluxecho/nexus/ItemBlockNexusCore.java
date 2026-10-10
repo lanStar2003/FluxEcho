@@ -51,7 +51,13 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * A core broken off a nexus ({@link BlockNexusCore}) carries the campus's credit ({@link #CREDIT}: the ledger's raw
  * credit and parts, the spoils) and the manifestation that was still running ({@link #PENDING}, {@link #MANIFEST});
- * placing that core puts both back into the new nexus, lifted or not.
+ * placing that core puts both back into the new nexus, lifted or not. The core of an active campus also carries the
+ * campus itself ({@link #CAMPUS}, {@link Campus#carried}): put back where it stood, by any placement (sneaking too,
+ * and clicking its console stand or the dais, which never lifts), it resumes its campus ({@link Campus#resume}) instead
+ * of becoming a 0.9.2 nexus, with its front, its hall sites and 修复; a nexus that does not stand gets a repair queued,
+ * never a new establish job. Sneaking only chooses the 0.9.2 way for a core placed somewhere new, and resuming touches
+ * nothing in the world before a member presses 开始, so putting the core back resumes whichever way it is placed.
+ * Placed anywhere else, the core is a new nexus (lifted and surveyed, or by hand) and keeps only the credit.
  */
 public class ItemBlockNexusCore extends ItemBlockNexus {
 
@@ -61,6 +67,8 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     public static final String PENDING = "Pending";
     /** Item NBT: how far that manifestation was {Id, Ticks, Max}. */
     public static final String MANIFEST = "Manifest";
+    /** Item NBT: the active campus the core was broken off ({@link Campus#carried}). */
+    public static final String CAMPUS = "Campus";
     /** Blocks above the base the nexus needs below the top of the world for a lifted placement (Y0 + 30 ≤ 255). */
     public static final int HEADROOM = 30;
 
@@ -140,8 +148,14 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             (block.stepSound.getVolume() + 1f) / 2f,
             block.stepSound.getPitch() * 0.8f);
         stack.stackSize--;
-        // the owner and the front are set by now (onBlockPlacedBy), so the campus knows its centre
-        if (campus && w.getTileEntity(x, cy, z) instanceof TileNexus n) {
+        // the owner and the front are set by now (onBlockPlacedBy), so the campus knows its centre; a core put back
+        // where it stood has resumed its campus already (placeBlockAt) and is not established anew, nor is one whose
+        // campus could not resume because another campus has come too close
+        if (campus && w.getTileEntity(x, cy, z) instanceof TileNexus n
+            && !n.campus()
+                .active()
+            && !n.campus()
+                .resumeRefused()) {
             p.addChatMessage(
                 new ChatComponentTranslation(
                     n.campus()
@@ -224,7 +238,10 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     public boolean placeBlockAt(ItemStack stack, EntityPlayer p, World w, int x, int y, int z, int side, float hx,
         float hy, float hz, int meta) {
         if (!super.placeBlockAt(stack, p, w, x, y, z, side, hx, hy, hz, meta)) return false;
-        if (!w.isRemote && w.getTileEntity(x, y, z) instanceof TileNexus n) restore(stack, n);
+        if (!w.isRemote && w.getTileEntity(x, y, z) instanceof TileNexus n) {
+            String said = restore(stack, n);
+            if (said != null && p != null) p.addChatMessage(new ChatComponentTranslation(said));
+        }
         return true;
     }
 
@@ -251,8 +268,10 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
 
     /**
      * What a nexus being broken hands to its core item: the campus credit (in-flight launches refunded first) and the
-     * running manifestation. Empties the ledger and the spoils it took, so nothing can be had twice. An empty tag when
-     * there is nothing to carry.
+     * running manifestation, and with them the campus itself when it is active ({@link #CAMPUS}). Empties the ledger
+     * and the spoils it took, so nothing can be had twice. An empty tag when there is no credit or manifestation to
+     * carry: a core that carries only its campus drops the ordinary way ({@link BlockNexusCore#getDrops}, with
+     * {@link #campusTag}), so a block mover that merely removes the core gets nothing out of it.
      */
     public static NBTTagCompound carry(TileNexus n) {
         NBTTagCompound out = new NBTTagCompound();
@@ -292,16 +311,34 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             m.setInteger("Max", tile.getInteger("ManifestMax"));
             out.setTag(MANIFEST, m);
         }
+        if (!out.hasNoTags()) {
+            NBTTagCompound campus = c.carried();
+            if (campus != null) out.setTag(CAMPUS, campus);
+        }
+        return out;
+    }
+
+    /** The item NBT of a core that carries only its active campus ({@link #CAMPUS}); null for a legacy campus. */
+    public static NBTTagCompound campusTag(TileNexus n) {
+        NBTTagCompound campus = n.campus()
+            .carried();
+        if (campus == null) return null;
+        NBTTagCompound out = new NBTTagCompound();
+        out.setTag(CAMPUS, campus);
         return out;
     }
 
     /**
-     * Puts back what the core item carries into a freshly placed nexus: the running manifestation (only into a nexus
-     * that is not manifesting) and the credit, added to what the ledger and spoils hold. Server side.
+     * Puts back what the core item carries into a freshly placed nexus: its campus, when the core went back where it
+     * stood ({@link Campus#resume}), the running manifestation (only into a nexus that is not manifesting) and the
+     * credit, added to what the ledger and spoils hold. Server side. Returns a lang key to tell the placer, or null.
      */
-    static void restore(ItemStack stack, TileNexus n) {
+    static String restore(ItemStack stack, TileNexus n) {
         NBTTagCompound t = stack.getTagCompound();
-        if (t == null) return;
+        if (t == null) return null;
+        String said = null;
+        if (t.hasKey(CAMPUS, 10) && Config.nexusEnabled) said = n.campus()
+            .resume(t.getCompoundTag(CAMPUS));
         if (t.hasKey(PENDING, 10) && n.making() == null
             && n.manifest()
                 .isEmpty()) {
@@ -350,6 +387,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             }
         }
         n.markDirty();
+        return said;
     }
 
     // ---- tooltip
@@ -378,6 +416,11 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             ItemStack made = ItemStack.loadItemStackFromNBT(t.getCompoundTag(PENDING));
             if (made != null) tip.add(EchoText.t("nexus.carries_pending", made.stackSize, made.getDisplayName()));
         }
+        if (t.hasKey(CAMPUS, 10)) {
+            int[] at = t.getCompoundTag(CAMPUS)
+                .getIntArray("Pos");
+            if (at.length == 3) tip.add(EchoText.t("nexus.carries_campus", at[0] + ", " + at[1] + ", " + at[2]));
+        }
     }
 
     /** A core that carries something shimmers, so it is not mistaken for a new one. */
@@ -385,6 +428,6 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     @SideOnly(Side.CLIENT)
     public boolean hasEffect(ItemStack stack, int pass) {
         NBTTagCompound t = stack.getTagCompound();
-        return t != null && (t.hasKey(CREDIT) || t.hasKey(PENDING)) || super.hasEffect(stack, pass);
+        return t != null && (t.hasKey(CREDIT) || t.hasKey(PENDING) || t.hasKey(CAMPUS)) || super.hasEffect(stack, pass);
     }
 }

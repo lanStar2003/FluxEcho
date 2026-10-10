@@ -31,6 +31,8 @@ class TerrainRuleTest {
                 case "natural" -> p.natural = true;
                 case "gtOre" -> p.gtOre = true;
                 case "ours" -> p.ours = true;
+                case "port" -> p.port = true;
+                case "loose" -> p.loose = true;
                 case "oursInOtherStructure" -> p.oursInOtherStructure = true;
                 case "otherNexusArea" -> p.otherNexusArea = true;
                 case "crafted" -> p.crafted = true;
@@ -133,6 +135,8 @@ class TerrainRuleTest {
             "natural",
             "gtOre",
             "ours",
+            "port",
+            "loose",
             "oursInOtherStructure",
             "otherNexusArea",
             "crafted");
@@ -140,6 +144,7 @@ class TerrainRuleTest {
         assertEquals(Verdict.BLOCKED, TerrainRule.forBuild(p), "a cleared probe is an unknown solid block");
         assertFalse(p.air || p.replaceable || p.target || p.fluid || p.lava || p.hasTile || p.unbreakable);
         assertFalse(p.natural || p.gtOre || p.ours || p.oursInOtherStructure || p.otherNexusArea || p.crafted);
+        assertFalse(p.port || p.loose);
     }
 
     @Test
@@ -164,11 +169,138 @@ class TerrainRuleTest {
 
         n = new Nature();
         n.rock = true;
-        assertTrue(TerrainRule.natural(n), "GT granite or another mod's plain rock");
+        n.rawGtStone = true;
+        assertTrue(TerrainRule.natural(n), "GT's raw granite");
+
+        n = new Nature();
+        n.rock = true;
+        assertFalse(TerrainRule.natural(n), "another mod's plain rock: nothing says it was generated");
 
         n = new Nature();
         n.replaceable = true;
         assertTrue(TerrainRule.natural(n), "a snow layer or water");
+    }
+
+    /** A whole, uncrafted rock cube, as the server fills it for the block named. */
+    private static Nature rock(String registryName, int meta, boolean mesa, String className) {
+        Nature n = new Nature();
+        n.rock = true;
+        n.naturalRock = TerrainRule.naturalRock(registryName, meta);
+        n.mesaClay = TerrainRule.mesaClay(registryName, mesa);
+        n.rawGtStone = TerrainRule.rawGtStone(className, meta);
+        return n;
+    }
+
+    @Test
+    void onlyRockKnownToBeGeneratedIsNatural() {
+        String gt = "gregtech.common.blocks.";
+        // what the world generates
+        assertTrue(TerrainRule.natural(rock("minecraft:netherrack", 0, false, "")));
+        assertTrue(TerrainRule.natural(rock("minecraft:end_stone", 0, false, "")));
+        assertTrue(TerrainRule.natural(rock("minecraft:sandstone", 0, false, "")), "plain sandstone");
+        assertTrue(TerrainRule.natural(rock("minecraft:stone", 0, false, "")));
+        assertTrue(TerrainRule.natural(rock("gregtech:gt.blockgranites", 0, false, gt + "BlockGranites")));
+        assertTrue(TerrainRule.natural(rock("gregtech:gt.blockgranites", 8, false, gt + "BlockGranites")), "red");
+        assertTrue(TerrainRule.natural(rock("gregtech:gt.blockstones", 0, false, gt + "BlockStones")), "marble");
+        assertTrue(TerrainRule.natural(rock("gregtech:gt.blockstones", 8, false, gt + "BlockStones")), "basalt");
+        assertTrue(TerrainRule.natural(rock("minecraft:hardened_clay", 0, true, "")), "a mesa's clay");
+        assertTrue(TerrainRule.natural(rock("minecraft:stained_hardened_clay", 1, true, "")), "a mesa's bands");
+
+        // what a player builds with
+        assertFalse(
+            TerrainRule.natural(rock("gregtech:gt.blockconcretes", 0, false, gt + "BlockConcretes")),
+            "concrete");
+        assertFalse(TerrainRule.natural(rock("gregtech:gt.blockconcretes", 8, false, gt + "BlockConcretes")));
+        assertFalse(TerrainRule.natural(rock("gregtech:gt.blockgranites", 3, false, gt + "BlockGranites")), "bricks");
+        assertFalse(TerrainRule.natural(rock("minecraft:quartz_block", 0, false, "")), "quartz");
+        assertFalse(TerrainRule.natural(rock("minecraft:obsidian", 0, false, "")), "a nether portal's frame");
+        assertFalse(TerrainRule.natural(rock("minecraft:sandstone", 2, false, "")), "smooth sandstone");
+        assertFalse(TerrainRule.natural(rock("minecraft:sandstone", 1, false, "")), "chiselled sandstone");
+        assertFalse(TerrainRule.natural(rock("minecraft:hardened_clay", 0, false, "")), "clay baked by a player");
+        assertFalse(TerrainRule.natural(rock("minecraft:stained_hardened_clay", 4, false, "")));
+        assertFalse(TerrainRule.natural(rock("minecraft:double_stone_slab", 0, false, "")), "a double slab");
+        assertFalse(TerrainRule.natural(rock("Thaumcraft:blockCosmeticSolid", 0, false, "")), "arcane stone");
+        assertFalse(TerrainRule.natural(rock("Botania:livingrock", 0, false, "")), "livingrock");
+        assertFalse(TerrainRule.natural(rock("chisel:marble", 0, false, "")), "another mod's stone");
+
+        // an ore of the ore dictionary is natural; the config lists still decide first
+        Nature ore = rock("Thaumcraft:blockCustomOre", 0, false, "");
+        ore.ore = true;
+        assertTrue(TerrainRule.natural(ore), "cinnabar ore");
+        Nature listed = rock("chisel:marble", 0, false, "");
+        listed.clearable = true;
+        assertTrue(TerrainRule.natural(listed), "a stone the player lists as clearable");
+        Nature granite = rock("gregtech:gt.blockgranites", 0, false, gt + "BlockGranites");
+        granite.blocked = true;
+        assertFalse(TerrainRule.natural(granite), "a stone the player lists as blocked");
+        granite = rock("gregtech:gt.blockgranites", 0, false, gt + "BlockGranites");
+        granite.shaped = true;
+        assertFalse(TerrainRule.natural(granite), "a shaped block is never natural rock");
+
+        // and a block the builder does not take is blocked, never cleared
+        Probe quartz = new Probe();
+        quartz.natural = TerrainRule.natural(rock("minecraft:quartz_block", 0, false, ""));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(quartz));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forBuild(quartz));
+    }
+
+    @Test
+    void rockNames() {
+        assertTrue(TerrainRule.naturalRock("minecraft:stone", 0));
+        assertFalse(TerrainRule.naturalRock("minecraft:stonebrick", 0));
+        assertFalse(TerrainRule.naturalRock(null, 0));
+        assertFalse(TerrainRule.mesaClay("minecraft:hardened_clay", false));
+        assertFalse(TerrainRule.mesaClay("minecraft:clay", true), "soft clay is judged by its material");
+        assertTrue(TerrainRule.rawGtStone(TerrainRule.GT_GRANITES, 0));
+        assertFalse(TerrainRule.rawGtStone(TerrainRule.GT_GRANITES, 7), "smooth granite");
+        assertFalse(TerrainRule.rawGtStone("gregtech.common.blocks.BlockConcretes", 0));
+        assertFalse(TerrainRule.rawGtStone("gregtech.common.blocks.BlockStonesAbstract", 0));
+        assertFalse(TerrainRule.rawGtStone(null, 0));
+    }
+
+    /** A probe of one of our blocks: a frame, deck or fitting block, or with {@code port} our supply port. */
+    private static Probe ours(boolean port, boolean loose) {
+        Probe p = new Probe();
+        if (port) {
+            p.port = true;
+            p.hasTile = true;
+        } else p.ours = true;
+        p.loose = loose;
+        return p;
+    }
+
+    @Test
+    void aModuleJobTakesOurLeftoverBlocks() {
+        // a 0.9.2 hall's frame left in an Archive's box after its core was broken
+        assertEquals(Verdict.REPLACE, TerrainRule.forClear(ours(false, true), true), "taken away and credited");
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(ours(false, true), false), "never by the nexus's jobs");
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(ours(false, true)));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(ours(false, false), true), "a formed structure's reach");
+        // the supply port has a tile entity: a module job takes it only when it is loose
+        assertEquals(Verdict.REPLACE, TerrainRule.forClear(ours(true, true), true));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(ours(true, false), true));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(ours(true, true), false));
+        assertEquals(Verdict.REPLACE, TerrainRule.forBuild(ours(true, true), true), "a step's cell");
+        assertEquals(Verdict.BLOCKED, TerrainRule.forBuild(ours(true, true), false));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forBuild(ours(true, false), true));
+        // building over our frame is a replacement for every job, as before
+        assertEquals(Verdict.REPLACE, TerrainRule.forBuild(ours(false, false), false));
+        // another campus, or another structure's box, keeps them
+        Probe other = ours(false, true);
+        other.otherNexusArea = true;
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(other, true));
+        other = ours(true, true);
+        other.oursInOtherStructure = true;
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(other, true));
+        assertEquals(Verdict.BLOCKED, TerrainRule.forBuild(other, true));
+        // natural terrain and everything else is judged as for any job
+        Probe stone = new Probe();
+        stone.natural = true;
+        assertEquals(Verdict.CLEAR, TerrainRule.forClear(stone, true));
+        Probe chest = new Probe();
+        chest.hasTile = true;
+        chest.loose = true;
+        assertEquals(Verdict.BLOCKED, TerrainRule.forClear(chest, true), "loose means nothing for a block not ours");
     }
 
     @Test

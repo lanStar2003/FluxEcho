@@ -5,6 +5,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.campus.BuildJob;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.ClientLedger;
 import com.fluxecho.logic.ResearchTree;
@@ -284,6 +285,11 @@ public class TerminalScreen extends ControlCenterScreen {
             bold(c, fit(c, cards[i][1], cw - 16), cx + 8, cy + 19, col);
         }
         float my = y + 2 * (chh + 6) + 4;
+        NBTTagCompound build = term.getCompoundTag("build");
+        if (build.hasKey("k")) {
+            build(c, build, x, my, w);
+            my += ROW + 4;
+        }
         NBTTagList mods = term.getTagList("modules", 10);
         int open = term.getInteger("open");
         text(
@@ -307,6 +313,26 @@ public class TerminalScreen extends ControlCenterScreen {
                 Theme.LABEL);
             textRight(c, tr("fluxecho.dock." + m.getString("dock")), x + w - 8, ry + 4, Theme.LABEL2);
         }
+    }
+
+    /**
+     * The campus's construction in one row ({@link TerminalView}'s {@code build}): the job's name as the nexus GUI
+     * names it, where it is (its pause reason while paused, else its state) and the steps done of its plan.
+     */
+    private void build(Canvas c, NBTTagCompound b, float x, float y, float w) {
+        String st = b.getString("st"), ps = b.getString("ps");
+        boolean paused = "paused".equals(st) && !ps.isEmpty() && !"none".equals(ps);
+        String where = paused ? tr("fluxecho.build.pause." + ps) : tr("fluxecho.build.state." + st);
+        int col = "building".equals(st) || "done".equals(st) ? Theme.GREEN
+            : paused || "projecting".equals(st) ? Theme.ORANGE : Theme.LABEL2;
+        String name = BuildJob.name(b.getString("k"), b.getString("pk"))
+            .getUnformattedText();
+        String right = where + "  " + b.getInteger("done") + " / " + b.getInteger("total");
+        card(c, x, y, w, ROW - 2);
+        c.circle(x + 8, y + 8, 3, col);
+        float rw = c.width(right, 1);
+        text(c, fit(c, tr("fluxecho.build.gui.tab_build") + "  " + name, w - rw - 32), x + 16, y + 4, Theme.LABEL);
+        textRight(c, right, x + w - 8, y + 4, col);
     }
 
     private static String si(String decimal) {

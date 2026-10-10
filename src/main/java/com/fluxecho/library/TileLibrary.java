@@ -712,20 +712,33 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     // ---- shapes and the vault
 
     /**
-     * Formed, or formed as another shape: an Archive forming for the first time takes in the team's vault, a hall puts
-     * the books it has no shelf for into the vault.
+     * Formed, or formed as another shape: a hall first puts the books it has no shelf for into the vault; then a
+     * library forming for the first time (either shape: a hall's core broken and placed again comes back as a new
+     * tile) takes the team's vault in, as many as its shape has free places for, once.
      */
     @Override
     protected void formedChanged(boolean now) {
         super.formedChanged(now);
         if (!now) return;
-        if (isArchive()) {
-            if (refilled) return;
-            refilled = true;
-            markDirty();
-            int n = LibraryVault.takeInto(worldObj, team(), samples, capacity());
-            if (n > 0) announce("refilled", n);
-        } else stowOverflow();
+        if (!isArchive()) stowOverflow();
+        refillOnce();
+    }
+
+    /**
+     * The one-time refill from the team's vault when the library first forms: into the free places of the shape it
+     * stands as ({@link #capacity}). Later books come back with the GUI's 取回 ({@link #refill}).
+     */
+    void refillOnce() {
+        if (refilled) return;
+        refilled = true;
+        markDirty();
+        int n = takeFromVault(capacity());
+        if (n > 0) announce("refilled", n);
+    }
+
+    /** Moves books from the team's vault into the free places below {@code capacity}; returns how many came. */
+    int takeFromVault(int capacity) {
+        return LibraryVault.takeInto(worldObj, team(), samples, capacity);
     }
 
     @Override
@@ -802,7 +815,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
             return -1;
         }
         int left = vaultCount();
-        int n = LibraryVault.takeInto(worldObj, team(), samples, capacity());
+        int n = takeFromVault(capacity());
         String key = n > 0 ? "refilled" : left > 0 ? "no_room" : "empty";
         p.addChatMessage(new ChatComponentTranslation("fluxecho.library.vault." + key, n));
         return n;

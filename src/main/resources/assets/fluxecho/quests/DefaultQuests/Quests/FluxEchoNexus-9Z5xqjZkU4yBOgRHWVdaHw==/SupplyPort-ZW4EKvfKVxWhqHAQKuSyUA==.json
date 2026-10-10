@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -487390879970799143,
+      "questIDLow:4": -7985830019142941520
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "中枢自己建的时候，材料可以交给补给口。建立中枢时，广场上中枢的右前方会免费放一个，连着这座中枢。\n\n• 漏斗、管道、AE 的输出总线都能往里送：只收正在建的任务还缺的，没被收下的留在槽里，可以抽走，管道不会堵；\n• 只给已经按了「开始」的建造送料；开始之前它只收模块的核心（比如回响书库核心）；\n• 拿着东西右键交进去，潜行空手右键把背包里还缺的都交进去，空手右键看还缺什么。\n\n[note]再要就自己合成：7 块钢板、1 块通量结晶、1 个漏斗。放在中枢 128 格内，它连到最近的、你团队的中枢。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:supply_port"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 0,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d补给口",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 7308783827861264149,
+  "questIDLow:4": -6798060422774345136,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}

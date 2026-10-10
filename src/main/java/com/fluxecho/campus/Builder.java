@@ -259,7 +259,7 @@ public final class Builder {
                 job.unloaded++;
                 continue;
             }
-            TerrainRule.Verdict v = verdict(s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
+            TerrainRule.Verdict v = verdict(job, s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
             if (v == TerrainRule.Verdict.ALREADY) markDone(job, i);
             else if (v == TerrainRule.Verdict.BLOCKED) job.addBlocked(s.x, s.y, s.z);
             else if (v == TerrainRule.Verdict.CLEAR) job.natural++;
@@ -307,8 +307,8 @@ public final class Builder {
                     continue;
                 }
                 units -= LOOK;
-                TerrainRule.Verdict v = TerrainRule.forClear(Terrain.probe(w, c.x, y, c.z, -1, campus));
-                if (v == TerrainRule.Verdict.CLEAR) job.natural++;
+                TerrainRule.Verdict v = clearVerdict(job, Terrain.probe(w, c.x, y, c.z, -1, campus));
+                if (v == TerrainRule.Verdict.CLEAR || v == TerrainRule.Verdict.REPLACE) job.natural++;
                 else if (v == TerrainRule.Verdict.BLOCKED) job.addBlocked(c.x, y, c.z);
             }
             if (c.grade) {
@@ -447,7 +447,7 @@ public final class Builder {
                 job.done.clear(i);
             } else if (job.skipped.get(i) && !job.flying.get(i)) {
                 if (PartBlocks.block(s.part) == null) continue;
-                TerrainRule.Verdict v = verdict(s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
+                TerrainRule.Verdict v = verdict(job, s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
                 if (v == TerrainRule.Verdict.BLOCKED) continue;
                 job.skipped.clear(i);
                 changed = true;
@@ -574,8 +574,7 @@ public final class Builder {
             Block b = w.getBlock(c.x, y, c.z);
             if (b.isAir(w, c.x, y, c.z) || !b.getMaterial()
                 .blocksMovement()) continue;
-            if (survey && TerrainRule.forClear(Terrain.probe(w, c.x, y, c.z, -1, campus)) == TerrainRule.Verdict.CLEAR)
-                continue;
+            if (survey && taken(clearVerdict(job, Terrain.probe(w, c.x, y, c.z, -1, campus)))) continue;
             return NO_FILL;
         }
         int bottom = NO_FILL;
@@ -602,17 +601,21 @@ public final class Builder {
         return b.isReplaceable(w, x, y, z) && b.getMaterial() != Material.lava;
     }
 
-    /** Clears one cell of a column: 1 done (or nothing to do), -1 stop for this tick. */
+    /**
+     * Clears one cell of a column: 1 done (or nothing to do), -1 stop for this tick. A loose block of ours that a
+     * module job takes away ({@link TerrainRule.Verdict#REPLACE}) is credited to the ledger as its part.
+     */
     private int clearCell(BuildJob job, int x, int y, int z, long now, Outcome o) {
         World w = campus.world();
         TerrainRule.Probe p = Terrain.probe(w, x, y, z, -1, campus);
-        TerrainRule.Verdict v = TerrainRule.forClear(p);
+        TerrainRule.Verdict v = clearVerdict(job, p);
         if (v == TerrainRule.Verdict.ALREADY) return 1;
         if (v == TerrainRule.Verdict.BLOCKED) {
             job.addBlocked(x, y, z);
             return 1;
         }
-        List<ItemStack> keep = kept(w, x, y, z);
+        boolean ours = v == TerrainRule.Verdict.REPLACE;
+        List<ItemStack> keep = ours ? null : kept(w, x, y, z);
         if (keep != null && !campus.spoilsFit(keep)) {
             // the spoils are full: wait here until a member takes them out (取出) instead of losing the drops
             campus.spoilsFull();
@@ -628,7 +631,7 @@ public final class Builder {
             return -1;
         }
         pace.tryClear();
-        if (breakCell(job, x, y, z, false, keep, now)) {
+        if (breakCell(job, x, y, z, ours, keep, now)) {
             job.cleared++;
             job.touched = true;
             job.unblock(x, y, z);
@@ -721,7 +724,7 @@ public final class Builder {
                 i++;
                 continue;
             }
-            TerrainRule.Verdict v = verdict(st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
+            TerrainRule.Verdict v = verdict(job, st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
             switch (v) {
                 case ALREADY:
                     if (free < FREE_PER_TICK) {
@@ -743,7 +746,7 @@ public final class Builder {
                         o.budget = true;
                         return;
                     }
-                    int r = launch(job, plan, new int[] { i }, v != TerrainRule.Verdict.PLACE, now);
+                    int r = launch(job, plan, new int[] { i }, new boolean[] { v != TerrainRule.Verdict.PLACE }, now);
                     if (r == LAUNCHED) {
                         pace.tryStep();
                         o.progress++;
@@ -768,7 +771,8 @@ public final class Builder {
     private int group(BuildJob job, BuildPlan.Plan plan, int from, int to, long now, Outcome o) {
         World w = campus.world();
         List<Integer> todo = new ArrayList<>();
-        boolean flying = false, blocked = false, needsBreak = false;
+        List<Boolean> breaks = new ArrayList<>();
+        boolean flying = false, blocked = false;
         for (int i = from; i < to; i++) {
             if (job.done.get(i) || job.skipped.get(i)) continue;
             if (job.flying.get(i)) {
@@ -780,7 +784,7 @@ public final class Builder {
                 o.unloaded = true;
                 return 0;
             }
-            TerrainRule.Verdict v = verdict(st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
+            TerrainRule.Verdict v = verdict(job, st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
             if (v == TerrainRule.Verdict.ALREADY) {
                 markDone(job, i);
                 job.unblock(st.x, st.y, st.z);
@@ -793,7 +797,8 @@ public final class Builder {
                 } else blocked = true;
             } else {
                 todo.add(i);
-                if (v != TerrainRule.Verdict.PLACE) needsBreak = true;
+                // only the cells that must break something first pay for the break
+                breaks.add(v != TerrainRule.Verdict.PLACE);
             }
         }
         if (blocked) {
@@ -807,7 +812,11 @@ public final class Builder {
             return -1;
         }
         int[] steps = new int[todo.size()];
-        for (int k = 0; k < steps.length; k++) steps[k] = todo.get(k);
+        boolean[] needsBreak = new boolean[steps.length];
+        for (int k = 0; k < steps.length; k++) {
+            steps[k] = todo.get(k);
+            needsBreak[k] = breaks.get(k);
+        }
         int r = launch(job, plan, steps, needsBreak, now);
         if (r == LAUNCHED) {
             pace.tryGroup(steps.length);
@@ -824,8 +833,11 @@ public final class Builder {
 
     private static final int LAUNCHED = 0, NO_MATERIALS = 1, NO_POWER = 2, SKIPPED = 3;
 
-    /** Pays for the steps (all or nothing) and sends them on their way. */
-    private int launch(BuildJob job, BuildPlan.Plan plan, int[] steps, boolean needsBreak, long now) {
+    /**
+     * Pays for the steps (all or nothing) and sends them on their way; {@code needsBreak[k]} says whether step
+     * {@code k} must break a block first (it pays the clearing EU on top, {@link #stepEu}).
+     */
+    private int launch(BuildJob job, BuildPlan.Plan plan, int[] steps, boolean[] needsBreak, long now) {
         double scale = Config.buildCostScale;
         boolean[] used = new boolean[steps.length], charged = new boolean[steps.length];
         long eu = 0;
@@ -837,11 +849,8 @@ public final class Builder {
                 refundAll(plan, steps, used, charged, k);
                 return SKIPPED;
             }
-            if (st.kind == BuildPlan.AIR || st.part == Parts.GRASS || st.part == Parts.DIRT) {
-                eu += Config.buildEuPerClear;
-                continue;
-            }
-            eu += Config.buildEuPerBlock + (needsBreak ? Config.buildEuPerClear : 0);
+            eu += stepEu(st.kind, st.part, needsBreak[k], Config.buildEuPerBlock, Config.buildEuPerClear);
+            if (st.kind == BuildPlan.AIR || st.part == Parts.GRASS || st.part == Parts.DIRT) continue;
             if (campus.ledger()
                 .charge(st.part, scale)) {
                 charged[k] = true;
@@ -948,7 +957,7 @@ public final class Builder {
 
     private int landOne(BuildJob job, BuildPlan.Step st, BuildJob.Flight f, long now) {
         World w = campus.world();
-        TerrainRule.Verdict v = verdict(st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
+        TerrainRule.Verdict v = verdict(job, st, Terrain.probe(w, st.x, st.y, st.z, st.part, campus));
         if (v == TerrainRule.Verdict.ALREADY) {
             // someone put the right block there meanwhile: the launch's credit goes back
             job.unblock(st.x, st.y, st.z);
@@ -1160,13 +1169,42 @@ public final class Builder {
 
     /**
      * The verdict for a step's cell: {@link TerrainRule#forBuild}, or for a cell that must become air the clear rules.
+     * A module job's ({@link BuildJob#module}) also takes away a loose supply port of ours.
      */
-    static TerrainRule.Verdict verdict(BuildPlan.Step s, TerrainRule.Probe p) {
-        if (s.kind != BuildPlan.AIR) return TerrainRule.forBuild(p);
+    static TerrainRule.Verdict verdict(BuildJob job, BuildPlan.Step s, TerrainRule.Probe p) {
+        return verdict(s, p, job.module() != null);
+    }
+
+    /** {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} with the job's kind given. */
+    static TerrainRule.Verdict verdict(BuildPlan.Step s, TerrainRule.Probe p, boolean module) {
+        if (s.kind != BuildPlan.AIR) return TerrainRule.forBuild(p, module);
         if (p.air) return TerrainRule.Verdict.ALREADY;
         if (p.replaceable && !p.lava) return TerrainRule.Verdict.CLEAR;
-        TerrainRule.Verdict v = TerrainRule.forBuild(p);
+        TerrainRule.Verdict v = TerrainRule.forBuild(p, module);
         return v == TerrainRule.Verdict.PLACE ? TerrainRule.Verdict.CLEAR : v;
+    }
+
+    /**
+     * The verdict for a cell of a clear column ({@link TerrainRule#forClear}): a module job ({@link BuildJob#module};
+     * never one of the nexus's own jobs) also takes its loose blocks of ours away, credited as their parts.
+     */
+    static TerrainRule.Verdict clearVerdict(BuildJob job, TerrainRule.Probe p) {
+        return TerrainRule.forClear(p, job.module() != null);
+    }
+
+    /** Whether a clear verdict takes the cell's block away (natural terrain, an ore, or a loose block of ours). */
+    private static boolean taken(TerrainRule.Verdict v) {
+        return v == TerrainRule.Verdict.CLEAR || v == TerrainRule.Verdict.REPLACE;
+    }
+
+    /**
+     * The EU one launched step costs: a cell that is only cleared, or filled with grass or dirt, the clearing EU; any
+     * other block the placing EU, and the clearing EU on top only when that cell has something to break first (a
+     * bookcase launched whole pays the clearing EU for the cells that need it, not for all fifteen).
+     */
+    static long stepEu(int kind, int part, boolean breaks, long euPerBlock, long euPerClear) {
+        if (kind == BuildPlan.AIR || part == Parts.GRASS || part == Parts.DIRT) return euPerClear;
+        return euPerBlock + (breaks ? euPerClear : 0);
     }
 
     private void markDone(BuildJob job, int i) {
