@@ -160,6 +160,18 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         markDirty();
     }
 
+    /**
+     * Sets the owner and the front without a player at hand: the campus builder commissions a module it raised for
+     * the nexus's owner this way. A null owner leaves the tile without one.
+     */
+    public void place(UUID owner, String ownerName, int front) {
+        this.owner = owner;
+        this.ownerName = ownerName == null ? "" : ownerName;
+        facing = front >= 2 && front <= 5 ? front : 2;
+        recheck = 1;
+        markDirty();
+    }
+
     /** The block a cell of the blueprint is at: its own position math, for drawing. */
     public int[] cellPos(int a, int b, int c) {
         ForgeDirection f = front();

@@ -3,6 +3,7 @@ package com.fluxecho.nexus;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,12 +20,17 @@ import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.ChatComponentTranslation;
 
 import com.fluxecho.Config;
+import com.fluxecho.campus.Campus;
+import com.fluxecho.campus.ModuleSpec;
+import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.campus.client.BuildClient;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.Owners;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.frame.FrameModule;
 import com.fluxecho.logic.Blueprint;
+import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
@@ -47,6 +53,8 @@ import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
 public class TileNexus extends TileMultiblock implements ISidedInventory, ITileWithModularUI {
 
     public static final int INPUTS = 6, OUTPUTS = 2, PHASE = 1;
+    /** The most modules an active campus docks: every site but the gate's. */
+    public static final int MAX_CAMPUS_MODULES = 7;
     /** What the client copy shows is going on. */
     public static final int POWERED = 1, RESEARCHING = 2, MANIFESTING = 4;
 
@@ -60,6 +68,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         }
     };
 
+    /** The campus round it: the construction jobs, their ledger, the hall sites (0.10.0). */
+    private final Campus campus = new Campus(this);
     private final Set<UUID> bound = new LinkedHashSet<>();
     /** Whether teams other than the owner's may bind their terminals to it. */
     private boolean openBinding;
@@ -77,6 +87,10 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     private Set<String> unlocked = Collections.emptySet();
     private int unlockedAge = 1000;
     private final List<TileModule> docked = new ArrayList<>();
+    /**
+     * Whether {@link #refreshDock} ran since the nexus loaded or last fell apart (before, {@link #docked} is empty).
+     */
+    private boolean dockKnown;
     private int activity, lastSent = -1;
 
     // the client's copy (and what the GUI syncs)
@@ -90,6 +104,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     public long clientUpkeep;
     /** Slot -> module colour for the docked ones; drawn as bridges. */
     public int[] clientModuleColor = new int[RingSlots.SLOTS];
+    /**
+     * The client's copy of the campus (its job, state, projection inputs), from the description packet; replaced
+     * wholesale on every update so the renderers never see it half-read.
+     */
+    public Campus.View clientCampus = new Campus.View();
 
     // what an open GUI shows that only the server knows (NexusGui syncs them)
     public String guiStatus = "unformed", guiResearch = "", guiManifest = "", guiBalance = "0", guiUnlocked = "";
@@ -201,6 +220,17 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     @Override
     protected String descriptionKey() {
         return "nexus.structure";
+    }
+
+    /** Its campus: the builder, its jobs and ledger. */
+    public Campus campus() {
+        return campus;
+    }
+
+    /** The campus changed something the client shows: save and send the description again. */
+    public void syncCampus() {
+        markDirty();
+        sync();
     }
 
     /** The middle of its base: x, y (the base's level), z. */
@@ -345,6 +375,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     @Override
     protected void serverTick() {
         long t = worldObj.getTotalWorldTime();
+        // the campus first, formed or not: the establish job raises the nexus round its own core
+        if (Config.nexusEnabled && Config.campusEnabled) campus.tick();
         if (!formed || !Config.nexusEnabled) {
             status = formed ? "disabled" : "unformed";
             powered = false;
@@ -490,43 +522,107 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         return true;
     }
 
-    /** Which modules on its ring it takes: its teams' formed modules on a slot, as many as its phase opens. */
+    /**
+     * Which modules it takes: its teams' formed modules, as many as it has room for ({@link #openSlots}). A module is
+     * found, in this order of precedence, (1) on the hall site the campus recorded for it, (2) standing on a hall site
+     * of an active campus (its centre within 3 blocks of where the site puts a module of its kind, at most one block
+     * up or down, its front towards the nexus): it is adopted and the site recorded, or (3) on a slot of the 0.9.2
+     * inner ring. A module on a site docks under the site's number, which points the same way as the ring slot of that
+     * number. Docked and rejected modules get a lease of 220 ticks.
+     */
     void refreshDock(long now) {
         int[] c = centre();
         int fx = front().offsetX, fz = front().offsetZ;
         Set<UUID> teams = teams();
-        int open = has(Research.INNER_RING) ? RingSlots.open(PHASE) : 0;
+        int open = openSlots();
+        boolean active = campus.active();
         List<TileModule> found = new ArrayList<>();
         List<Integer> slots = new ArrayList<>();
+        List<Integer> ranks = new ArrayList<>();
+        Set<TileModule> seen = new HashSet<>();
+        // (1) the modules on recorded hall sites
+        for (int site = 0; site < RingSlots.SLOTS; site++) {
+            int[] at = campus.siteController(site);
+            if (at == null || !worldObj.blockExists(at[0], at[1], at[2])) continue;
+            if (!(worldObj.getTileEntity(at[0], at[1], at[2]) instanceof TileModule m) || m.isInvalid() || !m.formed())
+                continue;
+            seen.add(m);
+            if (!teams.contains(m.team())) {
+                m.reject(this, site, "other_team", now + 220);
+                continue;
+            }
+            found.add(m);
+            slots.add(site);
+            ranks.add(0);
+        }
         for (TileModule m : NexusRegistry.modules(worldObj.provider.dimensionId)) {
-            if (!m.formed() || m.isInvalid()) continue;
+            if (!m.formed() || m.isInvalid() || m.getWorldObj() != worldObj || seen.contains(m)) continue;
             int[] mc = m.centre();
-            int slot = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz);
+            int slot, rank;
+            // (2) a module standing on a hall site of an active campus is adopted; (3) else the 0.9.2 ring
+            int site = active ? hallSite(m, mc, c, fx, fz) : -1;
+            if (site >= 0) {
+                slot = site;
+                rank = 1;
+            } else {
+                slot = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz);
+                rank = 2;
+            }
             if (slot < 0) continue;
             if (!teams.contains(m.team())) {
                 m.reject(this, slot, "other_team", now + 220);
                 continue;
             }
+            if (rank == 1) campus.recordSite(site, m.xCoord, m.yCoord, m.zCoord);
             found.add(m);
             slots.add(slot);
+            ranks.add(rank);
         }
         docked.clear();
         boolean[] taken = new boolean[RingSlots.SLOTS];
-        for (int k = 0; k < RingSlots.SLOTS; k++) for (int i = 0; i < found.size(); i++) {
-            if (slots.get(i) != k) continue;
-            TileModule m = found.get(i);
-            if (taken[k]) m.reject(this, k, "slot_taken", now + 220);
-            else if (docked.size() >= open) m.reject(this, k, open == 0 ? "ring_closed" : "ring_full", now + 220);
-            else {
-                taken[k] = true;
-                docked.add(m);
-                m.dock(this, k, now + 220);
+        for (int rank = 0; rank <= 2; rank++) for (int k = 0; k < RingSlots.SLOTS; k++) {
+            for (int i = 0; i < found.size(); i++) {
+                if (ranks.get(i) != rank || slots.get(i) != k) continue;
+                TileModule m = found.get(i);
+                if (taken[k]) m.reject(this, k, "slot_taken", now + 220);
+                else if (docked.size() >= open) m.reject(this, k, open == 0 ? "ring_closed" : "ring_full", now + 220);
+                else {
+                    taken[k] = true;
+                    docked.add(m);
+                    m.dock(this, k, now + 220);
+                }
             }
         }
+        dockKnown = true;
+    }
+
+    /**
+     * The hall site a module stands on, or -1: its module kind has a campus spec that builds on that site, its centre
+     * is within 3 blocks of the site's module centre for the kind's depth (campus frame), at most one block up or down
+     * from the nexus's base, and its front points back along the site's axis towards the nexus.
+     */
+    private static int hallSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        if (spec == null || Math.abs(mc[1] - c[1]) > 1) return -1;
+        int[] local = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
+        int site = CampusPlan.hallSiteAt(local[0], local[1], spec.depth);
+        if (site < 0 || !spec.hasSite(site)) return -1;
+        int[] axis = CampusPlan.siteAxis(site);
+        int[] facing = CampusPlan.toLocal(m.front().offsetX, m.front().offsetZ, fx, fz);
+        return facing[0] == -axis[0] && facing[1] == -axis[1] ? site : -1;
     }
 
     private void undockAll() {
         docked.clear();
+        dockKnown = false;
+    }
+
+    /**
+     * Whether the docked modules are known: the nexus looked for them since it loaded or formed again. Until then
+     * {@link #docked} is empty although modules may stand docked, so nothing should be decided from it.
+     */
+    public boolean dockKnown() {
+        return dockKnown;
     }
 
     public List<TileModule> docked() {
@@ -535,8 +631,13 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         return out;
     }
 
+    /**
+     * How many modules it can dock: the slots its phase opens once its teams have the inner ring, and on an active
+     * campus at most seven (every site but the gate's).
+     */
     public int openSlots() {
-        return has(Research.INNER_RING) ? RingSlots.open(PHASE) : 0;
+        int open = has(Research.INNER_RING) ? RingSlots.open(PHASE) : 0;
+        return campus.active() ? Math.min(open, MAX_CAMPUS_MODULES) : open;
     }
 
     public boolean powered() {
@@ -640,6 +741,10 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         t.setBoolean("H", hologram);
         t.setInteger("C", (int) Math.round(computeRate() * 10));
         t.setLong("U", formed ? upkeep() : 0);
+        // the campus: only what changes on its state transitions; the progress numbers go over NexusNet
+        NBTTagCompound cp = new NBTTagCompound();
+        campus.writeSync(cp);
+        t.setTag("Cp", cp);
     }
 
     @Override
@@ -655,6 +760,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         clientHologram = t.getBoolean("H");
         clientCompute10 = t.getInteger("C");
         clientUpkeep = t.getLong("U");
+        Campus.View v = new Campus.View();
+        if (t.hasKey("Cp")) v.read(t.getCompoundTag("Cp"));
+        clientCampus = v;
+        // progress numbers sent before this transition are out of date now
+        if (worldObj != null) BuildClient.viewChanged(worldObj.provider.dimensionId, xCoord, yCoord, zCoord, v);
     }
 
     // ---- saving
@@ -675,6 +785,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         t.setInteger("ManifestMax", manifestMax);
         if (pending != null) t.setTag("Pending", pending.writeToNBT(new NBTTagCompound()));
         t.setBoolean("Holo", hologram);
+        campus.writeNBT(t);
     }
 
     @Override
@@ -701,6 +812,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         manifestMax = t.getInteger("ManifestMax");
         pending = t.hasKey("Pending") ? ItemStack.loadItemStackFromNBT(t.getCompoundTag("Pending")) : null;
         hologram = t.getBoolean("Holo");
+        campus.readNBT(t);
     }
 
     @Override

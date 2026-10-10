@@ -4,8 +4,9 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the textures of the campus builder (0.10.0): the deck tiles the nexus paves its campus and builds its facades
- * with, the fittings a shelf unit and a library interior are assembled from, and three extras for the shelf-unit look of
- * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint). Run from the repository root:
+ * with, the fittings a shelf unit and a library interior are assembled from, three extras for the shelf-unit look of
+ * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), and the supply
+ * port's faces. Run from the repository root:
  * {@code java tools/CampusTextures.java}.
  * <p>
  * The palette is the dark tech of the nexus: navy steel, blue-grey tiles, and light only in thin cyan lines. Every tile
@@ -67,6 +68,8 @@ public class CampusTextures {
         still("blocks/frame/shelf_niche", CampusTextures::shelfNiche);
         still("blocks/frame/shelf_board", CampusTextures::shelfBoard);
         still("blocks/frame/book_spine", CampusTextures::bookSpine);
+
+        supplyPort();
     }
 
     // ---- helpers (as in NexusTextures)
@@ -549,6 +552,64 @@ public class CampusTextures {
         if (y >= 6 && y <= 8) return y == 7 ? 0xD8D8D8 : 0xC4C4C4;
         int v = 0xB4 + (int) ((hash(0, y, 73) - 0.5) * 10);
         return v << 16 | v << 8 | v;
+    }
+
+    // ---- the supply port
+
+    /**
+     * The supply port ({@code blocks/supply_port/}): a navy steel crate banded like the fittings, an intake funnel on
+     * top ringed by a cyan lip, and on its front a recessed mouth with a cyan chevron pointing into it, so it reads
+     * from afar as the place things go in.
+     */
+    static void supplyPort() throws Exception {
+        still("blocks/supply_port/top", CampusTextures::portTop);
+        still("blocks/supply_port/side", CampusTextures::portSide);
+        still("blocks/supply_port/front", CampusTextures::portFront);
+    }
+
+    /** The crate's shell: a bevelled rim, a steel band at the top and the bottom, a rivet at each band's ends. */
+    static int portShell(int x, int y, int seed) {
+        if (x == 0 || y == 0) return STEEL_HI;
+        if (x == 15 || y == 15) return 0x10202E;
+        if ((x == 2 || x == 13) && (y == 1 || y == 14)) return 0x5A87A6;
+        if (y == 1 || y == 2) return y == 1 ? STEEL : mix(STEEL, NAVY, 0.4);
+        if (y == 13 || y == 14) return y == 14 ? STEEL_LO : mix(STEEL_LO, SHADOW, 0.35);
+        return grain(NAVY, x, y / 2, seed, 0.025);
+    }
+
+    /** The side: the shell with a lit seam running up its middle. */
+    static int portSide(int x, int y, int f) {
+        if (y >= 4 && y <= 11 && (x == 7 || x == 8)) return x == 7 ? CHANNEL : CYAN_DARK;
+        if (y >= 3 && y <= 12 && (x == 6 || x == 9)) return 0x132A3A;
+        return portShell(x, y, 41);
+    }
+
+    /** The top: a square funnel stepping down to a dark throat, its lip a thin cyan ring. */
+    static int portTop(int x, int y, int f) {
+        double d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+        if (d > 7) return x == 0 || y == 0 ? STEEL_HI : 0x10202E;
+        if (d > 6) return STEEL;
+        if (d > 5) return grain(NAVY, x, y, 43, 0.025);
+        if (d > 4) return mix(CYAN, LIT, 0.3);
+        if (d > 3) return STEEL_LO;
+        if (d > 2) return 0x132838;
+        if (d > 1) return 0x0B1824;
+        return SHADOW;
+    }
+
+    /** The front: the shell with a recessed mouth (shadowed above, lit below) and a chevron pointing into it. */
+    static int portFront(int x, int y, int f) {
+        if (x >= 3 && x <= 12 && y >= 3 && y <= 7) {
+            if (y == 3 || x == 3) return SHADOW;
+            if (y == 7 || x == 12) return STEEL_HI;
+            if (y == 4) return SHADOW;
+            if (y == 5) return CHANNEL;
+            return mix(CHANNEL, CYAN_DARK, 0.6);
+        }
+        int arm = y - 9;
+        if (arm >= 0 && arm <= 2 && (x == 7 - arm || x == 8 + arm)) return mix(CYAN, LIT, 0.4);
+        if (arm >= 0 && arm <= 2 && (x == 6 - arm || x == 9 + arm)) return CYAN_DARK;
+        return portShell(x, y, 47);
     }
 
     // ---- writing (as in NexusTextures)

@@ -1,12 +1,15 @@
 package com.fluxecho.nexus;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
+import com.fluxecho.campus.BuildJob;
+import com.fluxecho.campus.Campus;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.ResearchTree;
@@ -14,7 +17,7 @@ import com.fluxecho.research.Research;
 
 /**
  * What the flux terminal's FluxEcho pages show (blueprint 3.11), built on the server for the player: the team's
- * machines, and the nexus the terminal is bound to with its research.
+ * machines, and the nexus the terminal is bound to with its research and its campus's construction.
  */
 public final class TerminalView {
 
@@ -78,7 +81,7 @@ public final class TerminalView {
         t.setString("owner", n.ownerName());
         t.setBoolean("formed", n.formed());
         t.setBoolean("powered", n.powered());
-        t.setString("status", n.status());
+        t.setString("status", Directory.nexusStatus(n));
         t.setLong("upkeep", n.upkeep());
         t.setDouble("compute", n.computeRate());
         t.setString("research", n.research());
@@ -110,5 +113,37 @@ public final class TerminalView {
             mods.appendTag(r);
         }
         t.setTag("modules", mods);
+        t.setTag("build", build(n));
+    }
+
+    /**
+     * The campus's construction for the nexus page: {@code ac} whether the campus is active, and with a job {@code k}
+     * its key, {@code pk} its plan key (for {@code BuildJob.name}), {@code st} and {@code ps} its state and pause
+     * (lower
+     * case, as in the lang keys {@code fluxecho.build.state.} and {@code .pause.}), {@code sg} its stage, {@code done}
+     * the steps placed and {@code total} the steps of its plan.
+     */
+    static NBTTagCompound build(TileNexus n) {
+        NBTTagCompound b = new NBTTagCompound();
+        Campus c = n.campus();
+        b.setBoolean("ac", c.active());
+        BuildJob j = c.job();
+        if (j == null) return b;
+        b.setString("k", j.key());
+        b.setString("pk", j.planKey());
+        b.setString(
+            "st",
+            j.state()
+                .name()
+                .toLowerCase(Locale.ROOT));
+        b.setString(
+            "ps",
+            j.pause()
+                .name()
+                .toLowerCase(Locale.ROOT));
+        b.setInteger("sg", j.stage());
+        b.setInteger("done", c.placed());
+        b.setInteger("total", c.total());
+        return b;
     }
 }

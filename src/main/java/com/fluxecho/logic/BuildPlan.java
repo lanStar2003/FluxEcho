@@ -500,15 +500,15 @@ public final class BuildPlan {
      * + {@link #ARCHIVE_HEADROOM}, outward from the nexus.</li>
      * <li>FLOOR: {@link CampusPlan#siteFloor} and the interior soft floor (deck, a dashed lit spine on the axis from
      * z1 to z28), outward from the nexus.</li>
-     * <li>SHELL: the outer walls y1..y5 (panels, pilasters, glazing, the plinth course, the trumeau and the lintel)
-     * and every must-be-air door cell.</li>
+     * <li>SHELL: the foundations of the floor layer y0 first (they carry everything above them), then the outer walls
+     * y1..y5 (panels, pilasters, glazing, the plinth course, the trumeau and the lintel) and every must-be-air door
+     * cell.</li>
      * <li>DECK: everything at y6 (gallery slab, lit edge, landings, the walls' y6 band), the rails, and both spiral
      * stairs with their cores.</li>
      * <li>UPPER: the outer walls y7..y11.</li>
      * <li>ROOF: everything from y12 to y15.</li>
      * <li>FIT: the unit posts; then every shelf unit as one group of fifteen (three plinths, nine bodies, three
-     * crowns), in {@link LibraryUnits#UNITS} order; then the pedestals, the lecterns, the desk and the
-     * foundations.</li>
+     * crowns), in {@link LibraryUnits#UNITS} order; then the pedestals, the lecterns and the desk.</li>
      * <li>DECOR: the entrance canopy ({@link ArchiveShape#decor()}).</li>
      * <li>COMMISSION: the controller (part {@link Parts#LIBRARY_CORE}), the last step.</li>
      * </ul>
@@ -536,7 +536,7 @@ public final class BuildPlan {
         List<Draft> floor = new ArrayList<>(), shell = new ArrayList<>(), deck = new ArrayList<>(),
             upper = new ArrayList<>(), roof = new ArrayList<>(), posts = new ArrayList<>(),
             pedestals = new ArrayList<>(), lecterns = new ArrayList<>(), desk = new ArrayList<>(),
-            foundations = new ArrayList<>(), decor = new ArrayList<>(), commission = new ArrayList<>();
+            decor = new ArrayList<>(), commission = new ArrayList<>();
         for (Map.Entry<Long, Integer> e : plan.siteFloor(site, w, d)
             .entrySet()) {
             long k = e.getKey();
@@ -571,7 +571,8 @@ public final class BuildPlan {
             else if (kind == AIR) shell.add(dr);
             else if (y == 0) {
                 if (ch != ArchiveShape.FOUNDATION) throw new IllegalStateException("'" + ch + "' in the floor layer");
-                foundations.add(dr);
+                // the foundations open the shell: being the lowest layer, the bottom-up order puts them first
+                shell.add(dr);
             } else if (ArchiveShape.isStair(x, y, z) || ch == ArchiveShape.POST && stairCore(x, z)) deck.add(dr);
             else if (y >= ArchiveShape.ROOF_Y) roof.add(dr);
             else if (y == ArchiveShape.DECK_Y || ch == ArchiveShape.RAIL) deck.add(dr);
@@ -606,8 +607,7 @@ public final class BuildPlan {
             throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + unitCells);
         }
 
-        for (List<Draft> l : Arrays
-            .asList(shell, deck, upper, roof, posts, pedestals, lecterns, desk, foundations, decor)) {
+        for (List<Draft> l : Arrays.asList(shell, deck, upper, roof, posts, pedestals, lecterns, desk, decor)) {
             l.sort(BOTTOM_UP);
         }
         floor.sort(RIPPLE);
@@ -616,7 +616,6 @@ public final class BuildPlan {
         fit.addAll(pedestals);
         fit.addAll(lecterns);
         fit.addAll(desk);
-        fit.addAll(foundations);
 
         List<List<Step>> stages = empty(M_STAGES);
         stages.set(M_FLOOR, steps(floor, M_FLOOR));

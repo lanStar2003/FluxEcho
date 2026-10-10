@@ -3,6 +3,13 @@ package com.fluxecho.library;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
+import com.fluxecho.Config;
+import com.fluxecho.campus.ModuleSpec;
+import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.logic.ArchiveShape;
+import com.fluxecho.logic.BuildPlan;
+import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.Parts;
 import com.fluxecho.matter.MatterModule;
 import com.fluxecho.nexus.ItemBlockNexus;
 import com.fluxecho.nexus.Manifests;
@@ -35,6 +42,27 @@ public final class LibraryModule {
             .registerTileClass(TileLibrary.class, com.fluxecho.nexus.NexusModule.infoContainer("library.structure"));
         com.fluxecho.nexus.NexusModule.previewModule(core, TileLibrary::new);
         com.fluxecho.frame.BlockFrame.onUse(Shelves::use);
+        ModuleSpecs.register(spec());
+    }
+
+    /**
+     * The library as the campus builder raises it (0.10.0): the Echo Archive on a hall site (4 behind the nexus, then
+     * 2 and 6), opened by the library research, commissioned with the Echo Library Core. New Archives are offered
+     * only while {@code archiveEnabled} is on.
+     */
+    static ModuleSpec spec() {
+        return new ModuleSpec(
+            BuildPlan.LIBRARY,
+            Research.LIBRARY,
+            ArchiveShape.WIDTH,
+            ArchiveShape.DEPTH,
+            ArchiveShape.HEIGHT,
+            CampusPlan.HALL_SITES,
+            Parts.LIBRARY_CORE,
+            TileLibrary.COLOR,
+            BuildPlan::archive,
+            BuildPlan::archiveController,
+            () -> Config.archiveEnabled);
     }
 
     /**

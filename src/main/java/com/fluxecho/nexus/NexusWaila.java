@@ -1,6 +1,7 @@
 package com.fluxecho.nexus;
 
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -9,9 +10,14 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 
+import com.fluxecho.campus.BuildJob;
+import com.fluxecho.campus.Campus;
+import com.fluxecho.core.Directory;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.library.TileLibrary;
+import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.Compact;
+import com.fluxecho.logic.PartRecipes;
 
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -20,7 +26,8 @@ import mcp.mobius.waila.api.IWailaRegistrar;
 
 /**
  * Waila on the Flux Nexus's core and its modules' cores, GT-like: what it does, power and compute, the research, the
- * ring; a module's dock, power and what it holds. The numbers come from the server.
+ * ring, and what its campus builds (营造：job, progress, stage, and the first missing item); a module's dock, power and
+ * what it holds. The numbers come from the server.
  */
 public final class NexusWaila implements IWailaDataProvider {
 
@@ -49,9 +56,10 @@ public final class NexusWaila implements IWailaDataProvider {
         if (t.hasKey("feNexus")) {
             String status = t.getString("feNexus");
             EnumChatFormatting c = "researching".equals(status) || "manifesting".equals(status)
-                ? EnumChatFormatting.GREEN
-                : "ready".equals(status) ? EnumChatFormatting.AQUA : EnumChatFormatting.GOLD;
+                || Directory.BUILDING.equals(status) ? EnumChatFormatting.GREEN
+                    : "ready".equals(status) ? EnumChatFormatting.AQUA : EnumChatFormatting.GOLD;
             tip.add(c + EchoText.t("nexus.status." + status));
+            build(t, tip);
             if (t.getBoolean("feFormed")) {
                 tip.add(EchoText.t("waila.nexus.power", Compact.si(t.getLong("feUpkeep")), t.getDouble("feCompute")));
                 String r = t.getString("feResearch");
@@ -77,6 +85,53 @@ public final class NexusWaila implements IWailaDataProvider {
         return tip;
     }
 
+    /** The campus's line: the job, how far it is, its stage (or why it waits), and what it misses most. */
+    private static void build(NBTTagCompound t, List<String> tip) {
+        if (!t.hasKey("feBuildK")) return;
+        String name = BuildJob.name(t.getString("feBuildK"), t.getString("feBuildPk"))
+            .getUnformattedText();
+        int state = t.getByte("feBuildSt"), pause = t.getByte("feBuildPs");
+        String what = NexusGui.phaseText(t.getString("feBuildPk"), state, pause, t.getByte("feBuildSg"));
+        boolean paused = state == BuildState.State.PAUSED.ordinal();
+        tip.add(
+            (paused ? EnumChatFormatting.GOLD : EnumChatFormatting.AQUA)
+                + EchoText.t("build.waila", name, t.getInteger("feBuildPct"), what));
+        if (t.hasKey("feBuildMi")) {
+            ItemStack s = ItemStack.loadItemStackFromNBT(t.getCompoundTag("feBuildMi"));
+            if (s != null) tip.add(
+                EnumChatFormatting.GRAY
+                    + EchoText.t("build.waila_missing", s.getDisplayName(), Compact.si(t.getLong("feBuildMn"))));
+        }
+    }
+
+    /** Writes the campus's line for {@link #build}: only while an active campus has a job that is not over. */
+    private static void build(TileNexus n, NBTTagCompound tag) {
+        Campus c = n.campus();
+        BuildJob j = c.job();
+        if (!c.active() || j == null || BuildState.ended(j.state())) return;
+        tag.setString("feBuildK", j.key());
+        tag.setString("feBuildPk", j.planKey());
+        tag.setByte(
+            "feBuildSt",
+            (byte) j.state()
+                .ordinal());
+        tag.setByte(
+            "feBuildPs",
+            (byte) j.pause()
+                .ordinal());
+        tag.setByte("feBuildSg", (byte) j.stage());
+        int total = c.total();
+        tag.setInteger("feBuildPct", total <= 0 ? 0 : (int) Math.min(100, c.placed() * 100L / total));
+        for (Map.Entry<String, Long> e : c.bill()
+            .entrySet()) {
+            ItemStack s = Campus.stackOf(e.getKey(), 1);
+            if (s == null) continue;
+            tag.setTag("feBuildMi", s.writeToNBT(new NBTTagCompound()));
+            tag.setLong("feBuildMn", (e.getValue() + PartRecipes.UNIT - 1) / PartRecipes.UNIT);
+            break;
+        }
+    }
+
     @Override
     public List<String> getWailaTail(ItemStack stack, List<String> tip, IWailaDataAccessor accessor,
         IWailaConfigHandler config) {
@@ -87,7 +142,8 @@ public final class NexusWaila implements IWailaDataProvider {
     public NBTTagCompound getNBTData(EntityPlayerMP player, TileEntity te, NBTTagCompound tag, World world, int x,
         int y, int z) {
         if (te instanceof TileNexus n) {
-            tag.setString("feNexus", n.status());
+            tag.setString("feNexus", Directory.nexusStatus(n));
+            build(n, tag);
             tag.setBoolean("feFormed", n.formed());
             tag.setLong("feUpkeep", n.formed() ? n.upkeep() : 0);
             tag.setDouble("feCompute", n.computeRate());

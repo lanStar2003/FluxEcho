@@ -64,6 +64,18 @@ public final class Config {
     public static int crystalGrit = 3, nexusUpkeep = 512, nexusCompute = 20, innerRadius = 32, recordCooldown = 24000,
         manifestEut = 480, libraryUpkeep = 128, nexusEffectRange = 128;
 
+    // the campus builder (0.10.0)
+    public static boolean campusEnabled = true, archiveEnabled = true;
+    public static double buildBlocksPerTick = 2.0, buildCostScale = 1.0;
+    public static int buildClearPerTick = 8, buildEuPerBlock = 256, buildEuPerClear = 64, buildClearHeight = 24,
+        buildFillDepth = 2, buildMinSpacing = 144;
+    public static boolean buildRequireSky = true, buildKeepSpoils = true;
+    public static String[] buildClearable = {}, buildBlocked = {};
+    /** Client: how the projection of a job is drawn, {@code full}, {@code outline} or {@code off}. */
+    public static String buildProjection = "full";
+    public static int buildGhostRange = 96, buildGhostCells = 6000, buildArcs = 48;
+    public static boolean buildEffects = true;
+
     public static boolean machineEffects = true, flowTrails = true;
     public static int effectRange = 32, machineHologramRange = 16;
 
@@ -73,7 +85,7 @@ public final class Config {
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.9.2";
+    private static final String VERSION = "0.10.0";
 
     private Config() {}
 
@@ -445,6 +457,121 @@ public final class Config {
             16,
             512,
             "Client: blocks within which a formed nexus and its modules are drawn.");
+        campusEnabled = c.getBoolean(
+            "campusEnabled",
+            NEXUS,
+            campusEnabled,
+            "The campus builder: a nexus core placed on the ground (not sneaking) builds the nexus round itself, grades and paves its campus, and builds the modules its teams research (the Echo Archive) from the materials and EU it is given, once a member presses Start. Off: nothing is built or touched, and cores place as in 0.9.2.");
+        archiveEnabled = c.getBoolean(
+            "archiveEnabled",
+            NEXUS,
+            archiveEnabled,
+            "The Echo Archive, the walk-in library the campus builder raises once the library is researched. Off: no Archive is projected or built, and a library forms only as the 0.9.2 hall.");
+        buildBlocksPerTick = c.get(
+            NEXUS,
+            "buildBlocksPerTick",
+            buildBlocksPerTick,
+            "Blocks the campus builder launches per tick, on average (some stages go faster or slower). Each costs buildEuPerBlock EU.",
+            0.25,
+            16)
+            .getDouble();
+        buildClearPerTick = c.getInt(
+            "buildClearPerTick",
+            NEXUS,
+            buildClearPerTick,
+            1,
+            256,
+            "Natural blocks (stone, dirt, logs, leaves, ores) the campus builder clears per tick where it grades the ground and makes room for a building.");
+        buildEuPerBlock = c.getInt(
+            "buildEuPerBlock",
+            NEXUS,
+            buildEuPerBlock,
+            0,
+            Integer.MAX_VALUE,
+            "EU the campus builder draws from the owner's team wireless network for each block it places.");
+        buildEuPerClear = c.getInt(
+            "buildEuPerClear",
+            NEXUS,
+            buildEuPerClear,
+            0,
+            Integer.MAX_VALUE,
+            "EU it draws for each natural block it clears, and for each cell of ground it fills with grass or dirt.");
+        buildCostScale = c.get(
+            NEXUS,
+            "buildCostScale",
+            buildCostScale,
+            "Multiplies the materials every block the campus builder places costs (the same as its crafting recipe at 1). 0 makes everything free, the Crystal Seat and the Echo Library Core included.",
+            0,
+            10)
+            .getDouble();
+        buildClearHeight = c.getInt(
+            "buildClearHeight",
+            NEXUS,
+            buildClearHeight,
+            0,
+            64,
+            "How high above the campus floor the builder clears natural blocks (hills, trees) when it grades the campus. A building's own box is always cleared to its full height.");
+        buildFillDepth = c.getInt(
+            "buildFillDepth",
+            NEXUS,
+            buildFillDepth,
+            0,
+            16,
+            "How deep below the campus floor the builder fills holes and water with dirt when it grades; deeper holes and fluids are left.");
+        buildMinSpacing = c.getInt(
+            "buildMinSpacing",
+            NEXUS,
+            buildMinSpacing,
+            0,
+            100_000,
+            "Blocks (along x or z) a nexus core placed on the ground must keep from the centre of another nexus's campus, so two campuses never overlap. 0 turns the check off.");
+        buildRequireSky = c.getBoolean(
+            "buildRequireSky",
+            NEXUS,
+            buildRequireSky,
+            "A nexus core placed on the ground needs open sky above it (no building it underground or under a roof).");
+        buildKeepSpoils = c.getBoolean(
+            "buildKeepSpoils",
+            NEXUS,
+            buildKeepSpoils,
+            "Keep the ores and logs the campus builder clears (their drops go to the nexus's spoils, 27 slots, taken out with Withdraw); everything else it clears is voided.");
+        buildClearable = c.getStringList(
+            "buildClearable",
+            NEXUS,
+            buildClearable,
+            "Blocks the campus builder may clear even if it would not count them as natural terrain, as modid:name or modid:* for a whole mod.");
+        buildBlocked = c.getStringList(
+            "buildBlocked",
+            NEXUS,
+            buildBlocked,
+            "Blocks the campus builder never breaks, as modid:name or modid:* for a whole mod; it goes round them (or waits, for a cell of a building).");
+        buildProjection = c.getString(
+            "buildProjection",
+            NEXUS,
+            buildProjection,
+            "Client: how a build job's projection is drawn: full (the blocks to come, as ghosts), outline (only their outline) or off.",
+            new String[] { "full", "outline", "off" });
+        if (!"outline".equals(buildProjection) && !"off".equals(buildProjection)) buildProjection = "full";
+        buildGhostRange = c.getInt(
+            "buildGhostRange",
+            NEXUS,
+            buildGhostRange,
+            0,
+            256,
+            "Client: blocks within which the projection draws its ghost blocks; further away only outlines.");
+        buildGhostCells = c.getInt(
+            "buildGhostCells",
+            NEXUS,
+            buildGhostCells,
+            0,
+            100_000,
+            "Client: the most ghost blocks the projection draws (the nearest first).");
+        buildEffects = c.getBoolean(
+            "buildEffects",
+            NEXUS,
+            buildEffects,
+            "Client: draw the builder at work (the arcs from the core to each block it places, the blocks printing in, the ground it clears breaking up).");
+        buildArcs = c.getInt("buildArcs", NEXUS, buildArcs, 0, 512, "Client: the most launch arcs drawn at once.");
 
         c.setCategoryComment(
             EFFECTS,

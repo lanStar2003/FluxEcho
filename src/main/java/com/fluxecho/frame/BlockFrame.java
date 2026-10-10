@@ -8,7 +8,6 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -19,6 +18,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.campus.Builder;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -162,16 +162,20 @@ public class BlockFrame extends Block {
         return false;
     }
 
+    /**
+     * Any placement (a player's, a projector's or another mod's) tells the multiblocks around. The nexus builder sets
+     * {@link Builder#QUIET} while it edits the world and announces each finished stage once instead.
+     */
     @Override
-    public void onBlockPlacedBy(World w, int x, int y, int z, EntityLivingBase placer, ItemStack stack) {
-        super.onBlockPlacedBy(w, x, y, z, placer, stack);
-        FrameEvents.changed(w, x, y, z);
+    public void onBlockAdded(World w, int x, int y, int z) {
+        super.onBlockAdded(w, x, y, z);
+        if (!Builder.QUIET) FrameEvents.changed(w, x, y, z);
     }
 
     @Override
     public void breakBlock(World w, int x, int y, int z, Block block, int meta) {
         super.breakBlock(w, x, y, z, block, meta);
-        FrameEvents.changed(w, x, y, z);
+        if (!Builder.QUIET) FrameEvents.changed(w, x, y, z);
     }
 
     /** Two whole cubes side by side hide the faces between them, unless the other one is hidden. */

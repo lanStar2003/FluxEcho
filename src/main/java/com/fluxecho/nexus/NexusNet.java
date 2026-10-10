@@ -10,6 +10,7 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTTagString;
 
 import com.fluxecho.Config;
+import com.fluxecho.campus.CampusNet;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.research.Research;
@@ -28,14 +29,20 @@ import io.netty.buffer.ByteBuf;
 
 /**
  * The nexus's own channel: the research star map asks the server about a nexus, starts and drops research there, and
- * gets the answers. Both ends queue what arrives and handle it on their main thread.
+ * gets the answers; the campus builder tells the players near a nexus what it builds ({@link CampusNet}). Both ends
+ * queue what arrives and handle it on their main thread.
  */
 public final class NexusNet {
 
     /** Client to server. */
     public static final int ASK_MAP = 0, START = 1, CANCEL = 2;
-    /** Server to client. */
+    /** Server to client: the star map's answers. */
     public static final int MAP = 0, RESULT = 1;
+    /**
+     * Server to client: the campus builder's launches and clears, its progress numbers ({@link CampusNet}), and the
+     * library's slot changes (reserved for the Echo Archive's books).
+     */
+    public static final int BUILD_FX = 2, BUILD_STATE = 3, LIB_DELTA = 4;
 
     private static SimpleNetworkWrapper channel;
     private static final Queue<Object[]> SERVER_INBOX = new ConcurrentLinkedQueue<>();
@@ -201,8 +208,18 @@ public final class NexusNet {
             if (e.phase != TickEvent.Phase.START) return;
             Object[] m;
             while ((m = CLIENT_INBOX.poll()) != null) {
+                int kind = (Integer) m[0];
+                if (kind == BUILD_FX || kind == BUILD_STATE) {
+                    // the campus's effects go to their store whether a screen listens or not
+                    try {
+                        CampusNet.receive(kind, (NBTTagCompound) m[1]);
+                    } catch (RuntimeException ex) {
+                        com.fluxecho.FluxEcho.LOG.warn("Campus packet failed", ex);
+                    }
+                    continue;
+                }
                 ClientSink s = sink;
-                if (s != null) s.receive((Integer) m[0], (NBTTagCompound) m[1]);
+                if (s != null) s.receive(kind, (NBTTagCompound) m[1]);
             }
         }
     }

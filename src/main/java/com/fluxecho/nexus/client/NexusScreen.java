@@ -17,8 +17,10 @@ import net.minecraft.item.ItemStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
+import com.fluxecho.campus.BuildJob;
 import com.fluxecho.client.Motifs;
 import com.fluxecho.core.EchoText;
+import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.nexus.Manifests;
@@ -26,10 +28,15 @@ import com.fluxecho.nexus.NexusGui;
 import com.fluxecho.nexus.TileNexus;
 import com.fluxecho.research.client.StarMapScreen;
 
-/** The drawn parts of the Flux Nexus's GUI ({@code NexusGui}). Client only. */
+/**
+ * The drawn parts of the Flux Nexus's GUI ({@code NexusGui}): the window, the page tabs, the nexus page's panels and
+ * the build page's job panel, bill and balance. Client only.
+ */
 public final class NexusScreen {
 
     private static final RenderItem ITEMS = new RenderItem();
+    /** Button accents: the flux cyan, and the red of a button that ends something. */
+    public static final int ACCENT = CYAN, DANGER = RED;
 
     private NexusScreen() {}
 
@@ -37,25 +44,33 @@ public final class NexusScreen {
         return Minecraft.getSystemTime() / 50f;
     }
 
-    /** The window: the pane, the two panels and their titles. */
-    public static void background(TileNexus n, float x, float y, float w, float h) {
+    /** The window: the pane, the page's two panels and their titles. */
+    public static void background(TileNexus n, int page, float x, float y, float w, float h) {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         try {
-            background0(n, w, h);
+            background0(n, page, w, h);
         } finally {
             GL11.glPopMatrix();
         }
     }
 
-    private static void background0(TileNexus n, float w, float h) {
+    private static void background0(TileNexus n, int page, float w, float h) {
         begin();
         pane(0, 0, w, h, 1f);
-        panel(6, 22, 136, 160);
-        panel(140, 22, 242, 120);
+        if (page == NexusGui.PAGE_BUILD) {
+            panel(6, 22, 136, 160);
+            panel(140, 22, 242, 160);
+            // under the job panel, above the buttons; under the bill, above the intake
+            rect(10, NexusGui.ROW1_Y - 2, 132, NexusGui.ROW1_Y - 1, SEAM, 1f);
+            rect(144, NexusGui.INTAKE_Y - 4, 238, NexusGui.INTAKE_Y - 3, SEAM, 1f);
+        } else {
+            panel(6, 22, 136, 160);
+            panel(140, 22, 242, 120);
+        }
         rect(8, 163, w - 8, 164, SEAM, 1f);
         end();
-        text(EchoText.t("nexus.gui.table"), 10, 25, VIOLET, 1f);
+        if (page != NexusGui.PAGE_BUILD) text(EchoText.t("nexus.gui.table"), 10, 25, VIOLET, 1f);
     }
 
     private static void panel(double x0, double y0, double x1, double y1) {
@@ -94,6 +109,7 @@ public final class NexusScreen {
         switch (status) {
             case "manifesting":
             case "researching":
+            case "building":
                 return GREEN;
             case "ready":
                 return CYAN;
@@ -296,22 +312,282 @@ public final class NexusScreen {
 
     /** A flux button: a pane with its label, lit when on. */
     public static void button(String label, float x, float y, float w, float h, boolean on) {
+        button(label, x, y, w, h, on, false, ACCENT);
+    }
+
+    /**
+     * A flux button in an accent colour: lit when on, greyed when it would do nothing now (it still takes the click,
+     * and the server says why nothing happened).
+     */
+    public static void button(String label, float x, float y, float w, float h, boolean on, boolean dim, int accent) {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         try {
-            button0(label, w, h, on);
+            button0(label, w, h, on, dim, accent);
         } finally {
             GL11.glPopMatrix();
         }
     }
 
-    private static void button0(String label, float w, float h, boolean on) {
+    private static void button0(String label, float w, float h, boolean on, boolean dim, int accent) {
         begin();
         gradient(0, 0, w, h, on ? 0x16384A : PANE, 1f, DEEP, 1f);
-        frame(0, 0, w, h, on ? CYAN : SEAM, 1f);
-        corners(0, 0, w, h, 3, CYAN, on ? 1f : 0.6f);
+        frame(0, 0, w, h, dim ? SEAM : on ? accent : SEAM, 1f);
+        corners(0, 0, w, h, 3, dim ? SEAM : accent, dim ? 0.8f : on ? 1f : 0.6f);
         end();
-        centered(fit(label, (int) w - 4), w / 2.0, (h - 8) / 2.0 + 1, on ? WHITE : CYAN, 1f);
+        centered(fit(label, (int) w - 4), w / 2.0, (h - 8) / 2.0 + 1, dim ? DIM : on ? WHITE : accent, 1f);
+    }
+
+    /** A page tab: lit with a line along its foot when its page is shown. */
+    public static void tab(String label, float x, float y, float w, float h, boolean on) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            begin();
+            gradient(0, 0, w, h, on ? 0x16384A : PANE, 1f, DEEP, 1f);
+            frame(0, 0, w, h, on ? CYAN : SEAM, 1f);
+            if (on) rect(1, h - 2, w - 1, h - 1, CYAN, 0.9f);
+            end();
+            centered(fit(label, (int) w - 4), w / 2.0, (h - 8) / 2.0, on ? WHITE : DIM, 1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    // ---- the build page
+
+    /**
+     * The job panel: the job and its site, its state (and why it waits), its stage, the progress bar, EU/t and the
+     * time left, the counts and the queue; or what to do when there is no job, or no campus yet.
+     */
+    public static void buildJob(NexusGui.View v, float x, float y, float w, float h) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            buildJob0(v.build, w, h);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    private static void buildJob0(NexusGui.Build b, float w, float h) {
+        if (!b.received) return;
+        int lw = (int) w - 4, sw = (int) ((w - 4) / 0.75f);
+        if (!b.enabled) {
+            text(fit(EchoText.t("build.gui.disabled"), lw), 2, 2, RED, 1f);
+            return;
+        }
+        if (!b.active) {
+            text(fit(EchoText.t("build.gui.legacy"), lw), 2, 2, AMBER, 1f);
+            paragraph(EchoText.t("build.gui.legacy_hint"), 14, sw, 6, DIM);
+            return;
+        }
+        if (!b.hasJob()) {
+            text(fit(EchoText.t("build.gui.no_job"), lw), 2, 2, DIM, 1f);
+            paragraph(EchoText.t("build.gui.no_job_hint"), 14, sw, 5, DIM);
+            queue(b, w, h);
+            return;
+        }
+        String name = BuildJob.name(b.job, b.planKey)
+            .getUnformattedText();
+        text(fit(name, lw), 2, 2, CYAN, 1f);
+
+        BuildState.State s = b.stateEnum();
+        BuildState.Pause p = b.pauseEnum();
+        String st = EchoText.t(NexusGui.stateKey(s));
+        if (s == BuildState.State.PAUSED && p != BuildState.Pause.NONE) st += " · " + EchoText.t(NexusGui.pauseKey(p));
+        text(fit(st, lw), 2, 13, stateColor(s, p), 1f);
+
+        int stages = Math.max(1, b.stages);
+        String stage = EchoText.t(
+            "build.gui.stage",
+            Math.min(b.stage + 1, stages),
+            stages,
+            EchoText.t(NexusGui.stageKey(b.planKey, b.stage)));
+        small(fit(stage, sw), 2, 24, 0.75f, WHITE, 1f);
+
+        float f = b.total <= 0 ? 0 : Math.min(1f, b.placed / (float) b.total);
+        boolean building = s == BuildState.State.BUILDING;
+        begin();
+        bar(2, 32, w - 2, 39, f, building || s == BuildState.State.DONE ? GREEN : CYAN, 1f);
+        if (building) scan(2, 32, w - 2, 39, ticks(), WHITE, 0.08f);
+        end();
+        smallCentered(
+            EchoText.t("build.gui.progress", b.placed, b.total, Math.round(f * 100)),
+            w / 2.0,
+            33,
+            0.6f,
+            WHITE,
+            1f);
+
+        small(EchoText.t("build.gui.eu", Compact.si(b.eu)), 2, 43, 0.75f, b.eu > 0 ? WHITE : DIM, 1f);
+        smallRight(EchoText.t("build.gui.eta", eta(b.eta)), w - 2, 43, 0.75f, DIM, 1f);
+        small(EchoText.t("build.gui.cleared", b.cleared), 2, 52, 0.75f, DIM, 1f);
+        smallRight(EchoText.t("build.gui.blocked", b.blocked), w - 2, 52, 0.75f, b.blocked > 0 ? AMBER : DIM, 1f);
+        small(EchoText.t("build.gui.skipped", b.skipped), 2, 60, 0.75f, b.skipped > 0 ? AMBER : DIM, 1f);
+        smallRight(EchoText.t("build.gui.unloaded", b.unloaded), w - 2, 60, 0.75f, b.unloaded > 0 ? AMBER : DIM, 1f);
+        queue(b, w, h);
+    }
+
+    /** The queued jobs, on the panel's last line. */
+    private static void queue(NexusGui.Build b, float w, float h) {
+        List<String> names = new ArrayList<>();
+        for (String[] q : b.queue) names.add(
+            BuildJob.name(q[0], q[1])
+                .getUnformattedText());
+        String line = EchoText
+            .t("build.gui.queue", names.isEmpty() ? EchoText.t("build.gui.none") : String.join(" · ", names));
+        small(fit(line, (int) ((w - 4) / 0.75f)), 2, h - 9, 0.75f, names.isEmpty() ? DIM : VIOLET, 1f);
+    }
+
+    /** Wrapped small text from a height, at most {@code max} lines. */
+    private static void paragraph(String s, int y, int width, int max, int color) {
+        for (String line : wrap(s, width, max)) {
+            small(line, 2, y, 0.75f, color, 1f);
+            y += 8;
+        }
+    }
+
+    /** Green while it builds or is done, amber while it waits for something it gets by itself, red when stuck. */
+    static int stateColor(BuildState.State s, BuildState.Pause p) {
+        switch (s) {
+            case BUILDING:
+            case DONE:
+                return GREEN;
+            case CANCELLED:
+                return DIM;
+            case PAUSED:
+                return p == BuildState.Pause.BLOCKED || p == BuildState.Pause.PROTECTED
+                    || p == BuildState.Pause.INCOMPLETE ? RED : AMBER;
+            default:
+                return CYAN;
+        }
+    }
+
+    /** Ticks as h:mm:ss or m:ss; "?" when the job cannot progress. */
+    static String eta(long ticks) {
+        if (ticks < 0) return "?";
+        long sec = (ticks + 19) / 20, hours = sec / 3600, min = sec % 3600 / 60;
+        return hours > 0 ? String.format("%d:%02d:%02d", hours, min, sec % 60)
+            : String.format("%d:%02d", min, sec % 60);
+    }
+
+    /** The site between ◀ and ▶: its number, or a dash for jobs without one. */
+    public static void site(NexusGui.View v, float x, float y, float w, float h) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            NexusGui.Build b = v.build;
+            begin();
+            gradient(0, 0, w, h, DEEP, 1f, PANE, 1f);
+            frame(0, 0, w, h, SEAM, 1f);
+            end();
+            String label = b.live() && b.site >= 0 ? EchoText.t("build.gui.site", b.site) : "—";
+            smallCentered(
+                fit(label, (int) ((w - 2) / 0.75f)),
+                w / 2.0,
+                (h - 6) / 2.0,
+                0.75f,
+                b.canMove ? WHITE : DIM,
+                1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** The bill's title: 材料, or that everything is there. */
+    public static void billHead(NexusGui.View v, float x, float y, float w, float h) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            NexusGui.Build b = v.build;
+            text(EchoText.t("build.gui.bill"), 2, 1, VIOLET, 1f);
+            if (b.live() && b.bill.isEmpty()) smallRight(EchoText.t("build.gui.bill_done"), w, 2, 0.75f, GREEN, 1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** The bill's pager: the page shown of how many. */
+    public static void pager(NexusGui.View v, float x, float y, float w, float h) {
+        int pages = Math.max(1, (v.build.bill.size() + NexusGui.BILL_ROWS - 1) / NexusGui.BILL_ROWS);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            begin();
+            gradient(0, 0, w, h, PANE, 1f, DEEP, 1f);
+            frame(0, 0, w, h, SEAM, 1f);
+            end();
+            smallCentered((v.billPage % pages + 1) + "/" + pages, w / 2.0, (h - 6) / 2.0, 0.75f, CYAN, 1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** One bill line: the item, its name, and what the ledger holds of what the job needs (green when enough). */
+    public static void billRow(NexusGui.View v, int line, float x, float y, float w, float h) {
+        int i = v.billPage * NexusGui.BILL_ROWS + line;
+        List<NexusGui.Row> bill = v.build.bill;
+        if (i >= bill.size()) return;
+        NexusGui.Row r = bill.get(i);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            if (line % 2 == 0) {
+                begin();
+                rect(0, 0, w, h, SEAM, 0.35f);
+                end();
+            }
+            String count = EchoText.t("build.gui.have_need", Compact.si(r.have), Compact.si(r.need));
+            float countW = font().getStringWidth(count) * 0.75f;
+            smallRight(count, w - 1, 3, 0.75f, r.have >= r.need ? GREEN : AMBER, 1f);
+            String name = r.item != null ? r.item.getDisplayName() : r.key;
+            int nameW = (int) ((w - 15 - countW - 2) / 0.6f);
+            if (nameW > 6) small(fit(name, nameW), 14, 3.5, 0.6f, DIM, 1f);
+            if (r.item != null) icon(r.item, 1, 0, 0.75f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** Next to the intake slot: its name, the balance and the spoils. */
+    public static void buildFoot(NexusGui.View v, float x, float y, float w, float h) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            NexusGui.Build b = v.build;
+            small(EchoText.t("build.gui.intake"), 0, 1, 0.75f, VIOLET, 1f);
+            small(
+                fit(EchoText.t("build.gui.balance_line", b.balanceItems, b.balanceParts), (int) (w / 0.6f)),
+                0,
+                9,
+                0.6f,
+                b.balanceItems + b.balanceParts > 0 ? WHITE : DIM,
+                1f);
+            small(
+                fit(EchoText.t("build.gui.spoils", b.spoils), (int) (w / 0.6f)),
+                0,
+                15,
+                0.6f,
+                b.spoils > 0 ? AMBER : DIM,
+                1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** An item in the GUI at a scale, its corner at (x, y). */
+    static void icon(ItemStack s, double x, double y, float scale) {
+        Minecraft mc = Minecraft.getMinecraft();
+        GL11.glPushMatrix();
+        GL11.glTranslated(x, y, 0);
+        GL11.glScalef(scale, scale, 1);
+        RenderHelper.enableGUIStandardItemLighting();
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        ITEMS.renderItemAndEffectIntoGUI(mc.fontRenderer, mc.getTextureManager(), s, 0, 0);
+        RenderHelper.disableStandardItemLighting();
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glPopMatrix();
     }
 
     /** Leaves the GUI (telling the server) and opens the star map of this nexus. */

@@ -86,13 +86,13 @@ public class BlockDeck extends Block {
     @Override
     public void onBlockAdded(World w, int x, int y, int z) {
         super.onBlockAdded(w, x, y, z);
-        FrameEvents.changed(w, x, y, z);
+        if (!Builder.QUIET) FrameEvents.changed(w, x, y, z);
     }
 
     @Override
     public void breakBlock(World w, int x, int y, int z, Block block, int meta) {
         super.breakBlock(w, x, y, z, block, meta);
-        FrameEvents.changed(w, x, y, z);
+        if (!Builder.QUIET) FrameEvents.changed(w, x, y, z);
     }
 
     @Override

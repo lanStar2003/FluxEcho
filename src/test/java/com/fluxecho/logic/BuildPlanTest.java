@@ -533,8 +533,17 @@ class BuildPlanTest {
                 assertEquals(Parts.deck(Parts.D_LIT), (int) parts.get(pos(w[0], w[1], w[2])), "the lit spine");
             }
 
+            // the shell opens with every foundation of the floor layer, before any wall
+            List<Step> shell = stage(p, BuildPlan.M_SHELL);
+            int foundations = ArchiveShape.BLUEPRINT.count(ArchiveShape.FOUNDATION);
+            for (int i = 0; i < shell.size(); i++) {
+                Step s = shell.get(i);
+                boolean foundation = s.part == Parts.frame(Parts.FR_FOUNDATION);
+                assertEquals(i < foundations, foundation, "the foundations first: " + s);
+                if (foundation) assertEquals(Y0, s.y, "a foundation in the floor layer");
+            }
             // the shell, deck, upper walls and roof rise layer by layer within their bands
-            assertBand(p, BuildPlan.M_SHELL, 1, 5);
+            assertBand(p, BuildPlan.M_SHELL, 0, 5);
             assertBand(p, BuildPlan.M_DECK, 1, 7);
             assertBand(p, BuildPlan.M_UPPER, 7, 11);
             assertBand(p, BuildPlan.M_ROOF, 12, 15);
@@ -634,9 +643,9 @@ class BuildPlanTest {
                 assertEquals(9, bodies);
                 assertEquals(3, crowns);
             }
-            // then pedestals, lecterns, the desk and the foundations
+            // then pedestals, lecterns and the desk (the foundations went up first, with the shell)
             List<Step> tail = fit.subList(i, fit.size());
-            int[] counts = new int[4];
+            int[] counts = new int[3];
             int phase = 0;
             int[] desk = archiveCell(site, f, ArchiveShape.DESK[0], ArchiveShape.DESK[1], ArchiveShape.DESK[2]);
             for (Step s : tail) {
@@ -645,9 +654,8 @@ class BuildPlanTest {
                 if (s.part == Parts.fitting(Parts.F_PEDESTAL)) now = 0;
                 else if (s.part == Parts.frame(Parts.FR_CONSOLE) && !s.at(desk[0], desk[1], desk[2])) now = 1;
                 else if (s.part == Parts.frame(Parts.FR_CONSOLE)) now = 2;
-                else if (s.part == Parts.frame(Parts.FR_FOUNDATION)) now = 3;
                 else throw new AssertionError("unexpected fitting " + s);
-                assertTrue(now >= phase, "pedestals, lecterns, desk, foundations: " + s);
+                assertTrue(now >= phase, "pedestals, lecterns, desk: " + s);
                 phase = now;
                 counts[now]++;
             }
@@ -656,7 +664,7 @@ class BuildPlanTest {
                     .size(),
                     ArchiveShape.lecterns()
                         .size(),
-                    1, ArchiveShape.BLUEPRINT.count(ArchiveShape.FOUNDATION) },
+                    1 },
                 counts);
         }
     }

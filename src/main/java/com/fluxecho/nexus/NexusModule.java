@@ -54,7 +54,9 @@ public final class NexusModule {
 
     public static void preInit() {
         core = new BlockNexusCore();
-        GameRegistry.registerBlock(core, ItemBlockNexus.class, "nexus");
+        // the item lifts a core placed on the ground and carries a broken core's credit (0.10.0); the name stays
+        // "nexus"
+        GameRegistry.registerBlock(core, ItemBlockNexusCore.class, "nexus");
         GameRegistry.registerTileEntity(TileNexus.class, "fluxecho:nexus");
     }
 

@@ -29,8 +29,8 @@ public final class PartBlocks {
     private PartBlocks() {}
 
     /**
-     * The block of a part code: the flux frame, the campus deck or fittings, the library core, grass, dirt or air. Null
-     * for the supply port (it has no block yet) and for codes that name nothing.
+     * The block of a part code: the flux frame, the campus deck or fittings, the library core, the supply port, grass,
+     * dirt or air. Null for codes that name nothing.
      */
     public static Block block(int code) {
         int meta = Parts.meta(code);
@@ -40,6 +40,8 @@ public final class PartBlocks {
         switch (code) {
             case Parts.LIBRARY_CORE:
                 return LibraryModule.core;
+            case Parts.SUPPLY_PORT:
+                return CampusModule.supplyPort;
             case Parts.GRASS:
                 return Blocks.grass;
             case Parts.DIRT:
@@ -57,9 +59,9 @@ public final class PartBlocks {
     }
 
     /**
-     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta, and the library core (any
-     * meta). -1 for everything that is not ours, grass, dirt and air included: a cell holds the part a step wants when
-     * {@link #block} and {@link #meta} of its code match, which callers test directly for those three.
+     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta, the library core and the
+     * supply port (any meta). -1 for everything that is not ours, grass, dirt and air included: a cell holds the part a
+     * step wants when {@link #block} and {@link #meta} of its code match, which callers test directly for those three.
      */
     public static int code(Block b, int meta) {
         if (b == null) return -1;
@@ -67,6 +69,7 @@ public final class PartBlocks {
         if (b == CampusModule.deck) return meta >= 0 && meta < Parts.DECK_TYPES ? Parts.deck(meta) : -1;
         if (b == CampusModule.fitting) return meta >= 0 && meta < Parts.FITTING_TYPES ? Parts.fitting(meta) : -1;
         if (b == LibraryModule.core) return Parts.LIBRARY_CORE;
+        if (b == CampusModule.supplyPort) return Parts.SUPPLY_PORT;
         return -1;
     }
 
