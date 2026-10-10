@@ -86,7 +86,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
      * or a thin snow layer that a normal placement would replace. Null when that ground is not there (a vine over air),
      * which places the core the normal way.
      */
-    static int[] ground(World w, int x, int y, int z, int side) {
+    public static int[] ground(World w, int x, int y, int z, int side) {
         Block b = w.getBlock(x, y, z);
         boolean soft = b == Blocks.snow_layer ? (w.getBlockMetadata(x, y, z) & 7) < 1
             : b == Blocks.vine || b == Blocks.tallgrass || b == Blocks.deadbush || b.isReplaceable(w, x, y, z);
@@ -98,7 +98,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     }
 
     /** {@link LiftRule} with the world's facts about the clicked ground {x, y, z, side}. */
-    static int lift(World w, EntityPlayer p, int[] g) {
+    public static int lift(World w, EntityPlayer p, int[] g) {
         int x = g[0], y = g[1], z = g[2];
         if (y < 0 || y + LiftRule.LIFT > 255) return 0;
         Block clicked = w.getBlock(x, y, z);
@@ -166,7 +166,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     }
 
     /** The front a core placed by the entity gets: it faces the placer (as {@link BlockNexus#onBlockPlacedBy}). */
-    static int facingFor(EntityLivingBase placer) {
+    public static int facingFor(EntityLivingBase placer) {
         int look = MathHelper.floor_double(placer.rotationYaw * 4f / 360f + 0.5) & 3;
         int[] front = { 2, 5, 3, 4 };
         return front[look];

@@ -148,19 +148,21 @@ class BuildPaceTest {
 
     @Test
     void flight() {
-        assertEquals(4, BuildPace.flightTicks(0));
-        assertEquals(4, BuildPace.flightTicks(5.9));
-        assertEquals(5, BuildPace.flightTicks(6));
-        assertEquals(10, BuildPace.flightTicks(36));
-        assertEquals(15, BuildPace.flightTicks(71.9));
-        assertEquals(16, BuildPace.flightTicks(72));
-        assertEquals(16, BuildPace.flightTicks(1000));
-        assertEquals(4, BuildPace.flightTicks(-3));
-        assertEquals(4, BuildPace.flightTicks(Double.NaN));
-        assertEquals(16, BuildPace.flightTicks(Double.POSITIVE_INFINITY));
-        assertEquals(10, BuildPace.flightTicks(36, 0, 0));
-        assertEquals(12, BuildPace.flightTicks(0, -48, 0));
-        assertEquals(4, BuildPace.flightTicks(3, 4, 0));
+        assertEquals(14, BuildPace.flightTicks(0));
+        assertEquals(14, BuildPace.flightTicks(5.9));
+        assertEquals(14, BuildPace.flightTicks(12));
+        assertEquals(15, BuildPace.flightTicks(18));
+        assertEquals(18, BuildPace.flightTicks(36));
+        assertEquals(23, BuildPace.flightTicks(71.9));
+        assertEquals(24, BuildPace.flightTicks(72));
+        assertEquals(30, BuildPace.flightTicks(108));
+        assertEquals(30, BuildPace.flightTicks(1000));
+        assertEquals(14, BuildPace.flightTicks(-3));
+        assertEquals(14, BuildPace.flightTicks(Double.NaN));
+        assertEquals(30, BuildPace.flightTicks(Double.POSITIVE_INFINITY));
+        assertEquals(18, BuildPace.flightTicks(36, 0, 0));
+        assertEquals(20, BuildPace.flightTicks(0, -48, 0));
+        assertEquals(14, BuildPace.flightTicks(3, 4, 0));
         for (double d = 0; d < 200; d += 0.25) {
             int t = BuildPace.flightTicks(d);
             assertTrue(t >= BuildPace.MIN_FLIGHT && t <= BuildPace.MAX_FLIGHT, "distance " + d);

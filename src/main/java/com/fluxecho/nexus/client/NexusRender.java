@@ -2,7 +2,11 @@ package com.fluxecho.nexus.client;
 
 import static com.fluxecho.client.FluxDraw.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -15,11 +19,13 @@ import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.Config;
+import com.fluxecho.FluxEcho;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.core.EchoText;
+import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
@@ -39,10 +45,12 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * While powered, a beam runs from the core up into the sky, pulses climbing it, seen from as far as the nexus is
  * loaded. While it researches, a constellation turns above the ring with data streaming up to it; while it
  * manifests, motes spiral in to the core. Bridges of light run out to the modules docked on its ring, and the open
- * slots show their outline to whoever holds a terminal or a module's core. Forming, a sweep of light runs up the
- * structure as its blocks give way.
+ * slots show their outline to whoever holds a terminal or a module's core (not on an active campus: its masterplan
+ * shows the sites instead). Forming, a sweep of light runs up the structure as its blocks give way.
  * <p>
- * Drawn after the world in the shader-safe way ({@link Shapes}), and again behind light gates ({@link FarDraw}).
+ * Drawn after the world in the shader-safe way ({@link Shapes}), and again behind light gates ({@link FarDraw}). Each
+ * multiblock is drawn on its own: an error in one is logged once, the GL state it left is put back, and the others
+ * are still drawn (an error escaping here would also turn off everything else drawn into the light gates).
  */
 public final class NexusRender {
 
@@ -52,6 +60,10 @@ public final class NexusRender {
     /** Rib segments, and the rib's path in (out from the centre, up from the base): a curve through three points. */
     private static final int RIB_SEGMENTS = 7;
     private static final double[] RIB_FOOT = { 4.5, 0.0 }, RIB_BEND = { 4.7, 3.0 }, RIB_HEAD = { 3.0, 4.4 };
+    /** Set when finding a site module's door failed once: every module keeps its ring bridge from then on. */
+    private static boolean siteBridgesOff;
+    /** Set once drawing a multiblock has failed and been logged. */
+    private static boolean warned;
 
     private NexusRender() {}
 
@@ -72,30 +84,64 @@ public final class NexusRender {
         boolean hints = holdsHint(mc.thePlayer);
         for (TileMultiblock m : ClientTiles.all()) {
             if (m.getWorldObj() != w || m.isInvalid()) continue;
-            double dx = m.xCoord + 0.5 - RenderManager.renderPosX, dy = m.yCoord + 0.5 - RenderManager.renderPosY,
-                dz = m.zCoord + 0.5 - RenderManager.renderPosZ;
-            double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist > range + 48) {
-                // past the effects' range only the sky beam is drawn
-                if (m instanceof TileNexus n && dist < BEAM_RANGE) try {
-                    farBeam(n, t, (float) Math.min(1, (BEAM_RANGE - dist) / 64));
-                } finally {
-                    Shapes.end();
-                }
-                continue;
-            }
-            float fade = (float) Math.min(1, (range + 48 - dist) / 16);
             try {
-                if (m instanceof TileNexus n) nexus(n, t, fade, hints);
-                else if (m instanceof TileModule mod) ModuleRender.draw(mod, t, fade);
+                draw(m, t, range, hints);
+            } catch (Throwable x) {
+                recover();
+                if (!warned) {
+                    warned = true;
+                    FluxEcho.LOG.warn(
+                        "Drawing the multiblock at {}, {}, {} failed; the others are still drawn (logged once)",
+                        m.xCoord,
+                        m.yCoord,
+                        m.zCoord,
+                        x);
+                }
             } finally {
                 Shapes.end();
             }
         }
     }
 
-    /** Whether the player holds something that wants the ring's slots shown: a flux terminal or a multiblock core. */
-    static boolean holdsHint(EntityPlayer p) {
+    /** One multiblock: all of it within the effects' range, a nexus's sky beam alone further out. */
+    private static void draw(TileMultiblock m, double t, double range, boolean hints) {
+        double dx = m.xCoord + 0.5 - RenderManager.renderPosX, dy = m.yCoord + 0.5 - RenderManager.renderPosY,
+            dz = m.zCoord + 0.5 - RenderManager.renderPosZ;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > range + 48) {
+            // past the effects' range only the sky beam is drawn
+            if (m instanceof TileNexus n && dist < BEAM_RANGE)
+                farBeam(n, t, (float) Math.min(1, (BEAM_RANGE - dist) / 64));
+            return;
+        }
+        float fade = (float) Math.min(1, (range + 48 - dist) / 16);
+        if (m instanceof TileNexus n) nexus(n, t, fade, hints);
+        else if (m instanceof TileModule mod) ModuleRender.draw(mod, t, fade);
+    }
+
+    /**
+     * After an error part-way through a multiblock: ends the motes' batch if it was open (it pops their GL state),
+     * then a quad batch the error broke off (the tessellator refuses to start another while one is open, which would
+     * take every later drawing with it). {@link Shapes#end} follows in the caller's finally.
+     */
+    private static void recover() {
+        try {
+            Motes.end();
+        } catch (Throwable ignored) {
+            // the motes' state is popped whatever happens; nothing more to do
+        }
+        try {
+            Tessellator.instance.draw();
+        } catch (Throwable ignored) {
+            // nothing was open
+        }
+    }
+
+    /**
+     * Whether the player holds something that wants the ring's slots shown: a flux terminal or a multiblock core. The
+     * campus masterplan ({@code campus.client.Masterplan}) shows for the same items.
+     */
+    public static boolean holdsHint(EntityPlayer p) {
         if (p == null) return false;
         ItemStack s = p.getHeldItem();
         if (s == null) return false;
@@ -387,10 +433,20 @@ public final class NexusRender {
         Shapes.ring(cx, y, cz, 5.6, 6.1, 0, Math.PI * 2, WHITE, 0.8f, CYAN, 0f);
     }
 
-    /** Bridges to the docked modules; the outlines of the open slots while the player holds a hint. */
+    /**
+     * Bridges to the docked modules; the outlines of the open slots while the player holds a hint. On an active
+     * campus a module docked by its site (0.10.0) gets its bridge along the site axis, from the dais edge to its door;
+     * a module on the 0.9.2 inner ring keeps its ring bridge. An active campus shows no slot outlines: its masterplan
+     * ({@code campus.client.Masterplan}) shows the sites, and the 0.9.2 inner-ring slots lie in its hall sites and on
+     * its gate, where a module placed by hand would stand in the way of the campus's own jobs.
+     */
     private static void bridges(TileNexus n, double cx, double base, double cz, double t, float p, boolean hints) {
         int fx = n.front().offsetX, fz = n.front().offsetZ;
         int docked = Integer.bitCount(n.clientDockedMask);
+        boolean active = n.clientCampus != null && n.clientCampus.active;
+        boolean campus = active && n.clientDockedMask != 0;
+        if (active) hints = false;
+        List<TileMultiblock> tiles = campus ? ClientTiles.all() : null;
         for (int k = 0; k < RingSlots.SLOTS; k++) {
             int[] o = RingSlots.offset(k, Config.innerRadius, fx, fz);
             double len = Math.hypot(o[0], o[1]);
@@ -398,6 +454,11 @@ public final class NexusRender {
             double sx = cx + o[0], sz = cz + o[1];
             if ((n.clientDockedMask & 1 << k) != 0) {
                 int col = n.clientModuleColor[k] == 0 ? CYAN : n.clientModuleColor[k];
+                double door = campus && !siteBridgesOff ? siteDoorSafe(n, k, fx, fz, tiles) : -1;
+                if (door > 0) {
+                    siteBridge(cx, base, cz, k, fx, fz, door, t, col, p);
+                    continue;
+                }
                 double x0 = cx + ux * 5.6, z0 = cz + uz * 5.6, x1 = sx - ux * 5.5, z1 = sz - uz * 5.5;
                 path(x0, base + 0.15, z0, x1, z1, 0.7, col, 0.35f * p);
                 path(x0, base + 0.16, z0, x1, z1, 0.18, WHITE, 0.4f * p);
@@ -414,6 +475,75 @@ public final class NexusRender {
                 Shapes.square(sx, base + 0.06, sz, 10.5, 0.12, SEAM, 0.5f);
             }
         }
+    }
+
+    /**
+     * {@link #siteDoor}, fail-soft: an error is logged once and turns the site bridges off for the session (every
+     * module then keeps its ring bridge), so it cannot take the rest of the nexus's drawing with it.
+     */
+    private static double siteDoorSafe(TileNexus n, int k, int fx, int fz, List<TileMultiblock> tiles) {
+        try {
+            return siteDoor(n, k, fx, fz, tiles);
+        } catch (RuntimeException e) {
+            siteBridgesOff = true;
+            FluxEcho.LOG.warn("Finding a campus module's door failed; site bridges are off until the game restarts", e);
+            return -1;
+        }
+    }
+
+    /**
+     * How far from the nexus centre, along the axis of site {@code k}, the door of the module docked on it is; -1 when
+     * that module stands on the 0.9.2 inner ring instead (it keeps its ring bridge). The module is looked for among the
+     * loaded tiles (docked to this nexus under number {@code k}): its door is the face of its structure nearest the
+     * nexus. When it is not loaded here, a hall site's module is taken to have its front row where the campus puts it
+     * ({@link CampusPlan#HALL_FRONT}); any other site keeps the ring bridge.
+     */
+    private static double siteDoor(TileNexus n, int k, int fx, int fz, List<TileMultiblock> tiles) {
+        int[] c = n.centre();
+        int[] ax = CampusPlan.siteAxis(k);
+        int[] w = CampusPlan.toWorld(ax[0], ax[1], fx, fz);
+        double len = Math.hypot(w[0], w[1]), ux = w[0] / len, uz = w[1] / len;
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            if (!mod.clientDocked || mod.clientSlot != k || !Arrays.equals(mod.clientNexus, c)) continue;
+            int[] mc = mod.centre();
+            if (RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz) == k) return -1;
+            int[] b = mod.bounds();
+            if (b == null) break;
+            // the corner of its block range nearest the nexus, measured from the middle of the centre cell
+            double near = Double.MAX_VALUE;
+            for (int i = 0; i < 4; i++) {
+                double x = (i & 1) == 0 ? b[0] : b[3] + 1, z = (i & 2) == 0 ? b[2] : b[5] + 1;
+                near = Math.min(near, (x - c[0] - 0.5) * ux + (z - c[2] - 0.5) * uz);
+            }
+            if (near > 6) return near;
+            break;
+        }
+        for (int site : CampusPlan.HALL_SITES) if (site == k) return CampusPlan.HALL_FRONT - 0.5;
+        // nothing docks by site on the gate or the reserved diagonals yet: a module there stands on the ring
+        return -1;
+    }
+
+    /**
+     * The bridge to a module docked by its site: a band of light along the site axis from the dais edge to the door
+     * at {@code door} blocks out, pulses running out to it, and a bar of light across the threshold.
+     */
+    private static void siteBridge(double cx, double base, double cz, int k, int fx, int fz, double door, double t,
+        int col, float p) {
+        int[] ax = CampusPlan.siteAxis(k);
+        int[] w = CampusPlan.toWorld(ax[0], ax[1], fx, fz);
+        double len = Math.hypot(w[0], w[1]), ux = w[0] / len, uz = w[1] / len;
+        double x0 = cx + ux * 5.6, z0 = cz + uz * 5.6, x1 = cx + ux * door, z1 = cz + uz * door;
+        path(x0, base + 0.15, z0, x1, z1, 0.7, col, 0.35f * p);
+        path(x0, base + 0.16, z0, x1, z1, 0.18, WHITE, 0.4f * p);
+        for (int i = 0; i < 6; i++) {
+            double f = (t * 0.008 + i / 6.0) % 1;
+            Shapes.disc(x0 + (x1 - x0) * f, base + 0.2, z0 + (z1 - z0) * f, 0.35, col, 0.9f * p, 0f);
+        }
+        // the threshold: three blocks either side of the axis, as wide as the lit door row
+        float glow = (0.55f + 0.25f * (float) Math.sin(t * 0.08 + k)) * p;
+        double tx = -uz * 3.5, tz = ux * 3.5, mx = x1 - ux * 0.5, mz = z1 - uz * 0.5;
+        path(mx - tx, base + 0.16, mz - tz, mx + tx, mz + tz, 0.3, col, glow);
     }
 
     /** A level band from one point to another, for bridges on the ground. */
@@ -434,6 +564,18 @@ public final class NexusRender {
         float px = 1 / 80f;
         FluxDraw.worldBegin();
         GL11.glPushMatrix();
+        // the matrix and the GL state are put back on every path, so an error here cannot leave them pushed
+        try {
+            hologramPane(n, t, x, y, z, w, h, px, a);
+        } finally {
+            GL11.glPopMatrix();
+            FluxDraw.worldEnd();
+        }
+    }
+
+    /** The hologram's pane and lines, inside {@link #hologram}'s matrix and GL state. */
+    private static void hologramPane(TileNexus n, double t, double x, double y, double z, int w, int h, float px,
+        float a) {
         GL11.glTranslated(x, y, z);
         GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
         GL11.glTranslated(0, h * px, 0);
@@ -469,7 +611,5 @@ public final class NexusRender {
                 EchoText.t("research.node." + research),
                 Math.round(n.clientResearchDone * 100));
         text(fit(line, w - 10), 5, 38, research.isEmpty() ? DIM : WHITE, a);
-        GL11.glPopMatrix();
-        FluxDraw.worldEnd();
     }
 }

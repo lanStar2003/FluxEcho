@@ -17,7 +17,7 @@ public final class BuildPace {
     /** The cost of one step. */
     public static final int STEP = 1;
     /** The shortest and longest flight of a launched cell, in ticks. */
-    public static final int MIN_FLIGHT = 4, MAX_FLIGHT = 16;
+    public static final int MIN_FLIGHT = 14, MAX_FLIGHT = 30;
     /** Slack for the comparisons, so rates such as 0.1 per tick never fall short by a rounding error. */
     private static final double EPS = 1e-9;
 
@@ -136,12 +136,13 @@ public final class BuildPace {
     }
 
     /**
-     * The flight of a launched cell in ticks: {@code clamp(4 + distance / 6, 4, 16)}, rounded down, where the distance
-     * is in blocks from the nexus core to the cell. A negative or NaN distance flies the shortest time.
+     * The flight of a launched cell in ticks: {@code clamp(12 + distance / 6, 14, 30)}, rounded down, where the
+     * distance is in blocks from the nexus core to the cell. A negative or NaN distance flies the shortest time. Long
+     * enough that a client, which hears of launches in four-tick batches, still sees the cargo fly most of the way.
      */
     public static int flightTicks(double distance) {
         if (!(distance > 0)) return MIN_FLIGHT;
-        double t = 4 + distance / 6;
+        double t = 12 + distance / 6;
         if (t >= MAX_FLIGHT) return MAX_FLIGHT;
         return Math.max(MIN_FLIGHT, (int) t);
     }

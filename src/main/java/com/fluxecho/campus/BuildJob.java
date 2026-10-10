@@ -41,7 +41,7 @@ public final class BuildJob {
      */
     public static final int V = 1;
     /** The most cells in flight at once, and the most blocked cells reported (the GUI, the red boxes, the save). */
-    public static final int MAX_FLIGHTS = 64, MAX_BLOCKED = 64;
+    public static final int MAX_FLIGHTS = 256, MAX_BLOCKED = 64;
     /** The most blocked cells kept by position; beyond that they are only counted. */
     static final int MAX_TRACKED = 8192;
     /** The prefix of a repair job's key: {@code repair:establish} or {@code repair:<site>}. */
