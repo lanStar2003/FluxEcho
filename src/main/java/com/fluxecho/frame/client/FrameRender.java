@@ -18,7 +18,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 /**
  * Draws the flux frame into the chunk mesh: each part's box with the usual lighting, its bright lines again on top at
  * full brightness, the conduit's core and the seat's crystal glowing whole. A part that gave way to a formed
- * multiblock's drawing ({@link Formed#HIDE}) draws nothing.
+ * multiblock's drawing ({@link Formed#HIDE}) draws nothing. A shelf that is a body of a shelf unit is drawn by
+ * {@link ShelfUnits}.
  */
 @SideOnly(Side.CLIENT)
 public final class FrameRender implements ISimpleBlockRenderingHandler {
@@ -38,6 +39,8 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
         if ((Formed.clientFlags(x, y, z) & Formed.HIDE) != 0) return false;
         int meta = w.getBlockMetadata(x, y, z);
         if (meta == BlockFrame.CONSOLE) return console(w, x, y, z, frame, r);
+        // a shelf between a plinth and a crown is a body of a shelf unit, with a compartment and books
+        if (meta == BlockFrame.SHELF && ShelfUnits.draw(w, x, y, z, frame, r)) return true;
         float[] b = BlockFrame.box(meta);
         r.setRenderBounds(b[0], b[1], b[2], b[3], b[4], b[5]);
         r.renderStandardBlock(block, x, y, z);

@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import com.fluxecho.ae.AEModule;
 import com.fluxecho.bees.BeeModule;
 import com.fluxecho.blood.BloodModule;
+import com.fluxecho.campus.CampusModule;
 import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.core.RecipeCheck;
@@ -82,6 +83,7 @@ public class FluxEcho {
         CodexModule.preInit();
         MatterModule.preInit();
         FrameModule.preInit();
+        CampusModule.preInit();
         NexusModule.preInit();
         LibraryModule.preInit();
         NexusNet.init();
@@ -103,6 +105,7 @@ public class FluxEcho {
         if (Mods.ic2) CropModule.machines();
         if (Mods.botania) ManaModule.machines();
         GateModule.init();
+        CampusModule.init();
         NexusModule.init();
         LibraryModule.init();
         proxy.init();
@@ -113,6 +116,7 @@ public class FluxEcho {
         CodexModule.postInit();
         MatterModule.postInit();
         FrameModule.postInit();
+        CampusModule.postInit();
         NexusModule.postInit();
         LibraryModule.postInit();
         GateModule.postInit();
