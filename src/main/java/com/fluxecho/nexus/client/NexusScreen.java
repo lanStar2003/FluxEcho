@@ -451,7 +451,7 @@ public final class NexusScreen {
 
     /**
      * Without a job: every module the nexus can build, a line each with its name and site and a line with where it
-     * stands (needs its research, queued, building, built, no room); returns the height under the list.
+     * stands (needs its research, queued, building, built, the ring full, no room); returns the height under the list.
      */
     private static int modules(NexusGui.Build b, int y, float w, float h) {
         if (b.modules.isEmpty()) return y + 1;
@@ -483,6 +483,8 @@ public final class NexusScreen {
                 return EchoText.t("build.module.building");
             case BUILT:
                 return EchoText.t("build.module.built", m.site);
+            case RING_FULL:
+                return EchoText.t("build.module.ring_full");
             default:
                 return EchoText.t("build.module.no_room");
         }

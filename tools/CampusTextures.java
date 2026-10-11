@@ -6,8 +6,8 @@ import javax.imageio.ImageIO;
  * Draws the textures of the campus builder (0.10.0): the deck tiles the nexus paves its campus and builds its facades
  * with, the fittings a shelf unit and a library interior are assembled from, three extras for the shelf-unit look of
  * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), the supply
- * port's faces, and (0.10.1) the recycle bin's. Run from the repository root:
- * {@code java tools/CampusTextures.java}.
+ * port's faces, (0.10.1) the recycle bin's, and (0.11.0) the city's sample socket and basin rim. Run from the
+ * repository root: {@code java tools/CampusTextures.java}.
  * <p>
  * The palette is the dark tech of the nexus: navy steel, blue-grey tiles, and light only in thin cyan lines. Every tile
  * that is laid side by side (floor, wall panels, bands, unit plinths and crowns) tiles seamlessly, and its light lines
@@ -30,7 +30,8 @@ public class CampusTextures {
 
     static final String[] DECK_NAMES = { "deck", "trim", "lit", "grate", "dark", "skirt", "chevron", "well", "panel",
         "panel_lit", "panel_dark", "cornice" };
-    static final String[] FITTING_NAMES = { "post", "plinth", "crown", "rail", "tread", "glaze", "pedestal" };
+    static final String[] FITTING_NAMES = { "post", "plinth", "crown", "rail", "tread", "glaze", "pedestal", "socket",
+        "basin" };
 
     interface Px {
 
@@ -54,11 +55,14 @@ public class CampusTextures {
         anim("blocks/deck/lit_side_glow", CampusTextures::litSideGlow);
 
         Px[] side = { CampusTextures::postSide, CampusTextures::plinthSide, CampusTextures::crownSide,
-            CampusTextures::railSide, CampusTextures::treadSide, CampusTextures::glaze, CampusTextures::pedestalSide };
+            CampusTextures::railSide, CampusTextures::treadSide, CampusTextures::glaze, CampusTextures::pedestalSide,
+            CampusTextures::socketSide, CampusTextures::basinSide };
         Px[] top = { CampusTextures::postTop, CampusTextures::plinthTop, CampusTextures::crownTop,
-            CampusTextures::railTop, CampusTextures::treadTop, CampusTextures::glaze, CampusTextures::pedestalTop };
+            CampusTextures::railTop, CampusTextures::treadTop, CampusTextures::glaze, CampusTextures::pedestalTop,
+            CampusTextures::socketTop, CampusTextures::basinTop };
         Px[] glow = { CampusTextures::postGlow, CampusTextures::plinthGlow, CampusTextures::crownGlow,
-            CampusTextures::railGlow, CampusTextures::treadGlow, null, CampusTextures::pedestalGlow };
+            CampusTextures::railGlow, CampusTextures::treadGlow, null, CampusTextures::pedestalGlow,
+            CampusTextures::socketGlow, CampusTextures::basinGlow };
         for (int i = 0; i < FITTING_NAMES.length; i++) {
             still("blocks/fitting/" + FITTING_NAMES[i], side[i]);
             still("blocks/fitting/" + FITTING_NAMES[i] + "_top", top[i]);
@@ -507,6 +511,104 @@ public class CampusTextures {
         if (d < 3.1) return d < 2.5 ? CYAN : 0x2FB5D0;
         if (cx == 4 || cy == 4) return STEEL;
         return 0x081420;
+    }
+
+    // ---- the city's fittings (0.11.0)
+
+    /**
+     * Whether a pixel is on the rim round a socket's recess: columns 4 and 11, rows 0 and 5, the corners in. The recess
+     * is high on the column (11 to 15 sixteenths up, rows 1 to 4), so a sample shows over a planter's basin rim.
+     */
+    static boolean socketRim(int x, int y) {
+        boolean cols = (x == 4 || x == 11) && y >= 0 && y <= 5, rows = (y == 0 || y == 5) && x >= 4 && x <= 11;
+        return cols || rows;
+    }
+
+    /** Whether a pixel is in a socket's recess (its back panel, two sixteenths in): columns 5 to 10, rows 1 to 4. */
+    static boolean socketRecess(int x, int y) {
+        return x >= 5 && x <= 10 && y >= 1 && y <= 4;
+    }
+
+    /**
+     * A sample socket's side (the column shows pixels 2 to 13): navy steel shading from a bright left edge to a dark
+     * right one like the shelf post, a thin steel cap over the recess and a tall foot under it with a nosing under the
+     * sill and a reveal at the floor, and at the top the recess's back, a dark panel in shadow under the cap with faint
+     * upright grain. The rim round the opening is the glow's.
+     */
+    static int socketSide(int x, int y, int f) {
+        int cx = Math.max(2, Math.min(13, x));
+        if (socketRecess(cx, y)) {
+            if (y == 1) return SHADOW;
+            if (y == 2) return mix(SHADOW, 0x0B1A26, 0.5);
+            int c = grain(0x0B1A26, cx, y / 3, 83, 0.05);
+            if (y == 4) c = mix(c, CYAN_DARK, 0.25);
+            return c;
+        }
+        if (socketRim(cx, y)) return CHANNEL;
+        if (y == 0) return STEEL_HI;
+        if (y == 6) return STEEL;
+        if (y == 7) return mix(STEEL, NAVY, 0.5);
+        if (y == 13) return STEEL_LO;
+        if (y == 14) return SHADOW;
+        if (y == 15) return TRIM;
+        if (cx == 2) return STEEL_HI;
+        if (cx == 13) return 0x10202E;
+        return mix(STEEL, NAVY, (cx - 3) / 10.0);
+    }
+
+    /** The socket's top: a steel cap (pixels 2 to 13) with a ring and a cyan point in its middle. */
+    static int socketTop(int x, int y, int f) {
+        int cx = Math.max(2, Math.min(13, x)), cy = Math.max(2, Math.min(13, y));
+        if (cx == 2 || cy == 2) return STEEL_HI;
+        if (cx == 13 || cy == 13) return 0x10202E;
+        double d = dist(cx, cy);
+        if (d < 1.0) return mix(CYAN, LIT, 0.3);
+        if (d < 1.8) return SHADOW;
+        if (d > 2.6 && d < 3.5) return STEEL_LO;
+        return grain(NAVY, cx, cy, 89, 0.03);
+    }
+
+    /** The recess's rim of light, its swell running round it. */
+    static int socketGlow(int x, int y, int f) {
+        if (!socketRim(x, y)) return 0;
+        // the place round the rim, 0 to 1, for the swell
+        double pos = Math.atan2(y - 2.5, x - 7.5) / (2 * Math.PI) + 0.5;
+        return line(mix(LIT, CYAN, 0.35), swell(pos, f), 0.55);
+    }
+
+    /**
+     * A basin rim's side, drawn for the slab's ten sixteenths (rows 6 to 15) and the lip's two above it (rows 4 and
+     * 5): a steel nosing, a dark navy band with a faint grain, a shadow reveal and a trim foot.
+     */
+    static int basinSide(int x, int y, int f) {
+        if (y <= 3) return 0x10202E;
+        if (y <= 5) return STEEL;
+        if (y == 6) return STEEL_HI;
+        if (y == 7) return STEEL;
+        if (y == 13) return STEEL_LO;
+        if (y == 14) return SHADOW;
+        if (y == 15) return TRIM;
+        return grain(PANEL_DARK, x, y / 2, 97, 0.03);
+    }
+
+    /** A basin rim's top: a dark steel plate whose seams run edge to edge, so a row of rims reads as one kerb. */
+    static int basinTop(int x, int y, int f) {
+        if (x == 0 || y == 0) return 0x24313C;
+        if (x == 15 || y == 15) return 0x111A22;
+        if ((x == 3 || x == 12) && (y == 3 || y == 12)) return STEEL_LO;
+        return grain(PANEL_DARK, x, y, 101, 0.03);
+    }
+
+    /**
+     * The lip's light: a cross two to four sixteenths wide edge to edge for the lip's top (its middle and its arms),
+     * and rows 4 and 5 for its sides; the swell runs along it and wraps at the block edge.
+     */
+    static int basinGlow(int x, int y, int f) {
+        boolean along = x >= 6 && x <= 9, across = y >= 6 && y <= 9, side = y == 4 || y == 5;
+        if (!along && !across && !side) return 0;
+        double s = Math.max(along ? swell(y / 16.0, f) : 0, across || side ? swell(x / 16.0, f) : 0);
+        int lo = mix(LIT, CYAN, (x == 6 || x == 9) && along || (y == 6 || y == 9) && across ? 0.55 : 0.3);
+        return line(lo, s, 0.5);
     }
 
     // ---- frame extras

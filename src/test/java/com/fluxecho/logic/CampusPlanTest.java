@@ -86,10 +86,10 @@ class CampusPlanTest {
         assertArrayEquals(new int[] { -41, 0 }, CampusPlan.moduleCentre(4, 35));
         assertArrayEquals(new int[] { 0, 41 }, CampusPlan.moduleCentre(2, 35));
         assertArrayEquals(new int[] { 0, -41 }, CampusPlan.moduleCentre(6, 35));
-        assertArrayEquals(new int[] { 34, 34 }, CampusPlan.diagonalCentre(1));
-        assertArrayEquals(new int[] { -34, 34 }, CampusPlan.diagonalCentre(3));
-        assertArrayEquals(new int[] { -34, -34 }, CampusPlan.diagonalCentre(5));
-        assertArrayEquals(new int[] { 34, -34 }, CampusPlan.diagonalCentre(7));
+        assertArrayEquals(new int[] { 36, 36 }, CampusPlan.diagonalCentre(1));
+        assertArrayEquals(new int[] { -36, 36 }, CampusPlan.diagonalCentre(3));
+        assertArrayEquals(new int[] { -36, -36 }, CampusPlan.diagonalCentre(5));
+        assertArrayEquals(new int[] { 36, -36 }, CampusPlan.diagonalCentre(7));
         assertArrayEquals(CampusPlan.diagonalCentre(3), CampusPlan.moduleCentre(3, 35));
         assertThrows(IllegalArgumentException.class, () -> CampusPlan.diagonalCentre(2));
         for (int site : CampusPlan.HALL_SITES) {

@@ -32,10 +32,11 @@ import cpw.mods.fml.relauncher.SideOnly;
 public class BlockFrame extends Block {
 
     public static final int BASE = 0, BASE_LIT = 1, PILLAR = 2, CONDUIT = 3, RING = 4, SEAT = 5, FOUNDATION = 6,
-        SHELF = 7, CONSOLE = 8, TYPES = 9;
+        SHELF = 7, CONSOLE = 8, ANCHOR = 9, TYPES = 10;
     public static final String[] NAMES = { "base", "base_lit", "pillar", "conduit", "ring", "seat", "foundation",
-        "shelf", "console" };
-    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8, 10 };
+        "shelf", "console", "anchor" };
+    /** The light of each meta; the cladding anchor (0.11.0, a whole cube with a socket plate on every face) gives 6. */
+    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8, 10, 6 };
 
     /** What a formed multiblock does when one of its frame blocks is used (a library's shelf, its desk). */
     public interface Use {
@@ -71,7 +72,11 @@ public class BlockFrame extends Block {
 
     /** Whether the meta is a whole cube. */
     public static boolean full(int meta) {
-        return meta == BASE || meta == BASE_LIT || meta == FOUNDATION || meta == SHELF || meta >= TYPES;
+        return meta == BASE || meta == BASE_LIT
+            || meta == FOUNDATION
+            || meta == SHELF
+            || meta == ANCHOR
+            || meta >= TYPES;
     }
 
     /** The part's box: x0, y0, z0, x1, y1, z1. */
@@ -208,6 +213,8 @@ public class BlockFrame extends Block {
         glowSide[SHELF] = r.registerIcon(FluxEcho.MODID + ":frame/shelf_side_glow");
         glowTop[CONSOLE] = r.registerIcon(FluxEcho.MODID + ":frame/console_top_glow");
         glowSide[CONSOLE] = r.registerIcon(FluxEcho.MODID + ":frame/console_side_glow");
+        glowTop[ANCHOR] = r.registerIcon(FluxEcho.MODID + ":frame/anchor_top_glow");
+        glowSide[ANCHOR] = r.registerIcon(FluxEcho.MODID + ":frame/anchor_side_glow");
         core = r.registerIcon(FluxEcho.MODID + ":frame/conduit_core");
         crystal = r.registerIcon(FluxEcho.MODID + ":frame/seat_crystal");
     }

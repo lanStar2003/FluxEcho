@@ -1018,7 +1018,7 @@ public final class Builder {
                 return SKIPPED;
             }
             eu += stepEu(st.kind, st.part, needsBreak[k], Config.buildEuPerBlock, Config.buildEuPerClear);
-            if (free || st.kind == BuildPlan.AIR || st.part == Parts.GRASS || st.part == Parts.DIRT) continue;
+            if (free || st.kind == BuildPlan.AIR || Parts.euOnly(st.part)) continue;
             if (campus.ledger()
                 .charge(st.part, scale)) {
                 charged[k] = true;
@@ -1415,11 +1415,23 @@ public final class Builder {
      * loose supply port of ours under the conservative rule.
      */
     static TerrainRule.Verdict verdict(BuildJob job, BuildPlan.Step s, TerrainRule.Probe p) {
-        return verdict(s, p, job.module() != null, Config.buildClearAll);
+        return verdict(s, p, job.module() != null, Config.buildClearAll, job.repair());
     }
 
-    /** {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} with the job's kind and the rule given. */
+    /** {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} for a first build, the rule given. */
     static TerrainRule.Verdict verdict(BuildPlan.Step s, TerrainRule.Probe p, boolean module, boolean all) {
+        return verdict(s, p, module, all, false);
+    }
+
+    /**
+     * {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} with the job's kind and the rule given. A repair
+     * lays its soft ground (grass, dirt, water) only where the cell is empty ({@link TerrainRule#forRepairGround}): the
+     * players' garden stays.
+     */
+    static TerrainRule.Verdict verdict(BuildPlan.Step s, TerrainRule.Probe p, boolean module, boolean all,
+        boolean repair) {
+        if (repair && s.kind == BuildPlan.SOFT && Parts.euOnly(s.part))
+            return TerrainRule.forRepairGround(p, module, all);
         if (s.kind != BuildPlan.AIR) return TerrainRule.forBuild(p, module, all);
         if (p.air) return TerrainRule.Verdict.ALREADY;
         if (p.replaceable && !p.lava) return TerrainRule.Verdict.CLEAR;
@@ -1442,12 +1454,13 @@ public final class Builder {
     }
 
     /**
-     * The EU one launched step costs: a cell that is only cleared, or filled with grass or dirt, the clearing EU; any
-     * other block the placing EU, and the clearing EU on top only when that cell has something to break first (a
-     * bookcase launched whole pays the clearing EU for the cells that need it, not for all fifteen).
+     * The EU one launched step costs: a cell that is only cleared, or filled with grass, dirt or water
+     * ({@link Parts#euOnly}), the clearing EU; any other block the placing EU, and the clearing EU on top only when
+     * that cell has something to break first (a bookcase launched whole pays the clearing EU for the cells that need
+     * it, not for all fifteen).
      */
     static long stepEu(int kind, int part, boolean breaks, long euPerBlock, long euPerClear) {
-        if (kind == BuildPlan.AIR || part == Parts.GRASS || part == Parts.DIRT) return euPerClear;
+        if (kind == BuildPlan.AIR || Parts.euOnly(part)) return euPerClear;
         return euPerBlock + (breaks ? euPerClear : 0);
     }
 

@@ -8,6 +8,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
+import com.fluxecho.city.CityModule;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.FrameModule;
@@ -29,15 +30,16 @@ public final class PartBlocks {
     private PartBlocks() {}
 
     /**
-     * The block of a part code: the flux frame, the campus deck or fittings, the library core, the supply port, the
-     * recycle bin, grass, dirt or air. Null for codes that name nothing, and for the recycle bin while
-     * {@link CampusModule#recycleBin} is not registered (the builder then skips its step).
+     * The block of a part code: the flux frame, the campus deck or fittings, the library core, a module core
+     * (0.11.0), the supply port, the recycle bin, grass, dirt, water or air. Null for codes that name nothing, and for
+     * the recycle bin while {@link CampusModule#recycleBin} is not registered (the builder then skips its step).
      */
     public static Block block(int code) {
         int meta = Parts.meta(code);
         if (Parts.isFrame(code)) return meta < BlockFrame.TYPES ? FrameModule.frame : null;
         if (Parts.isDeck(code)) return meta < Parts.DECK_TYPES ? CampusModule.deck : null;
         if (Parts.isFitting(code)) return meta < Parts.FITTING_TYPES ? CampusModule.fitting : null;
+        if (Parts.isModuleCore(code)) return CityModule.core;
         switch (code) {
             case Parts.LIBRARY_CORE:
                 return LibraryModule.core;
@@ -49,6 +51,8 @@ public final class PartBlocks {
                 return Blocks.grass;
             case Parts.DIRT:
                 return Blocks.dirt;
+            case Parts.WATER:
+                return Blocks.water;
             case Parts.AIR:
                 return Blocks.air;
             default:
@@ -56,16 +60,19 @@ public final class PartBlocks {
         }
     }
 
-    /** The metadata a part code is placed with: its meta within the frame, deck or fitting family, 0 for the rest. */
+    /**
+     * The metadata a part code is placed with: its meta within the frame, deck, fitting or module core family, 0 for
+     * the rest (water is a source).
+     */
     public static int meta(int code) {
         return Parts.meta(code);
     }
 
     /**
-     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta, the library core, the supply
-     * port and the recycle bin (any meta). -1 for everything that is not ours, grass, dirt and air included: a cell
-     * holds the part a step wants when {@link #block} and {@link #meta} of its code match, which callers test directly
-     * for those three.
+     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta, the library core, a module
+     * core (by its meta), the supply port and the recycle bin (any meta). -1 for everything that is not ours, grass,
+     * dirt, water and air included: a cell holds the part a step wants when {@link #block} and {@link #meta} of its
+     * code match, which callers test directly for those ({@code Terrain.isTarget}).
      */
     public static int code(Block b, int meta) {
         if (b == null) return -1;
@@ -73,6 +80,7 @@ public final class PartBlocks {
         if (b == CampusModule.deck) return meta >= 0 && meta < Parts.DECK_TYPES ? Parts.deck(meta) : -1;
         if (b == CampusModule.fitting) return meta >= 0 && meta < Parts.FITTING_TYPES ? Parts.fitting(meta) : -1;
         if (b == LibraryModule.core) return Parts.LIBRARY_CORE;
+        if (b == CityModule.core) return meta >= 0 && meta < Parts.MODULE_CORES ? Parts.moduleCore(meta) : -1;
         if (b == CampusModule.supplyPort) return Parts.SUPPLY_PORT;
         if (b == CampusModule.recycleBin) return Parts.RECYCLE_BIN;
         return -1;

@@ -89,8 +89,8 @@ public final class BuildScan {
     private static final int TRACK_RANGE = OUTLINE_RANGE + 128;
     /** Ticks after its landing a launch's cell is checked each tick (its block arrives a little after). */
     private static final int LANDED_CHECK = BuildClient.LAND_LINGER;
-    /** Part codes have six bits; an icon is kept for each part and side. */
-    private static final int PARTS = 64;
+    /** Part codes fit one byte (the module cores of 0.11.0 start at 64); an icon is kept for each part and side. */
+    private static final int PARTS = 128;
 
     private static final int[] NO_INTS = new int[0];
     private static final float[] NO_FLOATS = new float[0];

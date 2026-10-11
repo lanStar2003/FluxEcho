@@ -797,13 +797,17 @@ public final class NexusGui {
     }
 
     /**
-     * The lang key (under {@code fluxecho.}) of a stage: {@code build.stage.e<n>} or {@code build.stage.m<n>}. A job
-     * past its last stage (a module waiting for its structure to form, a finished job) shows its last stage.
+     * The lang key (under {@code fluxecho.}) of a stage: {@code build.stage.e<n>} for the campus's own jobs,
+     * {@code build.stage.m<n>} for the Echo Archive (its shelves and porch) and {@code build.stage.c<n>} for the city's
+     * other modules (0.11.0), whose stages have the same numbers. A job past its last stage (a module waiting for its
+     * structure to form, a finished job) shows its last stage.
      */
     public static String stageKey(String planKey, int stage) {
         boolean campus = BuildPlan.ESTABLISH.equals(planKey) || BuildPlan.FORUM.equals(planKey);
         int last = campus ? BuildPlan.E_FIXTURE : BuildPlan.M_COMMISSION;
-        return "build.stage." + (campus ? "e" : "m") + Math.max(0, Math.min(stage, last));
+        String module = ModuleSpecs.moduleOf(planKey);
+        String family = campus ? "e" : module == null || BuildPlan.LIBRARY.equals(module) ? "m" : "c";
+        return "build.stage." + family + Math.max(0, Math.min(stage, last));
     }
 
     /** The lang key (under {@code fluxecho.}) of a state. */

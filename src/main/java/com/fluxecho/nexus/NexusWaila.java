@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 
 import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
+import com.fluxecho.city.TileCityModule;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.library.TileLibrary;
@@ -27,7 +28,8 @@ import mcp.mobius.waila.api.IWailaRegistrar;
 /**
  * Waila on the Flux Nexus's core and its modules' cores, GT-like: what it does, power and compute, the research, the
  * ring, and what its campus builds (营造：job, progress, stage, and the first missing item); a module's dock, power and
- * what it holds. The numbers come from the server.
+ * what it holds (the library's books and lends, a city module's samples in its units). The numbers come from the
+ * server.
  */
 public final class NexusWaila implements IWailaDataProvider {
 
@@ -78,7 +80,9 @@ public final class NexusWaila implements IWailaDataProvider {
             tip.add(
                 (ok ? EnumChatFormatting.GREEN : EnumChatFormatting.GOLD)
                     + EchoText.t("dock." + ("docked".equals(dock) && !t.getBoolean("fePowered") ? "no_power" : dock)));
-            tip.add(
+            if (t.hasKey("feUnits")) tip.add(
+                EchoText.t("waila.city", t.getInteger("feSamples"), t.getInteger("feCap"), t.getInteger("feUnits")));
+            else tip.add(
                 EchoText.t("waila.library", t.getInteger("feSamples"), t.getInteger("feCap"), t.getInteger("feLends")));
             tip.add(EnumChatFormatting.GRAY + EchoText.t("waila.owner", t.getString("feOwner")));
         }
@@ -162,6 +166,17 @@ public final class NexusWaila implements IWailaDataProvider {
             tag.setInteger("feCap", l.capacity());
             tag.setInteger("feLends", l.lendsShown());
             tag.setString("feOwner", l.ownerName());
+        } else if (te instanceof TileCityModule c) {
+            // a city module (0.11.0): its dock and power, and the samples its units keep
+            tag.setString("feDock", c.dockStatus());
+            tag.setBoolean("fePowered", c.powered());
+            tag.setInteger("feSamples", c.sampleCount());
+            tag.setInteger(
+                "feCap",
+                c.samples()
+                    .getSlots());
+            tag.setInteger("feUnits", c.unitCount());
+            tag.setString("feOwner", c.ownerName());
         }
         return tag;
     }

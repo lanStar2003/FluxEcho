@@ -1,5 +1,8 @@
 package com.fluxecho.campus.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -10,6 +13,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.campus.BlockFitting;
+import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
@@ -20,9 +24,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Draws the campus fittings into the chunk mesh, each in its own shape: the post between two shelf units a slim
  * column, the plinth and the crown whole cubes, the gallery rail a baluster with a glass panel reaching to each
  * neighbour it joins, the stair tread a half slab, the glazing a cut-out glass cube, the hologram pedestal a short
- * block. Each part is drawn with vanilla lighting, then its light line again at full brightness with smooth lighting
- * off, only on the sides where it can be seen: a post's and a unit's line only where no wall, shelf or post stands
- * against it, a tread's nose only where the stair is open. That keeps the lines lit under a shader pack.
+ * block; and (0.11.0) the city's sample socket a slim column with a recess in each side face, rimmed in cyan, that the
+ * sample floats in (drawn after the world by the module), and the basin rim a 10/16 slab whose lit lip runs to every
+ * neighbouring rim like a rail's arms, so a planter's bed or a pond is ringed by one line of light. Each part is drawn
+ * with vanilla lighting, then its light line again at full brightness with smooth lighting off, only on the sides
+ * where it can be seen: a post's and a unit's line only where no wall, shelf or post stands against it, a tread's nose
+ * only where the stair is open. That keeps the lines lit under a shader pack.
  */
 @SideOnly(Side.CLIENT)
 public final class FittingRender implements ISimpleBlockRenderingHandler {
@@ -34,6 +41,19 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
         PANE_MAX = 9 / 16.0;
     private static final double TREAD_TOP = 0.5;
     private static final double PEDESTAL_MIN = 3 / 16.0, PEDESTAL_MAX = 13 / 16.0, PEDESTAL_TOP = 12 / 16.0;
+    /**
+     * The socket (0.11.0): a column 2..14 sixteenths across, its recess on each side 5..11 across and 11..15 high
+     * ({@link ModuleLook#RECESS_LOW} to {@link ModuleLook#RECESS_HIGH}: over a planter's basin rim and its lip, so the
+     * sample shows), two sixteenths deep. The parts, in sixteenths: a foot and a head over the whole column, the core
+     * between them up to the recesses' backs, and a post in each corner beside the recesses.
+     */
+    private static final double[][] SOCKET = { { 2, 0, 2, 14, 11, 14 }, { 2, 15, 2, 14, 16, 14 },
+        { 4, 11, 4, 12, 15, 12 }, { 2, 11, 2, 5, 15, 5 }, { 11, 11, 2, 14, 15, 5 }, { 2, 11, 11, 5, 15, 14 },
+        { 11, 11, 11, 14, 15, 14 } };
+    private static final double SOCKET_MIN = 2 / 16.0, SOCKET_MAX = 14 / 16.0;
+    /** The basin rim (0.11.0): its slab's top, and its lip: two sixteenths high, four wide, along the middle. */
+    private static final double BASIN_TOP = ModuleLook.BASIN_TOP, LIP_TOP = ModuleLook.LIP_TOP,
+        LIP_MIN = ModuleLook.LIP_MIN, LIP_MAX = ModuleLook.LIP_MAX;
 
     private final int id;
 
@@ -58,6 +78,12 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                 break;
             case Parts.F_PEDESTAL:
                 drawn = pedestal(x, y, z, fit, meta, r);
+                break;
+            case Parts.F_SOCKET:
+                drawn = socket(x, y, z, fit, meta, r);
+                break;
+            case Parts.F_BASIN:
+                drawn = basin(w, x, y, z, fit, meta, r);
                 break;
             default:
                 // the plinth, the crown, the glazing (whose shouldSideBeRendered hides the faces between two panes)
@@ -170,6 +196,68 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             PEDESTAL_MAX) || drawn;
     }
 
+    /**
+     * The sample socket: a slim column whose four side faces each have a recess the sample floats in, the recess's
+     * rim lit on every side (the rim lies on the column's face round the opening, so the overlay is cut out over the
+     * opening itself). Every face of its parts is drawn: the recesses' floors and ceilings lie inside the block,
+     * where the whole column's rule (a face at its top or foot is hidden against an opaque block) must not hide them.
+     */
+    private static boolean socket(int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+        for (double[] b : SOCKET)
+            PartDraw.inner(r, fit, x, y, z, null, b[0] / 16, b[1] / 16, b[2] / 16, b[3] / 16, b[4] / 16, b[5] / 16);
+        boolean[] round = { false, false, true, true, true, true };
+        overlay(r, fit, x, y, z, meta, round, SOCKET_MIN, 0, SOCKET_MIN, SOCKET_MAX, 1, SOCKET_MAX);
+        return true;
+    }
+
+    /**
+     * The basin rim: a 10/16 slab with a lip along its middle, two sixteenths high, that runs out to every side where
+     * another basin rim stands at the same height (as a rail's arms do), its top and its sides lit; a rim alone shows
+     * only the lip's knot in its middle.
+     */
+    private static boolean basin(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+        PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, BASIN_TOP, 1);
+        boolean[] arm = new boolean[6];
+        for (int s = 2; s < 6; s++) {
+            int[] o = PartDraw.OFFSETS[s];
+            arm[s] = Neighbours.fitting(w, x + o[0], y, z + o[2], Parts.F_BASIN);
+        }
+        double[][] lip = lip(arm);
+        for (double[] b : lip) PartDraw.inner(r, fit, x, y, z, null, b[0], b[1], b[2], b[3], b[4], b[5]);
+        for (double[] b : lip) {
+            boolean[] lit = { false, true, true, true, true, true };
+            // an arm's end lies against the next rim's arm: no light there
+            for (int s = 2; s < 6; s++) if (arm[s] && touches(b, s)) lit[s] = false;
+            overlay(r, fit, x, y, z, meta, lit, b[0], b[1], b[2], b[3], b[4], b[5]);
+        }
+        return true;
+    }
+
+    /** The boxes of a basin rim's lip: the knot in the middle and an arm to each side that joins. */
+    private static double[][] lip(boolean[] arm) {
+        List<double[]> out = new ArrayList<>();
+        out.add(new double[] { LIP_MIN, BASIN_TOP, LIP_MIN, LIP_MAX, LIP_TOP, LIP_MAX });
+        if (arm[2]) out.add(new double[] { LIP_MIN, BASIN_TOP, 0, LIP_MAX, LIP_TOP, LIP_MIN });
+        if (arm[3]) out.add(new double[] { LIP_MIN, BASIN_TOP, LIP_MAX, LIP_MAX, LIP_TOP, 1 });
+        if (arm[4]) out.add(new double[] { 0, BASIN_TOP, LIP_MIN, LIP_MIN, LIP_TOP, LIP_MAX });
+        if (arm[5]) out.add(new double[] { LIP_MAX, BASIN_TOP, LIP_MIN, 1, LIP_TOP, LIP_MAX });
+        return out.toArray(new double[0][]);
+    }
+
+    /** Whether a box reaches the block's edge on side s (2 to 5). */
+    private static boolean touches(double[] b, int s) {
+        switch (s) {
+            case 2:
+                return b[2] <= 0;
+            case 3:
+                return b[5] >= 1;
+            case 4:
+                return b[0] <= 0;
+            default:
+                return b[3] >= 1;
+        }
+    }
+
     /** Whether the side s of a unit part is open to view (see {@link Neighbours#open}). */
     private static boolean open(IBlockAccess w, int x, int y, int z, int s) {
         int[] o = PartDraw.OFFSETS[s];
@@ -243,6 +331,21 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                     PEDESTAL_TOP,
                     PEDESTAL_MAX);
                 break;
+            case Parts.F_SOCKET:
+                for (double[] b : SOCKET) PartDraw
+                    .inventoryBox(r, fit, own, b[0] / 16, b[1] / 16, b[2] / 16, b[3] / 16, b[4] / 16, b[5] / 16);
+                PartDraw.inventoryBox(r, fit, round, SOCKET_MIN, 0, SOCKET_MIN, SOCKET_MAX, 1, SOCKET_MAX);
+                break;
+            case Parts.F_BASIN: {
+                // a straight piece running east-west, as it stands between two neighbours
+                PartDraw.inventoryBox(r, fit, own, 0, 0, 0, 1, BASIN_TOP, 1);
+                PartDraw.Icons lit = s -> s >= 1 ? fit.glow(meta, s) : null;
+                for (double[] b : lip(new boolean[] { false, false, false, false, true, true })) {
+                    PartDraw.inventoryBox(r, fit, own, b[0], b[1], b[2], b[3], b[4], b[5]);
+                    PartDraw.inventoryBox(r, fit, lit, b[0], b[1], b[2], b[3], b[4], b[5]);
+                }
+                break;
+            }
             default:
                 PartDraw.inventoryBox(r, fit, own, 0, 0, 0, 1, 1, 1);
                 PartDraw.inventoryBox(r, fit, round, 0, 0, 0, 1, 1, 1);

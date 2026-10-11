@@ -67,8 +67,8 @@ class PartRecipesTest {
         for (int m = 0; m < Parts.FITTING_TYPES; m++)
             assertNotNull(PartRecipes.get(Parts.fitting(m)), Parts.FITTING_NAMES[m]);
         int[] frames = { Parts.FR_BASE, Parts.FR_BASE_LIT, Parts.FR_PILLAR, Parts.FR_CONDUIT, Parts.FR_RING,
-            Parts.FR_FOUNDATION, Parts.FR_SHELF, Parts.FR_CONSOLE };
-        int[] yields = { 8, 4, 4, 1, 4, 8, 32, 2 };
+            Parts.FR_FOUNDATION, Parts.FR_SHELF, Parts.FR_CONSOLE, Parts.FR_ANCHOR };
+        int[] yields = { 8, 4, 4, 1, 4, 8, 32, 2, 4 };
         for (int i = 0; i < frames.length; i++)
             assertEquals(yields[i], PartRecipes.get(Parts.frame(frames[i])).yield, "frame " + frames[i]);
         assertNotNull(PartRecipes.get(Parts.SUPPLY_PORT));
@@ -84,8 +84,10 @@ class PartRecipesTest {
         assertNull(PartRecipes.get(Parts.GRASS));
         assertNull(PartRecipes.get(Parts.DIRT));
         assertNull(PartRecipes.get(Parts.AIR));
+        assertNull(PartRecipes.get(Parts.WATER), "water is paid in EU alone");
+        for (int m = 0; m < Parts.MODULE_CORES; m++) assertNull(PartRecipes.get(Parts.moduleCore(m)));
         assertEquals(
-            8 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 2,
+            9 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 2,
             PartRecipes.all()
                 .size());
         int last = -1;
@@ -148,6 +150,35 @@ class PartRecipesTest {
             PartRecipes.cost(Parts.fitting(Parts.F_PEDESTAL)));
     }
 
+    /** The parts of 0.11.0: the socket, the basin rim and the cladding anchor, expanded exactly. */
+    @Test
+    void theCitysPartsCost() {
+        // half a panel, half a lit panel and an eighth of a flux crystal
+        assertEquals(
+            map(
+                "item:minecraft:stonebrick@32767",
+                16384 + 14336,
+                "ore:plateSteel",
+                2048 + 1792,
+                "ore:dustGlowstone",
+                8192,
+                "ore:gemFluxCrystal",
+                8192),
+            PartRecipes.cost(Parts.fitting(Parts.F_SOCKET)));
+        // half a trim deck and an eighth of a steel plate
+        assertEquals(
+            map("ore:stone", 16384, "ore:plateSteel", 2048 + 8192, "ore:dustCoal", 4096),
+            PartRecipes.cost(Parts.fitting(Parts.F_BASIN)));
+        // a stainless plate, a ring segment and a quarter of a flux crystal
+        assertEquals(
+            map("ore:plateStainlessSteel", 65536 + 81920, "ore:gemFluxCrystal", 16384 + 16384),
+            PartRecipes.cost(Parts.frame(Parts.FR_ANCHOR)));
+        assertArrayEquals(new String[] { "PLP", "LCL", "PLP" }, PartRecipes.get(Parts.fitting(Parts.F_SOCKET)).pattern);
+        assertArrayEquals(new String[] { "T T", "TST" }, PartRecipes.get(Parts.fitting(Parts.F_BASIN)).pattern);
+        assertEquals(8, PartRecipes.get(Parts.fitting(Parts.F_SOCKET)).yield);
+        assertEquals(8, PartRecipes.get(Parts.fitting(Parts.F_BASIN)).yield);
+    }
+
     @Test
     void costsAreExactExpansions() {
         for (PartRecipes.Recipe r : PartRecipes.all()) {
@@ -178,10 +209,12 @@ class PartRecipesTest {
         assertTrue(PartRecipes.partOnly(Parts.LIBRARY_CORE));
         assertTrue(PartRecipes.partOnly(Parts.SUPPLY_PORT));
         assertTrue(PartRecipes.partOnly(Parts.RECYCLE_BIN), "the bin is taken finished, like the port");
+        for (int m = 0; m < Parts.MODULE_CORES; m++)
+            assertTrue(PartRecipes.partOnly(Parts.moduleCore(m)), "a module core is manifested");
         for (PartRecipes.Recipe r : PartRecipes.all()) if (r.part != Parts.SUPPLY_PORT && r.part != Parts.RECYCLE_BIN)
             assertFalse(PartRecipes.partOnly(r.part), r.name);
         for (int code : new int[] { SEAT, Parts.LIBRARY_CORE, Parts.SUPPLY_PORT, Parts.RECYCLE_BIN, Parts.GRASS,
-            Parts.DIRT, Parts.AIR })
+            Parts.DIRT, Parts.WATER, Parts.AIR, Parts.moduleCore(ModuleCores.ECO_DOME) })
             assertTrue(
                 PartRecipes.cost(code)
                     .isEmpty(),

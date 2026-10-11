@@ -12,6 +12,7 @@ import com.fluxecho.bees.BeeModule;
 import com.fluxecho.blood.BloodModule;
 import com.fluxecho.campus.CampusModule;
 import com.fluxecho.campus.Terrain;
+import com.fluxecho.city.CityModule;
 import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.command.CommandFluxEcho;
@@ -89,6 +90,7 @@ public class FluxEcho {
         CampusModule.preInit();
         NexusModule.preInit();
         LibraryModule.preInit();
+        CityModule.preInit();
         NexusNet.init();
         GateModule.preInit();
         if (Mods.forestry) BeeModule.preInit();
@@ -111,6 +113,7 @@ public class FluxEcho {
         CampusModule.init();
         NexusModule.init();
         LibraryModule.init();
+        CityModule.init();
         proxy.init();
     }
 
@@ -122,6 +125,7 @@ public class FluxEcho {
         CampusModule.postInit();
         NexusModule.postInit();
         LibraryModule.postInit();
+        CityModule.postInit();
         GateModule.postInit();
         if (Mods.forestry) BeeModule.postInit();
         if (Mods.thaumcraft) TCModule.postInit();

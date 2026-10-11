@@ -4,7 +4,8 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the textures of the Flux Nexus era (0.9.0): the flux frame's parts, the nexus's and the library's cores, the
- * flux materials and the library's index cards. Run from the repository root: {@code java tools/NexusTextures.java}.
+ * flux materials and the library's index cards; and (0.11.0) the frame's cladding anchor and the city's module cores.
+ * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
  */
 public class NexusTextures {
@@ -14,6 +15,8 @@ public class NexusTextures {
     static final int DEEP = 0x0A1622, DEEPER = 0x060D15, PANE = 0x0F2231, SEAM = 0x1F3C4E, CYAN = 0x4FE3FF,
         CYAN_DARK = 0x1C6F84, VIOLET = 0x8A5CFF, VIOLET_DARK = 0x3C2470, GOLD = 0xFFD27A, WHITE = 0xE8FBFF,
         STEEL = 0x56606E, STEEL_LIGHT = 0x8A95A5, STEEL_DARK = 0x262C35;
+    /** The Eco Dome's colour (0.11.0), shown in its core's light only. */
+    static final int ECO_GREEN = 0x7BE08A;
     static final int FRAMES = 8;
 
     interface Px {
@@ -50,6 +53,11 @@ public class NexusTextures {
         still(fr + "console_side", NexusTextures::consoleSide);
         anim(fr + "console_top_glow", NexusTextures::consoleTopGlow);
         anim(fr + "console_side_glow", NexusTextures::consoleSideGlow);
+        // the cladding anchor (0.11.0): a hexagonal socket plate on every face
+        still(fr + "anchor_top", NexusTextures::anchorFace);
+        still(fr + "anchor_side", NexusTextures::anchorFace);
+        anim(fr + "anchor_top_glow", NexusTextures::anchorGlow);
+        anim(fr + "anchor_side_glow", NexusTextures::anchorGlow);
 
         still("blocks/nexus/front", (x, y, f) -> coreFront(x, y, f, false, CYAN, NexusTextures::hexEmblem));
         anim("blocks/nexus/front_on", (x, y, f) -> coreFront(x, y, f, true, CYAN, NexusTextures::hexEmblem));
@@ -59,6 +67,12 @@ public class NexusTextures {
         anim("blocks/library/front_on", (x, y, f) -> coreFront(x, y, f, true, VIOLET, NexusTextures::bookEmblem));
         still("blocks/library/side", (x, y, f) -> shelfSide(x, y, f));
         still("blocks/library/top", (x, y, f) -> coreTop(x, y, VIOLET));
+        // the city's module cores (0.11.0): one folder a module, its own colour and emblem
+        String eco = "blocks/module_core/eco_dome/";
+        still(eco + "front", (x, y, f) -> coreFront(x, y, f, false, ECO_GREEN, NexusTextures::domeEmblem));
+        anim(eco + "front_on", (x, y, f) -> coreFront(x, y, f, true, ECO_GREEN, NexusTextures::domeEmblem));
+        still(eco + "side", (x, y, f) -> coreSide(x, y, ECO_GREEN));
+        still(eco + "top", (x, y, f) -> coreTop(x, y, ECO_GREEN));
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
@@ -311,6 +325,44 @@ public class NexusTextures {
         return mix(0x000000, col, w);
     }
 
+    // ---- the cladding anchor (0.11.0)
+
+    /** The hexagon distance of a pixel from the face's middle (pointy sides left and right, as the emblems are). */
+    static double hexDist(int x, int y) {
+        double dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5);
+        return Math.max(dx * 0.866 + dy * 0.5, dy);
+    }
+
+    /**
+     * A face of the cladding anchor: the frame's bevelled rim round a dark field, and on it a hexagonal steel plate,
+     * lit from the upper left, with a bolt at each corner, a channel round it where the light runs, and a recessed
+     * socket in its middle (a stud at its bottom) where a cladding will lock in later.
+     */
+    static int anchorFace(int x, int y, int f) {
+        int c = (x + y) % 2 == 0 ? 0x101C28 : 0x0E1924;
+        double h = hexDist(x, y);
+        if (h < 6.4) {
+            double lit = ((7.5 - x) + (7.5 - y)) / 15.0;
+            c = mix(STEEL_DARK, STEEL, 0.45 + 0.4 * lit);
+            if (h >= 5.6) c = mix(c, 0x000000, 0.35);
+            if (h >= 4.0 && h < 5.0) c = 0x0A2632;
+            if (h < 3.4) c = h < 1.3 ? STEEL_LIGHT : h < 2.0 ? 0x1A2230 : DEEPER;
+        }
+        // the bolts at the plate's six corners
+        double ang = Math.atan2(y - 7.5, x - 7.5), r = Math.hypot(x - 7.5, y - 7.5);
+        double off = Math.abs(((ang / (Math.PI / 3)) % 1 + 1.5) % 1 - 0.5);
+        if (r > 5.0 && r < 6.2 && off < 0.12) c = STEEL_LIGHT;
+        return rim(x, y, c);
+    }
+
+    /** The anchor's light: the channel round its plate, a band of light running round it. */
+    static int anchorGlow(int x, int y, int f) {
+        double h = hexDist(x, y);
+        if (h < 4.0 || h >= 5.0) return 0;
+        double a = (Math.atan2(y - 7.5, x - 7.5) / (Math.PI * 2) + 1) % 1;
+        return mix(CYAN, WHITE, 0.15 + 0.85 * wave(a, f));
+    }
+
     // ---- cores
 
     interface Emblem {
@@ -334,6 +386,16 @@ public class NexusTextures {
         if (y == 4 || y == 12) return 1;
         if ((y - 5) % 2 == 0 && (x <= 5 || x >= 10)) return 2;
         if (x == 3 || x == 12) return 1;
+        return 0;
+    }
+
+    /** The Eco Dome's emblem: a dome on its base line over a tree, the tree lit. */
+    static int domeEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 11);
+        if (y <= 10 && d >= 4.8 && d < 5.8) return 1;
+        if (y == 11 && x >= 2 && x <= 13) return 1;
+        if (Math.hypot(x - 7.5, y - 8.2) < 1.7) return 2;
+        if ((x == 7 || x == 8) && y >= 9 && y <= 10) return 2;
         return 0;
     }
 

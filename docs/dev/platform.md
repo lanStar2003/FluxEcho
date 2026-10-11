@@ -18,9 +18,9 @@
 
 依赖串：`required-after:gregtech;after:Forestry;after:Thaumcraft;after:AWWayofTime;after:betterquesting;after:fluxdepths;after:appliedenergistics2;after:ae2fc;after:mobsinfo;after:IC2;after:berriespp;after:Botania;after:Waila`。
 
-- **preInit**：`Config.load` → `Mods.detect` → `QuestInstaller.preInit` → `CodexModule.preInit`（物品 codex、`EchoNet.init`）→ `MatterModule` → `FrameModule` → `CampusModule`（地板、配件、补给口、回收箱）→ `NexusModule` → `LibraryModule` → `NexusNet.init` → `GateModule` → 按在场：Bee/TC/Mob/Crop/AE `preInit`。
-- **init**：按在场调各模块 `.machines()`（GT ID 在这里 `claim`；"registered even when a module is off, so placed machines keep their blocks"）→ `GateModule.init` → `CampusModule.init`（注册 `DropCapture`：营造拆方块时接住洒出来的物品，0.10.1）→ `NexusModule.init` → `LibraryModule.init`（还登记营造的 `ModuleSpec`）→ `proxy.init()`。
-- **postInit**：Codex、Matter、Frame、Campus、Nexus、Library、Gate，再按在场 Bee/TC/Blood/Mob/Crop/Mana/AE（注册图鉴类别和配方）。
+- **preInit**：`Config.load` → `Mods.detect` → `QuestInstaller.preInit` → `CodexModule.preInit`（物品 codex、`EchoNet.init`）→ `MatterModule` → `FrameModule` → `CampusModule`（地板、配件、补给口、回收箱）→ `NexusModule` → `LibraryModule` → `CityModule`（0.11.0：模块核心 `fluxecho:module_core`、TE `fluxecho:eco_dome`，见 [city.md](city.md)）→ `NexusNet.init` → `GateModule` → 按在场：Bee/TC/Mob/Crop/AE `preInit`。
+- **init**：按在场调各模块 `.machines()`（GT ID 在这里 `claim`；"registered even when a module is off, so placed machines keep their blocks"）→ `GateModule.init` → `CampusModule.init`（注册 `DropCapture`：营造拆方块时接住洒出来的物品，0.10.1）→ `NexusModule.init` → `LibraryModule.init`（还登记营造的 `ModuleSpec`）→ `CityModule.init`（0.11.0：生态穹的 NEI 预览和中枢预览、`BlockFrame`/`BlockFitting.onUse` 登记单元的右键 `UnitUse`、生态穹的 `ModuleSpec`——在书库之后，所以中枢先提供档案馆）→ `proxy.init()`。
+- **postInit**：Codex、Matter、Frame、Campus、Nexus、Library、City（0.11.0：显化 `eco_dome_core`）、Gate，再按在场 Bee/TC/Blood/Mob/Crop/Mana/AE（注册图鉴类别和配方）。
 - **loadComplete**：Bee/Crop/TC/Mob 补 NEI 示例 → `RecipeCheck.run()`。
 - **serverStarting**（0.10.1）：`e.registerServerCommand(new CommandFluxEcho())`——管理员命令 `/fluxecho`（权限等级 2）：`research all|reset [玩家]`、`build free [on|off]`、`build finish`、`build status`，参数由纯逻辑 `logic/EchoCommand` 读，回复都是 `fluxecho.cmd.*`/`fluxecho.build.*` 的 lang 键（见 [campus.md](campus.md) §7）。
 - **serverStarted**：`QuestInstaller.serverStarted()`。
@@ -33,7 +33,7 @@
 - 每个类别要 `setCategoryComment`；只在客户端生效的项说明以 "Client:" 开头。
 - **删除某项或改默认值**：把 `VERSION` 提到新版本，在 `upgrade()` 里用 `older(was, "x.y.z")` 删掉旧 key（加载时按新默认值重建）。现有迁移：0.5.0 删 `enchanting` 类别和若干 thaum key；0.6.0 删 `manaPerTick`、`manaPerPetal`；0.9.2 删 `nexus.librarySamples`；0.10.1 把还是旧默认 `"2"` 的 `nexus.buildFillDepth` 删掉、按新默认 4 重建（`bumpsFillDepth`，玩家改过的数保留）。`ConfigTest` 测 `older()`、0.10.1 的默认值和 `bumpsFillDepth`。
 - README「配置」一节的中文表要同步。
-- 类别：`general`（`firstMachineId` 24530、`enableDefaultRecipes`）、`quests`（`install`）、`bees`、`thaumcraft`、`bloodmagic`、`mobs`、`crops`、`botania`、`codex`（`tooltipHints`）、`nexus`（中枢见 nexus.md §9，0.10.0 的营造键 `campusEnabled`、`archiveEnabled`、`build*` 和 0.10.1 的 `buildClearAll` 见 campus.md §14）、`effects`（`machineEffects`、`flowTrails`、`effectRange` 32、`hologramRange` 16）、`ae2`（`enabled`）、`gates`。各模块的键和默认值写在对应的手册里。现在 `VERSION="0.10.1"`（0.10.1 加 `buildClearAll`、改 `buildFillDepth` 的默认值，迁移见上）。
+- 类别：`general`（`firstMachineId` 24530、`enableDefaultRecipes`）、`quests`（`install`）、`bees`、`thaumcraft`、`bloodmagic`、`mobs`、`crops`、`botania`、`codex`（`tooltipHints`）、`nexus`（中枢见 nexus.md §9，0.10.0 的营造键 `campusEnabled`、`archiveEnabled`、`build*` 和 0.10.1 的 `buildClearAll` 见 campus.md §14，0.11.0 城市模块的维持电 `moduleUpkeepEuPerTick` 见 nexus.md §9）、`effects`（`machineEffects`、`flowTrails`、`effectRange` 32、`hologramRange` 16）、`ae2`（`enabled`）、`gates`。各模块的键和默认值写在对应的手册里。现在 `VERSION="0.10.1"`（0.10.1 加 `buildClearAll`、改 `buildFillDepth` 的默认值，迁移见上；0.11.0 只加了 `nexus.moduleUpkeepEuPerTick`，只加键不用提版本）。
 
 ## 3. 机器框架（`core/`）
 
@@ -62,7 +62,7 @@
 |---|---|
 | `client/FluxDraw` | 通量风格平面 GL 绘制（不用纹理）：`pane/bar/column/scan/frame/corners/gradient/text/small...`、调色板（DEEP 0x0A1622、SEAM 0x1F3C4E、CYAN 0x4FE3FF、VIOLET 0x8A5CFF…）、`worldBegin/worldEnd` |
 | `client/ShaderCompat` | 反射 Iris API：`packInUse()`、`shadowPass()` |
-| `client/FarDraw` | "画完世界后"部件的登记表，光门从另一侧再画一遍（见 [gates.md](gates.md) §5）。登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`BuildRender`、`BuildFx`、`Masterplan`（后三个是 0.10.0 营造的，`campus/client/`；0.10.1 起 `BuildRender` 也画光井的光，数据来自 `WellScan` 的 client tick）、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`；书库由 `NexusRender` 经 `ModuleRender` → `LibraryRender` 画（档案馆的 `ArchiveRender` 由 `LibraryRender` 调用），不单独登记 |
+| `client/FarDraw` | "画完世界后"部件的登记表，光门从另一侧再画一遍（见 [gates.md](gates.md) §5）。登记者：`MachineHolo`、`MachineFx`、`FlowFx`、`NexusRender`、`BuildRender`、`BuildFx`、`Masterplan`（后三个是 0.10.0 营造的，`campus/client/`；0.10.1 起 `BuildRender` 也画光井的光，数据来自 `WellScan` 的 client tick）、`ManaHolo`、`PedestalHolo`、`fluxdepths/client/HoloClient`；书库由 `NexusRender` 经 `ModuleRender` → `LibraryRender` 画（档案馆的 `ArchiveRender` 由 `LibraryRender` 调用），0.11.0 的城市模块经 `ModuleRender` → `city/client/CityRender`（生态穹再调 `EcoDomeRender`），都不单独登记 |
 | `client/Motes` | 朝向相机的发光点（加法混合，`textures/effects/mote.png`）；`begin` 在打开批次前失败、`end` 画的时候出错，都会把 GL 状态出栈（0.10.0） |
 | `client/MachineFx`、`MachineHolo`、`HoloStore` | 机器头顶动效（每帧最多 48 台）；机器全息（150×104 px，`PX=1/90`）；全息数据（2500 ms 过期） |
 | `client/FlowFx`、`FlowStore` | 机器到目标的弧形轨迹（寿命 1600 ms） |
@@ -76,9 +76,10 @@
 4. `worldEnd()`：popAttrib 后**手动** `glEnable(GL_TEXTURE_2D)` 和 `glColor4f(1,1,1,1)`（"Angelica only tells the shader pipeline about glEnable / glDisable, and whatever is drawn next would come out white"）。
 5. **只用 quads**（Angelica 的 tessellator 到处都按 quads；三角形用"重复一个角"的 quad），不用 QUAD_STRIP/TRIANGLE_FAN。⚠ `MachineHolo.beam()` 还在用 `GL_TRIANGLES`，未验证。
 6. 文字 alpha 下限 5（字体渲染器把接近 0 当不透明）。
-7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画，每帧可能被调用多次；服务端按距离挑接收者的包用 `gate.Sight.near`（TE 描述包不用；营造的 `CampusNet` 和书库的 `LIB_DELTA` 都用它）。细节见 [gates.md](gates.md) §5。
+7. 登记 `FarDraw.add`，相对 `RenderManager.renderPos*` 画，每帧可能被调用多次；服务端按距离挑接收者的包用 `gate.Sight.near`（TE 描述包不用；营造的 `CampusNet`、书库的 `LIB_DELTA` 和 0.11.0 城市模块的 `UNIT_DELTA` 都用它）。细节见 [gates.md](gates.md) §5。
 8. 世界里的东西相对相机画、每处理器 try/finally 恢复状态；全息默认关、可切换。营造的**建造投影默认开**（`nexus.buildProjection`），和全息是两回事。
-9. 一个处理器里有好几部分时，每部分单独失败：出错记一次日志、本次运行关掉这一部分、关掉没结束的 tessellator 批次（否则后面所有绘制都会被拖下去）；营造和档案馆的渲染器都这样做（[campus.md](campus.md) §11）。
+9. 一个处理器里有好几部分时，每部分单独失败：出错记一次日志、本次运行关掉这一部分、关掉没结束的 tessellator 批次（否则后面所有绘制都会被拖下去）；营造和档案馆的渲染器都这样做（[campus.md](campus.md) §11），0.11.0 的 `CityRender`、`EcoDomeRender` 也是（[city.md](city.md) §4.10）。
+10. 大的东西按距离分档（0.11.0 起城市模块：`ModuleLook.tier` 的 NEAR / MID / FAR，每座楼近 ≤ 2,000 quads、中 ≤ 300、远 ≤ 64，CITY §1.3），预算写在渲染器的类注释里；一帧再画一遍（光门后面）也不许有跨帧计数器，所以上限按每座楼算、不按整帧算。
 
 ## 5. 图鉴与账本（`codex/`）
 
@@ -116,14 +117,14 @@
 | 频道 | 所属 | 消息 |
 |---|---|---|
 | `fluxecho` | `codex/EchoNet` | 0 ledger、1 holo、2 flow（S→C） |
-| `fluxecho_nx` | `nexus/NexusNet` | 0 ToServer（`ASK_MAP=0`/`START=1`/`CANCEL=2`）、1 ToClient（`MAP=0`、`RESULT=1`、`BUILD_FX=2`、`BUILD_STATE=3`（营造，`campus/CampusNet`）、`LIB_DELTA=4`（书库书位的增量，`TileLibrary`）） |
+| `fluxecho_nx` | `nexus/NexusNet` | 0 ToServer（`ASK_MAP=0`/`START=1`/`CANCEL=2`）、1 ToClient（`MAP=0`、`RESULT=1`、`BUILD_FX=2`、`BUILD_STATE=3`（营造，`campus/CampusNet`）、`LIB_DELTA=4`（书库书位的增量，`TileLibrary`）、`UNIT_DELTA=5`（0.11.0：城市模块单元里样本的增量，`city/TileCityModule`，格式同 `LIB_DELTA`，city.md §4.7）） |
 | `fluxecho_gate` | `gate/GateNet` | 0 Transit（S→C） |
 | `fluxlite` | FluxLite | 见 fluxlite.md §4（终端的 TERM_REQUEST/TERM_DATA 也在这里） |
 | `fluxdepths` | FluxDepths `holo/HoloNet` | 0 全息（S→C） |
 
 新增消息用新的 discriminator；handler 只入队，在主线程 tick 里处理。
 
-TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息种类；中枢描述包的园区部分 `Cp` 加了 `Fb`、`Md`、`Fe`、`Te`，「建造」页的同步加了 `Rk/Ri/Mc/Fe/Fb/Md`、去掉了 0.10.0 的 `Sv`，回收箱界面用 MUI 的 `FakeSyncWidget` 按页发（`RecyclePage`，压缩后 < 24000 字节），见 [campus.md](campus.md) §6、§10。
+TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息种类；中枢描述包的园区部分 `Cp` 加了 `Fb`、`Md`、`Fe`、`Te`，「建造」页的同步加了 `Rk/Ri/Mc/Fe/Fb/Md`、去掉了 0.10.0 的 `Sv`，回收箱界面用 MUI 的 `FakeSyncWidget` 按页发（`RecyclePage`，压缩后 < 24000 字节），见 [campus.md](campus.md) §6、§10。0.11.0 加了一种消息 `UNIT_DELTA=5`（上表），没有新频道；城市模块的描述包是 `P/Dk/Rv/Ep` + 全部样本（`BookPacket` 的 `B/Bi`，压缩后 < 28000 字节），通用模块窗口只用 `FakeSyncWidget` 同步状态和选中的单元（客户端经 `ASK_UNIT` 请求），见 [city.md](city.md) §4.6–4.9。
 
 ## 10. 构建、发布、工具
 
@@ -140,8 +141,8 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 | `FluxTextures.java` | 通量外壳、GUI `gui/flux/*`、`effects/mote.png` |
 | `SpringTextures.java` | 魔力回响泉方块面和 `gui/spring/*` |
 | `GateTextures.java` | `blocks/gate/*` |
-| `NexusTextures.java` | 构架、中枢、书库、通量物质、索引卡 |
-| `CampusTextures.java` | 0.10.0 营造：`blocks/deck/*`、`blocks/fitting/*`、书架单元（`frame/shelf_niche`、`shelf_board`、`book_spine`）、`blocks/supply_port/*`；0.10.1 的回收箱 `blocks/recycle_bin/{top,side,front}`（补给口那种深蓝钢箱体，紫到青的进料口）；深色科技调色板锁定 |
+| `NexusTextures.java` | 构架、中枢、书库、通量物质、索引卡；0.11.0 的覆层锚点 `frame/anchor_top`、`anchor_side`（静态六角插板）和 `anchor_*_glow`（动画），模块核心 `blocks/module_core/<模块>/{front,front_on,side,top}`（`front_on` 动画；现在只有 `eco_dome`，每做一座新模块就在这里加一组，`BlockModuleCore` 按 `ModuleCores.BUILT` 注册） |
+| `CampusTextures.java` | 0.10.0 营造：`blocks/deck/*`、`blocks/fitting/*`、书架单元（`frame/shelf_niche`、`shelf_board`、`book_spine`）、`blocks/supply_port/*`；0.10.1 的回收箱 `blocks/recycle_bin/{top,side,front}`（补给口那种深蓝钢箱体，紫到青的进料口）；0.11.0 的样本座 `fitting/socket`、`socket_top`、`socket_glow`（凹槽在 11–15/16 高，和 `ModuleLook` 的常量一致）和池沿 `fitting/basin`、`basin_top`、`basin_glow`；深色科技调色板锁定 |
 | `DepthsTextures.java` / `DepthsGuiTextures.java` | FluxDepths 的方块、物品、GUI |
 
 - **资源**：`mcmod.info`（三个条目，后两个 `parent` 指向 fluxecho）；`assets/fluxecho/lang/{en_US,zh_CN}.lang`（行一一对应，按版本 `#` 分节）；`textures/{blocks,items,gui,effects}`；`quests/{index.json, DefaultQuests/...}`。
@@ -151,7 +152,7 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 
 | 测试 | 守住什么 |
 |---|---|
-| `LangTest` | en/zh 键集合一致、无重复、占位符一致；代码里**字面写出**的键都存在（`EchoText.t/lines("x")` → `fluxecho.x`，`ChatComponentTranslation`/`translateToLocal("fluxecho.…")`）。**运行时拼出来的键查不出**，要自己核对 |
+| `LangTest` | en/zh 键集合一致、无重复、占位符一致；代码里**字面写出**的键都存在（`EchoText.t/lines("x")` → `fluxecho.x`，`ChatComponentTranslation`/`translateToLocal("fluxecho.…")`）。**运行时拼出来的键查不出**，要自己核对。0.11.0 加 `everyChatMessageGetsItsArguments`：代码里字面写出的 `new ChatComponentTranslation("fluxecho.…", …)` 和 `UnitUse` 的 `tell(p, "x", …)`（= `fluxecho.city.unit.x`）给的参数不少于两份 lang 里的占位符（`%s`/`%d`，`%n$s` 按最大的 n）——1.7.10 在客户端格式化聊天时占位符比参数多会抛异常、客户端崩溃（0.11.0 开发中 `city.unit.full` 就少传了一个）；拼出来的键、经别的辅助方法发的消息它看不到 |
 | `IsolationTest` | 读 `build/classes/java/main` 常量池：`forestry/`→`bees`、`thaumcraft/`→`thaumcraft`、`WayofTime/`→`blood`、`betterquesting/`→`quest/bq`、`com/kuba6000/mobsinfo/`→`mobs`、`ic2/`→`crops`、`vazkii/botania/`→`mana`、`appeng/`→`ae`。只看 `com/fluxecho/`（"The dev classpath always has Forestry (GT pulls it in), so a leak would never show in a dev run"） |
 | `ConfigTest` | `older()` 版本比较；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth` |
 | `core/MachineIdTest` | offset 唯一且 < 40；不碰 FluxDepths |
@@ -160,10 +161,11 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 | `quest/QuestPackTest` | 每条线文件齐全、一个 QuestLine.json、任务和摆放一致 |
 | `logic/QuestOrderTest`、`QuestPlanTest` | 顺序文件合并、stale 文件 |
 | `logic/GtPatternTest` | 表驱动的配方交给 GT 时没有小写（工具）字母，改名后原料和数量不变 |
-| `logic/*Test` | 各纯逻辑类（见各子系统手册；营造和档案馆的 `MixTest`、`PartRecipesTest`、`CampusPlanTest`、`PavingTest`、`ArchiveShapeTest`、`StairWalkTest`、`LibraryUnitsTest`、`UnitLookTest`、`TerrainRuleTest`、`BuildPlanTest`、`BuildLedgerTest`、`BuildStateTest`、`BuildPaceTest`、`FxCodecTest`、`LiftRuleTest`、`GhostCellsTest`、`LaunchPhaseTest`、`SpineColourTest`、`BlueprintTest`，0.10.1 的 `RemovalTest`、`RecycleSlotsTest`、`EchoCommandTest` 见 [campus.md](campus.md) §15） |
+| `logic/*Test` | 各纯逻辑类（见各子系统手册；营造和档案馆的 `MixTest`、`PartRecipesTest`、`CampusPlanTest`、`PavingTest`、`ArchiveShapeTest`、`StairWalkTest`、`LibraryUnitsTest`、`UnitLookTest`、`TerrainRuleTest`、`BuildPlanTest`、`BuildLedgerTest`、`BuildStateTest`、`BuildPaceTest`、`FxCodecTest`、`LiftRuleTest`、`GhostCellsTest`、`LaunchPhaseTest`、`SpineColourTest`、`BlueprintTest`，0.10.1 的 `RemovalTest`、`RecycleSlotsTest`、`EchoCommandTest` 见 [campus.md](campus.md) §15；0.11.0 回响之城的 `ShapeKitTest`、`SitePlanTest`、`UnitLayoutTest`、`EcoDomeShapeTest`、`EcoDomeWalkTest`、`ModulePlanTest`、`PartsTest`、`ModuleLookTest`、`ModuleMapTest`、`UnitBrowseTest` 见 [city.md](city.md) §8） |
 | `campus/CampusEngineTest` | 建造任务的存读、计划重算、飞行退款、换场地、修复、受阻格计数、特效批次和分页、核心带着的园区、逐格的拆除 EU、跳过受阻的同步；0.10.1 的整修园区（让开建好模块的整块场地、平整完才记下）、回收箱的步骤、免费建造、立即建造的结束、开始时重取 keep-out、最后补一遍、模块列表（要用非逻辑类，所以不在 `logic`） |
 | `campus/RecycleStoreTest`、`RecyclePageTest`、`DropCaptureTest` | 0.10.1：回收箱存储（合并、取出、排序、按种类和字节的软上限、存读）、拆核心时的暂存（`RecycleOverflow`）和放回、回收箱界面的分页（< 24000 字节）和点击找回、拆方块时的物品捕获（正在加载的区块冒出来的不接） |
 | `campus/CampusTilesTest` | 0.10.1：回收箱和补给口在中枢区块卸载、重新加载后只用世界里现在的中枢 tile（`TileSupplyPort.loadedNexus`）；漏斗取走最后一件又放回不丢。用测试里的 `campus/FakeWorld`：不跑 `World` 构造器分配出来的服务端世界，只答区块加载、格子里的 tile 和时间（要更多就往里加，别在测试里起 MC） |
 | `library/ArchiveMapTest`、`LibraryPacketTest`、`LibraryVaultTest`、`TileLibraryUnitsTest`、`HallRefillTest` | 档案馆平面图、书的包不超过 28000 字节、队伍书库仓库、书库 tile 的坐标和形状、两种形状第一次成型都从仓库取一次书 |
+| `city/CityGuiTest`、`TileEcoDomeTest` | 0.11.0：通用模块窗口的格子每次按显示的单元找槽、选择检查、超过槽数的格子什么都不做、三页的布局；生态穹 tile 的结构映射同 StructureLib、每个样本座是自己的槽、树干隐藏但实心、`local` 是 `worldOf` 的逆（[city.md](city.md) §8） |
 
-FluxLite、FluxDepths 另有 19 个测试类；共 88 个测试类、536 个测试（0.10.1；0.10.0 是 81 个类、484 个）。
+FluxLite、FluxDepths 另有 19 个测试类；共 101 个测试类、623 个测试（0.11.0；0.10.1 是 88 个类、536 个；0.10.0 是 81 个类、484 个）。

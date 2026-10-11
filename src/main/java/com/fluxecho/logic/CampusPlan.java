@@ -18,7 +18,8 @@ import java.util.Set;
  * Everything is laid out in the campus frame round the nexus centre: {@code A} runs ahead along the nexus front and
  * {@code R} to its right (clockwise seen from above); {@link #toWorld} and {@link #toLocal} turn that frame into world
  * offsets the same way {@link RingSlots#offset} does. Site {@code k} sits {@code 45 * k} degrees clockwise from the
- * front: site 0 is the gate, sites 4, 2 and 6 take halls (the Echo Archive), the diagonals are reserved.
+ * front: site 0 is the gate, sites 4, 2 and 6 take halls (the Echo Archive, the Eco Dome), the diagonals the pavilions
+ * (0.11.0: their envelopes, {@link SiteFamily}; nothing stands there yet).
  * <p>
  * The establish job paves the forum ({@code oct(16, 22)} round the dais), its grate band, the gate and the whole
  * promenade ring ({@code oct(19, 26)}); a hall job later adds its forecourt and apron with {@link #siteFloor}. Floors
@@ -48,8 +49,28 @@ public final class CampusPlan {
     public static final int RING_R = 19, RING_K = 26;
     /** The hall sites in the order a module prefers them: the back first, then the right and the left. */
     public static final int[] HALL_SITES = { 4, 2, 6 };
-    /** The reserved envelope of a diagonal site: centred this far out on both axes, this many cells square. */
-    public static final int DIAGONAL_CENTRE = 34, DIAGONAL_SIZE = 23;
+    /**
+     * The envelope of a diagonal site (0.11.0, the pavilion family, CITY.md §2.1): the octagon
+     * {@code oct(DIAGONAL_SIZE / 2, DIAGONAL_K)} centred {@code DIAGONAL_CENTRE} out on both axes. 0.10 reserved a
+     * 23 x 23 at (+-34, +-34); nothing was ever built there, so only the masterplan's outline moved.
+     */
+    public static final int DIAGONAL_CENTRE = 36, DIAGONAL_SIZE = 25, DIAGONAL_K = 16;
+    /** The pavilion sites, the diagonals. */
+    public static final int[] PAVILION_SITES = { 1, 3, 5, 7 };
+    /** A pavilion's apron: {@code oct(DIAGONAL_SIZE / 2 + PAVILION_APRON, DIAGONAL_K + PAVILION_APRON)} round it. */
+    public static final int PAVILION_APRON = 2;
+    /**
+     * The diagonal allee from the promenade ring's diagonal face to a pavilion's inner portal: three cells wide
+     * ({@code |a| - |r|} in -1..1), {@code |a| + |r|} from {@code ALLEE_FROM} to {@code ALLEE_TO}.
+     */
+    public static final int ALLEE_FROM = 27, ALLEE_TO = 55;
+    /**
+     * The gatehouse (the gate family, site 0): A {@code GATEHOUSE_FROM..GATEHOUSE_TO}, {@code |R| <= GATEHOUSE_HALF};
+     * its passage {@code |R| <= GATE_PASSAGE} over the road is never built.
+     */
+    public static final int GATEHOUSE_FROM = 23, GATEHOUSE_TO = 39, GATEHOUSE_HALF = 15, GATE_PASSAGE = 6;
+    /** The four well-field streets (phase III): the bands {@code |cross|} 18..20 out to radial 60, outside the ring. */
+    public static final int STREET_FROM = 18, STREET_TO = 20, STREET_REACH = 60;
 
     /** The dais, the nexus base {@code oct(5, 7)}; paving never touches it. */
     private static final int BASE_R = 5, BASE_K = 7;
@@ -261,7 +282,7 @@ public final class CampusPlan {
 
     /**
      * The centre {a, r} of a module at the site: on a cardinal site the middle of a footprint {@code depth} deep whose
-     * front row is at {@link #HALL_FRONT}; on a diagonal site the reserved envelope's centre.
+     * front row is at {@link #HALL_FRONT}; on a diagonal site the pavilion envelope's centre.
      */
     public static int[] moduleCentre(int site, int depth) {
         int k = Math.floorMod(site, AXES.length);
@@ -291,7 +312,7 @@ public final class CampusPlan {
         return t >= HALL_FRONT && t < HALL_FRONT + depth && s >= -(width / 2) && s <= (width - 1) / 2;
     }
 
-    /** The reserved masterplan envelope centre {a, r} of a diagonal site, (+-34, +-34); the envelope is 23 x 23. */
+    /** The pavilion envelope's centre {a, r} of a diagonal site, (+-36, +-36); the envelope is {@code oct(12, 16)}. */
     public static int[] diagonalCentre(int site) {
         int k = Math.floorMod(site, AXES.length);
         if (k % 2 == 0) throw new IllegalArgumentException("not a diagonal site: " + site);
@@ -301,6 +322,142 @@ public final class CampusPlan {
     private static boolean isHallSite(int site) {
         for (int k : HALL_SITES) if (k == site) return true;
         return false;
+    }
+
+    // ---- the site families' envelopes (0.11.0, CITY.md §2.1-2.2; the masterplan draws them) ----
+
+    /** The family of a module site; see {@link SiteFamily#of}. */
+    public static SiteFamily family(int site) {
+        return SiteFamily.of(site);
+    }
+
+    /**
+     * Whether (a, r) lies in a module envelope of the site: a hall site's {@code width x depth} footprint
+     * ({@link #inHall}), a pavilion's octagon ({@link #inPavilion}) or the gatehouse ({@link #inGatehouse}).
+     */
+    public static boolean inEnvelope(int site, int width, int depth, int a, int r) {
+        switch (family(site)) {
+            case HALL:
+                return inHall(site, width, depth, a, r);
+            case PAVILION:
+                return inPavilion(site, a, r);
+            default:
+                return inGatehouse(a, r);
+        }
+    }
+
+    /** Whether (a, r) lies in the pavilion envelope of a diagonal site, {@code oct(12, 16)} round its centre. */
+    public static boolean inPavilion(int site, int a, int r) {
+        int k = Math.floorMod(site, AXES.length);
+        if (k % 2 == 0) return false;
+        int[] c = diagonalCentre(k);
+        return oct(a - c[0], r - c[1], DIAGONAL_SIZE / 2, DIAGONAL_K);
+    }
+
+    /** The cells of a pavilion envelope (481 of them). */
+    public static Set<Long> pavilionCells(int site) {
+        return octCells(diagonalCentre(site), DIAGONAL_SIZE / 2, DIAGONAL_K);
+    }
+
+    /** A pavilion's apron: {@code oct(14, 18)} round its centre less the envelope (140 cells). */
+    public static Set<Long> pavilionApron(int site) {
+        Set<Long> out = octCells(diagonalCentre(site), DIAGONAL_SIZE / 2 + PAVILION_APRON, DIAGONAL_K + PAVILION_APRON);
+        out.removeAll(pavilionCells(site));
+        return out;
+    }
+
+    /**
+     * A pavilion's diagonal allee (44 cells): three cells wide on its diagonal, from the promenade ring's diagonal face
+     * ({@code |a| + |r|} = {@link #ALLEE_FROM}) to its inner portal ({@link #ALLEE_TO}).
+     */
+    public static Set<Long> pavilionAllee(int site) {
+        int[] ax = AXES[Math.floorMod(site, AXES.length)];
+        if (ax[0] == 0 || ax[1] == 0) throw new IllegalArgumentException("not a diagonal site: " + site);
+        Set<Long> out = new LinkedHashSet<>();
+        for (int t = ALLEE_FROM; t <= ALLEE_TO; t++) for (int d = -1; d <= 1; d++) {
+            if ((t + d) % 2 != 0) continue;
+            int a = (t + d) / 2, r = (t - d) / 2;
+            out.add(key(ax[0] * a, ax[1] * r));
+        }
+        return out;
+    }
+
+    /** Whether (a, r) lies in the gatehouse's envelope (site 0, the gate family), its open passage included. */
+    public static boolean inGatehouse(int a, int r) {
+        return a >= GATEHOUSE_FROM && a <= GATEHOUSE_TO && Math.abs(r) <= GATEHOUSE_HALF;
+    }
+
+    /** The gatehouse's cells (527 of them). */
+    public static Set<Long> gatehouseCells() {
+        Set<Long> out = new LinkedHashSet<>();
+        for (int a = GATEHOUSE_FROM; a <= GATEHOUSE_TO; a++)
+            for (int r = -GATEHOUSE_HALF; r <= GATEHOUSE_HALF; r++) out.add(key(a, r));
+        return out;
+    }
+
+    /** The gatehouse's apron: two cells round it. */
+    public static Set<Long> gatehouseApron() {
+        Set<Long> out = new LinkedHashSet<>();
+        for (int a = GATEHOUSE_FROM - 2; a <= GATEHOUSE_TO + 2; a++) {
+            for (int r = -GATEHOUSE_HALF - 2; r <= GATEHOUSE_HALF + 2; r++) if (!inGatehouse(a, r)) out.add(key(a, r));
+        }
+        return out;
+    }
+
+    /** The cells of a hall footprint {@code width x depth} on a hall site. */
+    public static Set<Long> hallCells(int site, int width, int depth) {
+        if (!isHallSite(site)) throw new IllegalArgumentException("not a hall site: " + site);
+        int[] ax = AXES[site];
+        Set<Long> out = new LinkedHashSet<>();
+        for (int t = HALL_FRONT; t < HALL_FRONT + depth; t++)
+            for (int s = -(width / 2); s <= (width - 1) / 2; s++) out.add(siteKey(ax, t, s));
+        return out;
+    }
+
+    /**
+     * A hall's whole apron as the masterplan reserves it: two cells round its footprint (the back corners cut past
+     * the chamfer) and its forecourt, before the paving leaves out the cells the establish floor already holds.
+     */
+    public static Set<Long> hallApron(int site, int width, int depth) {
+        if (!isHallSite(site)) throw new IllegalArgumentException("not a hall site: " + site);
+        int[] ax = AXES[site];
+        int back = HALL_FRONT + depth - 1, lo = -(width / 2), hi = (width - 1) / 2;
+        Set<Long> out = new LinkedHashSet<>();
+        for (int i = 0; i < FORE_HALF.length; i++) for (int s = -FORE_HALF[i]; s <= FORE_HALF[i]; s++) {
+            out.add(siteKey(ax, FORE_FROM + i, s));
+        }
+        for (int t = HALL_FRONT - APRON; t <= back + APRON; t++) for (int s = lo - APRON; s <= hi + APRON; s++) {
+            long k = siteKey(ax, t, s);
+            if (inHall(site, width, depth, keyA(k), keyR(k))) continue;
+            // the generator's overshoot: past the back row plus past the side (negative inside the side lines)
+            if ((t - back) + (s < lo ? lo - s : s - hi) > APRON_CHAMFER) continue;
+            out.add(k);
+        }
+        return out;
+    }
+
+    /**
+     * The four well-field (井) streets (phase III, not built yet; CITY.md §2.3): the bands {@code |R|} and {@code |A|}
+     * {@link #STREET_FROM}..{@link #STREET_TO} from radial 8 to {@link #STREET_REACH}, outside the promenade ring.
+     */
+    public static Set<Long> streetCells() {
+        Set<Long> out = new LinkedHashSet<>();
+        for (int sign = 1; sign >= -1; sign -= 2) for (int c = STREET_FROM; c <= STREET_TO; c++) {
+            for (int t = 8; t <= STREET_REACH; t++) for (int along = 1; along >= -1; along -= 2) {
+                out.add(key(along * t, sign * c));
+                out.add(key(sign * c, along * t));
+            }
+        }
+        out.removeIf(k -> oct(keyA(k), keyR(k), RING_R, RING_K));
+        return out;
+    }
+
+    private static Set<Long> octCells(int[] c, int half, int k) {
+        Set<Long> out = new LinkedHashSet<>();
+        for (int du = -half; du <= half; du++) for (int dv = -half; dv <= half; dv++) {
+            if (Math.abs(du) + Math.abs(dv) <= k) out.add(key(c[0] + du, c[1] + dv));
+        }
+        return out;
     }
 
     // ---- the plan ----

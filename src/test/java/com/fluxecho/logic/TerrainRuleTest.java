@@ -536,4 +536,27 @@ class TerrainRuleTest {
         assertFalse(TerrainRule.listed("minecraft:stone", null));
         assertFalse(TerrainRule.listed(null, list));
     }
+
+    /**
+     * A repair lays its soft ground (grass, dirt, water) again only where the cell is empty; what the players made of
+     * the garden (farmland, dirt under a hive, a block put there) stays, under either rule, where a first build would
+     * clear it.
+     */
+    @Test
+    void aRepairLaysGroundOnlyWhereNothingIs() {
+        for (boolean all : new boolean[] { true, false }) {
+            assertEquals(Verdict.PLACE, TerrainRule.forRepairGround(probe("air"), true, all));
+            assertEquals(Verdict.PLACE, TerrainRule.forRepairGround(probe("replaceable"), true, all), "tall grass");
+            assertEquals(Verdict.PLACE, TerrainRule.forRepairGround(probe("fluid"), true, all), "flowing water");
+            assertEquals(Verdict.ALREADY, TerrainRule.forRepairGround(probe("target"), true, all));
+            // farmland or the dirt under a hive: natural ground that is not the grass the plan lays
+            assertEquals(Verdict.ALREADY, TerrainRule.forRepairGround(probe("natural"), true, all));
+            assertEquals(Verdict.ALREADY, TerrainRule.forRepairGround(probe("crafted"), true, all));
+            assertEquals(Verdict.ALREADY, TerrainRule.forRepairGround(probe("ours", "loose"), true, all));
+            assertEquals(Verdict.ALREADY, TerrainRule.forRepairGround(probe("hasTile", "te"), true, all));
+        }
+        // a first build takes the farmland away
+        assertEquals(Verdict.CLEAR, TerrainRule.forBuild(probe("natural"), true, true));
+        assertEquals(Verdict.CLEAR, TerrainRule.forBuild(probe("natural"), true, false));
+    }
 }

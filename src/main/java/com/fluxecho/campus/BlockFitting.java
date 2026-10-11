@@ -28,7 +28,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 /**
  * The campus fittings: the steel pieces a module's interior is furnished with, one meta per part ({@link Parts}
  * fitting metas). Three of them make bookcases together with the echo shelf (a plinth, three shelves, a crown, posts
- * between the units); the others are the gallery's rails, the stair treads, the windows and the hologram pedestals.
+ * between the units); the others are the gallery's rails, the stair treads, the windows and the hologram pedestals,
+ * and (0.11.0) the city's sample sockets (a 2..14/16 column whose side faces each hold one item in a recess) and basin
+ * rims (a 10/16 slab with a lit lip; water and beds lie beside it).
  * They are not opaque and let light through, so a room full of furniture stays lit; each has its own box. Drawn into
  * the chunk mesh by {@code client.FittingRender}, so they work with shader packs.
  */
@@ -52,6 +54,8 @@ public class BlockFitting extends Block {
 
     /** The rail's centre post and arm width, and how high its collision reaches (like a fence). */
     private static final float RAIL_MIN = 6 / 16f, RAIL_MAX = 10 / 16f, RAIL_HEIGHT = 1.5f;
+    /** The basin rim's top (0.11.0). */
+    public static final float BASIN_TOP = 10 / 16f;
 
     @SideOnly(Side.CLIENT)
     private IIcon[] side, top, glows;
@@ -97,6 +101,12 @@ public class BlockFitting extends Block {
                 return new float[] { 0, 0, 0, 1, 0.5f, 1 };
             case Parts.F_PEDESTAL:
                 return new float[] { 3 / 16f, 0, 3 / 16f, 13 / 16f, 12 / 16f, 13 / 16f };
+            case Parts.F_SOCKET:
+                // a column like the post: its side faces hold the recess the sample floats in
+                return new float[] { 2 / 16f, 0, 2 / 16f, 14 / 16f, 1, 14 / 16f };
+            case Parts.F_BASIN:
+                // a 10/16 slab: too high to walk up, low enough to look over at the bed it rims
+                return new float[] { 0, 0, 0, 1, BASIN_TOP, 1 };
             default:
                 return new float[] { 0, 0, 0, 1, 1, 1 };
         }
@@ -157,12 +167,13 @@ public class BlockFitting extends Block {
         return light(w.getBlockMetadata(x, y, z));
     }
 
-    /** The whole cubes are solid on every side, a tread on its underside only. */
+    /** The whole cubes are solid on every side, a tread and a basin rim on their undersides only. */
     @Override
     public boolean isSideSolid(IBlockAccess w, int x, int y, int z, ForgeDirection side) {
         int meta = w.getBlockMetadata(x, y, z);
         if (full(meta)) return true;
-        return type(meta) == Parts.F_TREAD && side == ForgeDirection.DOWN;
+        int t = type(meta);
+        return (t == Parts.F_TREAD || t == Parts.F_BASIN) && side == ForgeDirection.DOWN;
     }
 
     @Override
@@ -235,8 +246,8 @@ public class BlockFitting extends Block {
     /**
      * Whether the face of the fitting next to x, y, z (the neighbour's position, as vanilla passes it) is drawn. Faces
      * inside the block's edge always are; a face on the edge is hidden against an opaque cube, two panes of glaze hide
-     * the faces between them, and so do two plinths or crowns side by side. Worked out from the metas, not from the
-     * block's shared bounds, so it does not matter which block set them last.
+     * the faces between them, and so do two plinths or crowns (or two basin rims) side by side. Worked out from the
+     * metas, not from the block's shared bounds, so it does not matter which block set them last.
      */
     @Override
     @SideOnly(Side.CLIENT)
@@ -251,6 +262,8 @@ public class BlockFitting extends Block {
         if (other == this) {
             int m = type(w.getBlockMetadata(x, y, z));
             if (self == Parts.F_GLAZE && m == Parts.F_GLAZE) return false;
+            // two basin rims side by side are one slab: the faces between them are hidden (0.11.0)
+            if (self == Parts.F_BASIN && m == Parts.F_BASIN && d.offsetY == 0) return false;
             boolean solid = self == Parts.F_PLINTH || self == Parts.F_CROWN;
             if (solid && (m == Parts.F_PLINTH || m == Parts.F_CROWN)) return false;
         }

@@ -96,11 +96,19 @@ public abstract class BlockNexus extends BlockContainer {
         }
         dropsMore(te, w, x, y, z);
         super.breakBlock(w, x, y, z, block, meta);
-        FrameEvents.changed(w, x, y, z);
+        if (!quiet()) FrameEvents.changed(w, x, y, z);
     }
 
     /** What else the tile holds that should fall out (a library's samples). */
     protected void dropsMore(TileEntity te, World w, int x, int y, int z) {}
+
+    /**
+     * Whether a broken core keeps quiet about it (0.11.0): a module core does while the campus builder edits the world
+     * ({@code Builder.QUIET}), which tells the multiblocks around once a stage is done. The older cores always tell.
+     */
+    protected boolean quiet() {
+        return false;
+    }
 
     @Override
     @SideOnly(Side.CLIENT)

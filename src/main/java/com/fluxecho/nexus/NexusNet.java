@@ -44,6 +44,11 @@ public final class NexusNet {
      * ({@link com.fluxecho.library.TileLibrary#receiveDelta}).
      */
     public static final int BUILD_FX = 2, BUILD_STATE = 3, LIB_DELTA = 4;
+    /**
+     * Server to client (0.11.0): the samples a city module's units took or gave since the last packet
+     * ({@link com.fluxecho.city.TileCityModule#receiveDelta}), coded as the library's books are.
+     */
+    public static final int UNIT_DELTA = 5;
 
     private static SimpleNetworkWrapper channel;
     private static final Queue<Object[]> SERVER_INBOX = new ConcurrentLinkedQueue<>();
@@ -225,6 +230,15 @@ public final class NexusNet {
                         com.fluxecho.library.TileLibrary.receiveDelta((NBTTagCompound) m[1]);
                     } catch (RuntimeException ex) {
                         com.fluxecho.FluxEcho.LOG.warn("Library packet failed", ex);
+                    }
+                    continue;
+                }
+                if (kind == UNIT_DELTA) {
+                    // a city module's samples, whether its window is open or not
+                    try {
+                        com.fluxecho.city.TileCityModule.receiveDelta((NBTTagCompound) m[1]);
+                    } catch (RuntimeException ex) {
+                        com.fluxecho.FluxEcho.LOG.warn("City module packet failed", ex);
                     }
                     continue;
                 }

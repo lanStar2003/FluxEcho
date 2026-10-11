@@ -309,9 +309,13 @@ public final class Terrain {
             || b instanceof IFluidBlock;
     }
 
-    /** Whether the cell already holds the part (any meta for grass, the library core and the recycle bin). */
+    /**
+     * Whether the cell already holds the part (any meta for grass, the library core and the recycle bin; a water
+     * source, still or flowing, for water).
+     */
     public static boolean isTarget(Block b, int meta, int part, boolean air) {
         if (part == Parts.AIR) return air;
+        if (part == Parts.WATER) return (b == Blocks.water || b == Blocks.flowing_water) && meta == 0;
         Block want = PartBlocks.block(part);
         if (want == null || want == Blocks.air || b != want) return false;
         if (part == Parts.GRASS || part == Parts.LIBRARY_CORE || part == Parts.RECYCLE_BIN) return true;

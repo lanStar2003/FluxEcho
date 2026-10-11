@@ -4,11 +4,13 @@ import java.util.function.BooleanSupplier;
 
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.SiteFamily;
 
 /**
- * A kind of module the campus builder can raise for a nexus: what research opens it, how large it is, which hall sites
- * it prefers, the part its controller is placed as, its colour, and how its build plan and controller position follow
- * from a site. The builder creates a module job for a spec once a nexus's teams have its research (see
+ * A kind of module the campus builder can raise for a nexus: what research opens it, which family of sites it stands
+ * on ({@link SiteFamily}: the halls for the Echo Archive and the Eco Dome), how large it is, which of the family's
+ * sites it prefers, the part its controller is placed as, its colour, and how its build plan and controller position
+ * follow from a site. The builder creates a module job for a spec once a nexus's teams have its research (see
  * {@link Campus#tick}); everything else about the module (its tile, its shape) belongs to the module itself. Specs are
  * registered in {@link ModuleSpecs} by the module's own setup code (the library's from {@code LibraryModule.init}).
  */
@@ -28,6 +30,8 @@ public final class ModuleSpec {
 
     /** The module key: the tile's {@code moduleKey()} and the {@code <module>} of its job key. */
     public final String key;
+    /** The family of sites it stands on (0.11.0; every module before is a hall). */
+    public final SiteFamily family;
     /** The research id that opens it. */
     public final String research;
     /** Its footprint across, its depth from its front row, its height. */
@@ -48,15 +52,39 @@ public final class ModuleSpec {
         this(key, research, width, depth, height, sites, corePart, colour, plans, controllers, () -> true);
     }
 
-    /**
-     * @param enabled whether the builder may start new jobs for it now (a config switch); a job already running goes
-     *                on either way
-     */
+    /** A hall module (the family every module before 0.11.0 has). */
     public ModuleSpec(String key, String research, int width, int depth, int height, int[] sites, int corePart,
         int colour, PlanFactory plans, ControllerFactory controllers, BooleanSupplier enabled) {
+        this(
+            SiteFamily.HALL,
+            key,
+            research,
+            width,
+            depth,
+            height,
+            sites,
+            corePart,
+            colour,
+            plans,
+            controllers,
+            enabled);
+    }
+
+    /**
+     * @param family  the family of sites it stands on; every site must be one of the family's
+     * @param enabled whether the builder may start new jobs for it now (a config switch); a job already running goes
+     *                on either way
+     * @throws IllegalArgumentException for a key that is not a plain name or a site outside the family
+     */
+    public ModuleSpec(SiteFamily family, String key, String research, int width, int depth, int height, int[] sites,
+        int corePart, int colour, PlanFactory plans, ControllerFactory controllers, BooleanSupplier enabled) {
         if (key == null || key.isEmpty() || key.indexOf('@') >= 0 || key.indexOf(':') >= 0) {
             throw new IllegalArgumentException("a module key is a plain name: " + key);
         }
+        for (int site : sites) {
+            if (!family.hasSite(site)) throw new IllegalArgumentException(key + ": site " + site + " is no " + family);
+        }
+        this.family = family;
         this.key = key;
         this.research = research;
         this.width = width;
@@ -113,9 +141,21 @@ public final class ModuleSpec {
 
     /**
      * The world box {x0, z0, x1, z1} (inclusive) its footprint takes on the site, with {@code margin} cells round it,
-     * for a nexus centred at {@code (cx, cz)} facing {@code (fx, fz)}.
+     * for a nexus centred at {@code (cx, cz)} facing {@code (fx, fz)}: a hall's {@code width x depth} from its front
+     * row, a pavilion's octagon round its centre.
+     *
+     * @throws UnsupportedOperationException for a family this version does not build on
      */
     public int[] footprint(int site, int cx, int cz, int fx, int fz, int margin) {
+        if (family == SiteFamily.PAVILION) {
+            int[] c = CampusPlan.diagonalCentre(site);
+            int half = CampusPlan.DIAGONAL_SIZE / 2 + margin;
+            int[] a = CampusPlan.toWorld(c[0] - half, c[1] - half, fx, fz),
+                b = CampusPlan.toWorld(c[0] + half, c[1] + half, fx, fz);
+            return new int[] { cx + Math.min(a[0], b[0]), cz + Math.min(a[1], b[1]), cx + Math.max(a[0], b[0]),
+                cz + Math.max(a[1], b[1]) };
+        }
+        if (family != SiteFamily.HALL) throw new UnsupportedOperationException("no " + family + " modules yet");
         int[] ax = CampusPlan.siteAxis(site);
         int t0 = CampusPlan.HALL_FRONT - margin, t1 = CampusPlan.HALL_FRONT + depth - 1 + margin;
         int s0 = -(width / 2) - margin, s1 = (width - 1) / 2 + margin;

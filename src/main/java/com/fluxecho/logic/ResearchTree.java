@@ -117,7 +117,8 @@ public final class ResearchTree {
 
     public static final String ANCHOR = "anchor", INNER_RING = "inner_ring", PHASE_2 = "phase_2",
         ECHO_CRYSTAL = "echo_crystal", LIBRARY = "library", LIBRARY_REACH = "library_reach", COMPUTE_1 = "compute_1",
-        UPKEEP_1 = "upkeep_1", TIDAL_WELL = "tidal_well", GRIT_YIELD = "grit_yield", DOME = "dome";
+        UPKEEP_1 = "upkeep_1", TIDAL_WELL = "tidal_well", GRIT_YIELD = "grit_yield", DOME = "dome",
+        ECO_DOME = "eco_dome";
 
     private static final Map<String, Node> NODES = new LinkedHashMap<>();
 
@@ -196,6 +197,17 @@ public final class ResearchTree {
             0,
             1);
         add(DOME, Branch.GUARD, 180, 168, new String[] { ANCHOR }, 0, new String[0], 0, 2);
+        // 0.11.0: the second module the nexus builds, the Eco Dome (CITY.md Appendix B)
+        add(
+            ECO_DOME,
+            Branch.ECHO,
+            226,
+            38,
+            new String[] { INNER_RING, ECHO_CRYSTAL },
+            16_000,
+            new String[] { "ore:gemEchoCrystal*4", "ore:treeSapling*16", "ore:blockGlass*32" },
+            0,
+            1);
     }
 
     private ResearchTree() {}

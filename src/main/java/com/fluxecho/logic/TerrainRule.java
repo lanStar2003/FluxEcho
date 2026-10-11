@@ -239,6 +239,18 @@ public final class TerrainRule {
     }
 
     /**
+     * The verdict for a ground step of a repair: grass, dirt or water ({@link Parts#euOnly}) laid as a SOFT step, which
+     * the structure never checks. Once built, that ground is the players' (the Eco Dome's open grass is for their own
+     * hives and crops, CITY.md §4.1), so a repair lays it again only where the cell is empty, as the build would
+     * (PLACE), and leaves anything else as it is (ALREADY): farmland, the dirt under a hive, a path, a block a player
+     * put there, where a first build would take it away (CLEAR or REPLACE) or report it (BLOCKED).
+     */
+    public static Verdict forRepairGround(Probe p, boolean module, boolean all) {
+        Verdict v = forBuild(p, module, all);
+        return v == Verdict.PLACE ? Verdict.PLACE : Verdict.ALREADY;
+    }
+
+    /**
      * The verdict for a cell of a clear column under the chosen rule: {@link #forClear(Probe, boolean)} when
      * {@code all} is false. Under the clear-all rule the cell must end up empty, so everything but air goes: guarded →
      * BLOCKED; our own frame, deck, fitting, port or bin → REPLACE when it is loose (no formed structure could use

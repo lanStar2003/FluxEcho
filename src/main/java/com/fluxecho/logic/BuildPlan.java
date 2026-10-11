@@ -1,9 +1,9 @@
 package com.fluxecho.logic;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,13 +21,16 @@ import java.util.Set;
  * gate and the promenade ring, then stand the gate pylons and the supply port;</li>
  * <li>{@link #forum}: the same without the nexus, for a 0.9.2 nexus that already stands, leaving the halls docked
  * round it alone;</li>
- * <li>{@link #archive}: an Echo Archive ({@link ArchiveShape}) on a hall site, its forecourt and apron, its interior
- * floor, its shell from the bottom up, its fittings and shelf units, the canopy, and the controller last.</li>
+ * <li>{@link #module}: a module on a hall site (0.11.0, the Echo Archive's plan made general: the Archive through
+ * {@link #ARCHIVE}, every city module through its {@link CityBuild}): its forecourt and apron, its interior floor, its
+ * shell from the bottom up, its decks, upper walls and roof, its fittings and units, the canopy (and for a city module
+ * its seeded ornaments), and the controller last.</li>
  * </ul>
  * Steps come in stage order. Within a stage they rise bottom-up by layer and spread outward from the nexus, a cell
  * and its mirror image across the job's axis side by side, so the build reads as an ordered band. Each shelf unit of
  * the Archive is one group: its fifteen cells share a group id (the unit's index in {@link LibraryUnits#UNITS}), are
- * contiguous, and launch and land together. Every other step has {@link #NO_GROUP}.
+ * contiguous, and launch and land together; so is every unit of a city module ({@link UnitLayout}). Every other step
+ * has {@link #NO_GROUP}.
  * <p>
  * Kinds: a {@link #HARD} step is a cell the structure check looks at (the nexus or the Archive blueprint); a
  * {@link #SOFT} step is a cell it does not (paving, light wells, gate pylons, the supply port, the recycle bin, the
@@ -59,6 +62,18 @@ public final class BuildPlan {
      * box reaches three cells above it.
      */
     public static final int ARCHIVE_MARGIN = 1, ARCHIVE_HEADROOM = 2;
+    /**
+     * Every module's clear box (0.11.0, the Archive's rule made general): {@code MODULE_MARGIN} cells round the
+     * footprint, up to {@code MODULE_HEADROOM} cells above the shape's top layer (the Archive: Y0 + 18).
+     */
+    public static final int MODULE_MARGIN = ARCHIVE_MARGIN, MODULE_HEADROOM = ARCHIVE_HEADROOM;
+    /** The seeded canopy: the shape's own two rows, or up to two more. */
+    static final int CANOPY_MIN = 2, CANOPY_VARIANTS = 3;
+    /** The seeded annex: its kinds, how far out of the footprint it stands, and the rows it leaves free at each end. */
+    static final int ANNEX_PLANTERS = 0, ANNEX_LAMPS = 1, ANNEX_BENCHES = 2, ANNEX_PYLON = 3, ANNEX_KINDS = 4,
+        ANNEX_OFFSET = 2, ANNEX_FROM = 6;
+    /** Hash salts of the ornaments. */
+    private static final int S_CANOPY = 41, S_ANNEX_SIDE = 43, S_ANNEX_KIND = 47;
     /**
      * Half the side of the square a module standing near the nexus keeps clear of the establish and forum jobs, round
      * the centre of its foundation: the 13 x 13 foundation of a 0.9.2 module ({@link LibraryShape#SIZE}) and one cell
@@ -502,29 +517,102 @@ public final class BuildPlan {
         return Math.max(DAIS_K * Math.max(aa, ar), DAIS_R * (aa + ar));
     }
 
-    // ---- the Archive ----
+    // ---- module plans (the Archive, and every city module since 0.11.0) ----
 
     /**
-     * Where the controller of an Archive on a hall site stands, and which way it faces: {x, y, z, facing ordinal}.
-     * The Archive's front row lies at radial {@link CampusPlan#HALL_FRONT} on the site axis with the controller on
-     * the axis at Y0 + {@link ArchiveShape#CTRL_Y}, and its front faces the nexus (the facing is the site axis
-     * reversed, as a ForgeDirection ordinal from 2 to 5), so {@link Blueprint#world} puts the Archive's centre on
+     * What the generic module plan ({@link #module}) needs to know about a module's shape (0.11.0): its box and
+     * blueprint, the character and part of every cell, which stage each cell is built in, its units (one launch group
+     * each), the decor outside the box and whether the DECOR stage adds seeded ornaments. The Echo Archive
+     * ({@link #ARCHIVE}) and the city modules ({@link CityBuild}) both describe themselves this way, so one builder
+     * lays them all.
+     */
+    public interface ModuleBuild {
+
+        /** The module key: the {@code <module>} of the job key. */
+        String key();
+
+        /** The box across. */
+        int width();
+
+        /** The box from the front. */
+        int depth();
+
+        /** The box up: the top layer is {@code height() - 1}. */
+        int height();
+
+        /** The checked shape, as the structure check reads it. */
+        Blueprint blueprint();
+
+        /** The blueprint cell {across, layer from the top, row from the front} of a local point. */
+        int[] cellOf(int x, int y, int z);
+
+        /** The controller's local cell {x, y, z}: on the axis, in the front wall. */
+        int[] controller();
+
+        /**
+         * The local character at a cell: a checked part, a soft character ({@link ShapeKit#soft}: built, never
+         * checked), {@code -} (must be air), {@code ~} (the controller) or a space (nothing to build).
+         */
+        char cell(int x, int y, int z);
+
+        /** The part a cell is built as (the controller's: the module's core). */
+        int part(int x, int y, int z, char ch);
+
+        /** The stage ({@code M_FLOOR .. M_COMMISSION}) of a cell that belongs to no unit. */
+        int stage(int x, int y, int z, char ch);
+
+        /**
+         * The order within the FIT stage of a cell that belongs to no unit: negative ranks come before the units,
+         * positive ones after them, each rank bottom-up; never 0.
+         */
+        int fitRank(int x, int y, int z, char ch);
+
+        /** The cells {x, y, z} of every unit, in unit order: each unit is one launch group (its index the group id). */
+        List<List<int[]>> units();
+
+        /** The cells outside the box, {x, y, z, part}: the entrance canopy. */
+        List<int[]> decor();
+
+        /** Whether the DECOR stage adds the seeded ornaments ({@link #ornaments}). */
+        boolean ornaments();
+    }
+
+    /**
+     * Where the controller of a hall module stands on a hall site, and which way it faces: {x, y, z, facing ordinal}.
+     * The module's front row lies at radial {@link CampusPlan#HALL_FRONT} on the site axis, its controller on the
+     * axis {@code ctrlZ} rows in and {@code ctrlY} above Y0, and its front faces the nexus (the facing is the site axis
+     * reversed, as a ForgeDirection ordinal from 2 to 5), so {@link Blueprint#world} puts the module's centre on
      * {@link CampusPlan#moduleCentre}.
      *
      * @throws IllegalArgumentException if the site is not a hall site or the front not a horizontal unit vector
      */
-    public static int[] archiveController(int site, int cx, int y0, int cz, int fx, int fz) {
+    public static int[] hallController(int site, int cx, int y0, int cz, int fx, int fz, int ctrlY, int ctrlZ) {
         facingOrdinal(fx, fz);
         if (!hallSite(site)) throw new IllegalArgumentException("not a hall site: " + site);
         int[] ax = CampusPlan.siteAxis(site);
         int[] out = CampusPlan.toWorld(ax[0], ax[1], fx, fz);
-        int t = CampusPlan.HALL_FRONT + ArchiveShape.CTRL_Z;
-        return new int[] { cx + out[0] * t, y0 + ArchiveShape.CTRL_Y, cz + out[1] * t,
-            facingOrdinal(-out[0], -out[1]) };
+        int t = CampusPlan.HALL_FRONT + ctrlZ;
+        return new int[] { cx + out[0] * t, y0 + ctrlY, cz + out[1] * t, facingOrdinal(-out[0], -out[1]) };
+    }
+
+    /** Where a module's controller stands on a hall site: {@link #hallController} at its shape's controller cell. */
+    public static int[] hallController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
+        int[] c = m.controller();
+        return hallController(site, cx, y0, cz, fx, fz, c[1], c[2]);
     }
 
     /**
-     * The module job of an Echo Archive on a hall site.
+     * Where the controller of an Archive on a hall site stands, and which way it faces: {x, y, z, facing ordinal}
+     * ({@link #hallController} at the Archive's {@link ArchiveShape#CTRL_Y} and {@link ArchiveShape#CTRL_Z}).
+     *
+     * @throws IllegalArgumentException if the site is not a hall site or the front not a horizontal unit vector
+     */
+    public static int[] archiveController(int site, int cx, int y0, int cz, int fx, int fz) {
+        return hallController(site, cx, y0, cz, fx, fz, ArchiveShape.CTRL_Y, ArchiveShape.CTRL_Z);
+    }
+
+    /**
+     * The module job of an Echo Archive on a hall site, through the generic {@link #module} plan ({@link #ARCHIVE}).
      * <ul>
      * <li>CLEAR: the footprint and {@link #ARCHIVE_MARGIN} round it, from Y0 + 1 to Y0 + {@link ArchiveShape#HEIGHT}
      * + {@link #ARCHIVE_HEADROOM}, outward from the nexus. Since 0.10.1 these columns grade too: the Y0 cell of a
@@ -540,7 +628,8 @@ public final class BuildPlan {
      * <li>ROOF: everything from y12 to y15.</li>
      * <li>FIT: the unit posts; then every shelf unit as one group of fifteen (three plinths, nine bodies, three
      * crowns), in {@link LibraryUnits#UNITS} order; then the pedestals, the lecterns and the desk.</li>
-     * <li>DECOR: the entrance canopy ({@link ArchiveShape#decor()}).</li>
+     * <li>DECOR: the entrance canopy ({@link ArchiveShape#decor()}); no seeded ornaments, so the plan is cell for cell
+     * the plan of 0.10.</li>
      * <li>COMMISSION: the controller (part {@link Parts#LIBRARY_CORE}), the last step.</li>
      * </ul>
      * Every blueprint cell is placed where {@link Blueprint#world} puts it for {@link #archiveController}, so the
@@ -549,25 +638,52 @@ public final class BuildPlan {
      * @throws IllegalArgumentException if the site is not a hall site or the front not a horizontal unit vector
      */
     public static Plan archive(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
-        int[] ctrl = archiveController(site, cx, y0, cz, fx, fz);
+        return module(plan, site, cx, y0, cz, fx, fz, ARCHIVE);
+    }
+
+    /**
+     * The module job of a hall module (0.11.0): the generic plan the Archive and every city hall share.
+     * <ul>
+     * <li>CLEAR: the footprint and {@link #MODULE_MARGIN} round it, from Y0 + 1 to {@link #MODULE_HEADROOM} above the
+     * shape's top layer that holds anything, outward from the nexus, grading their Y0 cells.</li>
+     * <li>FLOOR: {@link CampusPlan#siteFloor} and the soft cells the module puts in FLOOR, outward from the nexus.</li>
+     * <li>SHELL, DECK, UPPER, ROOF: the cells the module puts there, bottom-up by layer.</li>
+     * <li>FIT: the cells ranked before the units, every unit as one contiguous group in unit order (bottom-up within
+     * the group), then the cells ranked after them.</li>
+     * <li>DECOR: the shape's decor and, for a module that wants them, the seeded ornaments ({@link #ornaments}).</li>
+     * <li>COMMISSION: the controller, the last step.</li>
+     * </ul>
+     * A soft cell is a SOFT step, {@code -} an AIR step, every other cell a HARD step placed where
+     * {@link Blueprint#world} puts it for the module's controller ({@link #hallController}), so the HARD steps are
+     * exactly the cells the structure check looks at.
+     *
+     * @throws IllegalArgumentException if the site is not a hall site or the front not a horizontal unit vector
+     * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the shape's unit cells
+     */
+    public static Plan module(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, ModuleBuild m) {
+        int[] ctrl = hallController(m, site, cx, y0, cz, fx, fz);
         int[] ax = CampusPlan.siteAxis(site);
         Frame f = new Frame(cx, y0, cz, fx, fz, ax[0], ax[1]);
-        Local at = new Local(ctrl);
-        final int w = ArchiveShape.WIDTH, d = ArchiveShape.DEPTH, h = ArchiveShape.HEIGHT;
+        Local at = new Local(ctrl, m);
+        final int w = m.width(), d = m.depth(), h = m.height();
 
+        // the clear box reaches MODULE_HEADROOM above the top layer that holds anything
+        int top = 0;
+        for (int y = 0; y < h; y++) for (int z = 0; z < d; z++) for (int x = 0; x < w; x++) {
+            if (m.cell(x, y, z) != ShapeKit.NONE) top = Math.max(top, y);
+        }
         List<Clearing> clear = new ArrayList<>();
-        for (int z = -ARCHIVE_MARGIN; z < d + ARCHIVE_MARGIN; z++) {
-            for (int x = -ARCHIVE_MARGIN; x < w + ARCHIVE_MARGIN; x++) {
+        for (int z = -MODULE_MARGIN; z < d + MODULE_MARGIN; z++) {
+            for (int x = -MODULE_MARGIN; x < w + MODULE_MARGIN; x++) {
                 int[] p = at.world(x, 0, z);
-                clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + h + ARCHIVE_HEADROOM, true));
+                clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + top + 1 + MODULE_HEADROOM, true));
             }
         }
         clear.sort(RIPPLE);
 
-        List<Draft> floor = new ArrayList<>(), shell = new ArrayList<>(), deck = new ArrayList<>(),
-            upper = new ArrayList<>(), roof = new ArrayList<>(), posts = new ArrayList<>(),
-            pedestals = new ArrayList<>(), lecterns = new ArrayList<>(), desk = new ArrayList<>(),
-            decor = new ArrayList<>(), commission = new ArrayList<>();
+        List<List<Draft>> stages = new ArrayList<>();
+        for (int i = 0; i < M_STAGES; i++) stages.add(new ArrayList<>());
+        List<Draft> floor = stages.get(M_FLOOR);
         for (Map.Entry<Long, Integer> e : plan.siteFloor(site, w, d)
             .entrySet()) {
             long k = e.getKey();
@@ -580,84 +696,258 @@ public final class BuildPlan {
                 plan.wells()
                     .contains(k));
         }
-        int unitCells = 0;
+        // the units' cells: the scan below leaves them to their groups
+        Set<Long> unitCells = new HashSet<>();
+        for (List<int[]> u : m.units()) for (int[] c : u) unitCells.add(ShapeKit.Shape.pos(c[0], c[1], c[2]));
+        List<Draft> before = new ArrayList<>(), after = new ArrayList<>();
+        int shapeUnitCells = 0;
         for (int y = 0; y < h; y++) for (int z = 0; z < d; z++) for (int x = 0; x < w; x++) {
-            char ch = ArchiveShape.cell(x, y, z);
-            if (ch == ArchiveShape.ANY) continue;
+            char ch = m.cell(x, y, z);
+            if (ch == ShapeKit.NONE) continue;
+            if (unitCells.contains(ShapeKit.Shape.pos(x, y, z))) {
+                shapeUnitCells++;
+                continue;
+            }
             int[] p = at.world(x, y, z);
-            if (ch == ArchiveShape.SOFT) {
-                boolean spine = x == ArchiveShape.MID && z >= SPINE_FROM && z <= SPINE_TO && z % 2 == 0;
-                floor.add(new Draft(f, p[0], p[1], p[2], spine ? LIT : DECK, SOFT, NO_GROUP));
-                continue;
-            }
-            if (ch == ArchiveShape.PLINTH || ch == ArchiveShape.BODY || ch == ArchiveShape.CROWN) {
-                // the units are added whole below, in their reading order
-                unitCells++;
-                continue;
-            }
-            byte kind = ch == ArchiveShape.AIR ? AIR : HARD;
-            Draft dr = new Draft(f, p[0], p[1], p[2], ArchiveShape.partOf(ch), kind, NO_GROUP);
-            boolean wall = x == 0 || x == w - 1 || z == 0 || z == d - 1;
-            if (ch == ArchiveShape.CONTROLLER) commission.add(dr);
-            else if (kind == AIR) shell.add(dr);
-            else if (y == 0) {
-                if (ch != ArchiveShape.FOUNDATION) throw new IllegalStateException("'" + ch + "' in the floor layer");
-                // the foundations open the shell: being the lowest layer, the bottom-up order puts them first
-                shell.add(dr);
-            } else if (ArchiveShape.isStair(x, y, z) || ch == ArchiveShape.POST && stairCore(x, z)) deck.add(dr);
-            else if (y >= ArchiveShape.ROOF_Y) roof.add(dr);
-            else if (y == ArchiveShape.DECK_Y || ch == ArchiveShape.RAIL) deck.add(dr);
-            else if (wall) (y < ArchiveShape.DECK_Y ? shell : upper).add(dr);
-            else if (ch == ArchiveShape.POST) posts.add(dr);
-            else if (ch == ArchiveShape.PEDESTAL) pedestals.add(dr);
-            else if (ch == ArchiveShape.CONSOLE) {
-                boolean isDesk = x == ArchiveShape.DESK[0] && y == ArchiveShape.DESK[1] && z == ArchiveShape.DESK[2];
-                (isDesk ? desk : lecterns).add(dr);
-            } else {
-                throw new IllegalStateException("no stage for '" + ch + "' at " + x + "," + y + "," + z);
-            }
+            byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
+            int stage = m.stage(x, y, z, ch);
+            if (stage <= M_CLEAR || stage >= M_STAGES)
+                throw new IllegalStateException(m.key() + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
+            Draft dr = new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), kind, NO_GROUP);
+            if (stage == M_FIT) {
+                int rank = m.fitRank(x, y, z, ch);
+                if (rank == 0) throw new IllegalStateException(m.key() + ": a fitting ranked with the units");
+                dr.rank = rank;
+                (rank < 0 ? before : after).add(dr);
+            } else stages.get(stage)
+                .add(dr);
         }
-        for (int[] c : ArchiveShape.decor()) {
+        List<Draft> decor = stages.get(M_DECOR);
+        for (int[] c : m.decor()) {
             int[] p = at.world(c[0], c[1], c[2]);
             decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
         }
+        if (m.ornaments()) ornaments(decor, f, at, m, Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
 
-        // every unit as one contiguous group of fifteen: plinths, bodies and crowns from the bottom up
+        // every unit as one contiguous group, bottom-up within it
         List<Draft> units = new ArrayList<>();
-        for (LibraryUnits.Unit u : LibraryUnits.UNITS) {
+        List<List<int[]>> groups = m.units();
+        for (int i = 0; i < groups.size(); i++) {
             List<Draft> group = new ArrayList<>();
-            for (int y = u.yBody - 1; y <= u.yBody + 3; y++) for (int k = 0; k < 3; k++) {
-                int[] p = at.world(u.x(k), y, u.z(k));
-                char ch = ArchiveShape.cell(u.x(k), y, u.z(k));
-                group.add(new Draft(f, p[0], p[1], p[2], ArchiveShape.partOf(ch), HARD, u.index));
+            for (int[] c : groups.get(i)) {
+                char ch = m.cell(c[0], c[1], c[2]);
+                if (!ShapeKit.checked(ch) || ch == ShapeKit.CONTROLLER)
+                    throw new IllegalStateException(m.key() + ": a unit cell is not a part");
+                int[] p = at.world(c[0], c[1], c[2]);
+                group.add(new Draft(f, p[0], p[1], p[2], m.part(c[0], c[1], c[2], ch), HARD, i));
             }
             group.sort(BOTTOM_UP);
             units.addAll(group);
         }
-        if (units.size() != unitCells) {
-            throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + unitCells);
+        if (units.size() != shapeUnitCells) {
+            throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + shapeUnitCells);
         }
 
-        for (List<Draft> l : Arrays.asList(shell, deck, upper, roof, posts, pedestals, lecterns, desk, decor)) {
-            l.sort(BOTTOM_UP);
+        for (int s = M_FLOOR; s < M_STAGES; s++) {
+            if (s != M_FIT) stages.get(s)
+                .sort(s == M_FLOOR ? RIPPLE : BOTTOM_UP);
         }
-        floor.sort(RIPPLE);
-        List<Draft> fit = new ArrayList<>(posts);
+        Comparator<Draft> ranked = Comparator.<Draft>comparingInt(dr -> dr.rank)
+            .thenComparing(BOTTOM_UP);
+        before.sort(ranked);
+        after.sort(ranked);
+        List<Draft> fit = stages.get(M_FIT);
+        fit.addAll(before);
         fit.addAll(units);
-        fit.addAll(pedestals);
-        fit.addAll(lecterns);
-        fit.addAll(desk);
+        fit.addAll(after);
 
-        List<List<Step>> stages = empty(M_STAGES);
-        stages.set(M_FLOOR, steps(floor, M_FLOOR));
-        stages.set(M_SHELL, steps(shell, M_SHELL));
-        stages.set(M_DECK, steps(deck, M_DECK));
-        stages.set(M_UPPER, steps(upper, M_UPPER));
-        stages.set(M_ROOF, steps(roof, M_ROOF));
-        stages.set(M_FIT, steps(fit, M_FIT));
-        stages.set(M_DECOR, steps(decor, M_DECOR));
-        stages.set(M_COMMISSION, steps(commission, M_COMMISSION));
-        return new Plan(moduleKey(LIBRARY, site), M_STAGES, stages, columns(clear));
+        List<List<Step>> out = empty(M_STAGES);
+        for (int s = M_FLOOR; s < M_STAGES; s++) out.set(s, steps(stages.get(s), s));
+        return new Plan(moduleKey(m.key(), site), M_STAGES, out, columns(clear));
+    }
+
+    /**
+     * The seeded ornaments of a module's DECOR stage (CITY.md §1.2), the asymmetric wings that keep a city of mirrored
+     * blueprints from looking stamped: SOFT steps outside the blueprint, so the module forms whether they stand or
+     * not. From the seed of the module's controller:
+     * <ul>
+     * <li>the canopy is 2, 3 or 4 rows deep (the shape's canopy is two; its outermost row is repeated outward);</li>
+     * <li>one side's apron (its outer row, {@link #ANNEX_OFFSET} out from the footprint, at Y0 + 1, from row
+     * {@link #ANNEX_FROM} to row depth - 1 - {@link #ANNEX_FROM}) takes an annex: a planter wall (grass beds between
+     * basin rims every fourth cell), a lamp row (a post two high with a lit crown cap every third cell), a bench row
+     * (stair treads with a gap every fifth cell) or a holo-sign pylon (a pedestal and two posts in the middle of the
+     * side).</li>
+     * </ul>
+     */
+    static void ornaments(List<Draft> decor, Frame f, Local at, ModuleBuild m, long seed) {
+        int depth = canopyDepth(seed);
+        List<int[]> canopy = m.decor();
+        if (!canopy.isEmpty() && depth > CANOPY_MIN) {
+            int outer = Integer.MAX_VALUE;
+            for (int[] c : canopy) outer = Math.min(outer, c[2]);
+            for (int extra = 1; extra <= depth - CANOPY_MIN; extra++) for (int[] c : canopy) {
+                if (c[2] != outer) continue;
+                int[] p = at.world(c[0], c[1], outer - extra);
+                decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
+            }
+        }
+        for (int[] c : annex(m.width(), m.depth(), seed)) {
+            int[] p = at.world(c[0], c[1], c[2]);
+            decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
+        }
+    }
+
+    /** The canopy's depth in rows for a module seed: 2, 3 or 4. */
+    public static int canopyDepth(long seed) {
+        return CANOPY_MIN + Math.min(CANOPY_VARIANTS - 1, (int) (Mix.unit(seed, S_CANOPY) * CANOPY_VARIANTS));
+    }
+
+    /** The annex's kind for a module seed: {@link #ANNEX_PLANTERS}, lamps, benches or the pylon. */
+    public static int annexKind(long seed) {
+        return Math.min(ANNEX_KINDS - 1, (int) (Mix.unit(seed, S_ANNEX_KIND) * ANNEX_KINDS));
+    }
+
+    /** The annex's cells in the module's local frame, {x, y, z, part}, for a module {@code width x depth}. */
+    public static List<int[]> annex(int width, int depth, long seed) {
+        int x = Mix.unit(seed, S_ANNEX_SIDE) < 0.5 ? -ANNEX_OFFSET : width - 1 + ANNEX_OFFSET;
+        int kind = annexKind(seed);
+        int z0 = ANNEX_FROM, z1 = depth - 1 - ANNEX_FROM;
+        List<int[]> cells = new ArrayList<>();
+        for (int z = z0; z <= z1; z++) {
+            int i = z - z0;
+            switch (kind) {
+                case ANNEX_PLANTERS:
+                    cells.add(new int[] { x, 1, z, i % 4 == 0 ? Parts.fitting(Parts.F_BASIN) : Parts.GRASS });
+                    break;
+                case ANNEX_LAMPS:
+                    if (i % 3 == 0) {
+                        cells.add(new int[] { x, 1, z, Parts.fitting(Parts.F_POST) });
+                        cells.add(new int[] { x, 2, z, Parts.fitting(Parts.F_POST) });
+                        cells.add(new int[] { x, 3, z, Parts.fitting(Parts.F_CROWN) });
+                    }
+                    break;
+                case ANNEX_BENCHES:
+                    if (i % 5 != 4) cells.add(new int[] { x, 1, z, Parts.fitting(Parts.F_TREAD) });
+                    break;
+                default:
+                    if (z == (z0 + z1) / 2) {
+                        cells.add(new int[] { x, 1, z, Parts.fitting(Parts.F_PEDESTAL) });
+                        cells.add(new int[] { x, 2, z, Parts.fitting(Parts.F_POST) });
+                        cells.add(new int[] { x, 3, z, Parts.fitting(Parts.F_POST) });
+                    }
+            }
+        }
+        return cells;
+    }
+
+    /** The Echo Archive as the generic module plan reads it: its 0.10 stages, exactly. */
+    public static final ModuleBuild ARCHIVE = new ModuleBuild() {
+
+        private final List<List<int[]>> units = archiveUnits();
+
+        @Override
+        public String key() {
+            return LIBRARY;
+        }
+
+        @Override
+        public int width() {
+            return ArchiveShape.WIDTH;
+        }
+
+        @Override
+        public int depth() {
+            return ArchiveShape.DEPTH;
+        }
+
+        @Override
+        public int height() {
+            return ArchiveShape.HEIGHT;
+        }
+
+        @Override
+        public Blueprint blueprint() {
+            return ArchiveShape.BLUEPRINT;
+        }
+
+        @Override
+        public int[] cellOf(int x, int y, int z) {
+            return ArchiveShape.cellOf(x, y, z);
+        }
+
+        @Override
+        public int[] controller() {
+            return new int[] { ArchiveShape.CTRL_X, ArchiveShape.CTRL_Y, ArchiveShape.CTRL_Z };
+        }
+
+        @Override
+        public char cell(int x, int y, int z) {
+            return ArchiveShape.cell(x, y, z);
+        }
+
+        @Override
+        public int part(int x, int y, int z, char ch) {
+            if (ch == ArchiveShape.SOFT) {
+                boolean spine = x == ArchiveShape.MID && z >= SPINE_FROM && z <= SPINE_TO && z % 2 == 0;
+                return spine ? LIT : DECK;
+            }
+            return ArchiveShape.partOf(ch);
+        }
+
+        @Override
+        public int stage(int x, int y, int z, char ch) {
+            if (ch == ArchiveShape.SOFT) return M_FLOOR;
+            if (ch == ArchiveShape.CONTROLLER) return M_COMMISSION;
+            if (ch == ArchiveShape.AIR) return M_SHELL;
+            if (y == 0) {
+                if (ch != ArchiveShape.FOUNDATION) throw new IllegalStateException("'" + ch + "' in the floor layer");
+                // the foundations open the shell: being the lowest layer, the bottom-up order puts them first
+                return M_SHELL;
+            }
+            boolean wall = x == 0 || x == ArchiveShape.WIDTH - 1 || z == 0 || z == ArchiveShape.DEPTH - 1;
+            if (ArchiveShape.isStair(x, y, z) || ch == ArchiveShape.POST && stairCore(x, z)) return M_DECK;
+            if (y >= ArchiveShape.ROOF_Y) return M_ROOF;
+            if (y == ArchiveShape.DECK_Y || ch == ArchiveShape.RAIL) return M_DECK;
+            if (wall) return y < ArchiveShape.DECK_Y ? M_SHELL : M_UPPER;
+            if (ch == ArchiveShape.POST || ch == ArchiveShape.PEDESTAL || ch == ArchiveShape.CONSOLE) return M_FIT;
+            throw new IllegalStateException("no stage for '" + ch + "' at " + x + "," + y + "," + z);
+        }
+
+        @Override
+        public int fitRank(int x, int y, int z, char ch) {
+            // the posts before the units; after them the pedestals, the lecterns and the desk
+            if (ch == ArchiveShape.POST) return -1;
+            if (ch == ArchiveShape.PEDESTAL) return 1;
+            boolean desk = x == ArchiveShape.DESK[0] && y == ArchiveShape.DESK[1] && z == ArchiveShape.DESK[2];
+            return desk ? 3 : 2;
+        }
+
+        @Override
+        public List<List<int[]>> units() {
+            return units;
+        }
+
+        @Override
+        public List<int[]> decor() {
+            return ArchiveShape.decor();
+        }
+
+        @Override
+        public boolean ornaments() {
+            return false;
+        }
+    };
+
+    /** The Archive's bookcases as unit cell lists: plinths, bodies and crowns, in {@link LibraryUnits#UNITS} order. */
+    private static List<List<int[]>> archiveUnits() {
+        List<List<int[]>> out = new ArrayList<>();
+        for (LibraryUnits.Unit u : LibraryUnits.UNITS) {
+            List<int[]> cells = new ArrayList<>();
+            for (int y = u.yBody - 1; y <= u.yBody + 3; y++)
+                for (int k = 0; k < 3; k++) cells.add(new int[] { u.x(k), y, u.z(k) });
+            out.add(Collections.unmodifiableList(cells));
+        }
+        return Collections.unmodifiableList(out);
     }
 
     private static boolean stairCore(int x, int z) {
@@ -725,7 +1015,7 @@ public final class BuildPlan {
     }
 
     /** The nexus centre and front, and the axis a job orders its steps along (the gate, or a hall site's axis). */
-    private static final class Frame {
+    static final class Frame {
 
         final int cx, y0, cz, fx, fz, da, dr;
 
@@ -746,24 +1036,27 @@ public final class BuildPlan {
         }
     }
 
-    /** The Archive's local frame placed in the world: its controller cell and front from {@link #archiveController}. */
-    private static final class Local {
+    /** A module's local frame placed in the world: its controller cell and front ({@link #hallController}). */
+    static final class Local {
 
         final int x, y, z, fx, fz;
+        final ModuleBuild m;
 
-        Local(int[] ctrl) {
+        Local(int[] ctrl, ModuleBuild m) {
             x = ctrl[0];
             y = ctrl[1];
             z = ctrl[2];
             int[] f = front(ctrl[3]);
             fx = f[0];
             fz = f[1];
+            this.m = m;
         }
 
-        /** The world {x, y, z} of the Archive's local cell, the way the structure check maps it. */
+        /** The world {x, y, z} of the module's local cell, the way the structure check maps it. */
         int[] world(int lx, int ly, int lz) {
-            int[] c = ArchiveShape.cellOf(lx, ly, lz);
-            return ArchiveShape.BLUEPRINT.world(c[0], c[1], c[2], x, y, z, fx, fz);
+            int[] c = m.cellOf(lx, ly, lz);
+            return m.blueprint()
+                .world(c[0], c[1], c[2], x, y, z, fx, fz);
         }
     }
 
@@ -771,7 +1064,7 @@ public final class BuildPlan {
      * A world cell seen from the nexus: its campus cell (a, r), the same cell along ({@code t}) and across
      * ({@code s}) the job's axis, and its squared distance from the centre.
      */
-    private static class Place {
+    static class Place {
 
         final int x, y, z, t, s;
         final long d2;
@@ -795,10 +1088,12 @@ public final class BuildPlan {
     }
 
     /** A step before it has its stage. */
-    private static final class Draft extends Place {
+    static final class Draft extends Place {
 
         final int part, group;
         final byte kind;
+        /** Its rank within the FIT stage ({@link ModuleBuild#fitRank}). */
+        int rank;
 
         Draft(Frame f, int x, int y, int z, int part, byte kind, int group) {
             super(f, x, y, z);

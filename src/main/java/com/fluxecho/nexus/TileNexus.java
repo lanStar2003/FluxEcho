@@ -2,6 +2,7 @@ package com.fluxecho.nexus;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -20,6 +21,7 @@ import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.ChatComponentTranslation;
 
 import com.fluxecho.Config;
+import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
@@ -30,9 +32,9 @@ import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.frame.FrameModule;
 import com.fluxecho.logic.Blueprint;
-import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.PreviewSites;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.matter.ItemEchoCrystal;
@@ -174,32 +176,57 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * Stands modules round the nexus for the preview, one on each hall site the phase opens (at most the three hall
-     * sites, behind the nexus first, then right and left): each where the campus builder raises it, its controller at
-     * the spec's place for the site ({@link BuildPlan#archiveController} for the Echo Archive) and its front towards
-     * the nexus. The campus floor is left out, as the preview would grow too heavy. A module kind the campus does not
-     * build stands on the inner ring slot of the same number instead, as in 0.9.2.
+     * Stands the city round the nexus for the preview (0.11.0: CITY.md §3, tiers 6 to 10): every module kind the
+     * phase allows (its research's phase is reached), up to the modules the phase docks, each on the first of its
+     * preferred sites that is still free, where the campus builder raises it: its controller at the spec's place for
+     * the site and its front towards the nexus. So phase I shows the Echo Archive behind the nexus and the Eco Dome to
+     * its right. The campus floor is left out, as the preview would grow too heavy. A kind whose sites are all taken
+     * is left out (never stood somewhere else, where it would overlap its neighbours); only a module kind the campus
+     * does not build stands on a free inner ring slot instead, as in 0.9.2 ({@link PreviewSites}).
      */
     private void previewModules(int phase, ItemStack trigger, boolean hintsOnly) {
         List<NexusModule.Preview> kinds = NexusModule.previews();
         if (kinds.isEmpty() || worldObj == null) return;
         int[] c = centre();
         int fx = front().offsetX, fz = front().offsetZ;
-        int count = Math.min(RingSlots.open(phase), CampusPlan.HALL_SITES.length);
-        for (int k = 0; k < count; k++) {
-            int site = CampusPlan.HALL_SITES[k];
-            NexusModule.Preview kind = kinds.get(k % kinds.size());
+        // the kinds the phase allows (a kind without a research node always), their tiles, specs and sites
+        List<NexusModule.Preview> shown = new ArrayList<>();
+        List<TileModule> tiles = new ArrayList<>();
+        List<ModuleSpec> specs = new ArrayList<>();
+        List<int[]> preferred = new ArrayList<>();
+        for (NexusModule.Preview kind : kinds) {
             TileModule m = kind.tile.get();
             ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+            ResearchTree.Node node = spec == null ? null : ResearchTree.get(spec.research);
+            if (node != null && node.phase > phase) continue;
+            shown.add(kind);
+            tiles.add(m);
+            specs.add(spec);
+            preferred.add(spec == null ? null : spec.sites);
+        }
+        List<PreviewSites.Place> places = PreviewSites.places(preferred, RingSlots.open(phase));
+        for (int i = 0; i < places.size(); i++) {
+            PreviewSites.Place place = places.get(i);
+            NexusModule.Preview kind = shown.get(i);
+            TileModule m = tiles.get(i);
+            ModuleSpec spec = specs.get(i);
+            if (!place.placed()) {
+                if (spec != null) FluxEcho.LOG.debug(
+                    "Nexus preview: no free site for {} (sites {}), left out",
+                    spec.key,
+                    Arrays.toString(spec.sites));
+                else FluxEcho.LOG.debug("Nexus preview: the inner ring is full, {} left out", m.moduleKey());
+                continue;
+            }
             int x, y, z, front;
-            if (spec != null && spec.hasSite(site)) {
-                int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
+            if (place.site >= 0) {
+                int[] at = spec.controller(place.site, c[0], c[1], c[2], fx, fz);
                 x = at[0];
                 y = at[1];
                 z = at[2];
                 front = at[3];
             } else {
-                int[] o = RingSlots.offset(site, Config.innerRadius, fx, fz);
+                int[] o = RingSlots.offset(place.slot, Config.innerRadius, fx, fz);
                 int[] f = RingSlots.facing(-o[0], -o[1]);
                 int[] cc = m.centreCell();
                 // where its controller stands for its foundation's centre to sit on the slot
@@ -210,7 +237,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
                 z = c[2] + o[1] - rel[2];
                 front = facingOf(f[0], f[1]);
             }
-            worldObj.setBlock(x, y, z, kind.core, 0, 2);
+            worldObj.setBlock(x, y, z, kind.core, kind.meta, 2);
             worldObj.setTileEntity(x, y, z, m);
             m.facing = front;
             ItemStack one = trigger == null ? null : trigger.copy();

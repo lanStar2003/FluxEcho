@@ -103,6 +103,32 @@ class ResearchTreeTest {
             ResearchTree.check(ResearchTree.get(ResearchTree.DOME), anchor, 1, 0));
     }
 
+    /** The Eco Dome's research (0.11.0): phase I, after the inner ring and the echo crystal, with real costs. */
+    @Test
+    void theEcoDome() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.ECO_DOME);
+        assertNotNull(n);
+        assertEquals(ResearchTree.Branch.ECHO, n.branch);
+        assertEquals(1, n.phase);
+        assertEquals(1, ResearchTree.PHASE_NOW, "0.11.0 stays in phase I");
+        assertTrue(ResearchTree.availableNow(n));
+        assertEquals(java.util.Arrays.asList(ResearchTree.INNER_RING, ResearchTree.ECHO_CRYSTAL), n.requires);
+        assertEquals(16_000, n.compute);
+        assertEquals(3, n.costs.size());
+        assertEquals("gemEchoCrystal", n.costs.get(0).name);
+        assertEquals(4, n.costs.get(0).count);
+        assertEquals("treeSapling", n.costs.get(1).name);
+        assertEquals(16, n.costs.get(1).count);
+        assertEquals("blockGlass", n.costs.get(2).name);
+        assertEquals(32, n.costs.get(2).count);
+        Set<String> ring = new HashSet<>();
+        ring.add(ResearchTree.ANCHOR);
+        ring.add(ResearchTree.INNER_RING);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, ring, 1, 999));
+        ring.add(ResearchTree.ECHO_CRYSTAL);
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, ring, 1, 999));
+    }
+
     @Test
     void costs() {
         ResearchTree.Cost c = ResearchTree.Cost.parse("ore:gemFluxCrystal*16");

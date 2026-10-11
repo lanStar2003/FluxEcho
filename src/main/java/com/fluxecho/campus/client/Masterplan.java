@@ -93,8 +93,11 @@ public final class Masterplan {
     private static final double[][] DAIS = octagon(NexusShape.RADIUS, 7);
     /** The gate strip ({@link CampusPlan#inGate}) from the promenade ring's outer edge, open at the ring. */
     private static final double[][] GATE = gate(CampusPlan.RING_R + 0.5);
-    /** The chamfer of a diagonal site's reserved envelope: its corners cut where {@code |du| + |dv|} passes this. */
-    private static final int DIAGONAL_CHAMFER = 15;
+    /**
+     * The chamfer of a diagonal site's envelope (0.11.0: the pavilion's {@code oct(12, 16)}): its corners cut where
+     * {@code |du| + |dv|} passes this.
+     */
+    private static final int DIAGONAL_CHAMFER = CampusPlan.DIAGONAL_K;
 
     /** The parts that fail on their own. */
     private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2;

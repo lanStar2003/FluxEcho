@@ -24,8 +24,9 @@ import java.util.TreeMap;
  *
  * <p>
  * The Crystal Seat's recipe needs a GregTech HV hull, which has no spec, so it is not in this table (the frame module
- * keeps registering it); the seat, the library core, the supply port and the recycle bin are part-only: the builder
- * takes a finished item for them and never expands them into raw credit.
+ * keeps registering it); the seat, the library core, the module cores, the supply port and the recycle bin are
+ * part-only: the builder takes a finished item for them and never expands them into raw credit. Water, like grass
+ * and dirt, has no recipe and no cost: it is paid for in EU alone.
  */
 public final class PartRecipes {
 
@@ -168,6 +169,20 @@ public final class PartRecipes {
                 pillar,
                 'L',
                 baseLit));
+
+        // the cladding anchor (0.11.0): where a building's claddings grow later
+        list.add(
+            recipe(
+                Parts.frame(Parts.FR_ANCHOR),
+                4,
+                "Cladding Anchor",
+                rows("SRS", "RCR", "SRS"),
+                'S',
+                ssPlate,
+                'R',
+                part(Parts.frame(Parts.FR_RING)),
+                'C',
+                crystal));
 
         // deck parts
         list.add(
@@ -316,6 +331,21 @@ public final class PartRecipes {
                 'B',
                 baseLit));
 
+        // the socket and the basin rim (0.11.0): the units of the city's modules hold their samples in them
+        list.add(
+            recipe(
+                Parts.fitting(Parts.F_SOCKET),
+                8,
+                "Sample Socket",
+                rows("PLP", "LCL", "PLP"),
+                'P',
+                panel,
+                'L',
+                panelLit,
+                'C',
+                crystal));
+        list.add(recipe(Parts.fitting(Parts.F_BASIN), 8, "Basin Rim", rows("T T", "TST"), 'T', trim, 'S', steelPlate));
+
         // the supply port: crafted by hand, taken as a finished item by the builder
         list.add(
             recipe(
@@ -349,6 +379,8 @@ public final class PartRecipes {
         partOnly.add(Parts.LIBRARY_CORE);
         partOnly.add(Parts.SUPPLY_PORT);
         partOnly.add(Parts.RECYCLE_BIN);
+        // the module cores (0.11.0) are manifested at the nexus, like the library core
+        for (int m = 0; m < Parts.MODULE_CORES; m++) partOnly.add(Parts.moduleCore(m));
 
         Map<Integer, Recipe> byPart = new TreeMap<>();
         for (Recipe r : list) {
@@ -362,7 +394,10 @@ public final class PartRecipes {
 
     private PartRecipes() {}
 
-    /** The recipe making the part, or null when it has none here (grass, dirt, air, the seat, the library core). */
+    /**
+     * The recipe making the part, or null when it has none here (grass, dirt, water, air, the seat, the library core,
+     * the module cores).
+     */
     public static Recipe get(int part) {
         return RECIPES.get(part);
     }
@@ -373,8 +408,8 @@ public final class PartRecipes {
     }
 
     /**
-     * Whether the builder needs a finished item of this part (the seat, the library core, the supply port and the
-     * recycle bin).
+     * Whether the builder needs a finished item of this part (the seat, the library core, the module cores, the supply
+     * port and the recycle bin).
      */
     public static boolean partOnly(int part) {
         return PART_ONLY.contains(part);

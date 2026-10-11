@@ -116,7 +116,9 @@ public final class Blueprint {
      */
     public int[] world(int a, int b, int c, int x, int y, int z, int fx, int fz) {
         int across = a - ctrlA, up = ctrlB - b, back = c - ctrlC;
-        // across runs to the right of someone facing the controller's front; with a symmetric shape either way works
+        // across runs onto (fz, -fx), exactly as StructureLib's ExtendedFacing maps its first axis (no rotation, no
+        // flip): the Eco Dome's trunk spiral is not mirrored, so the plan and the structure check must agree cell for
+        // cell (TileEcoDomeTest holds this)
         int rx = fz, rz = -fx;
         return new int[] { x + across * rx - back * fx, y + up, z + across * rz - back * fz };
     }

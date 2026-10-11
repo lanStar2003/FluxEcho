@@ -1,6 +1,6 @@
 # 开发手册 · 通量中枢、研究、模块、回响书库（0.9.0 起，0.9.2 重做布局，0.10.0 营造）
 
-> 改 `matter/ frame/ nexus/ library/ research/ render/Shapes`、做 0.11.0 及以后的版本之前读这一篇。**园区、自动建造、投影、回响档案馆**（`campus/`、`campus/client/`、书库的档案馆部分、`ItemBlockNexusCore`）在 [campus.md](campus.md)，这里只写它们怎么接进中枢。路线和设计在 [BLUEPRINT](../BLUEPRINT.md) 3.2–3.11、3.14。总览见 `CLAUDE.md`。
+> 改 `matter/ frame/ nexus/ library/ research/ render/Shapes`、做中枢本身的下一步（相位生长，§11）之前读这一篇。**园区、自动建造、投影、回响档案馆**（`campus/`、`campus/client/`、书库的档案馆部分、`ItemBlockNexusCore`）在 [campus.md](campus.md)；**回响之城的城市模块**（0.11.0 起：场地族、单元、模块核心家族、通用窗口和渲染、生态穹）在 [city.md](city.md)；这里只写它们怎么接进中枢。路线和设计在 [BLUEPRINT](../BLUEPRINT.md) 3.2–3.11、3.14 和 `D:\Code\FluxEcho-campus\city\CITY.md`。总览见 `CLAUDE.md`。
 > 路径相对 `src/main/java/com/fluxecho/`。`EchoText.t("x")` 对应 lang 键 `fluxecho.x`。
 
 ## 0. 定位与已定的设计
@@ -15,6 +15,7 @@
   - **NEI 预览要完整**：主方块在 NEI 里有三维预览、能看用料；中枢的等级滑块能看各相位和停靠模块的满级全貌；
   - **中枢要气派**：光柱冲天、远处可见；支撑件是弧形分节肋架，不是直柱；
   - 渲染不许"从角上看进去"：画在方块里面的东西只在相机进到里面时画。
+- **0.11.0「百工」**（详见 city.md §0）：用户要「先把计划中的结构与建筑全部做完」，功能以后再做；园区按 CITY.md 长成井字形的回响之城，每座新模块都走通用的城市模块框架（`TileCityModule`、`fluxecho:module_core`），第一座是生态穹。
 - **0.10.0「营造」定的**（详见 campus.md §0）：中枢**自己建园区和模块**——放核心 → 勘测、投影 → 成员按「开始」→ 供料 → 自动放置 + 特效；**建造投影默认开**、和状态全息是两回事（`buildProjection`）；模块是能走进去的大房子，书库里的书架**整组为单位**（一个书架 9 本，点书架的任何部分）；旧中枢不动，直到成员按「铺设广场」。
 - **0.9.0 实际做法（和 BLUEPRINT 3.13 原计划不同）**：中枢和模块是**自己的 TileEntity**（`nexus.TileMultiblock`），不是 GT MTE，不占 GT 机器 ID；电直接从团队无线电网取，不需要能源仓；StructureLib 照样用（`ISurvivalConstructable` 投影和自动搭建，`IMultiblockInfoContainer` 给 NEI 三维预览）。
 
@@ -25,7 +26,7 @@
 | `matter/MatterModule` | 物品 `flux_grit`、`flux_crystal`、`echo_crystal`，矿辞 `dustFluxGrit`/`gemFluxCrystal`/`gemEchoCrystal`，高压釜配方 |
 | `matter/ItemMatter`、`ItemEchoCrystal`、`Grit` | 简单物品；回响晶（NBT `Cat`/`Key`，`of(cat,key,n)`）；`Grit.roll(rand, ownerUuid)` |
 | `matter/client/EchoCrystalRender` | `IItemRenderer`（INVENTORY）：晶体上画记录图标 |
-| `frame/BlockFrame`、`ItemBlockFrame`、`FrameModule` | 9 个 meta 的构架方块、物品、注册；配方从 `logic/PartRecipes` 注册（晶核座手写）；`BlockFrame.onUse(Use)` 让成型的结构接管右键（书架、控制台座） |
+| `frame/BlockFrame`、`ItemBlockFrame`、`FrameModule` | 10 个 meta 的构架方块（0.11.0 加覆层锚点）、物品、注册；配方从 `logic/PartRecipes` 注册（晶核座手写）；`BlockFrame.onUse(Use)` 让成型的结构接管右键（书架、控制台座） |
 | `frame/Formed` | 已成型表：坐标 → `HIDE=1`/`PASS=2`；客户端、服务端各一份 |
 | `frame/FrameEvents` | 构架方块放下/破坏（`onBlockAdded`/`breakBlock`，`Builder.QUIET` 时不发）→ 通知覆盖这里的控制器马上复查 |
 | `frame/client/FrameRender`、`FrameClient`、`ShelfUnits` | ISBRH（HIDE 的格子不画）；注册、世界卸载时清客户端表、登记 `shelf_board` 图标；档案馆书架单元的一格（campus.md §12） |
@@ -39,11 +40,11 @@
 | `nexus/Consoles` | 控制台座的右键：属于哪个成型结构（`consoleAt`）就开它的界面 |
 | `nexus/NexusBinding` | 终端 ↔ 中枢绑定（终端 NBT `feNexus{Dim,X,Y,Z}`） |
 | `nexus/InfoContainer` | StructureLib `IMultiblockInfoContainer`（NEI 预览、投影仪任意朝向） |
-| `nexus/NexusNet` | 频道 `fluxecho_nx`：星图请求/应答；营造的 `BUILD_FX`/`BUILD_STATE`、书库的 `LIB_DELTA`（第 7 节） |
+| `nexus/NexusNet` | 频道 `fluxecho_nx`：星图请求/应答；营造的 `BUILD_FX`/`BUILD_STATE`、书库的 `LIB_DELTA`、城市模块的 `UNIT_DELTA`（第 7 节） |
 | `nexus/NexusGui`、`client/NexusScreen` | 中枢 MUI 窗口，[中枢][建造] 两页；自绘部分、打开星图 |
 | `nexus/TerminalView` | 服务端给终端的机器/研究/中枢页组装 NBT |
 | `nexus/NexusWaila`、`NexusNei` | Waila；NEI id 常量 `fluxecho.manifest` |
-| `nexus/client/NexusRender`、`ModuleRender` | 画成型的中枢和模块（`RenderWorldLast` + `FarDraw`）；按模块类型分派 |
+| `nexus/client/NexusRender`、`ModuleRender` | 画成型的中枢和模块（`RenderWorldLast` + `FarDraw`）；按模块类型分派（书库 → `LibraryRender`，城市模块 → `city/client/CityRender`） |
 | `library/TileLibrary`、`BlockLibraryCore`、`LibraryModule`、`LibraryGui`、`Lending`、`ItemLibraryCard`、`Shelves` | 回响书库（第 6 节）：两种形状；`LibraryModule` 还登记营造的 `ModuleSpec`；`LibraryGui` 按形状分派窗口；`Shelves` 是 0.9.2 大厅书格的右键 |
 | `library/Units`、`ArchiveGui`、`ArchiveMap`、`BookPacket`、`BookSlot`、`LibraryVault` | 档案馆的书架交互、界面、平面图、书的包、书格槽、队伍书库仓库（campus.md §12） |
 | `library/client/LibraryRender`、`LibraryScreen` | 大厅的屋顶图鉴、书和书井（档案馆转给 `ArchiveRender`）；大厅 GUI 自绘 |
@@ -53,7 +54,8 @@
 | `nei/ManifestHandler` | 显化台 NEI 页 |
 | `logic/Blueprint`、`NexusShape`、`LibraryShape`、`RingSlots`、`ResearchTree`、`CostPlan` | 纯逻辑 + 测试；档案馆和园区的逻辑类（`ArchiveShape`、`LibraryUnits`、`CampusPlan`、`BuildPlan`……）见 campus.md §1 |
 | `campus/`、`campus/client/` | 营造：园区、建造引擎、补给口、投影和特效（campus.md） |
-| `tools/NexusTextures.java`、`tools/CampusTextures.java` | 0.9.0 的构架/中枢/书库/通量物质/索引卡贴图；0.10.0 的地板、配件、书架单元、补给口贴图 |
+| `city/`、`city/client/` | 回响之城（0.11.0）：模块核心家族 `fluxecho:module_core`、`TileCityModule`、单元、通用窗口和渲染、生态穹（city.md） |
+| `tools/NexusTextures.java`、`tools/CampusTextures.java` | 0.9.0 的构架/中枢/书库/通量物质/索引卡贴图（0.11.0 加覆层锚点、模块核心 `module_core/<模块>/*`）；0.10.0 的地板、配件、书架单元、补给口贴图（0.11.0 加样本座、池沿） |
 | FluxLite 侧 | `com/fluxlite/gui/TerminalScreen`、`net/Kinds.TERM_REQUEST=4/TERM_DATA=3`、`item/ItemFluxTerminal`（见 [fluxlite.md](fluxlite.md)） |
 | FluxDepths 侧 | `com/fluxdepths/shard/ShardWork` 掷碎屑（见 [fluxdepths.md](fluxdepths.md)） |
 | 其他 | `codex/EchoNet`（研究随账本下发 `@research`）、`codex/ClientLedger`、`core/Directory`（中枢的 `building`/`build_paused`）、`core/MTEEchoMachine.sample()`（解析索引卡） |
@@ -67,7 +69,7 @@
 | 回响晶 Echo Crystal | `fluxecho:echo_crystal` | `gemEchoCrystal`（meta 0 登记，"the ore dictionary does not look at NBT"） | 只能显化；NBT `{Cat, Key}` = 一条图鉴记录 |
 | 书库索引卡 Library Index Card | `fluxecho:library_card` | — | 显化；空白卡堆 64，写好的堆 1（NBT `{Sample, Team}`） |
 
-**构架 `fluxecho:frame`**（硬度 5、抗性 30、镐 2，`LIGHT={0,7,0,12,8,15,4,8,10}`；配方要 `defaultRecipes && nexusEnabled`）。0.10.0 起配方从 `PartRecipes`（合成和营造成本同一张表，campus.md §3）经 `PartBlocks.register` 注册，小写键先过 `GtPattern`；石砖接受任意变种；晶核座要 GT HV 外壳、表里写不出来，仍由 `FrameModule` 手写，营造只收成品。
+**构架 `fluxecho:frame`**（硬度 5、抗性 30、镐 2，`LIGHT={0,7,0,12,8,15,4,8,10,6}`；配方要 `defaultRecipes && nexusEnabled`）。0.10.0 起配方从 `PartRecipes`（合成和营造成本同一张表，campus.md §3）经 `PartBlocks.register` 注册，小写键先过 `GtPattern`；石砖接受任意变种；晶核座要 GT HV 外壳、表里写不出来，仍由 `FrameModule` 手写，营造只收成品。
 
 | meta | 常量 | 名字 | 碰撞 | 配方 |
 |---|---|---|---|---|
@@ -80,13 +82,15 @@
 | 6 | `FOUNDATION` | 模块地基 | 整块，顶面发光 | ×8 `BSB/SES/BSB`（基座、不锈钢板、回响晶） |
 | 7 | `SHELF` | 回响书格 | 整块，侧面发光；在档案馆书架单元里画成书架的一格 | **×32**（0.10.0 起）`SBS/BEB/SBS`（钢板、书架、回响晶） |
 | 8 | `CONSOLE` | 控制台座 | 1–15/16 宽、整高（脚、柱、台面），柱侧和台面发光 | ×2 `SCS/ P / L `（不锈钢板、结晶、支柱、导能基座） |
+| 9 | `ANCHOR` | 覆层锚点（0.11.0） | 整块，每面一块六角插板（贴图），发光层 `anchor_*_glow`；以后的覆层从这里长 | ×4 `SRS/RCR/SRS`（不锈钢板、悬浮环段、结晶）；城里每座建筑有几个（生态穹 7 个，在鼓座亮肋的 y5），city.md §5 |
 
-贴图 `textures/blocks/frame/<name>_top|_side`；`*_glow`、`conduit_core`、`seat_crystal` 是 8 帧动画（frametime 3）；书架单元另有 `shelf_niche`、`shelf_board`、`book_spine`（`CampusTextures`）。
+贴图 `textures/blocks/frame/<name>_top|_side`；`*_glow`、`conduit_core`、`seat_crystal` 是 8 帧动画（frametime 3）；覆层锚点的四张由 `NexusTextures` 生成（0.11.0）；书架单元另有 `shelf_niche`、`shelf_board`、`book_spine`（`CampusTextures`）。
 
-**控制器方块**（`BlockNexus` 子类，铁、硬度 6、抗性 60、亮度 0.5）：放下正面朝向放置者（`{2,5,3,4}[look]`）并 `FrameEvents.changed`；右键 `BlockNexus.open(m,p)` → 静态 `mayUse`（没主人人人可用；OP 创造可用；中枢要 `member(p)`；模块要同队）→ MUI，否则 `fluxecho.nexus.not_yours`；破坏掉出库存 + `dropsMore`；图标 `front`/`front_on`（成型）/`side`/`top`。
+**控制器方块**（`BlockNexus` 子类，铁、硬度 6、抗性 60、亮度 0.5）：放下正面朝向放置者（`{2,5,3,4}[look]`）并 `FrameEvents.changed`；右键 `BlockNexus.open(m,p)` → 静态 `mayUse`（没主人人人可用；OP 创造可用；中枢要 `member(p)`；模块要同队）→ MUI，否则 `fluxecho.nexus.not_yours`；破坏掉出库存 + `dropsMore`，之后 `FrameEvents.changed`——除非 `quiet()` 为真（0.11.0，默认 false；模块核心在 `Builder.QUIET` 时为真）；图标 `front`/`front_on`（成型）/`side`/`top`。
 - 通量中枢 `fluxecho:nexus`（TE `fluxecho:nexus`）：配方 `CXC/RHR/CMC`（结晶 ×4、回响图鉴、HV 电路 ×2、HV 外壳、FluxLite 通量监控台）。物品是 `ItemBlockNexusCore`：右键地面顶面（不潜行）放在高出点击方块两格处、园区变 active、建 establish 任务；潜行、点侧面、点我们的方块 = 0.9.2 手动放（legacy）。拆下：带余额或显化的核心从 `breakBlock` 掉（`BuildCredit`/`Pending`/`Manifest`），不带的走普通 `getDrops`；active 园区的核心两种掉法都再带上园区 `Campus`，放回原处（同一维度同一方块，怎么放都行）园区接着用（campus.md §8）。
 - 回响书库核心 `fluxecho:library`（TE `fluxecho:library`）：显化。手放在某座已加载中枢的模块位控制器格上时自动朝向中枢。拆下时书进队伍书库仓库（第 6 节）。
-- 营造的方块——地板/墙板 `fluxecho:deck`、配件 `fluxecho:fitting`、补给口 `fluxecho:supply_port`——见 campus.md §3。
+- **模块核心** `fluxecho:module_core`（0.11.0，`city/BlockModuleCore`，物品 `ItemBlockModuleCore`）：一个方块给所有城市模块，meta = 模块（`logic/ModuleCores`：0 生态穹 … 15 轨道锚），TE 按 meta（0 → `fluxecho:eco_dome`）；显化，建造只收成品；拆下时样本掉在核心处；`quiet()` 守 `Builder.QUIET`。见 city.md §4.5。
+- 营造的方块——地板/墙板 `fluxecho:deck`、配件 `fluxecho:fitting`（0.11.0 加样本座、池沿）、补给口 `fluxecho:supply_port`、回收箱——见 campus.md §3。
 
 **显化配方**（`Manifests`，按注册顺序尝试，不受配置开关控制）：
 
@@ -95,6 +99,7 @@
 | `echo_crystal` | `echo_crystal` | 通量结晶 ×1 | 回响晶（写入一条记录） | 200 | ✓ |
 | `library_core` | `library` | 回响晶 ×4、回响图鉴、HV 电路 ×2、书 ×16 | 书库核心 | 1200 | |
 | `library_card` | `library` | 回响晶 ×1、纸 ×8 | 空白索引卡 ×8 | 100 | |
+| `eco_dome_core`（0.11.0） | `eco_dome` | 回响晶 ×4、`ore:treeSapling` ×8、小麦种子 ×16、HV 电路 ×2、`ore:blockGlass` ×16 | 生态穹核心（`module_core` meta 0） | 1200 | |
 
 ## 3. 多方块框架
 
@@ -107,7 +112,7 @@
 **多形状**（0.10.0）：一个控制器可以有几种形状。`shapes()` 列出 `Shape{name, bp}`（第一个是 NEI 预览显示的；默认只有 `MAIN="main"` = `blueprint()`）；`tries(s)`（配置可以排除某个形状，书库的 `archiveEnabled`）；`legacyShape()`（存档里没有形状时当哪个，书库是 `hall`）；`currentShape()/shapeName()/current()` = 记住的那个；`shapeChanged(was)` 在换了形状、`formedChanged` 之前调。两个结构定义都按名字带上所有形状：`define(record, names[], shapes[], ch, block, meta, ...)`。凡是格子 ↔ 方块的换算（`cellPos`、`cellAt`、`bounds`、渲染）都跟着当前形状走。
 
 **`TileMultiblock` 生命周期**：
-- 抽象：`blueprint()`、`definition()`（检查用，元素包 `Recorded`）、`buildDefinition()`（投影仪和 NEI 用，**元素不包装**——blockrenderer6343 靠 `StructureHacks.getStacksForElement` 认元素，认不出 `Recorded`）、`coreBlock()`、`flags(char)`、`descriptionKey()`；钩子 `formedChanged`、`serverTick`、`clientTick`、`writeSync/readSync`；`consoleAt(x,y,z)`（默认 false）。
+- 抽象：`blueprint()`、`definition()`（检查用，元素包 `Recorded`）、`buildDefinition()`（投影仪和 NEI 用，**元素不包装**——blockrenderer6343 靠 `StructureHacks.getStacksForElement` 认元素，认不出 `Recorded`）、`coreBlock()`（0.11.0 加可覆写的 `coreMeta()`，默认 0：模块核心的 meta 就是模块，预览世界 `placeOwnBlock` 按它放）、`flags(char)`、`descriptionKey()`；钩子 `formedChanged`、`serverTick`、`clientTick`、`writeSync/readSync`；`consoleAt(x,y,z)`（默认 false）。
 - **检查**：`definition().check(this, 形状名, world, ExtendedFacing.of(front), x,y,z, ctrlA,ctrlB,ctrlC, false)`；服务端先试记住的形状，再按顺序试其他（`tries` 允许的），匹配上就记住（换了形状 → `shapeChanged`）；检查前清空 `seen`，`Recorded` 每通过一格记一次 → 隐藏表和 StructureLib 实际检查的布局**完全一致，不用自己算旋转**。
 - **服务端复查**：成型后每 100 tick、未成型每 40 tick；`place()`/`validate()`/`frameChanged()` 让下一 tick 立刻复查。**已成型的结构有区块没加载时不复查**（StructureLib 会把没加载的方块当成错的），20 tick 后再看。变化时设 `formed/formedTime`、`applyCells()` 或 `clearCells()`、sync、`formedChanged(ok)`。
 - **`applyCells(level)`**：`seen` 里 `flags(ch)!=0` 且 `y≤level` 的写进 `Formed`，并算 `bounds`；**只有交给 `Formed` 的格子变了才在客户端重画区块**（书库没有溶解的格子，从不重画；中枢扫光时逐层重画）。
@@ -124,7 +129,7 @@
 
 **`TileNexus.refreshDock`**（每 100 tick，成型且启用时，不要求有电）：按优先级找模块：（1）园区记录在场地上的控制器；（2）active 园区里站在模块位上的已成型模块（有 `ModuleSpec`、中心在 `CampusPlan.moduleCentre(site, spec.depth)` 两轴 ±3 内、离底座层上下 ≤1、正面朝中枢）→ 收编并 `campus.recordSite`；（3）0.9.2 内环：`RingSlots.slotAt(模块中心−中枢中心, innerRadius, front)`（水平每轴 ±3、竖直 ±6；槽 0 正前方，其余每 45° 顺时针）。场地上的模块用场地号当槽号（方向和同号槽一致）。不在 `teams()` 的拒绝 `other_team` → 按优先级、再按槽号 0→7 处理，同槽第二个 `slot_taken`，满了 `ring_closed`（open==0）/`ring_full` → 停靠或拒绝都给 220 tick 租约；结束时 `dockKnown=true`（`undockAll` 清掉；营造的自动任务要等它）。`openSlots()` = `has(INNER_RING) ? RingSlots.open(PHASE) : 0`（相位 1 = 2，2 = 4，3+ = 8），active 园区再封顶 `MAX_CAMPUS_MODULES`=7。
 
-**加一个新模块（照书库）**：
+**加一个新模块（照书库）**：0.11.0 起，中枢自建的城市模块照 [city.md](city.md) §7 做（`TileCityModule` 已经包了下面第 3、6、7、8 步的通用部分：结构定义、Waila、窗口、通用渲染）；下面是书库那样自己一套类的做法，只留给不走营造的模块。
 1. `logic/XShape` + `XShapeTest`：对称、有 `~`、底层是 FOUNDATION；**控制器离地基两格、在前墙里朝外，留门，里面是能走进去干活的空间**（第 0 节）；字符和已有形状不冲突（共用的字符意思相同）；定义哪些字符 HIDE/PASS（能走进去的房子一般都不溶解）；测尺寸、控制器、数量、`symmetric()`、地基中心的 `world()`。要由中枢自建的模块：占地放得进模块位（`CampusPlanTest` 那样测不碰广场、环道、大门和彼此），只停内环槽的旧式模块：宽深 ≤21（内环槽间距）。
 2. 需要新部件：构架的照 `BlockFrame`（常量/`NAMES`/`LIGHT`/`TYPES`、`box()`、`full()`、glow，贴图在 `tools/NexusTextures.java`）；营造的地板/配件照 campus.md §3（新部件码、`PartRecipes` 条目、`tools/CampusTextures.java`）；lang `tile.fluxecho.<block>.<n>.name`、`.tip`。
 3. `TileX extends TileModule implements ITileWithModularUI`：`moduleKey/moduleColor/centreCell/blueprint/definition/buildDefinition/coreBlock/flags/descriptionKey`（需要的话 `consoleAt`、`shapes`）；结构定义里营造部件用 `PartBlocks.block/meta` 映射（照 `TileLibrary.parts()`）；里面的实体交互照 `Units`/`Shelves`：`BlockFrame.onUse(...)`/`BlockFitting.onUse(...)`，两边都用 `NexusRegistry.loaded(w)` 找结构、条件一致地返回 true（客户端返回 false 会去放手里的方块）；`serverTick()` **必须先 `super.serverTick()`**（租约过期靠它）；耗电照 `TileLibrary`（`GTWirelessBackend.INSTANCE.add(team,-eu)` + `ServerEvents.addTeamTick`）；每 100 tick `Directory.report`；sync/NBT 调 super；`createWindow`。
@@ -141,7 +146,7 @@
 
 - 库存：6 入（0–5）+ 2 出（6–7），`ISidedInventory` 所有面开放；`PHASE=1`；活动位 `POWERED=1, RESEARCHING=2, MANIFESTING=4`。
 - 结构：B→BASE、G→BASE_LIT、P→PILLAR、C→CONDUIT、R→RING、S→SEAT、K→CONSOLE；会溶解的字符 `HIDE|PASS`。`definition()` 只查 MAIN=相位 I；`buildDefinition()` 有 MAIN 和 `phase1`..`phase5`。中枢只有一种形状，从不存 `Shape`。`centre()` = `cellPos(ctrlA, height-1, ctrlC+centreBack)`：控制器后方 5 格、下方 2 格的底座中心（园区坐标的原点，campus.md §2）。`consoleAt` = 控制器正下方。
-- **`buildShape` 的等级**：`tier=clamp(stackSize,1,10)`，`phase=(tier-1)%5+1`；真实世界里 `phase=min(phase,PHASE)`（投影仪只搭现在能用的）；预览世界里 tier>5 再 `previewModules`：在模块位 `CampusPlan.HALL_SITES`（4、2、6）上按顺序立 `min(RingSlots.open(phase), 3)` 个 `NexusModule.previews()` 里的模块（轮流），有 `ModuleSpec` 的放在 `spec.controller(site, …)`（书库 = `BuildPlan.archiveController`，朝向中枢），没有的退回同号内环槽（0.9.2 做法）；`setBlock(core)` + `setTileEntity` + 设 `facing` + `construct(stackSize=1)`。预览里不铺园区地面（太重）。超过 10 当 10，NEI 才找得到滑块的尽头。
+- **`buildShape` 的等级**：`tier=clamp(stackSize,1,10)`，`phase=(tier-1)%5+1`；真实世界里 `phase=min(phase,PHASE)`（投影仪只搭现在能用的）；预览世界里 tier>5 再 `previewModules`（0.11.0 改成 CITY §3 的「城市预览」）：`NexusModule.previews()` 里的每种模块（按登记顺序：书库在前，城市模块在后）只要它的研究的相位 ≤ 这一级的相位，就各立一座，最多 `RingSlots.open(phase)` 座；有 `ModuleSpec` 的立在它偏好里第一个还空着的场地上、控制器在 `spec.controller(site, …)`（朝向中枢），偏好的场地都被占了就不立（debug 日志，不占名额），没有 spec 的才用空着的内环槽（0.9.2 做法，槽和场地分开记，`logic/PreviewSites`）——相位 I 是后面（4）的档案馆和右边（2）的生态穹；`setBlock(core, meta)`（模块核心按 meta，`NexusModule.previewModule(core, meta, tile)`）+ `setTileEntity` + 设 `facing` + `construct(stackSize=1)`。预览里不铺园区地面（太重）。超过 10 当 10，NEI 才找得到滑块的尽头。0.10.x 是在 4、2、6 上轮流立 `min(open, 3)` 座档案馆。
 - **每 tick**：**先跑园区**：`if (nexusEnabled && campusEnabled) campus.tick()`，成型与否都跑（establish 任务要围着核心把中枢立起来，campus.md §5）。然后原样：未成型/禁用 → 状态 `unformed/disabled`，不供电，每 100 tick `undockAll`。否则 `eu=upkeep()`，`powered = team!=null && (eu<=0 || 无线网扣 eu 成功)`；没电 `no_owner/no_power`；有电 `ready` → `runResearch()`、`runManifest()`。每 100 tick `refreshDock` + Directory（研究/显化 WORKING、ready IDLE、其余 PROBLEM；有营造任务时状态换成 `building`/`build_paused`，研究和显化优先）。
 - **公式**：`computeRate = 成型且有电 ? nexusCompute × (compute_1 ? 1.5 : 1) : 0`（20 或 30 FC/s）；`upkeep = ceil(nexusUpkeep × (upkeep_1 ? 0.75 : 1)) + (显化中 ? manifestEut : 0)`（512/384，显化 +480）；研究进度每 tick `+computeRate/20`，总量 `ResearchTree.computeFor(n, researchScale)`。营造的 EU 另算（campus.md §6）。
 - **开始研究** `startResearch(p,id)`（返回 `fluxecho.research.` 下的 lang 键）：成型 → `member(p)` → 一次只跑一项 → 节点存在 → `ResearchTree.check(n, unlockedNow(), PHASE, Records.count(玩家团队))` → `Costs.takeFrom(p, costs)`（从**玩家背包**扣，全有或全无，创造免费）。完成时 `Research.grant(发起者团队)`，其他绑定团队靠并集共享。**取消不退材料**。首次成型 `grant(ANCHOR)`。
@@ -151,7 +156,7 @@
 - **客户端同步** `writeSync`：`A` 活动位、`R` 研究 id、`RD` 进度、`M` 正在做的物品、`D` 停靠位掩码、`DC` 模块颜色[8]、`Op` 开放槽数、`H` 全息、`C` 算力×10、`U` 维持电、`Cp` 园区（`Campus.writeSync`，只在园区状态变化时变）。`send()` 只在 `A|mask<<3|open<<11` 变化时 sync，研究/显化中每 40 tick 强制重发；建造进度不走描述包（走 `BUILD_STATE`），免得中枢区块每秒重建网格。`readSync` 读 `Cp` 后调 `BuildClient.viewChanged`。
 - **NBT**：`Inv`、`Bound`、`OpenBinding`、`Research`、`ResearchDone`、`ResearchTeam`、`Manifest`、`ManifestTicks`、`ManifestMax`、`Pending`、`Holo`（**全息默认关**）、`Campus`（园区，没有这个标签 = 0.9.2 的 legacy 中枢，campus.md §9）。
 - **GUI** `NexusGui`：`W=H=248`、`INV_Y=166`；右上两个标签 [中枢] (164,4)、[建造] (204,4)，各 38×15，页只在客户端（换页时中枢的 8 个槽和投入槽 `setEnabled`，其余控件按页动态启用）；中枢未成型且园区有任务时开在「建造」页。**中枢页**：header (6,5) 156×14；输入 3×2 从 (10,36)，输出 (114,…) 竖排 2 个；making (68,34,42×40，NEI 跳转)、table (6,78,130×80)、state (140,22,102×98)、星图按钮 (140,124,58×18)、全息 (200,124,42×18)、开放绑定 (140,144,102×16)。`cooldownMinutes()`=max(1, recordCooldown/1200)。**建造页**见 campus.md §10。
-- **Waila**：中枢 `feNexus/feFormed/feUpkeep/feCompute/feResearch/feDone/feDocked/feOpen/feOwner` + 营造 `feBuildK/feBuildPk/feBuildSt/feBuildPs/feBuildSg/feBuildPct/feBuildMi/feBuildMn`（`营造：<任务> <百分比>% · <阶段>`、`缺 <物品> ×n`）；书库 `feDock/fePowered/feSamples/feCap/feLends/feOwner`（`feCap` 跟形状：702 或 167）。
+- **Waila**：中枢 `feNexus/feFormed/feUpkeep/feCompute/feResearch/feDone/feDocked/feOpen/feOwner` + 营造 `feBuildK/feBuildPk/feBuildSt/feBuildPs/feBuildSg/feBuildPct/feBuildMi/feBuildMn`（`营造：<任务> <百分比>% · <阶段>`、`缺 <物品> ×n`）；书库 `feDock/fePowered/feSamples/feCap/feLends/feOwner`（`feCap` 跟形状：702 或 167）；**城市模块**（0.11.0，`TileCityModule` 分支，提供者登记在 `BlockNexus` 上所以模块核心也有）`feDock/fePowered/feSamples/feCap/feUnits/feOwner`：停靠状态（停靠没电写 `dock.no_power`）、`waila.city`「样本 n / m · k 个单元」（`feCap` = 全部槽数，生态穹 36）、主人——有 `feUnits` 的走这一行，否则是书库的 `waila.library`（city.md §4.11）。
 
 ## 5. 研究
 
@@ -170,6 +175,9 @@
 | `tidal_well` 潮汐井 | ENERGY | upkeep_1 | 0 | — | 0 | 2 | 占位 |
 | `grit_yield` 碎屑富集 | DEPTHS | anchor | 8000 | 碎屑 ×32、结晶 ×4 | 0 | 1 | 碎屑几率 ×1.5（看团队自己的研究） |
 | `dome` 回响穹顶 | GUARD | anchor | 0 | — | 0 | 2 | 占位 |
+| `eco_dome` 生态穹（0.11.0，星图 (226, 38)） | ECHO | inner_ring、echo_crystal | 16000 | 回响晶 ×4、`ore:treeSapling` ×16、`ore:blockGlass` ×32 | 0 | 1 | 显化生态穹核心（`eco_dome_core`）；active 园区在空的大厅位上投影出生态穹（city.md §6） |
+
+`phase ≤ PHASE_NOW` 的现在是 9 项（`/fluxecho research all` 给的就是这些）。CITY 附录 B 列了以后每个批次要加或做实的节点（`phase_2`、`dome`、`tidal_well` 的前置也会按它改），city.md §11。
 
 - `Cost` 写法：`ore:<名>*n` 或 `item:<mod>:<name>[@meta]*n`；写错在类加载时抛异常（类初始化失败）。营造的 `PartRecipes` 用同样的 spec 写法（不带数量）。
 - `check` 顺序：DONE → LATER_PHASE → REQUIRES → RECORDS → NONE。
@@ -196,7 +204,7 @@
 
 ## 7. 网络
 
-- **NexusNet**（`fluxecho_nx`，判别号 0 ToServer、1 ToClient，1 字节 kind + NBT，入队后在 tick START 主线程处理）：C→S `ASK_MAP=0`、`START=1`（`Id`）、`CANCEL=2`，都带 `Dim/X/Y/Z`；S→C `MAP=0`、`RESULT=1`（`Key`），以及 0.10.0 的 `BUILD_FX=2`、`BUILD_STATE=3`（营造，`CampusNet`，campus.md §10）、`LIB_DELTA=4`（书库书位的变化，`TileLibrary.sendBooks`/`receiveDelta`，campus.md §12）。后三种在客户端泵里直接交给 `CampusNet.receive`/`TileLibrary.receiveDelta`，不经星图的 sink；发送方都用 `Sight.near`（书库再加正在看控制器区块的人）。ASK_MAP 不检查成员和距离；START/CANCEL 后无论成败再回一次 MAP。MAP 字段：`Found/Records/Own` + 找到中枢时 `Member/Formed/Powered/Phase/Compute/Research/Done/Owner/Bound/Scale/Open/Cost{id→long}`。
+- **NexusNet**（`fluxecho_nx`，判别号 0 ToServer、1 ToClient，1 字节 kind + NBT，入队后在 tick START 主线程处理）：C→S `ASK_MAP=0`、`START=1`（`Id`）、`CANCEL=2`，都带 `Dim/X/Y/Z`；S→C `MAP=0`、`RESULT=1`（`Key`），以及 0.10.0 的 `BUILD_FX=2`、`BUILD_STATE=3`（营造，`CampusNet`，campus.md §10）、`LIB_DELTA=4`（书库书位的变化，`TileLibrary.sendBooks`/`receiveDelta`，campus.md §12），0.11.0 的 `UNIT_DELTA=5`（城市模块单元里样本的变化，`TileCityModule.sendSamples`/`receiveDelta`，格式同书的包，city.md §4.7）。后四种在客户端泵里直接交给 `CampusNet.receive`/`TileLibrary.receiveDelta`/`TileCityModule.receiveDelta`，不经星图的 sink，各自 try/catch 只记日志；发送方都用 `Sight.near`（书库和城市模块再加正在看控制器区块的人）。ASK_MAP 不检查成员和距离；START/CANCEL 后无论成败再回一次 MAP。MAP 字段：`Found/Records/Own` + 找到中枢时 `Member/Formed/Powered/Phase/Compute/Research/Done/Owner/Bound/Scale/Open/Cost{id→long}`。
 - **终端**：`TerminalScreen` 在 machines/research/nexus 页每 10 tick 发 `TERM_REQUEST{hand:true, termPage}` → 服务端要 `carries()` → `TerminalView.build(player, page)` → `TERM_DATA`。
   - MACHINES：`m[{n,s,l,d,x,y,z,a}]`（最多 200 行，`a`=秒）、`total/working/problems`。数据来自 `core/Directory`（内存，1 小时没上报就忘）。
   - RESEARCH/NEXUS：`done`、`nodes`；绑定后 `bound[4]`、`loaded`；中枢已加载时 `member/owner/formed/powered/status/upkeep/compute/research/fraction/open/boundTeams/balance/unlocked/avail[{id}]/modules[{k,slot,c,dock}]/build{ac,k,pk,st,ps,sg,done,total}`（`build` 是 0.10.0 加的营造进度，没任务时只有 `ac`；`TerminalScreen` 的中枢页在模块列表上方画成一行：任务名、状态或暂停原因、`done / total`，campus.md §10）。
@@ -224,26 +232,31 @@
 | `recordCooldownTicks` | 24000 | 同一条记录再压的间隔（20 分钟） |
 | `innerRingRadius` | 32 | 改了会挪动已建中枢的槽位（园区的模块位不受影响） |
 | `libraryUpkeepEuPerTick` | 128 | `librarySamples` 0.9.2 删了（`Config.upgrade` 移除） |
+| `moduleUpkeepEuPerTick` | 128 | 0.11.0：中枢自建的城市模块（生态穹和以后的）停靠时每 tick 从团队无线电网扣的 EU（`Config.moduleUpkeep`）；扣不到就没电，单元里的东西照样在（city.md §4.6） |
 | `effects` / `effectRange` | true / 128 | 客户端；`effectRange` 也决定营造包和书增量包的接收范围（+64） |
 | `campusEnabled` / `archiveEnabled` | true / true | 营造开关、回响档案馆开关（0.10.0） |
 | `build*`（18 个） | — | 营造的速度、EU、成本倍率、平整、间距、投影和特效：表在 campus.md §14 |
 
-`VERSION="0.10.1"`；0.10.0 只加键；0.10.1 加 `buildClearAll`，`upgrade()` 把还是旧默认 `"2"` 的 `buildFillDepth` 删掉、按新默认 4 重建（`bumpsFillDepth`，玩家改过的数保留；platform.md §2）。
+`VERSION="0.10.1"`（0.11.0 只加了 `moduleUpkeepEuPerTick`，不用迁移，没提）；0.10.0 只加键；0.10.1 加 `buildClearAll`，`upgrade()` 把还是旧默认 `"2"` 的 `buildFillDepth` 删掉、按新默认 4 重建（`bumpsFillDepth`，玩家改过的数保留；platform.md §2）。
 
 ## 10. 已知问题、坑、测试
 
 - 坑：NEI 预览要 `coreBlock()` 和不包装的 `buildDefinition()`，缺一个 NEI 里就没有或没用料；Blueprint 必须对称；客户端 `Formed` 只能整体替换；NEI 预览世界由 `realWorld()` 排除；迟到的客户端不重播扫光；新模块 `serverTick` 必须调 super；停靠租约 220 tick、复查 100 tick、优先级（记录场地 > 收编场地 > 内环槽）再低号槽优先；多形状的字符必须在所有形状里同义（`TileLibrary.parts()` 第一次建结构定义时检查）；`covers()` 用最大形状的立方体。
 - 谁的研究算数：`grit_yield` 看团队自己的；`library_reach` 看中枢并集；营造提供模块看中枢并集（`has`）；`Records` 冷却看主人团队；NEI 显化页的锁看玩家自己团队。
 - 已知问题：取消研究不退材料（设计如此）；ASK_MAP 不查成员（只读信息）；`nexus.scale`（BLUEPRINT 3.3）还没实现。0.9.x 的"中枢被破坏时 `pending` 丢失"在 0.10.0 修好（核心物品带走，campus.md §8）。营造和档案馆的已知问题见 campus.md §16。
-- 测试：`NexusShapeTest`（尺寸、控制器在控制台座上、肋架往里收、核心柱、每相位加一节且包含下一相位、各字符数量、对称、溶解范围、world()）、`LibraryShapeTest`（13×13×9、控制器、数量、门、大厅空着只有阅读台、书格朝大厅且不重复、天井、地基中心的 world()）、`RingSlotsTest`（槽位、容差、间距、各相位开放数、模块朝向中枢）、`ResearchTreeTest`（根唯一、无环、坐标间距、当前相位可达且有花费、check、Cost 解析）、`CostPlanTest`（按槽序跨槽扣、不够返回 null、不重复计数）、`BlueprintTest`（`cell` 是 `world` 的逆、`point`）；营造和档案馆的测试列在 campus.md §15。
+- 测试：`NexusShapeTest`（尺寸、控制器在控制台座上、肋架往里收、核心柱、每相位加一节且包含下一相位、各字符数量、对称、溶解范围、world()）、`LibraryShapeTest`（13×13×9、控制器、数量、门、大厅空着只有阅读台、书格朝大厅且不重复、天井、地基中心的 world()）、`RingSlotsTest`（槽位、容差、间距、各相位开放数、模块朝向中枢）、`ResearchTreeTest`（根唯一、无环、坐标间距、当前相位可达且有花费、check、Cost 解析）、`CostPlanTest`（按槽序跨槽扣、不够返回 null、不重复计数）、`BlueprintTest`（`cell` 是 `world` 的逆、`point`）；营造和档案馆的测试列在 campus.md §15，城市模块框架和生态穹的（`ResearchTreeTest.theEcoDome` 也在内）列在 city.md §8。
 
-## 11. 下一步：0.11.0「守护」（BLUEPRINT 3.14）
+## 11. 下一步：回响之城的批次（CITY.md §3、§5；city.md §11）
 
-原定 0.10.0 的内容顺延到这里：相位 II；**回响穹顶**（刷怪、爆炸、弹射物）；**潮汐井**和回响潮汐；相位合金、共鸣玻璃；覆层系统（晶簇、相位板）；相位核。要点：
-- 相位 II：中枢再长一节（`NexusShape.phase(2)` 已经有了，NEI 里能看），内环开到 4 槽（active 园区：模块位最多 `min(4, 7)`，但大厅位只有 4/2/6 三个——第四个模块要先定对角位能放什么）。已预留 `TileNexus.PHASE`、`ResearchTree.PHASE_NOW`、`RingSlots.open(2)=4`、lang `nexus.phase.2`；做的时候 `definition()` 要按相位查（或查当前相位的 shape），`blueprint()`/`centre()` 不用动（底座不随相位移动），`NexusRender` 每节再画一组肋架和环。**相位 II 的那一节应该由营造来长**：给 `BuildPlan` 加一个"长一节"的计划（只放新增的 P/C/R/S，晶核座是 `partOnly`）；放核心时的 `HEADROOM`=30 已经给相位 V（高 26 层）留够了顶，底座上方的清场柱只清到 `buildClearHeight`，新的一节要自己清；改了已有计划就提 `BuildJob.V`。
-- 回响穹顶（3.8）：天顶，半径按相位 48/72/96/128/160；功能逐项研究开启、逐项耗电（不刷怪、推出敌对生物、防爆、拦截弹射物、防雷、防火、挡雨雪）；护盾值和回充；六边形受击动效。只看所在维度。园区的平整圆盘是 `oct(64,90)`，相位 I 的穹顶在园区里面。
-- 潮汐井（3.9 根位）：EV–LuV 最强，烧通量结晶，产量随潮汐 ±40%。每座发电只在两三个阶段里顶尖。要能走进去干活（第 0 节），由营造在园区里建（新的 `ModuleSpec`，场地和占地先在 `CampusPlan` 里定好）。
-- 回响潮汐（3.11，数值由我定）：日潮（午夜满、正午枯）× 月相（满月 ±20%、新月 ±5%），一天平均正好 100%，影响速度不影响花费；研究「稳潮」；`tides.enabled`；终端加潮汐页（顺便把营造进度显示出来）。
-- 材料（3.6）：相位合金（GT 电力高炉：通量结晶粉 + 钛 + 回响晶粉）、共鸣玻璃（显化：相位合金 + 硼硅玻璃）。
-- 覆层和相位核（3.4）：锚点上装覆层方块（看得见地长在结构上），相位核 I–V 装进控制器。
-- 0.9.2 的画面、NEI 预览和书库大厅用户试过，正常。0.10.0 的营造用户 2026-10-10 试过：建立中枢做完了，报的问题（地面那层留着树叶和雪、坑、清理不干净、创造模式还要交材料、找不到书库在哪解锁）在 0.10.1 修了（CLAUDE.md §5）；0.10.1 和回响档案馆还没进游戏试（要看什么见 campus.md §16）。数值等玩得久一些再调（BLUEPRINT 第七节）。
+0.11.0 起路线换成 CITY.md §5.1 的批次（BLUEPRINT §3.14）：**先把 BLUEPRINT 3.3、3.7–3.9 的每座结构和建筑都立起来**（中枢自建、能走进去、能成型），功能和数值 0.19.0 起再做。原定的「0.11.0 守护」（相位 II、穹顶功能、潮汐、覆层、相位核）拆开了：相位 II 和穹顶发生器、潮汐井的**建筑**在 0.12.0，它们的**功能**在结构之后。每批的建筑怎么做照 city.md §7；中枢本身这边要做的：
+
+- **0.12.0「相位」——相位生长**（CITY §3）：
+  - `NexusShape` 不变（11×11 底座，每相位一节 5 层：16 P + 16 R + 3 C + 1 S = 36 格，晶核座 `partOnly`），只改两处，都只在还没有东西成型过的形状里：相位 ≥ II 的形状底座中心放**光梯 LIFT**（字符 `V`，底座中间的 `G` 换成 `V`），轴上的光梯从中枢台起；`TileNexus.definition()` 按**当前相位**查（多形状 `phase1…phase5`，先试当前的），不再只查相位 I。`blueprint()`/`centre()` 不动（底座不随相位移动）。
+  - 每个相位是一项**生长任务** `grow:<p>`（和 `establish` 一样的园区任务，排在修复之后）：CLEAR = 底座上方新一节的柱子（5 层 + 2），然后新的一节自下而上（同 establish 的 CORE 阶段），相位 II 再把底座中心换成光梯台（REPLACE，换下的导能基座记进余额）。队伍有 `phase_<p>`、中枢成型时提供；长好的形状成型时 `TileNexus.PHASE` 前进。放核心时的 `ItemBlockNexusCore.HEADROOM` = 30 已经给相位 V（高 26 层）留够了顶，底座上方的清场柱只清到 `buildClearHeight`，新的一节要自己清。改了 establish（认识光梯台）和 `NexusShape` 的计划，`BuildJob.V` + 1。
+  - `ResearchTree.PHASE_NOW` 2：`phase_2`、`dome`、`tidal_well` 和 0.12.0 的节点要补上真实的算力和材料（`ResearchTreeTest`：相位 ≤ `PHASE_NOW` ⇒ 算力 > 0 且有材料；占位用 EV 钛板和 `circuitEV`，数值以后定），前置按 CITY 附录 B 改（`dome`、`tidal_well` 要 `phase_2`）。已预留 `RingSlots.open(2)` = 4、lang `nexus.phase.2`；`NexusRender` 每节再画一组肋架和环。
+  - 同一批：ZENITH 族（回响穹顶发生器的吊舱 `Y0+40`，先系泊在六条腿上，腿是 LEGS 阶段）、ROOT 族（潮汐井，`Y0−1…−26`，沉箱 SINK + DRAIN 阶段、深度检查 `Y0 ≥ 32`）、光梯（乘梯、光束）、最简的相位合金和共鸣玻璃物品（研究花费要用）——city.md §11。
+- **0.13.0「四亭」、0.14.0「门与仓」**：对角位的亭子族（四座 EV 模块）、大门位的谐振塔和第三座大厅二向箔仓；内城上限从 7 改到 8 的准备。`refreshDock` 现在按 `CampusPlan.moduleCentre(site, depth)` 找大厅位上的模块，亭子和大门要各自的收编中心。
+- **0.15.0「外环」——相位 III**（`grow:3`）：内城 8 座（大门也算）、`TileNexus.MAX_CAMPUS_MODULES` 7 → 8；外环建立任务；`buildMinSpacing` 默认 144 → 312（`Config.upgrade` 只改还是旧默认的）。
+- **0.16.0「天环」——相位 IV**（`grow:4`）：**释放**任务（拆掉 234 格腿，吊舱按 `floating` 形状重新成型）、天环；**0.17.0「归一」——相位 V**（`grow:5`）：轨道锚、天环泊位、光环和极光、卫星；**0.18.0「源点」**：第三环。NEI 中枢预览的 6–10 级随每批长大（CITY §3：吊舱 II–III 系泊、IV–V 浮空，天环 IV–V，锚 V，根在台下；≤ 60,000 格）。
+- **结构之后（0.19.0 起，CITY §5.3）**：回响穹顶的功能（3.8：不刷怪、推出敌对生物、防爆、拦截弹射物、防雷、防火、挡雨雪，护盾值和回充，六边形受击动效；半径 CITY §6.1 第 7 条改成 64/104/128/160、共鸣窗 +16，等用户确认，BLUEPRINT 第七节）；回响潮汐（3.11：日潮 × 月相，一天平均 100%，影响速度不影响花费，`tides.enabled`，终端潮汐页）和潮汐井发电（3.9）；覆层和相位核（3.4，锚点 0.11.0 已经在各建筑上）；各模块的功能；内境（3.10）；所有数值。
+- 0.9.2 的画面、NEI 预览和书库大厅用户试过，正常。0.10.0 的营造用户 2026-10-10 试过：建立中枢做完了，报的问题（地面那层留着树叶和雪、坑、清理不干净、创造模式还要交材料、找不到书库在哪解锁）在 0.10.1 修了（CLAUDE.md §5）；0.10.1、回响档案馆和 0.11.0 的生态穹还没进游戏试（要看什么见 campus.md §16、city.md §9）。数值等玩得久一些再调（BLUEPRINT 第七节）。

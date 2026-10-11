@@ -63,6 +63,8 @@ public final class Config {
     public static double gritChance = 0.15, researchScale = 1.0;
     public static int crystalGrit = 3, nexusUpkeep = 512, nexusCompute = 20, innerRadius = 32, recordCooldown = 24000,
         manifestEut = 480, libraryUpkeep = 128, nexusEffectRange = 128;
+    /** EU/t a city module (0.11.0: the Eco Dome) draws while it is docked on a nexus. */
+    public static int moduleUpkeep = 128;
 
     // the campus builder (0.10.0)
     public static boolean campusEnabled = true, archiveEnabled = true;
@@ -447,6 +449,13 @@ public final class Config {
             0,
             Integer.MAX_VALUE,
             "EU/t an Echo Library draws while it is docked on a nexus.");
+        moduleUpkeep = c.getInt(
+            "moduleUpkeepEuPerTick",
+            NEXUS,
+            moduleUpkeep,
+            0,
+            Integer.MAX_VALUE,
+            "EU/t a city module the nexus built (the Eco Dome and the modules after it) draws while it is docked on a nexus. Without it the module stands unpowered; what its units hold stays.");
         nexusEffects = c.getBoolean(
             "effects",
             NEXUS,

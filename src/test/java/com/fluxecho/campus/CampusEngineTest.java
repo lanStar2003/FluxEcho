@@ -35,6 +35,7 @@ import com.fluxecho.logic.Mix;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.TerrainRule;
 import com.fluxecho.nexus.TileNexus;
 
 /**
@@ -542,6 +543,52 @@ class CampusEngineTest {
         NBTTagCompound shortPos = c.write();
         shortPos.setIntArray("Pos", new int[] { 1, 2 });
         assertNull(Campus.Carried.read(shortPos));
+    }
+
+    /**
+     * A repair of a module keeps the players' garden: its soft grass, dirt and water go back only where the cell is
+     * empty, while its structure's cells and a first build's ground are judged as always.
+     */
+    @Test
+    void aRepairKeepsTheGarden() {
+        TerrainRule.Probe farmland = new TerrainRule.Probe();
+        farmland.natural = true;
+        BuildPlan.Step grass = new BuildPlan.Step(CX, Y0, CZ, Parts.GRASS, 0, BuildPlan.NO_GROUP, BuildPlan.SOFT),
+            water = new BuildPlan.Step(CX, Y0 + 1, CZ, Parts.WATER, 0, BuildPlan.NO_GROUP, BuildPlan.SOFT),
+            deck = new BuildPlan.Step(CX, Y0, CZ, Parts.deck(Parts.D_DECK), 0, BuildPlan.NO_GROUP, BuildPlan.SOFT),
+            wall = new BuildPlan.Step(CX, Y0 + 1, CZ, Parts.deck(Parts.D_PANEL), 0, BuildPlan.NO_GROUP, BuildPlan.HARD);
+        for (boolean all : new boolean[] { true, false }) {
+            assertEquals(TerrainRule.Verdict.ALREADY, Builder.verdict(grass, farmland, true, all, true));
+            assertEquals(TerrainRule.Verdict.ALREADY, Builder.verdict(water, farmland, true, all, true));
+            assertEquals(
+                TerrainRule.Verdict.CLEAR,
+                Builder.verdict(grass, farmland, true, all, false),
+                "a first build");
+            assertEquals(TerrainRule.Verdict.CLEAR, Builder.verdict(deck, farmland, true, all, true), "a floor tile");
+            assertEquals(TerrainRule.Verdict.CLEAR, Builder.verdict(wall, farmland, true, all, true), "the structure");
+        }
+        TerrainRule.Probe air = new TerrainRule.Probe();
+        air.air = true;
+        assertEquals(TerrainRule.Verdict.PLACE, Builder.verdict(grass, air, true, true, true), "a hole is filled");
+    }
+
+    /**
+     * A researched module the ring has no room for says so (RING_FULL, a docked 0.9.2 hall counted among the docked),
+     * apart from the other reasons it is not offered; the status travels by its ordinal, appended only.
+     */
+    @Test
+    void aFullRingIsNamed() {
+        assertEquals(Campus.ModuleStatus.QUEUED, Campus.offerStatus(true, 1, 2));
+        assertEquals(Campus.ModuleStatus.RING_FULL, Campus.offerStatus(true, 2, 2), "the Archive and a 0.9.2 hall");
+        assertEquals(Campus.ModuleStatus.NO_ROOM, Campus.offerStatus(false, 0, 2), "no site, cancelled or off");
+        assertEquals(Campus.ModuleStatus.NO_ROOM, Campus.offerStatus(false, 2, 2));
+        assertEquals(4, Campus.ModuleStatus.NO_ROOM.ordinal());
+        assertEquals(5, Campus.ModuleStatus.RING_FULL.ordinal());
+        List<Campus.ModuleState> back = Campus.ModuleState.read(
+            Campus.ModuleState.write(
+                Collections
+                    .singletonList(new Campus.ModuleState("eco_dome", "eco_dome", Campus.ModuleStatus.RING_FULL, 2))));
+        assertEquals(Campus.ModuleStatus.RING_FULL, back.get(0).status);
     }
 
     @Test

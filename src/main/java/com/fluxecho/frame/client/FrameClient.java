@@ -45,6 +45,7 @@ public final class FrameClient {
         if (!e.world.isRemote) return;
         Formed.clearClient();
         LibraryBooks.clear();
+        com.fluxecho.city.TileCityModule.clearClient();
         ClientTiles.clear();
     }
 }

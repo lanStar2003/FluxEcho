@@ -151,6 +151,11 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     /** The controller's own block, which a preview world has to be given before it can show the structure. */
     protected abstract Block coreBlock();
 
+    /** The metadata of the controller's own block (a module core's meta names its module; 0 for the rest). */
+    protected int coreMeta() {
+        return 0;
+    }
+
     /** The {@link Formed} flags of a part once formed. */
     protected abstract int flags(char ch);
 
@@ -542,7 +547,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     private void placeOwnBlock() {
         Block core = coreBlock();
         if (worldObj == null || core == null || worldObj.getBlock(xCoord, yCoord, zCoord) == core) return;
-        worldObj.setBlock(xCoord, yCoord, zCoord, core, 0, 2);
+        worldObj.setBlock(xCoord, yCoord, zCoord, core, coreMeta(), 2);
         if (worldObj.getTileEntity(xCoord, yCoord, zCoord) != this)
             worldObj.setTileEntity(xCoord, yCoord, zCoord, this);
     }

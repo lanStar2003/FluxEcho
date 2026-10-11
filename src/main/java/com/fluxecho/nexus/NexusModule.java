@@ -27,14 +27,16 @@ public final class NexusModule {
 
     public static BlockNexusCore core;
 
-    /** A kind of module the nexus's preview can show docked on its ring: its core block and a fresh tile. */
+    /** A kind of module the nexus's preview can show docked on its ring: its core block (and meta) and a fresh tile. */
     public static final class Preview {
 
         final Block core;
+        final int meta;
         final Supplier<TileModule> tile;
 
-        Preview(Block core, Supplier<TileModule> tile) {
+        Preview(Block core, int meta, Supplier<TileModule> tile) {
             this.core = core;
+            this.meta = meta;
             this.tile = tile;
         }
     }
@@ -45,7 +47,12 @@ public final class NexusModule {
 
     /** Lets the nexus's NEI preview dock the module on its ring (the higher tiers of its preview). */
     public static void previewModule(Block core, Supplier<TileModule> tile) {
-        PREVIEWS.add(new Preview(core, tile));
+        previewModule(core, 0, tile);
+    }
+
+    /** As {@link #previewModule(Block, Supplier)} for a core block whose meta names the module (a module core). */
+    public static void previewModule(Block core, int meta, Supplier<TileModule> tile) {
+        PREVIEWS.add(new Preview(core, meta, tile));
     }
 
     static List<Preview> previews() {

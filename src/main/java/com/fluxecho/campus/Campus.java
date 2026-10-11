@@ -539,10 +539,16 @@ public final class Campus {
         /** It stands on a hall site (or docked in its campus shape). */
         BUILT,
         /**
-         * Researched but not offered now: the ring is full, no hall site is free, it was cancelled a while ago, or
-         * the config turned it off.
+         * Researched but not offered now: no hall site is free, it was cancelled a while ago, or the config turned it
+         * off (before 0.11.0 also a full ring, now {@link #RING_FULL}).
          */
-        NO_ROOM
+        NO_ROOM,
+        /**
+         * Researched, a hall site free, but the inner ring is full (0.11.0): every place the phase opens holds a docked
+         * module or a module job, a docked 0.9.2 library hall on the old ring included, so the player learns that
+         * taking one down (or the next phase) makes room.
+         */
+        RING_FULL
     }
 
     /**
@@ -633,12 +639,18 @@ public final class Campus {
                 ModuleStatus.NEEDS_RESEARCH,
                 planned >= 0 ? planned : spec.sites.length > 0 ? spec.sites[0] : -1);
         }
-        boolean offered = active && nexus.formed()
-            && spec.enabled()
-            && planned >= 0
-            && !declined(spec, now)
-            && busyModules() < moduleCap();
-        return new ModuleState(spec.key, spec.research, offered ? ModuleStatus.QUEUED : ModuleStatus.NO_ROOM, planned);
+        boolean offerable = active && nexus.formed() && spec.enabled() && planned >= 0 && !declined(spec, now);
+        return new ModuleState(spec.key, spec.research, offerStatus(offerable, busyModules(), moduleCap()), planned);
+    }
+
+    /**
+     * Where a researched module with no job stands: offered at the next look (QUEUED) when nothing stops it and the
+     * ring has room; RING_FULL when only the ring's room stops it ({@link #busyModules} of {@link #moduleCap}, a
+     * docked 0.9.2 hall counted); NO_ROOM for anything else (no free site, cancelled lately, turned off).
+     */
+    static ModuleStatus offerStatus(boolean offerable, int busy, int cap) {
+        if (!offerable) return ModuleStatus.NO_ROOM;
+        return busy < cap ? ModuleStatus.QUEUED : ModuleStatus.RING_FULL;
     }
 
     /** Sends the description again when the module list changed (a research done, a site taken). */

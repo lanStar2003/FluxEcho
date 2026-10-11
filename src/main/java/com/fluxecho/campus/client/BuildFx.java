@@ -105,9 +105,12 @@ public final class BuildFx {
     private static final int[][] EDGES = { { 0, 1 }, { 1, 5 }, { 5, 4 }, { 4, 0 }, { 2, 3 }, { 3, 7 }, { 7, 6 },
         { 6, 2 }, { 0, 2 }, { 1, 3 }, { 5, 7 }, { 4, 6 } };
 
+    /** Part codes fit one byte (the module cores of 0.11.0 start at 64). */
+    private static final int PARTS = 128;
+
     // the render handler's scratch: the part icons looked up in this call, the viewer's normal
-    private final IIcon[] icons = new IIcon[64 * 6];
-    private final boolean[] looked = new boolean[64 * 6];
+    private final IIcon[] icons = new IIcon[PARTS * 6];
+    private final boolean[] looked = new boolean[PARTS * 6];
     private float nx, ny = 1, nz;
     private final double[] p = new double[3], q = new double[3];
     private final double[] bx = new double[8], by = new double[8], bz = new double[8];
@@ -544,7 +547,7 @@ public final class BuildFx {
 
     /** The part's icon for a side (its bottom icon when that side has none), looked up once per frame; or null. */
     private IIcon icon(int part, int side) {
-        if (part < 0 || part >= 64) return null;
+        if (part < 0 || part >= PARTS) return null;
         int k = part * 6 + side;
         if (!looked[k]) {
             looked[k] = true;
