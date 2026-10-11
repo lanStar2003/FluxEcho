@@ -8,9 +8,9 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * The client side of the nexus campus: the chunk-mesh renderers of the deck and the fittings, and the build
- * projection, effects and masterplan handlers. Only the client proxy reaches this class, so a dedicated server never
- * loads any of the render classes it registers.
+ * The client side of the nexus campus: the chunk-mesh renderers of the deck and the fittings, the build projection,
+ * effects and masterplan handlers, and (0.12.0) the light lift's client handler and its beams. Only the client proxy
+ * reaches this class, so a dedicated server never loads any of the render classes it registers.
  */
 @SideOnly(Side.CLIENT)
 public final class CampusClient {
@@ -29,5 +29,8 @@ public final class CampusClient {
         BuildRender.register();
         BuildFx.register();
         Masterplan.register();
+        // the light lift's input, motion and feel, and its beams (0.12.0)
+        LiftClient.register();
+        LiftRender.register();
     }
 }

@@ -176,6 +176,8 @@ public final class ShapeKit {
                 return Parts.fitting(Parts.F_SOCKET);
             case 'u':
                 return Parts.fitting(Parts.F_BASIN);
+            case '^':
+                return Parts.fitting(Parts.F_LIFT);
             case ',':
                 return Parts.GRASS;
             case ';':

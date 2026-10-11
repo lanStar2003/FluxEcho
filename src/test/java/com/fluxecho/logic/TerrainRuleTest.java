@@ -559,4 +559,50 @@ class TerrainRuleTest {
         assertEquals(Verdict.CLEAR, TerrainRule.forBuild(probe("natural"), true, true));
         assertEquals(Verdict.CLEAR, TerrainRule.forBuild(probe("natural"), true, false));
     }
+
+    /**
+     * The root's caisson (0.12.0): a dig takes what a clear column takes, but keeps what a later step of its plan
+     * places in the cell when it stands there already, and in a repair only takes a fluid that flowed in; a drain only
+     * ever takes a fluid.
+     */
+    @Test
+    void theCaissonDigsAndDrains() {
+        for (boolean all : new boolean[] { true, false }) {
+            for (boolean module : new boolean[] { true, false }) {
+                // a first build digs as a clear column clears
+                for (String[] facts : new String[][] { { "air" }, { "natural" }, { "fluid", "replaceable", "natural" },
+                    { "crafted" }, { "hasTile", "te" }, { "ours", "loose" }, { "unbreakable" }, { "fluid", "lava" } }) {
+                    assertEquals(
+                        TerrainRule.forClear(probe(facts), module, all),
+                        TerrainRule.forDig(probe(facts), module, all, false),
+                        Arrays.toString(facts));
+                }
+                // what a later step places there stays: the floor, the fittings, the core of a well raised again
+                assertEquals(Verdict.ALREADY, TerrainRule.forDig(probe("target", "ours"), module, all, false));
+                assertEquals(Verdict.ALREADY, TerrainRule.forDig(probe("target", "hasTile", "te"), module, all, true));
+                // a repair never clears the module's box: only a fluid that flowed in goes
+                assertEquals(Verdict.ALREADY, TerrainRule.forDig(probe("natural"), module, all, true));
+                assertEquals(Verdict.ALREADY, TerrainRule.forDig(probe("hasTile", "te"), module, all, true));
+                assertEquals(Verdict.ALREADY, TerrainRule.forDig(probe("ours", "loose"), module, all, true));
+                assertEquals(
+                    Verdict.CLEAR,
+                    TerrainRule.forDig(probe("fluid", "replaceable", "natural"), module, all, true));
+                // a drain takes fluids only
+                assertEquals(Verdict.ALREADY, TerrainRule.forDrain(probe("air"), module, all));
+                assertEquals(Verdict.ALREADY, TerrainRule.forDrain(probe("natural"), module, all), "a block stays");
+                assertEquals(Verdict.ALREADY, TerrainRule.forDrain(probe("crafted"), module, all));
+                assertEquals(
+                    Verdict.CLEAR,
+                    TerrainRule.forDrain(probe("fluid", "replaceable", "natural"), module, all));
+                assertEquals(
+                    Verdict.ALREADY,
+                    TerrainRule.forDrain(probe("fluid", "replaceable", "natural", "target"), module, all),
+                    "the pool's own water once laid");
+                assertEquals(Verdict.BLOCKED, TerrainRule.forDrain(probe("fluid", "protectedArea"), module, true));
+            }
+            // lava: the clear-all rule takes it, the conservative rule leaves it shown red
+            assertEquals(Verdict.CLEAR, TerrainRule.forDrain(probe("fluid", "lava"), true, true));
+            assertEquals(Verdict.BLOCKED, TerrainRule.forDrain(probe("fluid", "lava"), true, false));
+        }
+    }
 }

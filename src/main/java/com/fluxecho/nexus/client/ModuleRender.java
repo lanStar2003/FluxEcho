@@ -18,4 +18,9 @@ final class ModuleRender {
         if (m instanceof TileLibrary l) LibraryRender.draw(l, t, fade);
         else if (m instanceof TileCityModule c) CityRender.draw(c, t, fade);
     }
+
+    /** A module past the effects' range: its landmark alone, if it has one (0.12.0: the zenith's dome). */
+    static void landmark(TileModule m, double t) {
+        if (m instanceof TileCityModule c) CityRender.landmark(c, t);
+    }
 }

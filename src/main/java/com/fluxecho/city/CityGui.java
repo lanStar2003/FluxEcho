@@ -21,7 +21,6 @@ import com.fluxecho.library.client.ArchiveScreen;
 import com.fluxecho.logic.ModuleMap;
 import com.fluxecho.logic.UnitBrowse;
 import com.fluxecho.logic.UnitLayout;
-import com.fluxecho.nexus.TileNexus;
 import com.fluxecho.nexus.client.NexusScreen;
 import com.gtnewhorizons.modularui.api.forge.IItemHandlerModifiable;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
@@ -441,7 +440,11 @@ public final class CityGui {
         b.widget(new FakeSyncWidget.BooleanSyncer(c::powered, v -> view.powered = v));
         b.widget(new FakeSyncWidget.LongSyncer(c::upkeep, v -> view.upkeep = v));
         b.widget(new FakeSyncWidget.IntegerSyncer(() -> c.nexus() != null ? c.slot() : -1, v -> view.site = v));
-        b.widget(new FakeSyncWidget.IntegerSyncer(() -> c.nexus() != null ? TileNexus.PHASE : 0, v -> view.phase = v));
+        b.widget(
+            new FakeSyncWidget.IntegerSyncer(
+                () -> c.nexus() != null ? c.nexus()
+                    .phase() : 0,
+                v -> view.phase = v));
         b.widget(new FakeSyncWidget.StringSyncer(c::ownerName, v -> view.owner = v));
     }
 

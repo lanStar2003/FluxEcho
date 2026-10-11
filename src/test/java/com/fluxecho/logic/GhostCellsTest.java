@@ -242,6 +242,21 @@ class GhostCellsTest {
         assertArrayEquals(new int[] { -3, 0, 3, 0, -3, 1, 3, 1, -3, 0, -3, 1, 3, 0, 3, 1 }, e);
     }
 
+    /**
+     * The root's caisson digs and drains a cell before a later step fills it (0.12.0): the index finds the step that
+     * places the block, and the cells that only empty are never drawn.
+     */
+    @Test
+    void theIndexFindsTheStepThatPlacesABlock() {
+        int[] dig = { 3, 40, 3, Parts.AIR, 0, BuildPlan.DIG }, drain = { 3, 40, 3, Parts.AIR, 1, BuildPlan.DRAIN };
+        GhostCells.Cells c = cells(dig, drain, hard(3, 40, 3), dig.clone());
+        GhostCells.Index idx = new GhostCells.Index(c);
+        assertEquals(2, idx.find(3, 40, 3));
+        assertTrue(!c.drawable(0) && !c.drawable(1) && c.drawable(2));
+        GhostCells.Cells only = cells(dig, drain);
+        assertEquals(0, new GhostCells.Index(only).find(3, 40, 3), "a cell only dug: its first step");
+    }
+
     @Test
     void theIndexFindsSteps() {
         GhostCells.Cells c = cells(hard(0, 64, 0), hard(-30000000, 255, 29999999), hard(5, -1, -5));

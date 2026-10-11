@@ -34,15 +34,15 @@ class ResearchTreeTest {
 
     /**
      * What an operator's {@code /fluxecho research all} grants: every node the star map lets a team research in this
-     * version, never the greyed placeholders of later phases (phase II, the tidal well, the dome).
+     * version (0.12.0: phase II, the tidal well and the dome too), never the greyed placeholders of later phases.
      */
     @Test
     void onlyTheNodesOfThisVersionAreAvailable() {
         Set<String> now = new HashSet<>();
         for (ResearchTree.Node n : ResearchTree.availableNow()) now.add(n.id);
-        assertFalse(now.contains(ResearchTree.PHASE_2));
-        assertFalse(now.contains(ResearchTree.TIDAL_WELL));
-        assertFalse(now.contains(ResearchTree.DOME));
+        assertTrue(now.contains(ResearchTree.PHASE_2));
+        assertTrue(now.contains(ResearchTree.TIDAL_WELL));
+        assertTrue(now.contains(ResearchTree.DOME));
         assertTrue(now.contains(ResearchTree.ANCHOR));
         assertTrue(now.contains(ResearchTree.LIBRARY), "the library's research opens the Echo Archive");
         for (ResearchTree.Node n : ResearchTree.all()) {
@@ -110,7 +110,7 @@ class ResearchTreeTest {
         assertNotNull(n);
         assertEquals(ResearchTree.Branch.ECHO, n.branch);
         assertEquals(1, n.phase);
-        assertEquals(1, ResearchTree.PHASE_NOW, "0.11.0 stays in phase I");
+        assertEquals(2, ResearchTree.PHASE_NOW, "0.12.0 opens phase II");
         assertTrue(ResearchTree.availableNow(n));
         assertEquals(java.util.Arrays.asList(ResearchTree.INNER_RING, ResearchTree.ECHO_CRYSTAL), n.requires);
         assertEquals(16_000, n.compute);
@@ -127,6 +127,54 @@ class ResearchTreeTest {
         assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, ring, 1, 999));
         ring.add(ResearchTree.ECHO_CRYSTAL);
         assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, ring, 1, 999));
+    }
+
+    /**
+     * Phase II made real (0.12.0, CITY.md §5.2 and Appendix B): its node is researched on a nexus of phase I and opens
+     * phase II; the tidal well and the dome need it and a nexus of phase II; all three cost titanium plates and EV
+     * circuits.
+     */
+    @Test
+    void phaseTwo() {
+        ResearchTree.Node p2 = ResearchTree.get(ResearchTree.PHASE_2), dome = ResearchTree.get(ResearchTree.DOME),
+            well = ResearchTree.get(ResearchTree.TIDAL_WELL);
+        assertEquals(ResearchTree.PHASE_2, ResearchTree.phaseResearch(2));
+        assertEquals(2, ResearchTree.phaseOf(ResearchTree.PHASE_2));
+        assertEquals(0, ResearchTree.phaseOf(ResearchTree.DOME));
+        assertEquals(0, ResearchTree.phaseOf(null));
+        assertEquals(0, ResearchTree.phaseOf("phase_x"));
+        assertEquals(2, p2.phase);
+        assertEquals(1, p2.nexusPhase(), "researched at phase I");
+        assertEquals(2, dome.nexusPhase());
+        assertEquals(2, well.nexusPhase());
+        assertEquals(ResearchTree.Branch.FRAME, p2.branch);
+        assertEquals(ResearchTree.Branch.GUARD, dome.branch);
+        assertEquals(ResearchTree.Branch.ENERGY, well.branch);
+        assertEquals(java.util.Arrays.asList(ResearchTree.INNER_RING), p2.requires);
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2), dome.requires);
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.UPKEEP_1), well.requires);
+        for (ResearchTree.Node n : new ResearchTree.Node[] { p2, dome, well }) {
+            assertTrue(n.compute >= 30_000, n.id);
+            Set<String> names = new HashSet<>();
+            for (ResearchTree.Cost c : n.costs) names.add(c.name);
+            assertTrue(names.contains("plateTitanium") && names.contains("circuitEV"), n.id + ": EV hull and circuits");
+            // the phase's own materials (0.12.0, BLUEPRINT 3.6): phase alloy for all three
+            assertTrue(names.contains("ingotPhaseAlloy"), n.id + ": phase alloy");
+        }
+        // resonant glass is manifested once phase II is researched, so only the nodes after it can ask for it
+        for (ResearchTree.Node n : new ResearchTree.Node[] { dome, well }) {
+            boolean glass = false;
+            for (ResearchTree.Cost c : n.costs) glass |= c.ore && "glassResonant".equals(c.name);
+            assertTrue(glass, n.id + ": resonant glass");
+        }
+        for (ResearchTree.Cost c : p2.costs) assertFalse("glassResonant".equals(c.name), "phase II cannot need it");
+        Set<String> done = new HashSet<>();
+        done.add(ResearchTree.ANCHOR);
+        done.add(ResearchTree.INNER_RING);
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(p2, done, 1, 999), "phase II starts at phase I");
+        done.add(ResearchTree.PHASE_2);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(dome, done, 1, 999), "the dome needs phase II");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(dome, done, 2, 999));
     }
 
     @Test

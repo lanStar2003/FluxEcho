@@ -10,7 +10,12 @@ package com.fluxecho.logic;
  * later versions add buildings to a plan that already holds them; only the hall family is built in 0.11.0, and the
  * masterplan draws the pavilions' envelopes.
  * <p>
- * The ordinals are not saved anywhere; the names may be (a module spec's family), so they never change.
+ * 0.12.0 gives the two axis families a site number each, past the inner ring's eight, so the campus records and docks
+ * them like any other site: {@link #ZENITH_SITE} for the pod over the nexus, {@link #ROOT_SITE} for the well under it.
+ * An axis site takes no room on the inner ring ({@link #axis}).
+ * <p>
+ * The ordinals are not saved anywhere; the names may be (a module spec's family), so they never change. The site
+ * numbers are saved (recorded sites, job keys) and never change either.
  */
 public enum SiteFamily {
 
@@ -20,10 +25,10 @@ public enum SiteFamily {
     PAVILION(2, 1, 3, 5, 7),
     /** Site 0: A 23..39, R -15..15 over the gate road, the passage R -6..6 left open (phase II). */
     GATE(2, 0),
-    /** The pod over the nexus at Y0 + 40 on six legs, later floating (phase II). */
-    ZENITH(2),
-    /** The well under the nexus, then the deep root and the ley core (phase II). */
-    ROOT(2),
+    /** The pod over the nexus at Y0 + 40 on six legs, later floating (phase II): site {@link #ZENITH_SITE}. */
+    ZENITH(2, 8),
+    /** The well under the nexus, then the deep root and the ley core (phase II): site {@link #ROOT_SITE}. */
+    ROOT(2, 9),
     /** The four outer diagonals O1, O3, O5, O7: {@code oct(15, 20)} at {@code (+-62, +-62)} (phase III). */
     OUTER_DIAG(3),
     /** The eight outer flankers O0+ … O6-: 27 x 31 at radial 64, cross +-19 (reserved, phase IV). */
@@ -35,6 +40,11 @@ public enum SiteFamily {
     /** The third ring's sixteen 41 x 41 sites, T00..T15 (phase V). */
     THIRD(5);
 
+    /** The site of the zenith (the Echo Dome Generator's pod) and of the root (the Tidal Well), on the nexus's axis. */
+    public static final int ZENITH_SITE = 8, ROOT_SITE = 9;
+    /** The inner ring's sites are 0 to 7; the sites from here on stand on the nexus's axis. */
+    public static final int AXIS_FROM = 8;
+
     /** The nexus phase the family's first sites open at. */
     public final int opens;
     private final int[] sites;
@@ -44,19 +54,65 @@ public enum SiteFamily {
         this.sites = sites;
     }
 
-    /** The inner-ring sites (0..7) of the family; empty for the families that stand elsewhere. */
+    /**
+     * The sites of the family: the inner ring's (0..7) for the gate, the pavilions and the halls, the axis site for the
+     * zenith and the root (0.12.0); empty for the families later versions place.
+     */
     public int[] sites() {
         return sites.clone();
     }
 
-    /** Whether the inner-ring site belongs to the family. */
+    /** Whether the site belongs to the family. */
     public boolean hasSite(int site) {
         for (int s : sites) if (s == site) return true;
         return false;
     }
 
-    /** The family of an inner-ring site (0..7): the gate, a pavilion or a hall. */
+    /**
+     * Whether the family stands on the nexus's axis (the zenith over it, the root under it): its modules take no room
+     * on the inner ring, are entered by the light lift and are built in the air or underground.
+     */
+    public boolean axis() {
+        return this == ZENITH || this == ROOT || this == ORBIT;
+    }
+
+    /** Whether a site is on the nexus's axis rather than on the inner ring ({@link #AXIS_FROM} and up). */
+    public static boolean axisSite(int site) {
+        return site >= AXIS_FROM;
+    }
+
+    /** Whether a site is one of the inner ring's (0 to 7): a module docked there takes room on the ring. */
+    public static boolean ringSite(int site) {
+        return site >= 0 && site < AXIS_FROM;
+    }
+
+    /**
+     * How many of the docked modules' sites take room on the inner ring: the counter every window shows against the
+     * ring's open slots (the nexus window, Waila, the flux terminal). The axis modules (0.12.0) take none.
+     */
+    public static int ringCount(int... sites) {
+        int n = 0;
+        for (int s : sites) if (ringSite(s)) n++;
+        return n;
+    }
+
+    /**
+     * The lang key (under {@code fluxecho.}) a window or a sign names a site with: the inner ring's sites by number
+     * ({@code build.gui.site}, "%s 号位", given the site), the axis sites by name: 天顶 the zenith, 根位 the root.
+     */
+    public static String labelKey(int site) {
+        if (site == ZENITH_SITE) return "build.gui.site_zenith";
+        if (site == ROOT_SITE) return "build.gui.site_root";
+        return "build.gui.site";
+    }
+
+    /**
+     * The family of a site: on the inner ring (0..7) the gate, a pavilion or a hall; {@link #ZENITH_SITE} the zenith
+     * and {@link #ROOT_SITE} the root.
+     */
     public static SiteFamily of(int site) {
+        if (site == ZENITH_SITE) return ZENITH;
+        if (site == ROOT_SITE) return ROOT;
         int k = Math.floorMod(site, 8);
         if (k == 0) return GATE;
         return k % 2 == 1 ? PAVILION : HALL;

@@ -85,6 +85,9 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             case Parts.F_BASIN:
                 drawn = basin(w, x, y, z, fit, meta, r);
                 break;
+            case Parts.F_LIFT:
+                drawn = lift(w, x, y, z, fit, meta, r);
+                break;
             default:
                 // the plinth, the crown, the glazing (whose shouldSideBeRendered hides the faces between two panes)
                 drawn = cube(w, x, y, z, fit, meta, r);
@@ -107,6 +110,17 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
         boolean[] lit = new boolean[6];
         for (int s = 2; s < 6; s++)
             lit[s] = (r.renderAllFaces || PartDraw.shows(w, x, y, z, fit, s)) && open(w, x, y, z, s);
+        return overlay(r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
+    }
+
+    /**
+     * The light-lift pad (0.12.0): a whole steel cube whose top is the lit iris of the shaft, at full brightness when
+     * nothing covers it; its sides are plain steel.
+     */
+    private static boolean lift(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+        boolean drawn = PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, 1, 1);
+        boolean[] lit = new boolean[6];
+        lit[1] = r.renderAllFaces || PartDraw.shows(w, x, y, z, fit, 1);
         return overlay(r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
     }
 
@@ -346,6 +360,11 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                 }
                 break;
             }
+            case Parts.F_LIFT:
+                // the pad's iris on top
+                PartDraw.inventoryBox(r, fit, own, 0, 0, 0, 1, 1, 1);
+                PartDraw.inventoryBox(r, fit, s -> s == 1 ? fit.glow(meta, s) : null, 0, 0, 0, 1, 1, 1);
+                break;
             default:
                 PartDraw.inventoryBox(r, fit, own, 0, 0, 0, 1, 1, 1);
                 PartDraw.inventoryBox(r, fit, round, 0, 0, 0, 1, 1, 1);

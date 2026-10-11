@@ -23,6 +23,7 @@ import com.fluxecho.city.TileCityModule;
 import com.fluxecho.client.Motifs;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.ModuleMap;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.logic.UnitBrowse;
 import com.fluxecho.nexus.client.NexusScreen;
 
@@ -172,7 +173,12 @@ public final class CityScreen {
                 w);
             line(3, "upkeep", EchoText.t("city.gui.status.upkeep_value", v.upkeep), v.powered ? CYAN : DIM, w);
             line(4, "phase", v.phase > 0 ? EchoText.t("nexus.phase." + v.phase) : none, v.phase > 0 ? CYAN : DIM, w);
-            line(5, "site", v.site >= 0 ? EchoText.t("build.gui.site", v.site) : none, v.site >= 0 ? CYAN : DIM, w);
+            line(
+                5,
+                "site",
+                v.site >= 0 ? EchoText.t(SiteFamily.labelKey(v.site), v.site) : none,
+                v.site >= 0 ? CYAN : DIM,
+                w);
             line(
                 6,
                 "units",
@@ -517,6 +523,11 @@ public final class CityScreen {
                 break;
             case STAIR:
                 put(q, r[0], r[1], r[2], r[3], STAIR, 0.9f);
+                break;
+            case LIFT:
+                // the light lift's pad: its iris lit, breathing
+                put(q, r[0], r[1], r[2], r[3], GROUND, 0.9f);
+                put(q, r[0] + 0.5, r[1] + 0.5, r[2] - 0.5, r[3] - 0.5, CYAN, 0.7f + 0.3f * (float) Math.sin(t * 0.12));
                 break;
             case FIXTURE:
                 put(q, r[0], r[1], r[2], r[3], GROUND, 0.9f);

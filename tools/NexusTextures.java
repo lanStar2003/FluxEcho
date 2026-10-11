@@ -4,7 +4,8 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the textures of the Flux Nexus era (0.9.0): the flux frame's parts, the nexus's and the library's cores, the
- * flux materials and the library's index cards; and (0.11.0) the frame's cladding anchor and the city's module cores.
+ * flux materials and the library's index cards; (0.11.0) the frame's cladding anchor and the city's module cores; and
+ * (0.12.0) the phase's materials, phase alloy and resonant glass.
  * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
  */
@@ -17,6 +18,10 @@ public class NexusTextures {
         STEEL = 0x56606E, STEEL_LIGHT = 0x8A95A5, STEEL_DARK = 0x262C35;
     /** The Eco Dome's colour (0.11.0), shown in its core's light only. */
     static final int ECO_GREEN = 0x7BE08A;
+    /** The Echo Dome Generator's accent (0.12.0), as {@code TileDomeGenerator.COLOR}. */
+    static final int GUARD_BLUE = 0x7DB8FF;
+    /** The Tidal Well's accent (0.12.0), as {@code TileRoot.COLOR}. */
+    static final int TIDE_BLUE = 0x3FC8E8;
     static final int FRAMES = 8;
 
     interface Px {
@@ -73,10 +78,24 @@ public class NexusTextures {
         anim(eco + "front_on", (x, y, f) -> coreFront(x, y, f, true, ECO_GREEN, NexusTextures::domeEmblem));
         still(eco + "side", (x, y, f) -> coreSide(x, y, ECO_GREEN));
         still(eco + "top", (x, y, f) -> coreTop(x, y, ECO_GREEN));
+        // the Echo Dome Generator's (0.12.0): guard blue, a pod over six legs under the dome's arc
+        String dome = "blocks/module_core/dome_generator/";
+        still(dome + "front", (x, y, f) -> coreFront(x, y, f, false, GUARD_BLUE, NexusTextures::podEmblem));
+        anim(dome + "front_on", (x, y, f) -> coreFront(x, y, f, true, GUARD_BLUE, NexusTextures::podEmblem));
+        still(dome + "side", (x, y, f) -> coreSide(x, y, GUARD_BLUE));
+        still(dome + "top", (x, y, f) -> coreTop(x, y, GUARD_BLUE));
+        // the root's Tidal Well (0.12.0): tide blue, the shaft seen from above, the island in its pool
+        String root = "blocks/module_core/root/";
+        still(root + "front", (x, y, f) -> coreFront(x, y, f, false, TIDE_BLUE, NexusTextures::wellEmblem));
+        anim(root + "front_on", (x, y, f) -> coreFront(x, y, f, true, TIDE_BLUE, NexusTextures::wellEmblem));
+        still(root + "side", (x, y, f) -> coreSide(x, y, TIDE_BLUE));
+        still(root + "top", (x, y, f) -> coreTop(x, y, TIDE_BLUE));
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
         still("items/echo_crystal", NexusTextures::echoCrystal);
+        still("items/phase_alloy", NexusTextures::phaseAlloy);
+        still("items/resonant_glass", NexusTextures::resonantGlass);
         still("items/library_card", (x, y, f) -> card(x, y, false));
         still("items/library_card_written", (x, y, f) -> card(x, y, true));
     }
@@ -399,6 +418,34 @@ public class NexusTextures {
         return 0;
     }
 
+    /**
+     * The Echo Dome Generator's emblem (0.12.0): the dome's arc over a saucer pod (lit) on two splayed legs, the lift
+     * shaft a lit point under the pod.
+     */
+    static int podEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 13);
+        if (y <= 8 && d >= 9.2 && d < 10.2) return 1;
+        if (y == 7 && x >= 4 && x <= 11 || y == 8 && x >= 3 && x <= 12) return 2;
+        if (y == 6 && x >= 6 && x <= 9) return 2;
+        int leg = y - 8;
+        if (leg >= 1 && leg <= 5 && (x == 4 - leg / 2 || x == 11 + leg / 2)) return 1;
+        if ((x == 7 || x == 8) && y >= 11 && y <= 12) return 2;
+        return 0;
+    }
+
+    /**
+     * The Tidal Well's emblem (0.12.0): the shaft's octagon seen from above, a tide ring round the island and its lit
+     * pad in the middle.
+     */
+    static int wellEmblem(int x, int y) {
+        double dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5);
+        double oct = Math.max(Math.max(dx, dy), (dx + dy) * 0.75);
+        if (oct >= 5 && oct < 6) return 1;
+        if (oct >= 2.6 && oct < 3.5) return 2;
+        if (oct < 1.2) return 2;
+        return 0;
+    }
+
     static int coreFront(int x, int y, int f, boolean on, int accent, Emblem e) {
         int base = coreSide(x, y, accent);
         if (x < 2 || x > 13 || y < 2 || y > 13) return base;
@@ -478,6 +525,51 @@ public class NexusTextures {
         if (y < 3) c = mix(c, WHITE, 0.45);
         if (Math.abs(x - 7.5) < 0.6 && d >= 4.2) c = mix(c, WHITE, 0.4);
         return c;
+    }
+
+    /**
+     * Phase alloy (0.12.0, BLUEPRINT 3.6): an ingot of deep blue metal, its top lit, the flux layer's phase running
+     * across its face as two thin cyan waves.
+     */
+    static int phaseAlloy(int x, int y, int f) {
+        // the top face, a slanted strip widening towards the front; the front face under it; the shade under that
+        boolean top = y >= 4 && y <= 6 && x >= 5 - (y - 4) && x <= 12 + (y - 4) - 1;
+        boolean front = y >= 7 && y <= 11 && x >= 2 && x <= 14 - (y == 11 ? 1 : 0);
+        if (!top && !front) return 0;
+        if (top) {
+            int c = mix(0x5C82B8, 0x87A9D8, (x - 2) / 12.0);
+            if (y == 4) c = mix(c, WHITE, 0.25);
+            if (x == 5 - (y - 4)) c = 0x34557F;
+            return c;
+        }
+        int c = mix(0x2B4C7E, 0x1A2F52, (y - 7) / 4.0);
+        if (x == 2 || y == 11) c = 0x0E1A2C;
+        if (x == 14 - (y == 11 ? 1 : 0)) c = 0x13223A;
+        if (y == 7) c = mix(c, 0x4F7FB8, 0.6);
+        // two phase waves across the face
+        double w1 = 8.6 + 1.1 * Math.sin(x * 0.85), w2 = 9.8 + 0.9 * Math.sin(x * 0.85 + 2.2);
+        if (x > 2 && y < 11 && Math.abs(y - w1) < 0.5) c = CYAN;
+        else if (x > 2 && y < 11 && Math.abs(y - w2) < 0.5) c = CYAN_DARK;
+        return c;
+    }
+
+    /**
+     * Resonant glass (0.12.0, BLUEPRINT 3.6): a clear pane in a steel frame, a cyan ripple on its glass and a white
+     * glint in one corner; the glass itself is left open.
+     */
+    static int resonantGlass(int x, int y, int f) {
+        if (x < 1 || x > 14 || y < 1 || y > 14) return 0;
+        if (x == 1 || x == 14 || y == 1 || y == 14) {
+            if ((x == 1 || x == 14) && (y == 1 || y == 14)) return CYAN;
+            return x == 1 || y == 1 ? 0x3B6A8A : 0x1C3446;
+        }
+        // the ripple: two arcs round the pane's lower right
+        double d = Math.hypot(x - 10.5, y - 10.5);
+        if (d >= 3.6 && d < 4.4 || d >= 6.2 && d < 6.9) return d < 5 ? 0x7FE8F8 : 0x4FB8D0;
+        // the glint
+        if (x + y == 6 || x + y == 7 && x >= 3 && x <= 4) return WHITE;
+        if (x == 2 || y == 2) return 0xA8E8F4;
+        return 0;
     }
 
     static int card(int x, int y, boolean written) {

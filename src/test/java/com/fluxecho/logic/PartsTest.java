@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +50,16 @@ class PartsTest {
         assertEquals("basin", Parts.FITTING_NAMES[Parts.F_BASIN]);
     }
 
+    /** 0.12.0 appends the light-lift pad: fitting 9, code 41, light 12 (CITY.md §1.4, Appendix C). */
+    @Test
+    void theCodesOf012() {
+        assertEquals(41, Parts.fitting(Parts.F_LIFT));
+        assertEquals("lift", Parts.FITTING_NAMES[Parts.F_LIFT]);
+        assertEquals(12, Parts.FITTING_LIGHT[Parts.F_LIFT]);
+        assertEquals(Parts.F_LIFT, Parts.meta(41));
+        assertFalse(Parts.euOnly(41));
+    }
+
     @Test
     void familiesAndMetas() {
         Set<Integer> seen = new HashSet<>();
@@ -87,6 +98,25 @@ class PartsTest {
         Set<String> keys = new HashSet<>();
         for (String k : ModuleCores.KEYS) assertTrue(keys.add(k), k);
         assertEquals(-1, ModuleCores.meta("archive"), "the Archive keeps the library core");
-        assertTrue(ModuleCores.BUILT >= 1);
+        assertTrue(ModuleCores.built(ModuleCores.ECO_DOME));
+        // 0.12.0: the Echo Dome Generator's core is meta 7 (CITY.md Appendix C)
+        assertEquals(7, ModuleCores.DOME_GENERATOR);
+        assertEquals("dome_generator", ModuleCores.key(ModuleCores.DOME_GENERATOR));
+        assertEquals(ModuleCores.DOME_GENERATOR, ModuleCores.meta(DomeGeneratorShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.DOME_GENERATOR));
+        // and the root's Tidal Well meta 8
+        assertEquals(8, ModuleCores.ROOT);
+        assertEquals("root", ModuleCores.key(ModuleCores.ROOT));
+        assertEquals(ModuleCores.ROOT, ModuleCores.meta(RootShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.ROOT));
+        assertArrayEquals(
+            new int[] { ModuleCores.ECO_DOME, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
+            ModuleCores.built());
+        assertFalse(ModuleCores.built(ModuleCores.DUAL_FOIL_VAULT), "the vault comes in 0.14.0");
+        int last = -1;
+        for (int m : ModuleCores.built()) {
+            assertTrue(m > last, "in meta order");
+            last = m;
+        }
     }
 }

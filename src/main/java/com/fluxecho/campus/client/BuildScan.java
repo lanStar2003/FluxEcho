@@ -28,6 +28,7 @@ import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.GhostCells;
+import com.fluxecho.logic.XRay;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.nexus.TileNexus;
@@ -59,6 +60,13 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * The result is published per nexus as an immutable {@link Ghost}, read with {@link #ghost}. Everything is forgotten
  * when the client leaves its world, and a nexus is forgotten when it unloads or its job ends.
+ * <p>
+ * Two kinds of plan get more (0.12.0). One that builds under the ground (the root's caisson, {@link XRay#underground})
+ * is hidden by the terrain round it, so the edges of its cells still to build are worked out as well
+ * ({@link XRay#edges}:
+ * the whole plan's and the current stage's), again when the stage changes and at most every {@value #XRAY_TICKS}
+ * ticks while cells get built, for an x-ray drawn through the ground. One that builds high in the air (the zenith's
+ * pod, {@link XRay#hangs}) gets its shadow on the ground and the plumb lines down to it, worked out once.
  */
 @SideOnly(Side.CLIENT)
 public final class BuildScan {
@@ -91,6 +99,8 @@ public final class BuildScan {
     private static final int LANDED_CHECK = BuildClient.LAND_LINGER;
     /** Part codes fit one byte (the module cores of 0.11.0 start at 64); an icon is kept for each part and side. */
     private static final int PARTS = 128;
+    /** The fewest ticks between two workings-out of an underground plan's x-ray while its cells get built. */
+    public static final int XRAY_TICKS = 100;
 
     private static final int[] NO_INTS = new int[0];
     private static final float[] NO_FLOATS = new float[0];
@@ -165,6 +175,22 @@ public final class BuildScan {
          * half its longer side for a module's.
          */
         public final double ringX, ringZ, ringR;
+        /** Whether the plan builds under the ground (0.12.0): its projection is drawn through the terrain. */
+        public final boolean underground;
+        /**
+         * The x-ray of an underground plan (0.12.0): the edges of its cells still to build, six floats each (two ends
+         * x,
+         * y, z relative to the origin), the whole plan's and the current stage's; empty for other plans and while the
+         * done-scan does not run.
+         */
+        public final float[] xray, xrayStage;
+        /**
+         * A plan that builds high in the air (0.12.0): the lowest layer that hangs ({@link Integer#MIN_VALUE} when none
+         * does), its shadow's outline on the ground (world block corners {x0, z0, x1, z1}) and where plumb lines drop
+         * from it (world block corners {x, z}).
+         */
+        public final int hangY;
+        public final int[] shadow, plumbs;
 
         Ghost(Track t, int rev, boolean live, boolean scanned, double vx, double vy, double vz, int[] cells,
             int[] faces, float[] xyz, float[] uv, float[] creases, int[] creaseCells, BitSet inLayer, BitSet gone,
@@ -197,6 +223,12 @@ public final class BuildScan {
             this.ringX = t.ringX;
             this.ringZ = t.ringZ;
             this.ringR = t.ringR;
+            this.underground = t.underground;
+            this.xray = live ? t.xray : NO_FLOATS;
+            this.xrayStage = live ? t.xrayStage : NO_FLOATS;
+            this.hangY = t.hangY;
+            this.shadow = t.shadow;
+            this.plumbs = t.plumbs;
         }
 
         /** The same ghost with more cells gone. */
@@ -240,6 +272,15 @@ public final class BuildScan {
         final int[] edge;
         final int ox, oy, oz;
         final double ringX, ringZ, ringR;
+        /** An underground plan's and a hanging plan's extras (0.12.0), the latter worked out once. */
+        final boolean underground;
+        final int hangY;
+        final int[] shadow, plumbs;
+        /** The x-ray as last worked out, the stage it was for, when, and whether cells changed since. */
+        float[] xray = NO_FLOATS, xrayStage = NO_FLOATS;
+        int xrayFor = Integer.MIN_VALUE;
+        long xrayAt = Long.MIN_VALUE / 2;
+        boolean xrayStale = true, xrayWhole;
 
         // the done-scan; order is null while it does not run
         int[] order;
@@ -287,6 +328,10 @@ public final class BuildScan {
                 ringZ = (b[2] + b[5] + 1) / 2.0;
                 ringR = Math.max(b[3] + 1 - b[0], b[5] + 1 - b[2]) / 2.0;
             }
+            underground = XRay.underground(cells, oy);
+            hangY = XRay.hangs(cells, oy);
+            shadow = XRay.shadow(cells, hangY);
+            plumbs = XRay.plumbs(shadow);
         }
     }
 
@@ -380,7 +425,8 @@ public final class BuildScan {
         if (y < 0 || y > 255) return false;
         Block b = w.getBlock(x, y, z);
         boolean air = b.getMaterial() == Material.air || b.isAir(w, x, y, z);
-        if (kind == BuildPlan.AIR) return air;
+        // a cell that must become air, and the caisson's dug and drained cells (0.12.0)
+        if (BuildPlan.empties(kind)) return air;
         return Terrain.isTarget(b, w.getBlockMetadata(x, y, z), part, air);
     }
 
@@ -517,6 +563,11 @@ public final class BuildScan {
             t.selected = false;
             t.dirty = true;
             t.lastRebuild = Long.MIN_VALUE / 2;
+            t.xray = NO_FLOATS;
+            t.xrayStage = NO_FLOATS;
+            t.xrayFor = Integer.MIN_VALUE;
+            t.xrayStale = true;
+            t.xrayWhole = false;
         }
         if (now < t.lastRebuild) t.lastRebuild = Long.MIN_VALUE / 2;
         // cells whose chunk was missing when they were checked: it may have arrived since
@@ -536,7 +587,17 @@ public final class BuildScan {
             }
             changed |= check(t, w, i);
         }
-        if (changed) t.dirty = true;
+        if (changed) {
+            t.dirty = true;
+            t.xrayStale = true;
+        }
+        // an underground plan's x-ray: again for a new stage, and now and then while its cells get built
+        boolean firstDone = !t.firstPass && !t.xrayWhole;
+        if (t.underground && (stage != t.xrayFor || firstDone || t.xrayStale && now - t.xrayAt >= XRAY_TICKS)) {
+            xray(t, stage);
+            t.xrayAt = now;
+            t.dirty = true;
+        }
         if (!t.selected || sq(vx - t.svx) + sq(vy - t.svy) + sq(vz - t.svz) >= MOVE * MOVE) t.dirty = true;
         if (stage != t.lastStage) t.dirty = true;
         // the builder clearing terrain uncovers faces that were hidden against it
@@ -549,6 +610,33 @@ public final class BuildScan {
             Ghost g = t.ghost;
             if (g != null && g.live) t.ghost = g.withGone(t, ++t.rev, (BitSet) t.gone.clone());
         }
+    }
+
+    /**
+     * Works out an underground plan's x-ray: the edges of its cells under the base layer not yet built (or not yet
+     * checked), all of them and the current stage's, relative to the origin.
+     */
+    private static void xray(Track t, int stage) {
+        t.xray = relative(t, XRay.edges(t.cells, XRay.below(t.cells, t.hidden, t.oy, -1)));
+        t.xrayStage = relative(t, XRay.edges(t.cells, XRay.below(t.cells, t.hidden, t.oy, stage)));
+        t.xrayFor = stage;
+        t.xrayStale = false;
+        // worked out before every cell was checked once, it is worked out again as soon as they all are
+        t.xrayWhole = !t.firstPass;
+    }
+
+    /** Segments between world block corners as floats relative to the track's origin. */
+    private static float[] relative(Track t, int[] e) {
+        float[] out = new float[e.length];
+        for (int i = 0; i + 5 < e.length; i += 6) {
+            out[i] = e[i] - t.ox;
+            out[i + 1] = e[i + 1] - t.oy;
+            out[i + 2] = e[i + 2] - t.oz;
+            out[i + 3] = e[i + 3] - t.ox;
+            out[i + 4] = e[i + 4] - t.oy;
+            out[i + 5] = e[i + 5] - t.oz;
+        }
+        return out;
     }
 
     /**

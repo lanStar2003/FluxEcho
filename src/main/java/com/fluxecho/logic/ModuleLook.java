@@ -169,4 +169,40 @@ public final class ModuleLook {
         // over the canopy's middle: it reaches from the front wall (z 0) out to the front of its outer row
         return new double[] { c[0] + 0.5, top + 1.75, front / 2.0 };
     }
+
+    /** How high over its block's foot a lift-entered module's plate floats over its controller. */
+    public static final double OVER_CONSOLE = 1.4;
+    /** How far under the floor a module hanging in the air carries its second plate, over the lift's shaft. */
+    public static final double BELLY = 2.2;
+
+    /**
+     * Every name plate of a module, {x, y, z} each in its frame ({@link #plate} for one with a portal). A module
+     * entered by the light lift (CITY.md §1.1: the zenith's pod, the root; its shape holds a lift pad) has no portal:
+     * its plate floats over the controller on its console, under the ceiling, {@link #OVER_CONSOLE} over the
+     * controller block's foot. One that hangs in the air (its blueprint reaches down below its own floor, as the pod's
+     * legs do) carries a second plate under its floor over the lift's shaft, {@link #BELLY} down, for the forum below.
+     */
+    public static List<double[]> plates(CityBuild b) {
+        List<double[]> out = new ArrayList<>();
+        int[] pad = liftPad(b);
+        if (pad == null) {
+            out.add(plate(b));
+            return Collections.unmodifiableList(out);
+        }
+        int[] c = b.controller();
+        out.add(new double[] { c[0] + 0.5, c[1] + OVER_CONSOLE, c[2] + 0.5 });
+        if (b.offset()[1] > 0) out.add(new double[] { pad[0] + 0.5, pad[1] - BELLY, pad[2] + 0.5 });
+        return Collections.unmodifiableList(out);
+    }
+
+    /** The light-lift pad of a module's shape {x, y, z} (the lowest, when it has more), or null when it has none. */
+    public static int[] liftPad(CityBuild b) {
+        for (int y = 0; y < b.height(); y++) for (int x = 0; x < b.width(); x++) for (int z = 0; z < b.depth(); z++) {
+            if (b.cell(x, y, z) == LIFT) return new int[] { x, y, z };
+        }
+        return null;
+    }
+
+    /** The light-lift pad's character. */
+    public static final char LIFT = '^';
 }

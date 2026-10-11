@@ -38,6 +38,7 @@ import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.Costs;
 import com.fluxecho.nexus.NexusRegistry;
 import com.fluxecho.nexus.TileModule;
@@ -224,6 +225,11 @@ public final class Campus {
         return plan;
     }
 
+    /** The sites with a recorded module, in order (the hall sites, and since 0.12.0 the axis sites). */
+    public List<Integer> recordedSites() {
+        return new ArrayList<>(sites.keySet());
+    }
+
     /** The recorded controller {x, y, z} of the module on a hall site, or null. */
     public int[] siteController(int site) {
         int[] c = sites.get(site);
@@ -245,8 +251,9 @@ public final class Campus {
 
     /**
      * The world boxes {x0, z0, x1, z1} of the modules the campus must not touch: those standing near the nexus that
-     * are not on a recorded hall site (0.9.2 halls) and the footprints of the modules on recorded sites. The current
-     * job's plan was made with its own boxes ({@link BuildJob#keepOut()}).
+     * are not on a recorded hall site (0.9.2 halls) and the footprints of the modules on recorded sites; the zenith's
+     * legs as height-ranged boxes {x0, z0, x1, z1, yFrom, yTo} (0.12.0). The current job's plan was made with its own
+     * boxes ({@link BuildJob#keepOut()}).
      */
     public List<int[]> keepOut() {
         refreshKeepOut();
@@ -457,16 +464,18 @@ public final class Campus {
         // the docked modules are known only once the nexus has looked for them since it loaded or formed
         if (!nexus.formed() || !nexus.dockKnown()) return;
         offerRefresh();
+        offerGrowth(now);
         int busy = busyModules();
         int cap = moduleCap();
         for (ModuleSpec spec : ModuleSpecs.all()) {
-            if (busy >= cap) return;
+            // an axis module (0.12.0: the zenith, the root) takes no room on the inner ring
+            if (!spec.axis() && busy >= cap) continue;
             if (!spec.enabled() || !nexus.has(spec.research) || exists(spec)) continue;
-            if (declined(spec, now)) continue;
+            if (declined(spec, now) || !phaseFits(spec) || roomFor(spec) != null) continue;
             int site = freeSite(spec, -1, 1);
             if (site < 0) continue;
             enqueue(BuildJob.module(spec, site));
-            busy++;
+            if (!spec.axis()) busy++;
             tell(
                 new ChatComponentTranslation(
                     P + "unlocked",
@@ -475,16 +484,49 @@ public final class Campus {
         }
     }
 
-    /** The ring's room: the slots the phase opens, at most seven modules on a campus. */
-    private static int moduleCap() {
-        return Math.min(RingSlots.open(TileNexus.PHASE), 7);
+    /** Whether the nexus has grown to the phase the module's family opens at (CITY.md §2.1: the zenith at II). */
+    private boolean phaseFits(ModuleSpec spec) {
+        return nexus.phase() >= spec.family.opens;
     }
 
-    /** Modules docked, and module jobs (not repairs) queued or running: what takes the ring's room. */
+    /** Why this campus has no room for the module ({@link ModuleSpec#noRoom}: the zenith's height), or null. */
+    private String roomFor(ModuleSpec spec) {
+        return spec.noRoom(centre()[1]);
+    }
+
+    /**
+     * Offers the growth of the nexus to its next phase (0.12.0, CITY.md §3) once its teams have that phase's research
+     * and this version reaches it ({@link ResearchTree#PHASE_NOW}): a {@code grow:<phase>} job that waits for 开始 like
+     * any other, queued after the repairs. Not while one is still to run, nor for a day after a member cancelled it.
+     */
+    private void offerGrowth(long now) {
+        int next = nexus.phase() + 1;
+        if (next > ResearchTree.PHASE_NOW || !nexus.has(ResearchTree.phaseResearch(next))) return;
+        for (BuildJob j : jobs()) if (j.grows() && !BuildState.ended(j.state)) return;
+        Long until = declined.get(BuildPlan.growKey(next));
+        if (until != null && now < until) return;
+        enqueue(BuildJob.grow(next));
+        tell(
+            new ChatComponentTranslation(
+                P + "grow_offered",
+                new ChatComponentTranslation("fluxecho.nexus.phase." + next)));
+    }
+
+    /**
+     * The ring's room: the slots the nexus's phase opens (2 at phase I, 4 at II, CITY.md §3), at most
+     * {@link TileNexus#MAX_CAMPUS_MODULES} on a campus.
+     */
+    private int moduleCap() {
+        return Math.min(RingSlots.open(nexus.phase()), TileNexus.MAX_CAMPUS_MODULES);
+    }
+
+    /**
+     * Modules docked on the inner ring, and inner-ring module jobs (not repairs) queued or running: what takes the
+     * ring's room. The axis modules (0.12.0) stand off the ring and take none.
+     */
     private int busyModules() {
-        int busy = nexus.docked()
-            .size();
-        for (BuildJob j : jobs()) if (j.module() != null && !j.repair()) busy++;
+        int busy = nexus.ringDocked();
+        for (BuildJob j : jobs()) if (j.module() != null && !j.repair() && !SiteFamily.axisSite(j.site)) busy++;
         return busy;
     }
 
@@ -503,9 +545,12 @@ public final class Campus {
         return builtSite(spec) >= 0 || jobFor(spec) != null;
     }
 
-    /** Whether a module stands in the shape the campus builds ({@code main}; a 0.9.2 library hall is {@code hall}). */
+    /**
+     * Whether a module stands in a shape the campus builds: any but the 0.9.2 library hall ({@code hall}); the city's
+     * modules stand as {@code main}, the zenith as {@code moored} or {@code floating} (0.12.0).
+     */
     private static boolean campusShape(TileModule m) {
-        return TileMultiblock.MAIN.equals(m.shapeName());
+        return !com.fluxecho.library.TileLibrary.HALL.equals(m.shapeName());
     }
 
     /** The recorded hall site a module of the kind stands on, or -1. */
@@ -554,22 +599,33 @@ public final class Campus {
     /**
      * One module kind and where it stands: its module key ({@code fluxecho.module.<key>}), its research id
      * ({@code fluxecho.research.node.<research>}), its status, and the hall site it stands on, is built on, or would
-     * be built on next (-1 when none is free).
+     * be built on next (-1 when none is free). A NO_ROOM status may say why (0.12.0, {@link #reason}: a lang key under
+     * {@code fluxecho.}, such as {@code build.module.why.phase} or {@code build.module.why.height}; empty otherwise).
      */
     public static final class ModuleState {
 
         public final String key, research;
         public final ModuleStatus status;
         public final int site;
+        /** Why it has no room (a lang key under {@code fluxecho.}), or "" (0.12.0). */
+        public final String reason;
 
         public ModuleState(String key, String research, ModuleStatus status, int site) {
+            this(key, research, status, site, "");
+        }
+
+        public ModuleState(String key, String research, ModuleStatus status, int site, String reason) {
             this.key = key;
             this.research = research;
             this.status = status;
             this.site = site;
+            this.reason = reason == null ? "" : reason;
         }
 
-        /** The list as the description packet and the build page carry it: {@code [{K, R, S, P}]}. */
+        /**
+         * The list as the description packet and the build page carry it: {@code [{K, R, S, P, W}]} ({@code W} the
+         * reason, only when there is one).
+         */
         public static NBTTagList write(List<ModuleState> l) {
             NBTTagList out = new NBTTagList();
             for (ModuleState m : l) {
@@ -578,6 +634,7 @@ public final class Campus {
                 c.setString("R", m.research == null ? "" : m.research);
                 c.setByte("S", (byte) m.status.ordinal());
                 c.setByte("P", (byte) m.site);
+                if (!m.reason.isEmpty()) c.setString("W", m.reason);
                 out.appendTag(c);
             }
             return out;
@@ -596,7 +653,8 @@ public final class Campus {
                         c.getString("K"),
                         c.getString("R"),
                         s >= 0 && s < all.length ? all[s] : ModuleStatus.NO_ROOM,
-                        c.getByte("P")));
+                        c.getByte("P"),
+                        c.getString("W")));
             }
             return out;
         }
@@ -639,9 +697,16 @@ public final class Campus {
                 ModuleStatus.NEEDS_RESEARCH,
                 planned >= 0 ? planned : spec.sites.length > 0 ? spec.sites[0] : -1);
         }
+        // 0.12.0: an axis module waits for the phase its family opens at, and for a campus with the height for it
+        String why = !phaseFits(spec) ? P_WHY + "phase" : roomFor(spec);
+        if (why != null) return new ModuleState(spec.key, spec.research, ModuleStatus.NO_ROOM, planned, why);
         boolean offerable = active && nexus.formed() && spec.enabled() && planned >= 0 && !declined(spec, now);
-        return new ModuleState(spec.key, spec.research, offerStatus(offerable, busyModules(), moduleCap()), planned);
+        int busy = spec.axis() ? 0 : busyModules(), cap = spec.axis() ? 1 : moduleCap();
+        return new ModuleState(spec.key, spec.research, offerStatus(offerable, busy, cap), planned);
     }
+
+    /** The prefix of the reasons a module has no room (lang keys under {@code fluxecho.}). */
+    static final String P_WHY = "build.module.why.";
 
     /**
      * Where a researched module with no job stands: offered at the next look (QUEUED) when nothing stops it and the
@@ -718,6 +783,16 @@ public final class Campus {
         if (sites.containsKey(site) || jobOnSite(site) != null) return false;
         int[] c = centre();
         int[] f = front();
+        if (spec.axis()) {
+            // an axis site (0.12.0) is free when no loaded module stands on its controller cell: the keep-out boxes and
+            // the module centres are about the ground round the nexus, which the zenith only touches with its legs
+            int[] at = spec.controller(site, c[0], c[1], c[2], f[0], f[1]);
+            for (TileModule m : NexusRegistry.modules(world().provider.dimensionId)) {
+                if (m.isInvalid() || m.getWorldObj() != world()) continue;
+                if (m.xCoord == at[0] && m.yCoord == at[1] && m.zCoord == at[2]) return false;
+            }
+            return true;
+        }
         int[] box = spec.footprint(site, c[0], c[2], f[0], f[1], 1);
         refreshKeepOut();
         for (int[] k : liveKeepOut) if (overlap(box, k)) return false;
@@ -763,25 +838,27 @@ public final class Campus {
 
     /**
      * Where a new job goes; returns the current job afterwards. Without a current job it becomes the current one. A
-     * repair or a refresh ({@link BuildJob#priority}) goes ahead of every queued job (none of those was started: 开始
-     * acts on the current job only), and takes the current job's place when that one is neither and no member has
+     * repair or a refresh ({@link BuildJob#rank} 2) goes ahead of every queued job (none of those was started: 开始
+     * acts on the current job only), and takes the current job's place when that one ranks lower and no member has
      * started it and it has touched nothing (a module job waiting for its core must not hold a repair up for good);
-     * the job that gives way goes back to the head of the queue and is surveyed again when its turn comes. Any other
-     * job waits at the end of the queue.
+     * the job that gives way goes back to the head of the queue and is surveyed again when its turn comes. A growth of
+     * the nexus (rank 1, 0.12.0) does the same after the repairs and refreshes. Any other job waits at the end of the
+     * queue.
      */
     static BuildJob admit(BuildJob current, List<BuildJob> queue, BuildJob j) {
         if (current == null) return j;
-        if (!j.priority()) {
+        int rank = j.rank();
+        if (rank == 0) {
             queue.add(j);
             return current;
         }
-        if (!current.priority() && yields(current)) {
+        if (current.rank() < rank && yields(current)) {
             queue.add(0, current);
             return j;
         }
         int at = 0;
         while (at < queue.size() && queue.get(at)
-            .priority()) at++;
+            .rank() >= rank) at++;
         queue.add(at, j);
         return current;
     }
@@ -820,34 +897,57 @@ public final class Campus {
             if (Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) > reach) continue;
             out.add(BuildPlan.moduleKeepOut(mc));
         }
-        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
-            int[] box = siteBox(e.getKey());
-            if (box != null) out.add(box);
-        }
+        for (Map.Entry<Integer, int[]> e : sites.entrySet()) out.addAll(siteKeepOut(e.getKey()));
         liveKeepOut = out;
     }
 
-    /** The site boxes worked out so far ({@link #siteBox}), by module key, site, centre and front. */
-    private final Map<String, int[]> siteBoxes = new HashMap<>();
+    /** The keep-out boxes and the protected boxes of the recorded sites so far, by module key, site, centre, front. */
+    private final Map<String, List<int[]>> siteKeepOuts = new HashMap<>(), siteProtects = new HashMap<>();
 
     /**
-     * The world box {x0, z0, x1, z1} of everything the module recorded on a hall site laid there
-     * ({@link ModuleSpec#siteBox}: the building and its clear box, its forecourt and apron, its canopy), or null when
-     * the site's module is not known. The campus jobs keep out of it, and nothing else of the nexus touches it.
+     * The keep-out boxes the campus jobs leave alone for the module recorded on a site ({@link ModuleSpec#keepOut}: a
+     * hall's whole {@link ModuleSpec#siteBox} as columns {x0, z0, x1, z1}, the zenith's legs over their heights
+     * {x0, z0, x1, z1, yFrom, yTo}, 0.12.0); empty when the site's module is not known.
      */
-    int[] siteBox(int site) {
+    List<int[]> siteKeepOut(int site) {
+        return siteBoxes(site, siteKeepOuts, false);
+    }
+
+    /**
+     * The boxes {x0, y0, z0, x1, y1, z1} nothing of the nexus touches but the jobs of the module recorded on a site
+     * ({@link ModuleSpec#protect}: a hall's site box from bedrock to the sky, an axis module's own space, 0.12.0);
+     * empty when the site's module is not known.
+     */
+    List<int[]> siteProtect(int site) {
+        return siteBoxes(site, siteProtects, true);
+    }
+
+    private List<int[]> siteBoxes(int site, Map<String, List<int[]>> cache, boolean protect) {
         ModuleSpec spec = ModuleSpecs.get(siteKinds.get(site));
-        if (spec == null || !spec.hasSite(site)) return null;
+        if (spec == null || !spec.hasSite(site)) return Collections.emptyList();
         int[] c = centre();
         int[] f = front();
         String key = spec.key + "@" + site + ":" + c[0] + "," + c[1] + "," + c[2] + ":" + f[0] + "," + f[1];
-        int[] box = siteBoxes.get(key);
-        if (box == null) {
-            box = spec.siteBox(plan(), site, c[0], c[1], c[2], f[0], f[1]);
-            if (siteBoxes.size() > 16) siteBoxes.clear();
-            siteBoxes.put(key, box);
+        List<int[]> boxes = cache.get(key);
+        if (boxes == null) {
+            boxes = protect ? spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1])
+                : spec.keepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+            if (cache.size() > 16) cache.clear();
+            cache.put(key, boxes);
         }
-        return box.clone();
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : boxes) out.add(b.clone());
+        return out;
+    }
+
+    /** Whether the multiblock is the module recorded on an axis site (0.12.0). */
+    private boolean onAxisSite(TileMultiblock m) {
+        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
+            int[] s = e.getValue();
+            if (SiteFamily.axisSite(e.getKey()) && s[0] == m.xCoord && s[1] == m.yCoord && s[2] == m.zCoord)
+                return true;
+        }
+        return false;
     }
 
     private boolean onRecordedSite(TileMultiblock m) {
@@ -1031,13 +1131,16 @@ public final class Campus {
         // the modules on the campus's recorded hall sites, loaded or not, but the one the job builds or repairs
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
             if (job != null && job.module() != null && job.site == e.getKey()) continue;
-            // the whole site: the building, its forecourt, apron and canopy (0.10.1; the footprint alone before)
-            int[] b = siteBox(e.getKey());
-            if (b != null) out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+            // the whole site: the building, its forecourt, apron and canopy (0.10.1; the footprint alone before); an
+            // axis module only the space it takes (0.12.0)
+            out.addAll(siteProtect(e.getKey()));
         }
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (m == nexus) continue;
             if (own != null && m.xCoord == own[0] && m.yCoord == own[1] && m.zCoord == own[2]) continue;
+            // the zenith's bounds take in the nexus's whole column from its legs to its pod: its own boxes above say
+            // what it takes, so the nexus can still grow and be repaired under it (0.12.0)
+            if (onAxisSite(m)) continue;
             int[] b = m.bounds();
             if (b != null) out.add(b.clone());
             else if (m instanceof TileModule tm) {
@@ -1046,9 +1149,10 @@ public final class Campus {
                 out.add(new int[] { k[0], mc[1] - 1, k[1], k[2], mc[1] + 16, k[3] });
             }
         }
+        // the job's keep-out boxes: whole columns, or a height-ranged box over its heights (0.12.0)
         if (job != null) for (int[] k : job.keepOut) out.add(
-            new int[] { Math.min(k[0], k[2]), 0, Math.min(k[1], k[3]), Math.max(k[0], k[2]), 255,
-                Math.max(k[1], k[3]) });
+            new int[] { Math.min(k[0], k[2]), k.length == 6 ? Math.min(k[4], k[5]) : 0, Math.min(k[1], k[3]),
+                Math.max(k[0], k[2]), k.length == 6 ? Math.max(k[4], k[5]) : 255, Math.max(k[1], k[3]) });
         return out;
     }
 
@@ -1189,6 +1293,7 @@ public final class Campus {
     public String start(EntityPlayer p) {
         if (job == null || BuildState.ended(job.state)) return NO_JOB;
         if (!nexus.member(p)) return NOT_MEMBER;
+        if (growsUnformed(job, nexus.formed())) return P + "grow_needs_nexus";
         boolean creative = p.capabilities != null && p.capabilities.isCreativeMode;
         freshKeepOut();
         ModuleSpec spec = ModuleSpecs.get(job.module());
@@ -1212,6 +1317,19 @@ public final class Campus {
         consent(p.getUniqueID(), creative);
         stateChanged();
         return P + "started";
+    }
+
+    /**
+     * Whether 开始 is refused on the job because it is a growth that has not begun (never started, nothing touched,
+     * nothing in flight) while the nexus stands unformed (0.12.0): its plan holds only the new stage and the lift pad
+     * and cannot put a broken base right, so the nexus is repaired first (修复, which takes its place while it waits).
+     * A growth that has begun goes on, a player's pause lifted: its pad landing takes the nexus apart for a moment, and
+     * if the nexus does not form it stops as incomplete, where 修复 repairs the nexus instead ({@link #repairGrowth}).
+     * This is exactly the growth {@link #holdsNexusRepair} lets through, so an unformed nexus always leaves 开始 or 修复
+     * open.
+     */
+    static boolean growsUnformed(BuildJob j, boolean formed) {
+        return j.grows() && !j.started && !j.touched && j.flights.isEmpty() && !formed;
     }
 
     /**
@@ -1309,6 +1427,8 @@ public final class Campus {
         job.state = BuildState.cancel(job.state);
         if (job.module() != null && !job.repair())
             declined.put(job.module(), world().getTotalWorldTime() + DECLINE_TICKS);
+        // a growth cancelled is offered again a day later, as a module is (0.12.0)
+        if (job.grows()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
         if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.V);
         if (job == instantJob) instantJob = null;
         stateChanged();
@@ -1391,12 +1511,21 @@ public final class Campus {
     }
 
     /**
-     * 修复: a job that stopped as incomplete starts over on the same plan (cells already right come free); otherwise a
-     * repair of the nexus or of a sited module that stood unformed for a while is queued.
+     * 修复: a job that stopped as incomplete starts over on the same plan (cells already right come free), but a growth
+     * that did gives way to a repair of the nexus ({@link #repairGrowth}); otherwise a repair of the nexus or of a
+     * sited module that stood unformed for a while is queued.
      */
     public String repair(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
         if (!active) return P + "nothing_to_repair";
+        return repairNow();
+    }
+
+    /** {@link #repair} after its checks. */
+    String repairNow() {
+        if (job != null && job.grows()
+            && job.state == BuildState.State.PAUSED
+            && job.pause == BuildState.Pause.INCOMPLETE) return repairGrowth();
         if (job != null && job.state == BuildState.State.PAUSED && job.pause == BuildState.Pause.INCOMPLETE) {
             // the same plan again, its clearing already done: only the structure's cells are put right
             Builder.forget(job, ledger, job.plan(this));
@@ -1419,14 +1548,52 @@ public final class Campus {
         return repairJob() != null;
     }
 
+    /**
+     * 修复 on a growth that stopped as incomplete (0.12.0): its plan holds only the new stage and the lift pad, so
+     * starting it over cannot put back a broken base. The growth ends (not declined: no member said no to it) and a
+     * repair of the nexus is queued in its place, at the phase {@link #repairPhase} gives: once the growth's stage and
+     * pad stand, the establish plan of the new phase puts the base, the stages and the pad right and the nexus forms as
+     * that phase; a repair at the old phase would clear the new stage off the dais.
+     */
+    String repairGrowth() {
+        BuildJob g = job;
+        int phase = repairPhase(g, nexus.grown());
+        g.state = BuildState.cancel(g.state);
+        if (g == instantJob) instantJob = null;
+        enqueue(BuildJob.repairNexus(keepOut(), phase));
+        return P + "repair_queued";
+    }
+
+    /**
+     * The phase a repair of the nexus builds when it takes the place of a growth: the growth's phase once its stage and
+     * lift pad were placed (it reached its FORM stage), else the phase the nexus grew to.
+     */
+    static int repairPhase(BuildJob growth, int grown) {
+        if (growth == null || !growth.grows() || growth.stage < BuildPlan.E_FORM) return grown;
+        return Math.max(grown, growth.growPhase());
+    }
+
+    /**
+     * Whether a job keeps 修复 from repairing the unformed nexus: one that raises the nexus itself (the establish job, a
+     * repair of it), or a growth that has begun (started, touched something or with cells in flight): its lift pad
+     * landing takes the nexus apart for a moment, and it ends with the nexus formed as the new phase or stops as
+     * incomplete, where 修复 repairs the nexus instead ({@link #repairGrowth}). A growth still waiting for 开始 holds
+     * nothing up: the repair takes its place ({@link #admit}) and the growth is surveyed again after it.
+     */
+    static boolean holdsNexusRepair(BuildJob j) {
+        if (BuildState.ended(j.state)) return false;
+        if (j.raisesNexus()) return true;
+        return j.grows() && (j.started || j.touched || !j.flights.isEmpty());
+    }
+
     private BuildJob repairJob() {
         World w = world();
         if (w == null) return null;
         long now = w.getTotalWorldTime();
         if (!nexus.formed() && nexusUnformedSince >= 0 && now - nexusUnformedSince > REPAIR_AFTER) {
             boolean busy = false;
-            for (BuildJob j : jobs()) if (j.raisesNexus() && !BuildState.ended(j.state)) busy = true;
-            if (!busy) return BuildJob.repairNexus(keepOut());
+            for (BuildJob j : jobs()) if (holdsNexusRepair(j)) busy = true;
+            if (!busy) return BuildJob.repairNexus(keepOut(), nexus.grown());
         }
         for (Map.Entry<Integer, Long> e : siteUnformedSince.entrySet()) {
             if (now - e.getValue() <= REPAIR_AFTER || jobOnSite(e.getKey()) != null) continue;
@@ -1472,6 +1639,7 @@ public final class Campus {
         }
         c.graded = gradedVersion;
         c.free = freeBuild;
+        c.phase = nexus.grown();
         return c.write();
     }
 
@@ -1522,6 +1690,8 @@ public final class Campus {
         declined.putAll(c.declined);
         gradedVersion = c.graded;
         freeBuild = c.free;
+        // the nexus put back is the phase it had grown to (0.12.0): it forms as that phase, a repair builds that phase
+        nexus.regrow(c.phase);
         resumeJob = c.unfinished;
         resumeCheckAt = w.getTotalWorldTime() + RESUME_CHECK;
         CampusRegistry.add(w, ce[0], ce[1], ce[2], CampusPlan.GRADE_R);
@@ -1543,8 +1713,9 @@ public final class Campus {
             else if (j.campusJob()) forumJob = true;
         }
         if (!nexusJob && (!nexus.formed() || BuildPlan.ESTABLISH.equals(unfinished))) {
-            // the same plan as the establish job, without its grading: what stands comes free
-            enqueue(BuildJob.repairNexus(keepOut()));
+            // the same plan as the establish job, without its grading, at the phase the nexus had grown to: what
+            // stands comes free
+            enqueue(BuildJob.repairNexus(keepOut(), nexus.grown()));
         } else if (!forumJob && BuildPlan.FORUM.equals(unfinished)) {
             BuildJob f = BuildJob.forum(keepOut());
             // its clearing was done before the core was broken
@@ -1557,11 +1728,12 @@ public final class Campus {
      * A campus as a broken core carries it ({@link #carried}), read and written without a world. Item NBT:
      * {@code Dim}, {@code Pos} (the core, int[3]), {@code F} (its front), {@code Sites} [{S, P, K}] as the campus saves
      * them, {@code Skip}, {@code Declined} {module: until}, {@code Job} (the plan key of the campus job not finished,
-     * "" for none), {@code Pv} (the plan version its grading last ran under, 0.10.1) and {@code Fb} (free building).
+     * "" for none), {@code Pv} (the plan version its grading last ran under, 0.10.1), {@code Fb} (free building) and
+     * {@code Ph} (the phase the nexus had grown to, 0.12.0; 1 when missing).
      */
     static final class Carried {
 
-        int dim, front = 2;
+        int dim, front = 2, phase = 1;
         int[] core = new int[3];
         final Map<Integer, int[]> sites = new TreeMap<>();
         final Map<Integer, String> kinds = new HashMap<>();
@@ -1592,6 +1764,7 @@ public final class Campus {
             t.setString("Job", unfinished);
             t.setInteger("Pv", graded);
             t.setBoolean("Fb", free);
+            t.setInteger("Ph", phase);
             return t;
         }
 
@@ -1620,6 +1793,7 @@ public final class Campus {
             c.unfinished = BuildPlan.ESTABLISH.equals(job) || BuildPlan.FORUM.equals(job) ? job : "";
             c.graded = t.getInteger("Pv");
             c.free = t.getBoolean("Fb");
+            c.phase = Math.max(1, t.getInteger("Ph"));
             return c;
         }
 
@@ -1766,7 +1940,7 @@ public final class Campus {
         for (int i = 0; i < pl.steps.size(); i++) {
             if (j.done(i) || j.skipped(i) || j.flying(i)) continue;
             BuildPlan.Step s = pl.steps.get(i);
-            if (s.kind == BuildPlan.AIR || Builder.gift(s.part) && j.campusJob() || !Builder.placeable(s)) continue;
+            if (BuildPlan.empties(s.kind) || Builder.gift(s.part) && j.campusJob() || !Builder.placeable(s)) continue;
             out.merge(s.part, 1, Integer::sum);
         }
         return out;
@@ -1834,10 +2008,13 @@ public final class Campus {
         BuildPlan.Plan pl = job.plan(this);
         if (pl == null) return eta = -1;
         int[] rem = new int[pl.stages];
-        for (int i = 0; i < pl.steps.size(); i++) if (!job.done(i) && !job.skipped(i)) rem[pl.steps.get(i).stage]++;
+        // the caisson's digging and draining (0.12.0) go at the clearing's pace: the survey counted them as clears
+        for (int i = 0; i < pl.steps.size(); i++)
+            if (!job.done(i) && !job.skipped(i) && !BuildPlan.digs(pl.steps.get(i).kind)) rem[pl.steps.get(i).stage]++;
         long clears = Math.max(0, job.natural - (job.cleared - job.clearedAtSurvey))
             + Math.max(0, job.toFill - (job.filled - job.filledAtSurvey));
-        eta = BuildPace.etaTicks(rem, job.campusJob(), Config.buildBlocksPerTick, clears, Config.buildClearPerTick);
+        eta = BuildPace
+            .etaTicks(rem, job.campusJob() || job.grows(), Config.buildBlocksPerTick, clears, Config.buildClearPerTick);
         return eta;
     }
 
@@ -2019,6 +2196,8 @@ public final class Campus {
         t.setIntArray("Bl", blocked);
         t.setIntArray("Te", packed(job.machineCells(), c));
         t.setIntArray("Ko", BuildJob.boxes(job.keepOut));
+        int[] ranged = BuildJob.boxes(job.keepOut, 6);
+        if (ranged.length > 0) t.setIntArray("Kr", ranged);
     }
 
     /** World cells {x, y, z} packed relative to the centre ({@link FxCodec}); cells too far out are left out. */
@@ -2091,9 +2270,7 @@ public final class Campus {
             for (int i = 0; i < missingCount.length; i++) missingCount[i] = mc.get(i);
             blocked = t.getIntArray("Bl");
             keepOut = new ArrayList<>();
-            int[] ko = t.getIntArray("Ko");
-            for (int i = 0; i + 3 < ko.length; i += 4)
-                keepOut.add(new int[] { ko[i], ko[i + 1], ko[i + 2], ko[i + 3] });
+            BuildJob.readBoxes(t, keepOut);
         }
 
         /** Whether there is a job. */

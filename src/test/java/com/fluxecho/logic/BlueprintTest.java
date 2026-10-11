@@ -2,6 +2,8 @@ package com.fluxecho.logic;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Random;
 
@@ -9,7 +11,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The way back from the world into a blueprint ({@link Blueprint#cell}, {@link Blueprint#point}): what the library
- * uses to tell which shelf unit a clicked block or the camera is in, for every facing.
+ * uses to tell which shelf unit a clicked block or the camera is in, for every facing; and the blueprint's box in the
+ * world ({@link Blueprint#inBox}), what a city module covers.
  */
 class BlueprintTest {
 
@@ -60,6 +63,34 @@ class BlueprintTest {
             // one block further out than the door cell, toward the nexus
             double[] out = bp.point(o[0] + 0.5 + f[0], o[1] + 0.1, o[2] + 0.5 + f[1], X, Y, Z, f[0], f[1]);
             assertEquals(false, ArchiveShape.inside(out[0], out[1], out[2]), "in front of the doors");
+        }
+    }
+
+    /**
+     * The box of a blueprint in the world (0.12.0) holds every cell of it, drawn or not, and nothing one block past any
+     * of its six faces, for every facing: the zenith's 29 x 49 x 25 box with its controller high in the pod.
+     */
+    @Test
+    void theBoxHoldsEveryCellAndNothingPastIt() {
+        Blueprint bp = DomeGeneratorShape.MOORED_BP;
+        int w = bp.width(), h = bp.height(), d = bp.depth();
+        for (int[] f : FACINGS) {
+            for (Blueprint.Cell c : bp.cells()) {
+                int[] p = bp.world(c.a, c.b, c.c, X, Y, Z, f[0], f[1]);
+                assertTrue(bp.inBox(p[0], p[1], p[2], X, Y, Z, f[0], f[1]));
+            }
+            int[][] corners = { { 0, 0, 0 }, { w - 1, h - 1, d - 1 } };
+            for (int[] k : corners) {
+                int[] p = bp.world(k[0], k[1], k[2], X, Y, Z, f[0], f[1]);
+                assertTrue(bp.inBox(p[0], p[1], p[2], X, Y, Z, f[0], f[1]), "a corner of the box");
+            }
+            int[][] past = { { -1, 0, 0 }, { w, 0, 0 }, { 0, -1, 0 }, { 0, h, 0 }, { 0, 0, -1 }, { 0, 0, d } };
+            for (int[] k : past) {
+                int[] p = bp.world(k[0], k[1], k[2], X, Y, Z, f[0], f[1]);
+                assertFalse(
+                    bp.inBox(p[0], p[1], p[2], X, Y, Z, f[0], f[1]),
+                    "past a face: " + k[0] + "," + k[1] + "," + k[2] + " facing " + f[0] + "," + f[1]);
+            }
         }
     }
 }

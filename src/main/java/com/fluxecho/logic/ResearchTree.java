@@ -53,7 +53,11 @@ public final class ResearchTree {
         public final List<Cost> costs;
         /** Entries the team's Echo Codex must hold. */
         public final int minRecords;
-        /** The nexus phase it needs; above {@link #PHASE_NOW} it shows on the map but cannot be started yet. */
+        /**
+         * The nexus phase it belongs to; above {@link #PHASE_NOW} it shows on the map but cannot be started yet. A
+         * phase's own node ({@code phase_N}, 0.12.0) is the phase it opens: it is researched on a nexus of the phase
+         * below ({@link #nexusPhase}).
+         */
         public final int phase;
 
         Node(String id, Branch branch, int x, int y, String[] requires, long compute, String[] costs, int minRecords,
@@ -76,6 +80,14 @@ public final class ResearchTree {
         /** Granted with the first formed nexus: the root of the map. */
         public boolean root() {
             return requires.isEmpty();
+        }
+
+        /**
+         * The phase the nexus must have grown to before the node can be started: its {@link #phase}, but one less for
+         * a phase's own node ({@code phase_2} is researched at phase I and opens phase II).
+         */
+        public int nexusPhase() {
+            return phaseOf(id) > 0 ? phase - 1 : phase;
         }
     }
 
@@ -112,8 +124,8 @@ public final class ResearchTree {
         }
     }
 
-    /** The highest phase a nexus reaches in this version. */
-    public static final int PHASE_NOW = 1;
+    /** The highest phase a nexus reaches in this version (0.12.0: phase II, CITY.md §5.1). */
+    public static final int PHASE_NOW = 2;
 
     public static final String ANCHOR = "anchor", INNER_RING = "inner_ring", PHASE_2 = "phase_2",
         ECHO_CRYSTAL = "echo_crystal", LIBRARY = "library", LIBRARY_REACH = "library_reach", COMPUTE_1 = "compute_1",
@@ -134,7 +146,19 @@ public final class ResearchTree {
             new String[] { "ore:gemFluxCrystal*16", "ore:plateStainlessSteel*8" },
             0,
             1);
-        add(PHASE_2, Branch.FRAME, 180, 30, new String[] { INNER_RING }, 0, new String[0], 0, 2);
+        // 0.12.0: the nexus grows to phase II (EV: titanium hull plates, EV circuits and the phase's own alloy; CITY.md
+        // §5.2, Appendix B, BLUEPRINT 3.6)
+        add(
+            PHASE_2,
+            Branch.FRAME,
+            180,
+            30,
+            new String[] { INNER_RING },
+            40_000,
+            new String[] { "ore:plateTitanium*32", "ore:circuitEV*8", "ore:ingotPhaseAlloy*16",
+                "ore:gemFluxCrystal*32" },
+            0,
+            2);
         add(
             ECHO_CRYSTAL,
             Branch.ECHO,
@@ -185,7 +209,18 @@ public final class ResearchTree {
             new String[] { "ore:gemFluxCrystal*4", "ore:plateStainlessSteel*8" },
             0,
             1);
-        add(TIDAL_WELL, Branch.ENERGY, 92, 160, new String[] { UPKEEP_1 }, 0, new String[0], 0, 2);
+        // 0.12.0: the root's first shape, the Tidal Well under the nexus (CITY.md §4.9, Appendix B)
+        add(
+            TIDAL_WELL,
+            Branch.ENERGY,
+            92,
+            160,
+            new String[] { PHASE_2, UPKEEP_1 },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "ore:glassResonant*8",
+                "ore:gemFluxCrystal*16" },
+            0,
+            2);
         add(
             GRIT_YIELD,
             Branch.DEPTHS,
@@ -196,7 +231,18 @@ public final class ResearchTree {
             new String[] { "ore:dustFluxGrit*32", "ore:gemFluxCrystal*4" },
             0,
             1);
-        add(DOME, Branch.GUARD, 180, 168, new String[] { ANCHOR }, 0, new String[0], 0, 2);
+        // 0.12.0: the Echo Dome Generator at the zenith, moored on six legs (CITY.md §4.8, Appendix B)
+        add(
+            DOME,
+            Branch.GUARD,
+            180,
+            168,
+            new String[] { PHASE_2 },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "ore:glassResonant*16",
+                "ore:gemEchoCrystal*4", "item:minecraft:ender_eye*8" },
+            0,
+            2);
         // 0.11.0: the second module the nexus builds, the Eco Dome (CITY.md Appendix B)
         add(
             ECO_DOME,
@@ -258,10 +304,29 @@ public final class ResearchTree {
      */
     public static Block check(Node n, Set<String> done, int phase, int records) {
         if (done.contains(n.id)) return Block.DONE;
-        if (n.phase > phase || !availableNow(n)) return Block.LATER_PHASE;
+        if (n.nexusPhase() > phase || !availableNow(n)) return Block.LATER_PHASE;
         for (String r : n.requires) if (!done.contains(r)) return Block.REQUIRES;
         if (records < n.minRecords) return Block.RECORDS;
         return Block.NONE;
+    }
+
+    /**
+     * The id of the node that opens a phase: {@code phase_N} (0.12.0: {@code phase_2}).
+     */
+    public static String phaseResearch(int phase) {
+        return "phase_" + phase;
+    }
+
+    /**
+     * The phase a phase's own node opens ({@code phase_N}), or 0 for any other id.
+     */
+    public static int phaseOf(String id) {
+        if (id == null || !id.startsWith("phase_")) return 0;
+        try {
+            return Integer.parseInt(id.substring("phase_".length()));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /** Compute a node takes with the config's scale; at least 1 for anything but the root. */

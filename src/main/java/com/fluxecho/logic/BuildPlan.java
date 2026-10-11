@@ -15,7 +15,7 @@ import java.util.Set;
  * A plan is pure data computed from the job's inputs alone (the {@link CampusPlan} of the nexus, its centre, its
  * front, for a module the site, and for the establish and forum jobs the keep-out boxes of the modules that stood near
  * the nexus when the job was made), never from the config or the world, so the client draws the same projection the
- * server builds and a job that is saved with those inputs can be recomputed after a restart. Three jobs have plans:
+ * server builds and a job that is saved with those inputs can be recomputed after a restart. These jobs have plans:
  * <ul>
  * <li>{@link #establish}: grade the campus disc, raise the phase-I nexus round the player's core, pave the forum, the
  * gate and the promenade ring, then stand the gate pylons and the supply port;</li>
@@ -25,6 +25,11 @@ import java.util.Set;
  * {@link #ARCHIVE}, every city module through its {@link CityBuild}): its forecourt and apron, its interior floor, its
  * shell from the bottom up, its decks, upper walls and roof, its fittings and units, the canopy (and for a city module
  * its seeded ornaments), and the controller last.</li>
+ * <li>{@link #grow}: the next stage of a formed nexus (0.12.0, CITY.md §3), at phase II with the light-lift pad;</li>
+ * <li>{@link #zenith}: the Echo Dome Generator over the nexus (0.12.0, {@link DomeGeneratorShape}): its six legs from
+ * the forum, then its pod in the air.</li>
+ * <li>{@link #root}: the Tidal Well under the nexus (0.12.0, {@link RootShape}), sunk as a caisson: layer by layer from
+ * the lid down, each layer's wall ring before its inside is dug.</li>
  * </ul>
  * Steps come in stage order. Within a stage they rise bottom-up by layer and spread outward from the nexus, a cell
  * and its mirror image across the job's axis side by side, so the build reads as an ordered band. Each shelf unit of
@@ -37,11 +42,24 @@ import java.util.Set;
  * canopy); an {@link #AIR} step is a cell that must become air (the Archive's door openings). Clear columns overlap
  * step cells on purpose (an Archive's box holds the whole building): the builder decides a step's own cell with
  * {@link TerrainRule#forBuild} and only clears the other cells of a column.
+ * <p>
+ * The caisson (0.12.0, the root) adds two kinds of step that only empty their cell, at once and at the clearing's pace
+ * as a clear column's cell is, never flown and never checked: a {@link #DIG} step digs out a cell inside the shell,
+ * and a {@link #DRAIN} step later takes away a fluid that flowed into it. A dug cell may be filled by a later step of
+ * the same plan (the root's floor and fittings): such a plan has more than one step at a cell ({@link Plan#repeat},
+ * {@link Plan#placedAfter}). A stage may come in bands ({@link Plan#bandEnd}): the builder works no step of a band
+ * before every step of the band before it is done, so the root never digs a layer before the wall ring above it
+ * stands.
  */
 public final class BuildPlan {
 
     /** A checked structure cell, an unchecked cell (paving, fixtures, decoration), a cell that must become air. */
     public static final byte HARD = 0, SOFT = 1, AIR = 2;
+    /**
+     * A cell the caisson digs out (its block taken down as a clear column's is), and a cell it drains (only a fluid
+     * that flowed in is taken away) (0.12.0, the root): neither is flown, placed or checked.
+     */
+    public static final byte DIG = 3, DRAIN = 4;
     /** The group of a step that launches on its own. */
     public static final int NO_GROUP = -1;
 
@@ -53,6 +71,11 @@ public final class BuildPlan {
 
     /** The job keys of the plans. */
     public static final String ESTABLISH = "establish", FORUM = "forum", LIBRARY = "library";
+    /**
+     * The plan key prefix of a nexus growth job (0.12.0): {@code grow:<phase>} raises the stage of that phase on a
+     * formed nexus of the phase below ({@link #grow}).
+     */
+    public static final String GROW = "grow";
 
     /** Grading and dais columns clear from Y0 + 1 up to Y0 + this (the builder clips it to the config). */
     public static final int CLEAR_UP = 24;
@@ -94,6 +117,26 @@ public final class BuildPlan {
 
     private BuildPlan() {}
 
+    /** Whether a step of the kind only empties its cell, at the clearing's pace: {@link #DIG} or {@link #DRAIN}. */
+    public static boolean digs(byte kind) {
+        return kind == DIG || kind == DRAIN;
+    }
+
+    /** Whether a step of the kind leaves its cell empty: {@link #AIR}, {@link #DIG} or {@link #DRAIN}. */
+    public static boolean empties(byte kind) {
+        return kind == AIR || digs(kind);
+    }
+
+    /**
+     * Whether the survey before 开始 marks a step of the kind done when it finds its cell right already. Not a
+     * {@link #DIG} or {@link #DRAIN} step of the caisson: a cell found empty may hold a block by the time its layer is
+     * sunk (stone where lava met water in a cave, a block an enderman set down), and nothing would look at it again, so
+     * those steps are only judged when their band comes (for free, as an empty cell is then).
+     */
+    public static boolean surveySettles(byte kind) {
+        return !digs(kind);
+    }
+
     /** One block to place (or to make air). */
     public static final class Step {
 
@@ -105,7 +148,7 @@ public final class BuildPlan {
         public final int stage;
         /** The group the step launches with, or {@link #NO_GROUP}. */
         public final int group;
-        /** {@link #HARD}, {@link #SOFT} or {@link #AIR}. */
+        /** {@link #HARD}, {@link #SOFT}, {@link #AIR}, or for the caisson {@link #DIG} or {@link #DRAIN}. */
         public final byte kind;
 
         public Step(int x, int y, int z, int part, int stage, int group, byte kind) {
@@ -218,19 +261,85 @@ public final class BuildPlan {
         public final String key;
         /** The index of the first step of every stage, then the step count. */
         private final int[] starts;
+        /** The step indices where a band begins inside a stage (0.12.0, the caisson), ascending; mostly none. */
+        private final int[] bands;
+        /** What the plan's cells hold more than one step ({@link #repeat}, {@link #placedAfter}), worked out once. */
+        private volatile Repeats repeats;
 
         Plan(String key, int stages, List<List<Step>> byStage, List<Column> clear) {
+            this(key, stages, byStage, clear, null);
+        }
+
+        /**
+         * @param bandStarts per stage, the offsets of its steps where a new band begins (0.12.0); null, or a null or
+         *                   empty entry, for a stage that is one band
+         * @throws IllegalArgumentException if a band would begin at its stage's first step or past its last
+         */
+        Plan(String key, int stages, List<List<Step>> byStage, List<Column> clear, List<List<Integer>> bandStarts) {
             this.key = key;
             this.stages = stages;
             List<Step> all = new ArrayList<>();
+            List<Integer> b = new ArrayList<>();
             starts = new int[stages + 1];
             for (int s = 0; s < stages; s++) {
                 starts[s] = all.size();
+                List<Integer> in = bandStarts == null || s >= bandStarts.size() ? null : bandStarts.get(s);
+                if (in != null) for (int o : in) {
+                    if (o <= 0 || o >= byStage.get(s)
+                        .size()) throw new IllegalArgumentException("a band starts outside its stage: " + o);
+                    b.add(starts[s] + o);
+                }
                 all.addAll(byStage.get(s));
             }
             starts[stages] = all.size();
             steps = Collections.unmodifiableList(all);
             this.clear = Collections.unmodifiableList(new ArrayList<>(clear));
+            bands = new int[b.size()];
+            for (int i = 0; i < bands.length; i++) bands[i] = b.get(i);
+            java.util.Arrays.sort(bands);
+        }
+
+        /**
+         * One past the last step of the band step {@code i} is in (0.12.0): where the next band begins, or the step
+         * count when no band begins after it. A stage's end is not a band's: the builder never works past its stage
+         * anyway.
+         */
+        public int bandEnd(int i) {
+            int lo = 0, hi = bands.length;
+            while (lo < hi) {
+                int mid = (lo + hi) >>> 1;
+                if (bands[mid] <= i) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo < bands.length ? bands[lo] : steps.size();
+        }
+
+        /** How many bands begin inside the plan's stages (0 for a plan without bands). */
+        public int bandCount() {
+            return bands.length;
+        }
+
+        /**
+         * Whether an earlier step of the plan is at step {@code i}'s cell (0.12.0: the caisson digs a cell, drains it,
+         * then fills it). The survey looks at a cell's first step only; the later ones are judged in their stage.
+         */
+        public boolean repeat(int i) {
+            return repeats().repeat.get(i);
+        }
+
+        /**
+         * The part the first later step at step {@code i}'s cell places there (a {@link #HARD} or {@link #SOFT} step),
+         * or -1 when none does: what a {@link #DIG} or {@link #DRAIN} step leaves standing when it is there already (a
+         * well raised again, or repaired, keeps its floor, its fittings and its controller).
+         */
+        public int placedAfter(int i) {
+            return repeats().after[i];
+        }
+
+        private Repeats repeats() {
+            Repeats r = repeats;
+            if (r == null) repeats = r = new Repeats(steps);
+            return r;
         }
 
         /** The index in {@link #steps} of the stage's first step (the next stage's start when it has none). */
@@ -246,6 +355,35 @@ public final class BuildPlan {
         /** How many steps the stage has. */
         public int count(int stage) {
             return end(stage) - start(stage);
+        }
+    }
+
+    /** The cells of a plan that hold more than one step: which steps repeat a cell, and what a later step places. */
+    private static final class Repeats {
+
+        final java.util.BitSet repeat = new java.util.BitSet();
+        final int[] after;
+
+        Repeats(List<Step> steps) {
+            int n = steps.size();
+            after = new int[n];
+            Set<Long> seen = new HashSet<>();
+            for (int i = 0; i < n; i++) {
+                Step s = steps.get(i);
+                if (!seen.add(cellKey(s.x, s.y, s.z))) repeat.set(i);
+            }
+            Map<Long, Integer> later = new java.util.HashMap<>();
+            for (int i = n - 1; i >= 0; i--) {
+                Step s = steps.get(i);
+                long k = cellKey(s.x, s.y, s.z);
+                Integer p = later.get(k);
+                after[i] = p == null ? -1 : p;
+                if ((s.kind == HARD || s.kind == SOFT) && s.part != Parts.AIR) later.put(k, s.part);
+            }
+        }
+
+        private static long cellKey(int x, int y, int z) {
+            return ((long) x & 0x3FFFFFF) << 38 | ((long) z & 0x3FFFFFF) << 12 | (y & 0xFFF);
         }
     }
 
@@ -343,10 +481,11 @@ public final class BuildPlan {
      * port and the recycle bin beside it at Y0 + 1.</li>
      * </ul>
      * The grading columns, the floor cells, the pylons, the supply port and the recycle bin that fall inside a
-     * {@code keepOut} box are
-     * left out, so the job never touches a module that already stands round the nexus (a 0.9.2 hall docked on the
-     * inner ring: slot 0 lies on the gate, and every slot lies in the graded disc). The dais columns and the nexus
-     * itself are never left out; the core placement has to refuse a spot whose dais overlaps a module.
+     * {@code keepOut} box are left out, so the job never touches a module that already stands round the nexus (a 0.9.2
+     * hall docked on the inner ring: slot 0 lies on the gate, and every slot lies in the graded disc). A height-ranged
+     * box (0.12.0, a leg of the zenith) leaves out only what reaches its heights: the grading column, not the floor
+     * tile and the fixtures under a leg that starts higher. The dais columns and the nexus itself are never left out;
+     * the core placement has to refuse a spot whose dais overlaps a module.
      *
      * @param cx      the nexus centre (the middle of its base), with {@code y0} the base layer
      * @param fx      the nexus front, a horizontal unit vector
@@ -354,8 +493,10 @@ public final class BuildPlan {
      * @param ctrlX   the nexus controller (the core the player placed)
      * @param keepOut world boxes {x0, z0, x1, z1} (inclusive, any corner order) whose columns the campus work leaves
      *                alone, normally one {@link #moduleKeepOut} per module standing near the nexus when the job was
-     *                made; the job must keep the list so that a recomputed plan (and the client's) is the same
-     * @throws IllegalArgumentException if the front is not a horizontal unit vector or a box is not four numbers
+     *                made, or {x0, z0, x1, z1, yFrom, yTo} it leaves alone over those heights only; the job must keep
+     *                the list so that a recomputed plan (and the client's) is the same
+     * @throws IllegalArgumentException if the front is not a horizontal unit vector or a box is not four or six
+     *                                  numbers
      */
     public static Plan establish(CampusPlan plan, int cx, int y0, int cz, int fx, int fz, Blueprint nexus, int ctrlX,
         int ctrlY, int ctrlZ, List<int[]> keepOut) {
@@ -391,9 +532,11 @@ public final class BuildPlan {
      * on slot 0 stands on the gate), so the caller passes a {@link #moduleKeepOut} for every module near the nexus,
      * formed or not.
      *
-     * @param keepOut world boxes {x0, z0, x1, z1} (inclusive, any corner order) the job leaves alone; the job must
-     *                keep the list so that a recomputed plan (and the client's) is the same
-     * @throws IllegalArgumentException if the front is not a horizontal unit vector or a box is not four numbers
+     * @param keepOut world boxes {x0, z0, x1, z1} (inclusive, any corner order) the job leaves alone, or
+     *                {x0, z0, x1, z1, yFrom, yTo} over those heights only; the job must keep the list so that a
+     *                recomputed plan (and the client's) is the same
+     * @throws IllegalArgumentException if the front is not a horizontal unit vector or a box is not four or six
+     *                                  numbers
      */
     public static Plan forum(CampusPlan plan, int cx, int y0, int cz, int fx, int fz, List<int[]> keepOut) {
         facingOrdinal(fx, fz);
@@ -405,13 +548,15 @@ public final class BuildPlan {
     }
 
     /**
-     * The stages the establish and forum jobs share: grading columns, the floor and the fixtures, less every column
-     * the keep-out boxes hold.
+     * The stages the establish and forum jobs share: grading columns, the floor and the fixtures, less what the
+     * keep-out boxes hold: a grading column a box reaches between Y0 + 1 and Y0 + {@link #CLEAR_UP}, a floor cell a
+     * box holds at Y0, a pylon, the supply port or the recycle bin a box holds at their heights. A four-number box
+     * holds its whole columns, so everything in it is left out as before 0.12.0.
      */
     private static List<List<Step>> campus(CampusPlan plan, Frame f, List<Clearing> clear, KeepOut out) {
         for (long k : plan.gradeArea()) {
             int[] w = f.world(CampusPlan.keyA(k), CampusPlan.keyR(k));
-            if (out.holds(w[0], w[1])) continue;
+            if (out.holds(w[0], w[1], f.y0 + 1, f.y0 + CLEAR_UP)) continue;
             clear.add(new Clearing(f, w[0], f.y0 + 1, w[1], f.y0 + CLEAR_UP, true));
         }
         clear.sort(RIPPLE);
@@ -422,7 +567,7 @@ public final class BuildPlan {
             .entrySet()) {
             long k = e.getKey();
             int[] w = f.world(CampusPlan.keyA(k), CampusPlan.keyR(k));
-            if (out.holds(w[0], w[1])) continue;
+            if (out.holds(w[0], w[1], f.y0, f.y0)) continue;
             paving(floor, f, CampusPlan.keyA(k), CampusPlan.keyR(k), e.getValue(), wells.contains(k));
         }
         floor.sort(RIPPLE);
@@ -430,7 +575,7 @@ public final class BuildPlan {
         List<Draft> pylons = new ArrayList<>();
         for (int[] p : plan.pylons()) {
             int[] w = f.world(p[0], p[1]);
-            if (out.holds(w[0], w[1])) continue;
+            if (out.holds(w[0], w[1], f.y0 + 1, f.y0 + PYLON_PILLARS + 1)) continue;
             for (int i = 1; i <= PYLON_PILLARS + 1; i++) {
                 int part = Parts.frame(i <= PYLON_PILLARS ? Parts.FR_PILLAR : Parts.FR_CONDUIT);
                 pylons.add(new Draft(f, w[0], f.y0 + i, w[1], part, SOFT, NO_GROUP));
@@ -439,12 +584,12 @@ public final class BuildPlan {
         pylons.sort(BOTTOM_UP);
         int[] port = plan.supplyPort();
         int[] pw = f.world(port[0], port[1]);
-        if (!out.holds(pw[0], pw[1])) {
+        if (!out.holds(pw[0], pw[1], f.y0 + 1, f.y0 + 1)) {
             pylons.add(new Draft(f, pw[0], f.y0 + 1, pw[1], Parts.SUPPLY_PORT, SOFT, NO_GROUP));
         }
         int[] bin = plan.recycleBin();
         int[] bw = f.world(bin[0], bin[1]);
-        if (!out.holds(bw[0], bw[1])) {
+        if (!out.holds(bw[0], bw[1], f.y0 + 1, f.y0 + 1)) {
             pylons.add(new Draft(f, bw[0], f.y0 + 1, bw[1], Parts.RECYCLE_BIN, SOFT, NO_GROUP));
         }
 
@@ -452,6 +597,93 @@ public final class BuildPlan {
         stages.set(E_FLOOR, steps(floor, E_FLOOR));
         stages.set(E_FIXTURE, steps(pylons, E_FIXTURE));
         return stages;
+    }
+
+    // ---- the nexus grows (0.12.0) ----
+
+    /**
+     * The plan key of the establish plan raising the nexus of a phase: {@link #ESTABLISH} for phase I (the plan of
+     * every new campus), {@code establish:<phase>} above it, the plan a repair of a grown nexus builds (its stages, its
+     * lift pad) so that a repair never takes a grown nexus back to phase I.
+     */
+    public static String establishKey(int phase) {
+        return phase <= 1 ? ESTABLISH : ESTABLISH + ":" + Math.min(NexusShape.PHASES, phase);
+    }
+
+    /** The nexus phase an establish plan key raises ({@link #establishKey}), or 0 for any other key. */
+    public static int establishPhase(String key) {
+        if (ESTABLISH.equals(key)) return 1;
+        return phaseAfter(key, ESTABLISH + ":");
+    }
+
+    /** The plan key of the growth job to a phase: {@code grow:<phase>}. */
+    public static String growKey(int phase) {
+        return GROW + ":" + phase;
+    }
+
+    /** The phase a growth plan key grows the nexus to ({@link #growKey}), or 0 for any other key. */
+    public static int growPhase(String key) {
+        int p = phaseAfter(key, GROW + ":");
+        return p >= 2 ? p : 0;
+    }
+
+    private static int phaseAfter(String key, String prefix) {
+        if (key == null || !key.startsWith(prefix)) return 0;
+        try {
+            int p = Integer.parseInt(key.substring(prefix.length()));
+            return p >= 1 && p <= NexusShape.PHASES ? p : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * The growth job of a formed nexus to {@code phase} (0.12.0, CITY.md §3), in the establish job's stage numbers:
+     * <ul>
+     * <li>CLEAR: the base's columns over the new stage, its five layers and two more (Y0 + 5(p-1) + 1 to Y0 + 5p + 2),
+     * outward from the centre; the columns are not graded.</li>
+     * <li>CORE: the stage's cells bottom-up, each layer clockwise from the front, as the establish job raises the rest
+     * of the nexus; at phase II then the light-lift pad in the middle of the base, last: it takes the place of the lit
+     * hub there (a block of ours, so the builder credits it to the ledger), and the moment it lands the phase-I shape
+     * no longer holds while the phase-II shape does.</li>
+     * <li>FORM: no steps; the builder waits for the nexus to stand as the new phase.</li>
+     * <li>FLOOR and FIXTURE: empty.</li>
+     * </ul>
+     * Every cell is placed where {@link Blueprint#world} puts it for the controller in the phase's own blueprint, so
+     * the HARD steps are exactly the cells the structure check of that phase adds.
+     *
+     * @throws IllegalArgumentException if the phase is not 2 to {@link NexusShape#PHASES} or the front not a
+     *                                  horizontal unit vector
+     */
+    public static Plan grow(int phase, int cx, int y0, int cz, int fx, int fz, int ctrlX, int ctrlY, int ctrlZ) {
+        facingOrdinal(fx, fz);
+        if (phase < 2 || phase > NexusShape.PHASES) throw new IllegalArgumentException("no growth to phase " + phase);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        Blueprint nexus = NexusShape.phase(phase);
+        List<Clearing> clear = new ArrayList<>();
+        int from = y0 + NexusShape.STAGE * (phase - 1) + 1, to = y0 + NexusShape.STAGE * phase + 2;
+        for (int a = -DAIS_R; a <= DAIS_R; a++) for (int r = -DAIS_R; r <= DAIS_R; r++) {
+            if (!CampusPlan.inBase(a, r)) continue;
+            int[] w = f.world(a, r);
+            clear.add(new Clearing(f, w[0], from, w[1], to, false));
+        }
+        clear.sort(RIPPLE);
+        List<Draft> stage = new ArrayList<>(), pad = new ArrayList<>();
+        for (int[] c : NexusShape.stageCells(phase)) {
+            // the cell in the phase's blueprint: across, layer from the top, row from the front
+            int a = c[1] + NexusShape.RADIUS, b = nexus.height() - 1 - c[0], row = c[2] + NexusShape.RADIUS;
+            int[] w = nexus.world(a, b, row, ctrlX, ctrlY, ctrlZ, fx, fz);
+            Draft d = new Draft(f, w[0], w[1], w[2], nexusPart((char) c[3]), HARD, NO_GROUP);
+            (c[3] == NexusShape.LIFT ? pad : stage).add(d);
+        }
+        stage.sort(
+            Comparator.<Draft>comparingInt(d -> d.y)
+                .thenComparingDouble(Draft::angle)
+                .thenComparing(BOTTOM_UP));
+        stage.addAll(pad);
+        List<List<Step>> stages = empty(E_STAGES);
+        stages.set(E_CORE, steps(stage, E_CORE));
+        return new Plan(growKey(phase), E_STAGES, stages, columns(clear));
     }
 
     /** The CORE stage: the nexus blueprint but its controller, in its ceremonial order. */
@@ -506,6 +738,8 @@ public final class BuildPlan {
                 return Parts.frame(Parts.FR_SEAT);
             case NexusShape.CONSOLE:
                 return Parts.frame(Parts.FR_CONSOLE);
+            case NexusShape.LIFT:
+                return Parts.fitting(Parts.F_LIFT);
             default:
                 throw new IllegalArgumentException("not a nexus character: '" + ch + "'");
         }
@@ -767,6 +1001,221 @@ public final class BuildPlan {
     }
 
     /**
+     * The module job of the Echo Dome Generator on the zenith (0.12.0, CITY.md §4.8), in its own stages
+     * ({@link DomeGeneratorShape#Z_CLEAR} ..):
+     * <ul>
+     * <li>CLEAR: every leg column over the heights its leg takes there (so the forum's tiles and the supply port and
+     * recycle bin under a leg stay), and the pod's box with {@link DomeGeneratorShape#POD_MARGIN} round it from Y0 + 40
+     * to Y0 + {@link DomeGeneratorShape#CLEAR_TOP}; nothing is graded, outward from the nexus.</li>
+     * <li>LEGS: the 234 leg cells, all six legs together, bottom-up by layer.</li>
+     * <li>FLOOR: the pod's floor (foundation, soft deck, the lift pad), outward from the axis.</li>
+     * <li>SHELL: the walls y1..y5 and the door openings' soft glazing, bottom-up.</li>
+     * <li>ROOF: the cornice, the ceiling, the saucer, the shaft's soft cap and the emitter nodes, bottom-up.</li>
+     * <li>FIT: the controller's console, then every ward unit as one group (console and socket) in unit order.</li>
+     * <li>COMMISSION: the controller (its module core), the last step.</li>
+     * </ul>
+     * Nothing needs support: the builder places cells in the air as it does any other. Every checked cell is placed
+     * where {@link Blueprint#world} puts it for the controller ({@link DomeGeneratorShape#controller}) in the
+     * {@code moored} blueprint, so the HARD steps are exactly the cells that shape's structure check looks at.
+     *
+     * @throws IllegalArgumentException if the site is not the zenith or the front not a horizontal unit vector
+     * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the pod's unit cells
+     */
+    public static Plan zenith(int site, int cx, int y0, int cz, int fx, int fz) {
+        CityBuild m = DomeGeneratorShape.BUILD;
+        int[] ctrl = DomeGeneratorShape.controller(site, cx, y0, cz, fx, fz);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        Local at = new Local(ctrl, m);
+
+        List<Clearing> clear = new ArrayList<>();
+        for (int[] c : DomeGeneratorShape.legColumns()) {
+            int[] w = f.world(c[0], c[1]);
+            clear.add(new Clearing(f, w[0], y0 + c[2], w[1], y0 + c[3], false));
+        }
+        int lo = -DomeGeneratorShape.POD_MARGIN, hi = DomeGeneratorShape.SIZE + DomeGeneratorShape.POD_MARGIN;
+        for (int z = lo; z < hi; z++) for (int x = lo; x < hi; x++) {
+            int[] p = at.world(x, 0, z);
+            clear.add(new Clearing(f, p[0], p[1], p[2], y0 + DomeGeneratorShape.CLEAR_TOP, false));
+        }
+        clear.sort(RIPPLE);
+
+        List<List<Draft>> stages = new ArrayList<>();
+        for (int i = 0; i < DomeGeneratorShape.Z_STAGES; i++) stages.add(new ArrayList<>());
+        for (int[] c : DomeGeneratorShape.legPoints()) {
+            int[] p = at.world(c[0], c[1], c[2]);
+            stages.get(DomeGeneratorShape.Z_LEGS)
+                .add(new Draft(f, p[0], p[1], p[2], ShapeKit.partOf(DomeGeneratorShape.LEG), HARD, NO_GROUP));
+        }
+        Set<Long> unitCells = new HashSet<>();
+        for (List<int[]> u : m.units()) for (int[] c : u) unitCells.add(ShapeKit.Shape.pos(c[0], c[1], c[2]));
+        List<Draft> before = new ArrayList<>();
+        int shapeUnitCells = 0;
+        for (int y = 0; y < m.height(); y++) for (int z = 0; z < m.depth(); z++) for (int x = 0; x < m.width(); x++) {
+            char ch = m.cell(x, y, z);
+            if (ch == ShapeKit.NONE) continue;
+            if (unitCells.contains(ShapeKit.Shape.pos(x, y, z))) {
+                shapeUnitCells++;
+                continue;
+            }
+            int[] p = at.world(x, y, z);
+            byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
+            int stage = m.stage(x, y, z, ch);
+            if (stage <= DomeGeneratorShape.Z_LEGS || stage >= DomeGeneratorShape.Z_STAGES)
+                throw new IllegalStateException(m.key() + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
+            Draft dr = new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), kind, NO_GROUP);
+            if (stage == DomeGeneratorShape.Z_FIT) {
+                dr.rank = m.fitRank(x, y, z, ch);
+                before.add(dr);
+            } else stages.get(stage)
+                .add(dr);
+        }
+        List<Draft> units = new ArrayList<>();
+        List<List<int[]>> groups = m.units();
+        for (int i = 0; i < groups.size(); i++) {
+            List<Draft> group = new ArrayList<>();
+            for (int[] c : groups.get(i)) {
+                char ch = m.cell(c[0], c[1], c[2]);
+                if (!ShapeKit.checked(ch) || ch == ShapeKit.CONTROLLER)
+                    throw new IllegalStateException(m.key() + ": a unit cell is not a part");
+                int[] p = at.world(c[0], c[1], c[2]);
+                group.add(new Draft(f, p[0], p[1], p[2], m.part(c[0], c[1], c[2], ch), HARD, i));
+            }
+            group.sort(BOTTOM_UP);
+            units.addAll(group);
+        }
+        if (units.size() != shapeUnitCells) {
+            throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + shapeUnitCells);
+        }
+        for (int s = DomeGeneratorShape.Z_LEGS; s < DomeGeneratorShape.Z_STAGES; s++) {
+            if (s != DomeGeneratorShape.Z_FIT) stages.get(s)
+                .sort(s == DomeGeneratorShape.Z_FLOOR ? RIPPLE : BOTTOM_UP);
+        }
+        before.sort(
+            Comparator.<Draft>comparingInt(dr -> dr.rank)
+                .thenComparing(BOTTOM_UP));
+        List<Draft> fit = stages.get(DomeGeneratorShape.Z_FIT);
+        fit.addAll(before);
+        fit.addAll(units);
+
+        List<List<Step>> out = empty(DomeGeneratorShape.Z_STAGES);
+        for (int s = DomeGeneratorShape.Z_LEGS; s < DomeGeneratorShape.Z_STAGES; s++)
+            out.set(s, steps(stages.get(s), s));
+        return new Plan(moduleKey(m.key(), site), DomeGeneratorShape.Z_STAGES, out, columns(clear));
+    }
+
+    /**
+     * The module job of the root's Tidal Well (0.12.0, CITY.md §4.9), sunk as a caisson, in its own stages
+     * ({@link RootShape#R_SINK} ..):
+     * <ul>
+     * <li>SINK: layer by layer from the lid (Y0 - 1) down to the floor slab (Y0 - 26), every layer in two bands: first
+     * its shell (the lid with its open centre, the wall ring, or the slab), then the cells inside the wall dug out
+     * ({@link #DIG}). The lid comes first, so the forum and the nexus never stand over an open hole, and no layer is
+     * dug before the wall ring of the layer above it stands: water from outside meets a wall, never the open
+     * shaft.</li>
+     * <li>DRAIN: every cell inside the shell once more, from the top down, taking away what fluid flowed in
+     * ({@link #DRAIN}).</li>
+     * <li>FLOOR: the floor level's island with its lift pad, the bridges, the pool's rim and the walkway, outward from
+     * the axis.</li>
+     * <li>FIT: the controller's console, the tidal rings, the helix ramp (soft), the eight tide taps (a group each, in
+     * unit order), then the pool's water once its rim is whole.</li>
+     * <li>COMMISSION: the controller (its module core), the last step.</li>
+     * </ul>
+     * There are no clear columns: the caisson digs exactly its inside, and nothing of the plan reaches the base layer
+     * (Y0). Every checked cell is placed where {@link Blueprint#world} puts it for the controller
+     * ({@link RootShape#controller}), so the HARD steps are exactly the cells the structure check looks at.
+     *
+     * @throws IllegalArgumentException if the site is not the root's or the front not a horizontal unit vector
+     * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the well's unit cells
+     */
+    public static Plan root(int site, int cx, int y0, int cz, int fx, int fz) {
+        CityBuild m = RootShape.BUILD;
+        int[] ctrl = RootShape.controller(site, cx, y0, cz, fx, fz);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        Local at = new Local(ctrl, m);
+        Set<Long> unitCells = new HashSet<>();
+        for (List<int[]> u : m.units()) for (int[] c : u) unitCells.add(ShapeKit.Shape.pos(c[0], c[1], c[2]));
+
+        List<Draft> sink = new ArrayList<>(), drain = new ArrayList<>(), floor = new ArrayList<>(),
+            before = new ArrayList<>(), after = new ArrayList<>(), commission = new ArrayList<>();
+        List<Integer> sinkBands = new ArrayList<>();
+        int shapeUnitCells = 0;
+        for (int y = m.height() - 1; y >= 0; y--) {
+            List<Draft> shell = new ArrayList<>(), dig = new ArrayList<>(), drained = new ArrayList<>();
+            for (int z = 0; z < m.depth(); z++) for (int x = 0; x < m.width(); x++) {
+                int[] p = at.world(x, y, z);
+                if (RootShape.inside(x, y, z)) {
+                    dig.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DIG, NO_GROUP));
+                    drained.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DRAIN, NO_GROUP));
+                }
+                char ch = m.cell(x, y, z);
+                if (ch == ShapeKit.NONE) continue;
+                if (unitCells.contains(ShapeKit.Shape.pos(x, y, z))) {
+                    shapeUnitCells++;
+                    continue;
+                }
+                byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
+                Draft d = new Draft(f, p[0], p[1], p[2], kind == AIR ? Parts.AIR : m.part(x, y, z, ch), kind, NO_GROUP);
+                int stage = m.stage(x, y, z, ch);
+                if (stage == RootShape.R_SINK && RootShape.shell(x, y, z)) shell.add(d);
+                else if (stage == RootShape.R_FLOOR) floor.add(d);
+                else if (stage == RootShape.R_FIT) {
+                    d.rank = m.fitRank(x, y, z, ch);
+                    if (d.rank == 0) throw new IllegalStateException(m.key() + ": FIT rank 0 for '" + ch + "'");
+                    (d.rank < 0 ? before : after).add(d);
+                } else if (stage == RootShape.R_COMMISSION) commission.add(d);
+                else throw new IllegalStateException(
+                    m.key() + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
+            }
+            // the layer's shell, then its inside: a band each, so the builder digs nothing before the ring stands
+            shell.sort(RIPPLE);
+            dig.sort(RIPPLE);
+            drained.sort(RIPPLE);
+            for (List<Draft> band : java.util.Arrays.asList(shell, dig)) {
+                if (band.isEmpty()) continue;
+                if (!sink.isEmpty()) sinkBands.add(sink.size());
+                sink.addAll(band);
+            }
+            drain.addAll(drained);
+        }
+        floor.sort(RIPPLE);
+        Comparator<Draft> byRank = Comparator.<Draft>comparingInt(dr -> dr.rank)
+            .thenComparing(BOTTOM_UP);
+        before.sort(byRank);
+        after.sort(byRank);
+        List<Draft> fit = new ArrayList<>(before);
+        List<List<int[]>> groups = m.units();
+        int unitSteps = 0;
+        for (int i = 0; i < groups.size(); i++) {
+            List<Draft> group = new ArrayList<>();
+            for (int[] c : groups.get(i)) {
+                char ch = m.cell(c[0], c[1], c[2]);
+                if (!ShapeKit.checked(ch) || ch == ShapeKit.CONTROLLER)
+                    throw new IllegalStateException(m.key() + ": a unit cell is not a part");
+                int[] p = at.world(c[0], c[1], c[2]);
+                group.add(new Draft(f, p[0], p[1], p[2], m.part(c[0], c[1], c[2], ch), HARD, i));
+            }
+            group.sort(BOTTOM_UP);
+            fit.addAll(group);
+            unitSteps += group.size();
+        }
+        if (unitSteps != shapeUnitCells) {
+            throw new IllegalStateException("the units hold " + unitSteps + " cells, the shape " + shapeUnitCells);
+        }
+        fit.addAll(after);
+
+        List<List<Step>> out = empty(RootShape.R_STAGES);
+        out.set(RootShape.R_SINK, steps(sink, RootShape.R_SINK));
+        out.set(RootShape.R_DRAIN, steps(drain, RootShape.R_DRAIN));
+        out.set(RootShape.R_FLOOR, steps(floor, RootShape.R_FLOOR));
+        out.set(RootShape.R_FIT, steps(fit, RootShape.R_FIT));
+        out.set(RootShape.R_COMMISSION, steps(commission, RootShape.R_COMMISSION));
+        List<List<Integer>> bands = new ArrayList<>();
+        for (int i = 0; i < RootShape.R_STAGES; i++) bands.add(Collections.<Integer>emptyList());
+        bands.set(RootShape.R_SINK, sinkBands);
+        return new Plan(moduleKey(m.key(), site), RootShape.R_STAGES, out, Collections.<Column>emptyList(), bands);
+    }
+
+    /**
      * The seeded ornaments of a module's DECOR stage (CITY.md §1.2), the asymmetric wings that keep a city of mirrored
      * blueprints from looking stamped: SOFT steps outside the blueprint, so the module forms whether they stand or
      * not. From the seed of the module's controller:
@@ -989,27 +1438,34 @@ public final class BuildPlan {
         return out;
     }
 
-    /** World boxes whose columns a campus job leaves alone (the footprints of modules that already stand). */
+    /**
+     * World boxes a campus job leaves alone: the footprints of modules that already stand, as whole columns
+     * {x0, z0, x1, z1}, and (0.12.0) height-ranged boxes {x0, z0, x1, z1, yFrom, yTo}, the zenith's legs.
+     */
     private static final class KeepOut {
 
-        /** {x0, z0, x1, z1} per box, with x0 <= x1 and z0 <= z1. */
+        /** {x0, z0, x1, z1, yFrom, yTo} per box, with x0 <= x1, z0 <= z1 and yFrom <= yTo; whole columns for four. */
         private final List<int[]> boxes = new ArrayList<>();
 
         KeepOut(List<int[]> keepOut) {
             if (keepOut == null) return;
             for (int[] b : keepOut) {
-                if (b == null || b.length != 4) {
-                    throw new IllegalArgumentException("a keep-out box is {x0, z0, x1, z1}");
+                if (b == null || b.length != 4 && b.length != 6) {
+                    throw new IllegalArgumentException(
+                        "a keep-out box is {x0, z0, x1, z1} or {x0, z0, x1, z1, yFrom, yTo}");
                 }
+                int lo = b.length == 6 ? Math.min(b[4], b[5]) : Integer.MIN_VALUE;
+                int hi = b.length == 6 ? Math.max(b[4], b[5]) : Integer.MAX_VALUE;
                 boxes.add(
-                    new int[] { Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]),
-                        Math.max(b[1], b[3]) });
+                    new int[] { Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]), Math.max(b[1], b[3]),
+                        lo, hi });
             }
         }
 
-        /** Whether the world column (x, z) lies in a box. */
-        boolean holds(int x, int z) {
-            for (int[] b : boxes) if (x >= b[0] && x <= b[2] && z >= b[1] && z <= b[3]) return true;
+        /** Whether a box holds a cell of the world column (x, z) between the heights {@code y0} and {@code y1}. */
+        boolean holds(int x, int z, int y0, int y1) {
+            for (int[] b : boxes)
+                if (x >= b[0] && x <= b[2] && z >= b[1] && z <= b[3] && y0 <= b[5] && b[4] <= y1) return true;
             return false;
         }
     }

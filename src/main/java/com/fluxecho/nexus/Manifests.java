@@ -73,5 +73,14 @@ public final class Manifests {
                 () -> new ItemStack(MatterModule.echoCrystal),
                 200,
                 true));
+        // resonant glass (0.12.0, BLUEPRINT 3.6): borosilicate glass tuned with phase alloy, four panes an ingot
+        register(
+            new Recipe(
+                "resonant_glass",
+                Research.PHASE_2,
+                new String[] { "ore:" + MatterModule.PHASE_ALLOY + "*1", "ore:ingotBorosilicateGlass*4" },
+                () -> MatterModule.resonantGlass(4),
+                400,
+                false));
     }
 }

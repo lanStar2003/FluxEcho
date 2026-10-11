@@ -1,14 +1,16 @@
-# 开发手册 · 回响之城：城市模块框架、新部件、生态穹（0.11.0 起）
+# 开发手册 · 回响之城：城市模块框架、新部件、生态穹（0.11.0 起）、天顶和根（0.12.0）
 
-> 改 `city/`、`city/client/`、`logic/` 里的城市类（`SiteFamily`、`ShapeKit`、`UnitLayout`、`CityBuild`、`EcoDomeShape`、`ModuleCores`、`ModuleLook`、`ModuleMap`、`UnitBrowse`、`PreviewSites`），或者要给城里加一座新建筑之前读这一篇。园区、建造引擎、投影、地形判定、回响档案馆在 [campus.md](campus.md)；中枢、研究、显化、多方块框架在 [nexus.md](nexus.md)；画在世界里的东西先守 [gates.md](gates.md) §5；总览见 `CLAUDE.md`。
-> **方案在仓库外**：建筑方案 `D:\Code\FluxEcho-campus\city\CITY.md`（下文「CITY §x」）和它的生成器 `city/gen/`（`kit.py` 图例和自检、`b_hall.py` 生态穹和二向箔仓、`siteplan.py` 场地检查、`report.py` 计数和用料、`plans.txt` 每个形状的每一层）；每个版本的合同在 `D:\Code\FluxEcho-campus\spec\M<n>.md`（0.11.0 是 `M8.md`）。**文字和生成器对不上时以生成器为准**，Java 逐行移植生成器（像 `ArchiveShape` 移植 `spec/gen/archive.py`），改了生成器就把 CITY.md 的文字改过来。
-> 路径相对 `src/main/java/com/fluxecho/`。`EchoText.t("x")` 对应 lang 键 `fluxecho.x`。文中数字和键都按 0.11.0 的代码核对过。
+> 改 `city/`、`city/client/`、`logic/` 里的城市类（`SiteFamily`、`ShapeKit`、`UnitLayout`、`CityBuild`、`EcoDomeShape`、`DomeGeneratorShape`、`RootShape`、`ModuleCores`、`ModuleLook`、`DomeLook`、`RootLook`、`Tide`、`XRay`、`ModuleMap`、`UnitBrowse`、`PreviewSites`），或者要给城里加一座新建筑之前读这一篇。园区、建造引擎、投影、地形判定、回响档案馆在 [campus.md](campus.md)；中枢、研究、显化、多方块框架、**相位生长和光梯**在 [nexus.md](nexus.md)（§4.1、§4.2）；画在世界里的东西先守 [gates.md](gates.md) §5；总览见 `CLAUDE.md`。
+> **方案在仓库外**：建筑方案 `D:\Code\FluxEcho-campus\city\CITY.md`（下文「CITY §x」）和它的生成器 `city/gen/`（`kit.py` 图例和自检、`b_hall.py` 生态穹和二向箔仓、`b_sky.py` 穹顶发生器的吊舱和腿、`b_root.py` 潮汐井、深根、地脉核、`siteplan.py` 场地检查、`report.py` 计数和用料、`plans.txt` 每个形状的每一层）；每个版本的合同在 `D:\Code\FluxEcho-campus\spec\M<n>.md`（0.11.0 是 `M8.md`，0.12.0 是 `M9.md`）。**文字和生成器对不上时以生成器为准**，Java 逐行移植生成器（像 `ArchiveShape` 移植 `spec/gen/archive.py`），改了生成器就把 CITY.md 的文字改过来。
+> 路径相对 `src/main/java/com/fluxecho/`。`EchoText.t("x")` 对应 lang 键 `fluxecho.x`。文中数字和键都按 0.12.0 的代码核对过。
 
 ## 0. 定位
 
 用户在 0.10.1 之后的指示：「根据计划 持续推进任务 先把计划中的结构与建筑全部做完」——**先把 BLUEPRINT 3.3、3.7–3.9 里的每座结构和建筑都立起来**（由中枢自己建、能走进去、能成型），各模块真正干什么、数值，等结构做完再做（0.19.0 起，§11）。CITY.md 是为此写的建筑方案：园区变成一座**井字形的城**——中间一格是广场和中枢；四条轴上是大门和三座大厅；四个对角是四座亭子；相位 III 开出四条笔直的井字街，通到八角形的外环步道，外面立十二个外环位；源点时代再围一圈十六个第三环位。中枢上方 `Y0+40` 悬着吊舱（先立在六条腿上，相位 IV 浮起来），周围八个浮空平台，顶上是轨道锚；下方一口井一直深到 `Y0−57`；一条光梯贯穿整条轴：根 ↔ 中枢台 ↔ 天顶 ↔ 轨道（CITY §0）。参照《考工记》的「匠人营国，方九里……九经九纬」和井田（九格围着一口公用的井，这里根位真的是中间那格下面的井）。
 
 **0.11.0「百工」是第一批**（CITY §5.1）：通用的模块框架（场地族、形状工具、单元、通用建造计划、模块核心家族、通用窗口、通用渲染钩子、新部件 SOCKET/BASIN/ANCHOR/WATER）加第一座新建筑**生态穹**。基础设施先做完，后面的批次大多只是数据：一个形状移植、一个 `ModuleSpec`、一个渲染、窗口的小调整（§7、§11）。
+
+**0.12.0「相位」是第二批**（合同 `spec/M9.md`），也是最大的一批：中枢的**相位生长**（`grow:<p>` 任务、按长到的相位检查中枢、`PHASE_NOW` 2、`phase_2` 有真实花费、相位 II 的底座中心是光梯台，nexus.md §4.1）；**光梯**（LIFT 部件、乘梯、光束，nexus.md §4.2，§5）；**轴上的两个族**（§4.12）——**天顶族**（吊舱悬在 Y0+40、腿在 LEGS 阶段、在空中建、不检查的门格、带高度的 keep-out）和**根族**（沉箱 SINK + DRAIN 阶段、地下投影在鬼影之外加画透视的棱、深度检查）；最简的**相位合金**、**共鸣玻璃**物品（研究花费和核心显化要用，nexus.md §2）；两座建筑**回响穹顶发生器**（系泊在六条腿上，§6.2）和**潮汐井**（§6.3）。框架这边多了：一个城市模块可以有几种形状、蓝图可以伸出形状的盒子（`CityBuild` 的偏移）、`covers()` 只罩形状的盒子、轴上的模块不占内环、名牌挂在控制器上方、平面图认光梯台、画到 512 格的地标（§4）。
 
 **一座建筑「做完」**（CITY §1.6，八条都要有，括号里是测试）：
 1. 形状：`logic/XShape` 移植自生成器；计数、对称、控制器、门洞空气、单元、行走测试（`XShapeTest`、`XWalkTest`）。
@@ -39,9 +41,9 @@
 | 项 | 预算 |
 |---|---|
 | 每个形状的检查格 | ≤ 7,000（12,000）；现在最大是档案馆 5,055 |
-| 每项任务的步骤（检查 + 软 + 空气 + decor） | ≤ 8,000（12,000）；档案馆 6,237、生态穹 3,614 |
+| 每项任务的步骤（检查 + 软 + 空气 + decor） | ≤ 8,000（12,000）；档案馆 6,237、生态穹 3,614、穹顶发生器 1,637（含 234 格腿）、潮汐井 3,507（另有沉箱的挖和排水各 7,896 步，按清场算，不算在这里） |
 | 每项任务的放置时间（`buildBlocksPerTick` 2） | ≤ 4 分钟（另加阶段节奏） |
-| 每项任务的清理体积 | ≤ 40,000 格（8 格/tick 约 4 分钟）；超了分两遍清 |
+| 每项任务的清理体积 | ≤ 40,000 格（8 格/tick 约 4 分钟）；超了分两遍清；穹顶发生器 569 根柱子 7,111 格、潮汐井挖 7,896 格 |
 | 每项任务的 EU（每块 256） | ≤ 2 M |
 | 客户端每座楼 | **近**（相机在里面或离盒子 ≤ 24 格）≤ 2,000 quads；**中**（≤ `effectRange` 128）≤ 300；**远** ≤ 64 |
 | 画到 512 格的地标 | 每个 ≤ 400 quads（中枢光柱、穹顶壳、大门尖塔、天空光柱、智子天幕、卫星、源点之心） |
@@ -50,13 +52,14 @@
 | 区块网格 | 只有 ISBRH；溶解的格子不画（`Formed` 的 HIDE） |
 | NEI | 模块预览 ≤ 7,000 格；中枢城市预览（6–10 级）≤ 60,000 格，不铺地面 |
 | 服务端 | 成型复查每 100 tick；单元闲着不花东西；单元内容走增量包，压缩后 < 28 kB（`BookPacket` 的做法） |
-| 竖向 | 天顶和轨道要 `Y0+57 ≤ 255`；井 `Y0 ≥ 32`、深根 `Y0 ≥ 45`、地脉核 `Y0 ≥ 62`，提供任务时检查，不够就 `no_room` 带原因 |
+| 竖向 | 天顶和轨道要 `Y0+57 ≤ 255`；井 `Y0 ≥ 32`、深根 `Y0 ≥ 45`、地脉核 `Y0 ≥ 62`，提供任务时检查，不够就 `no_room` 带原因。0.12.0 实际查的：吊舱清理盒的顶 `Y0+52 ≤ 255`（`DomeGeneratorShape.noRoom`，`build.module.why.height`；轨道锚 0.17.0 再收紧到 +57），井底 `Y0−26 ≥ 6`（`RootShape.noRoom`，`build.module.why.depth`） |
 
 **形状规则**（CITY §1.5）：
 - 本地坐标同 `ArchiveShape`：`x` 横向 `0…W−1`（`MID` 中间）、`y` 向上（y0 是地基层，人站在它上面）、`z` 从正面（z0 朝中枢；中心对称的楼是蓝图的正面）。一张图例全城唯一（§4.1）；档案馆的字符意思不变，它的 `S` 等不给城里的形状用。
 - **四种格子**：检查格（结构检查看的，HARD 步骤）；**软格**（`.` 地砖、`,` 草、`;` 泥土、`=` 水、`+` 光带地砖、`_` 地缝钢、`{` 坡道块、`}` 坡道踏板、`|` 坡道栏杆、内境门位的 `[` 深色墙裙、`!` 光缝墙板、`/` 窗格：SOFT 步骤，不检查，可以不对称）；**必须是空气**（`-`，AIR 步骤，按空气检查）；**decor**（盒子外：雨棚、种子装饰，SOFT）。
-- **内境门位**（CITY §4.15）：有内境的建筑在蓝图轴上留一个 3×4 的门位。门位的格子还是原来那堵墙的方块，只是写成软格的「孪生」字符（`w L G W` → `[ ! / {`；生成器 `Shape.gate_niche`、Java `ShapeKit.Shape.gateNiche`，`ShapeKit.checkedTwin` 反查是哪种墙）：照样建（SOFT 步骤，阶段跟着那堵墙），结构检查不看。0.19.0 起在这里开光门，不用改检查的形状、不用提 `BuildJob.V`。生态穹的门位是鼓座后墙正中 `x 12–14, y 1–4, z 34`（12 格，§6）；回响档案馆照 CITY §4.0 到 0.19.0 才放开，它的后墙正中（讲台后面）现在还是检查格——0.10.x 已经建好的档案馆要照旧成型，放开时那一版自己提 `BuildJob.V`。
-- **镜像**：检查格和空气格沿 `x` 镜像（`symmetric()` 跳过软格和登记的不对称格）；两座楼梯互为镜像（右边 `mirror = −1`）。
+- **内境门位**（CITY §4.15）：有内境的建筑在蓝图轴上留一个 3×4 的门位。门位的格子还是原来那堵墙的方块，只是写成软格的「孪生」字符（`w L G W` → `[ ! / {`；生成器 `Shape.gate_niche`、Java `ShapeKit.Shape.gateNiche`，`ShapeKit.checkedTwin` 反查是哪种墙）：照样建（SOFT 步骤，阶段跟着那堵墙），结构检查不看。0.19.0 起在这里开光门，不用改检查的形状、不用提 `BuildJob.V`。生态穹的门位是鼓座后墙正中 `x 12–14, y 1–4, z 34`（12 格，§6.1）；回响档案馆照 CITY §4.0 到 0.19.0 才放开，它的后墙正中（讲台后面）现在还是检查格——0.10.x 已经建好的档案馆要照旧成型，放开时那一版自己提 `BuildJob.V`。
+- **不检查的门格**（0.12.0，CITY §4.8）：生成器留空、以后的批次要打开的格子，现在建成软格、结构检查不看——穹顶发生器吊舱的八个门洞（3 宽、y1–4，共 96 格）先用窗格 `/` 封着，天环的栈桥来了再开；吊舱屋顶上光梯井的井口（y6–9）先用和四周一样的方块盖着（`{` 墙板，y9 是 `/` 窗格），轨道锚来了再开。生成器自己的格子留在 `DomeGeneratorShape.RAW`（校验和钉的就是它），建的是加了这 100 格的 `SHAPE`。
+- **镜像**：检查格和空气格沿 `x` 镜像（`symmetric()` 跳过软格和登记的不对称格）；两座楼梯互为镜像（右边 `mirror = −1`）。0.12.0 的腿是生成器在 R ≥ 0 一侧用 `StrictMath` 算、再镜像过去的（四舍五入两边会不一样），根的螺旋坡道是软格（螺旋没法镜像，CITY §6.1 第 9 条）。
 - **整组单元**：一个单元 = 种类、格子、槽数、可选的朝向；点它任何一格就是这个单元；单元格永远是检查格；**单元顺序就是槽号，发布后永不改**（`LibraryUnits` 的规矩）。
 - 控制器在 y2、下面 y1 是控制台座（血契坛、潮汐井在台上高一格）；门 3 宽 4 高、两格深的空气；站的地方上方留 2 格净空（人高 1.8）；旋转楼梯用档案馆的 3×3 井（每个环格一级、每级半格、12 级升 6，楼梯上方转一圈后净空 3.5）。
 - **自检**（每个生成器里有，Java 里是单元测试）：`kit.summary` 的计数、`symmetric`，和从正门外走进去的**行走测试**（以半格为单位的广度优先，一步最多升 0.5、最多落 3，光梯连接上下梯台）：要走到眼睛高度的控制器和每个单元。CITY 的二十个形状都通过。
@@ -65,22 +68,24 @@
 
 **场地族** `SiteFamily`（枚举；名字可能存进 spec，永不改；ordinal 不存）：
 
-| 族 | 场地 | `opens`（相位） | 外形 | 控制器 / 朝向 | 0.11.0 的状态 |
+| 族 | 场地 | `opens`（相位） | 外形 | 控制器 / 朝向 | 现在（0.12.0）的状态 |
 |---|---|---|---|---|---|
 | `HALL` | 4、2、6 | I | 横 27、深 ≤ 35，前排径向 24（`HALL_FRONT`，到径向 58）；apron 2；前庭径向 20–23 | 轴上的套件门，`Y0+2`，朝中枢 | 建：档案馆、生态穹 |
 | `PAVILION` | 1、3、5、7 | II | `oct(12,16)`（25×25）中心 (±36, ±36)（A、R 24–48）；apron `oct(14,18)` | 中心控制台 `(±36, Y0+2, ±36)`；蓝图正面沿 A 朝中枢（1、7 朝 −A，3、5 朝 +A） | 只有外形（总图画、`SitePlanTest` 查），0.13.0 建 |
 | `GATE` | 0 | II | A 23–39、R −15…15（31×17），R −6…6 的通道永不建 | 路中间的亭 `(A 30, R 0, Y0+2)`，朝 −A | 只有外形常量，0.14.0 |
-| `ZENITH` | 轴上 | II | 吊舱 `oct(10,14)` 楼面 `Y0+40`，六条腿落在广场半径 14 | 吊舱控制台 `(A 4, R 0, Y0+42)`，朝 +A | 只有名字，0.12.0 |
-| `ROOT` | 轴下 | II | `oct(11,15)` `Y0−1…−26`；`oct(12,16)` 到 −39；球到 −57 | 岛上控制台 `(A 2, R 0, Y0−23)`，朝 +A | 只有名字，0.12.0 |
+| `ZENITH` | 8（`ZENITH_SITE`，轴上） | II | 吊舱 `oct(10,14)` 楼面 `Y0+40`，六条腿落在广场半径 14；俯视的盒子 A −12…12、R −14…14 | 吊舱控制台 `(A 4, R 0, Y0+42)`，朝 +A | 建：回响穹顶发生器（系泊，§6.2；浮空的形状已经有了，释放任务 0.16.0） |
+| `ROOT` | 9（`ROOT_SITE`，轴下） | II | `oct(11,15)` `Y0−1…−26`；`oct(12,16)` 到 −39；球到 −57 | 岛上控制台 `(A 2, R 0, Y0−23)`，朝 +A | 建：潮汐井（§6.3；深根、地脉核的形状只移植成数据） |
 | `OUTER_DIAG` | O1、O3、O5、O7 | III | `oct(15,20)` 中心 (±62, ±62) | 中心或正面（按楼） | 0.15.0 |
 | `OUTER_FLANK` | O0±…O6± | IV | 27 × 31，前排径向 64，横向中心 ±19（正对井字街） | 套件门 | 预留（逆熵闸门、建筑回响、回响中继） |
 | `SKY` | S0–S7 | IV | `oct(10,14)` 平台 `Y0+40` | 朝吊舱 | 0.16.0 |
 | `ORBIT` | 轴上 | V | `oct(7,9)` `Y0+52` | `(A 3, R 0, Y0+54)` | 0.17.0 |
 | `THIRD` | T00–T15 | V | 41×41，前排径向 105，横向中心 ±25、±71 | 套件门 | 0.18.0 |
 
-`SiteFamily.of(site)`：0 → GATE，奇数 → PAVILION，其余 → HALL；`sites()`（内城 0–7 里的场地，别处的族为空）、`hasSite`、`opens`。**0.11.0 只真正建大厅族**：`ModuleSpec.footprint` 对 HALL 和 PAVILION 有答案，别的族抛 `UnsupportedOperationException`；`BuildPlan.module`/`hallController` 只认大厅位（`IllegalArgumentException`）。
+`SiteFamily.of(site)`：0 → GATE，奇数 → PAVILION，其余 → HALL；0.12.0 起 8 → ZENITH、9 → ROOT。`sites()`（内城 0–7 里的场地，天顶和根各一个轴上的场地，别处的族为空）、`hasSite`、`opens`。**场地号存档**（记录的场地、任务键 `module:dome_generator@8`、`module:root@9`），永不改。0.12.0 加的：`axis()`（ZENITH、ROOT、ORBIT 站在中枢的轴上：不占内环、坐光梯进、在空中或地下建）、`AXIS_FROM` 8、`axisSite(site)`（≥ 8）、`ringSite(site)`（0–7）、`ringCount(sites...)`（停靠的模块里占内环的个数——中枢窗口、Waila、通量终端都按它对着开放的槽数显示）、`labelKey(site)`（窗口和牌子怎么叫一个场地：内环位 `build.gui.site`「%s 号位」，8 是 `build.gui.site_zenith`「天顶」，9 是 `build.gui.site_root`「根位」）。
 
-**`CampusPlan` 的外形常量**（0.11.0）：`DIAGONAL_CENTRE` 36、`DIAGONAL_SIZE` 25、`DIAGONAL_K` 16（0.10.0 预留的是 (±34, ±34) 的 23×23；那里从没建过东西，只有总图的轮廓挪了）；`PAVILION_SITES {1,3,5,7}`、`PAVILION_APRON` 2；对角林荫道 `ALLEE_FROM` 27 到 `ALLEE_TO` 55（`|a|+|r|`，3 宽：`|a|−|r| ∈ {−1,0,1}`，从环道的对角面到亭子的内门）；大门楼 `GATEHOUSE_FROM/TO` 23/39、`GATEHOUSE_HALF` 15、`GATE_PASSAGE` 6；井字街 `STREET_FROM/TO` 18/20、`STREET_REACH` 60。方法：`family`、`inEnvelope`（按族分派）、`inPavilion`、`pavilionCells`（481 格）、`pavilionApron`（140 格）、`pavilionAllee`（44 格）、`inGatehouse`、`gatehouseCells`（527 格）、`gatehouseApron`、`hallCells`、`hallApron`（含前庭，铺砖前的整块）、`streetCells`（相位 III，还没建）。
+**哪些族真的建**：大厅族（0.11.0）、天顶族和根族（0.12.0）。`ModuleSpec.footprint` 对 HALL 和 PAVILION 自己有答案，轴上的族交给它的 `ModuleSpec.Envelope`（§4.12），别的族抛 `UnsupportedOperationException`；`BuildPlan.module`/`hallController` 只认大厅位（`IllegalArgumentException`），天顶和根各有自己的计划 `BuildPlan.zenith`/`BuildPlan.root`（campus.md §4）。
+
+**`CampusPlan` 的外形常量**（0.11.0）：`DIAGONAL_CENTRE` 36、`DIAGONAL_SIZE` 25、`DIAGONAL_K` 16（0.10.0 预留的是 (±34, ±34) 的 23×23；那里从没建过东西，只有总图的轮廓挪了）；`PAVILION_SITES {1,3,5,7}`、`PAVILION_APRON` 2；对角林荫道 `ALLEE_FROM` 27 到 `ALLEE_TO` 55（`|a|+|r|`，3 宽：`|a|−|r| ∈ {−1,0,1}`，从环道的对角面到亭子的内门）；大门楼 `GATEHOUSE_FROM/TO` 23/39、`GATEHOUSE_HALF` 15、`GATE_PASSAGE` 6；井字街 `STREET_FROM/TO` 18/20、`STREET_REACH` 60；0.12.0 的轴上外形（俯视）`ZENITH_R/K` 10/14（吊舱 `oct(10,14)`）、`ROOT_R/K` 11/15（井 `oct(11,15)`）。方法：`family`、`inEnvelope`（按族分派，0.12.0 起认天顶和根的八角）、`inPavilion`、`pavilionCells`（481 格）、`pavilionApron`（140 格）、`pavilionAllee`（44 格）、`inGatehouse`、`gatehouseCells`（527 格）、`gatehouseApron`、`hallCells`、`hallApron`（含前庭，铺砖前的整块）、`streetCells`（相位 III，还没建）、`grateBand(a, r)`（0.12.0：底座外一圈 `oct(6,8)` 里铺格栅地砖、肋线不穿过的格子，潮汐井的光从这里透上来，`RootLook.grate` 用它）。
 
 **内城场地和偏好**（CITY §2.2，`ModuleSpec.sites` 的顺序）：
 
@@ -95,44 +100,52 @@
 | 3 右后 | 回响猎场 · 血契坛 · 魔力 · 秘法庭 | A −48…−24、R 24–48 |
 | 5 左后 | 血契坛 · 猎场 · 秘法庭 · 魔力 | A、R −48…−24 |
 
-模块的偏好列表：library {4, 2, 6}；**eco_dome {2, 6, 4}**；dual_foil_vault {6, 2, 4}；mana_fountain {1, 7, 3, 5}；arcane_court {7, 1, 5, 3}；hunting_ground {3, 5, 1, 7}；blood_covenant {5, 3, 7, 1}；resonance_gate {0}。内城容量：相位 I 2、II 4、III 8（`RingSlots.open`）；园区上限 `TileNexus.MAX_CAMPUS_MODULES` 现在还是 7，0.15.0（相位 III，大门也算一个）改成 8。八个内城模块正好是 BLUEPRINT 3.7 的八个内环模块。
+模块的偏好列表：library {4, 2, 6}；**eco_dome {2, 6, 4}**；dual_foil_vault {6, 2, 4}；mana_fountain {1, 7, 3, 5}；arcane_court {7, 1, 5, 3}；hunting_ground {3, 5, 1, 7}；blood_covenant {5, 3, 7, 1}；resonance_gate {0}。内城容量：相位 I 2、II 4、III 8（`RingSlots.open(中枢的相位)`，0.12.0 起按 `TileNexus.phase()` 算，不再是常量 `PHASE`）；园区上限 `TileNexus.MAX_CAMPUS_MODULES` 现在还是 7，0.15.0（相位 III，大门也算一个）改成 8。八个内城模块正好是 BLUEPRINT 3.7 的八个内环模块。**轴上的模块不占内环**（0.12.0）：天顶和根的模块任务不算进 `busyModules`、停靠时不占 `openSlots`（`refreshDock` 只给内环位数名额）、NEI 城市预览里不占名额（`PreviewSites`），所以相位 II 是内环 4 座 + 天顶 + 根。它们照样按研究提供，但要中枢长到它们的族开放的相位（`family.opens`，都是 II），否则模块列表显示 `NO_ROOM` 和原因 `build.module.why.phase`「中枢要先长到更高的相位」；高度或深度不够时原因是 `why.height`/`why.depth`（§1 竖向）。
 
 **场地地面**：大厅照旧 `siteFloor(site, 27, 35)`（campus.md §2）。亭子（0.13.0）：apron `oct(14,18)` 去掉占地（内圈 TRIM）+ 对角林荫道（中线在偶数 `|a|+|r|` 上是 LIT 虚线，50–53 箭头，54–55 亮门槛）= 140 + 44 格。大门楼（0.14.0）：通道两边 `|R|` 4–6（路不铺）+ 两侧翼两格 apron。都只增，不碰 establish 的地面和别的场地。
 
-**`SitePlanTest`**（`siteplan.py` 断言里现在存在的内城部分）：族和场地；生成器的数字；内城 `problems: 0`——建筑两两不相交（广场 + 环道 + 大门、大门楼、三座大厅、四座亭子），大厅 apron 和前庭不碰亭子和它的 apron、不碰大门楼，亭子 apron 不碰大门楼和它的 apron，林荫道不碰大厅，塔柱在大门楼通道里，每个内城外形在 `oct(64,90)` 里，井字街不碰任何建筑和 apron；间隙：大厅 apron ↔ 亭子 apron 6 格草地、大门楼 apron ↔ 亭子 apron 4 格；外形属于自己的族。外环、第三环、天上、地下的断言等对应的批次再加。
+**`SitePlanTest`**（`siteplan.py` 断言里现在存在的内城部分）：族和场地；生成器的数字；内城 `problems: 0`——建筑两两不相交（广场 + 环道 + 大门、大门楼、三座大厅、四座亭子），大厅 apron 和前庭不碰亭子和它的 apron、不碰大门楼，亭子 apron 不碰大门楼和它的 apron，林荫道不碰大厅，塔柱在大门楼通道里，每个内城外形在 `oct(64,90)` 里，井字街不碰任何建筑和 apron；间隙：大厅 apron ↔ 亭子 apron 6 格草地、大门楼 apron ↔ 亭子 apron 4 格；外形属于自己的族。0.12.0：天顶和根各有一个轴上的场地（8、9），`axis`/`axisSite`/`ringSite` 的真值、两族在相位 II 开放；轴上的模块不占内环（`theAxisModulesTakeNoRingRoom`：场地 {2,4,8,9} 数出 2、{1,2,4,6,8,9} 数出 4），场地的名字键。腿不碰光井、补给口、回收箱和塔柱的断言在 `DomeGeneratorShapeTest`（§8）。外环、第三环、天上的断言等对应的批次再加。
 
 ## 3. 文件
 
 | 文件 | 作用 |
 |---|---|
-| `city/CityModule` | 注册（`FluxEcho` 三个阶段在 `LibraryModule` 之后调）：preInit `fluxecho:module_core`（物品 `ItemBlockModuleCore`）、TE `fluxecho:eco_dome`；init 生态穹的 NEI 预览（`infoContainer("eco_dome.structure")`）、中枢预览（`NexusModule.previewModule(core, ModuleCores.ECO_DOME, TileEcoDome::new)`）、`BlockFrame.onUse`/`BlockFitting.onUse` 登记 `UnitUse::use`、`ModuleSpecs.register(ecoDome())`（在书库之后，所以中枢先提供档案馆）；postInit 显化 `eco_dome_core` |
+| `city/CityModule` | 注册（`FluxEcho` 三个阶段在 `LibraryModule` 之后调）：preInit `fluxecho:module_core`（物品 `ItemBlockModuleCore`）、TE `fluxecho:eco_dome`，0.12.0 起还有 `fluxecho:dome_generator`、`fluxecho:root`；init 每座模块的 NEI 预览（`infoContainer("<key>.structure")`）和中枢预览（`NexusModule.previewModule(core, meta, TileX::new)`）、`BlockFrame.onUse`/`BlockFitting.onUse` 登记 `UnitUse::use`、`ModuleSpecs.register(ecoDome())`、`domeGenerator()`、`root()`（在书库之后，所以中枢先提供档案馆；后两个带 `ModuleSpec.Envelope`，§4.12）；postInit 显化 `eco_dome_core`、`dome_generator_core`、`root_core` |
 | `city/BlockModuleCore`、`ItemBlockModuleCore` | 模块核心家族：一个方块，meta = 模块（§4.5） |
-| `city/TileCityModule` | 城市模块基类：结构定义、溶解、场地上的朝向、本地坐标、单元和样本、维持电、样本同步（§4.6–4.7） |
-| `city/TileEcoDome` | 生态穹：`COLOR`、`EcoDomeShape` 的形状和单元、核心 meta 0、溶解 `CZ`、能穿过的 `Z`（§6） |
+| `city/TileCityModule` | 城市模块基类：结构定义（0.12.0 起可以有几种形状）、溶解、场地上的朝向、本地坐标、单元和样本、维持电、样本同步、只罩形状盒子的 `covers()`（§4.6–4.7） |
+| `city/TileEcoDome` | 生态穹：`COLOR`、`EcoDomeShape` 的形状和单元、核心 meta 0、溶解 `CZ`、能穿过的 `Z`（§6.1） |
+| `city/TileDomeGenerator` | 回响穹顶发生器（0.12.0）：`COLOR` `0x7DB8FF`、两种形状 `moored`/`floating`（浮空的只在中枢长到相位 IV 后才试，`tries`）、核心 meta 7、溶解并穿过 `PC`、`under()` 找它下面的中枢、NEI 预览按相位选形状（`previewPhase`）（§6.2） |
+| `city/TileRoot` | 根位的潮汐井（0.12.0）：`COLOR` `0x3FC8E8`、一种形状 `well`、核心 meta 8、溶解并穿过 `R`、`over()` 找它上面的中枢（§6.3） |
 | `city/UnitUse` | 单元的右键：放、取、开窗口（§4.8） |
 | `city/CityGui`、`UnitSlot` | 通用模块窗口（MUI1，三页）；单元格子的槽（热键塞整堆只留一件）（§4.9） |
 | `city/client/CityScreen` | 窗口的自绘部分 |
 | `city/client/CityRender`、`CityFrame` | 每座城市模块共有的画面（墙裙光线、扫光、名牌、样本座里的物品）；模块本地坐标到相机坐标、线条和光带（§4.10） |
-| `city/client/EcoDomeRender` | 生态穹自己的画面（§6） |
+| `city/client/EcoDomeRender` | 生态穹自己的画面（§6.1） |
+| `city/client/DomeGeneratorRender`、`RootRender` | 0.12.0：穹顶发生器的腿、发射晶体、电弧、穹顶壳、成型扫光和画到 512 格的地标（§6.2）；潮汐井的潮汐环、上升的肋光、通量层带、池面焦散、从广场透上来的格栅光（§6.3） |
 | `logic/SiteFamily` | 场地族（§2） |
 | `logic/ShapeKit` | `city/gen/kit.py` 的移植：图例、几何、`Shape`、镜像、行走、内境门位、`summary`（§4.1） |
 | `logic/UnitLayout` | 一个形状的单元、槽号、样本座（§4.2） |
 | `logic/CityBuild` | 城市模块的形状交给通用建造计划（`BuildPlan.ModuleBuild`）（§4.3） |
-| `logic/EcoDomeShape` | 生态穹的形状、单元、蓝图、阶段规则（`b_hall.py` 的 `eco_dome()`）（§6） |
+| `logic/EcoDomeShape` | 生态穹的形状、单元、蓝图、阶段规则（`b_hall.py` 的 `eco_dome()`）（§6.1） |
+| `logic/DomeGeneratorShape` | 0.12.0：吊舱（`b_sky.py` 的 `dome_pod()`）、六条腿（`dome_legs()`）、两张蓝图、单元、阶段规则、在园区里占的（俯视的盒子、带高度的 keep-out、保护盒、高度检查）（§6.2） |
+| `logic/RootShape` | 0.12.0：潮汐井（`b_root.py` 的 `tidal_well()`）、井壳和井里（沉箱用）、单元、阶段规则、保护盒、深度检查；深根 `deepRoot()` 和地脉核 `leyCore()` 只是数据（§6.3） |
+| `logic/DomeLook`、`RootLook`、`Tide` | 0.12.0 渲染用的纯规则：腿的肋、电弧、穹顶半径和 LOD、地标的预算（§6.2）；潮汐环的升降和转动、肋光、通量层带、格栅（§6.3）；回响潮汐的曲线（BLUEPRINT 3.11） |
+| `logic/XRay` | 0.12.0：地下计划的透视棱（`edges`）、悬在空中的计划的影子和铅垂线（`hangs`/`shadow`/`plumbs`）（§4.12、campus.md §11） |
+| `logic/LiftShaft`、`LiftInput`、`LiftLook`，`campus/Lift`、`campus/client/LiftClient`、`LiftRender`、`LiftScan` | 0.12.0 光梯：规则、按键变成乘梯请求、光束的位置和乘梯的视角；两端的乘梯和碰撞钩子；客户端的输入和手感、光束、找光梯井（nexus.md §4.2） |
 | `logic/ModuleCores` | `fluxecho:module_core` 的 meta 表（§4.5） |
 | `logic/ModuleLook` | 渲染用的纯规则：墙裙光线的面和顺序、名牌位置、档位、样本座凹槽、池沿、涟漪的余量、认蜜蜂（§4.10） |
 | `logic/ModuleMap`、`UnitBrowse` | 窗口的平面图（`ArchiveMap` 的通用版）；单元列表的翻页、循环、选择检查（§4.9） |
 | `logic/PreviewSites` | 中枢 NEI 城市预览给每种模块挑位置：有 spec 的只上自己的场地、都占了就不立；没 spec 的用内环槽，和场地分开记（§4.11） |
 | `logic/BuildPlan` | 0.11.0 加的 `ModuleBuild` 接口、`module`、`hallController`、`ornaments`/`canopyDepth`/`annex`、`ARCHIVE`、`MODULE_MARGIN`/`MODULE_HEADROOM`（§4.3） |
-| `logic/CampusPlan`、`Parts`、`PartRecipes`、`TerrainRule.forRepairGround` | 场地族的外形（§2）；新部件码（§5）；新配方；修复只往空格里铺地面（§6） |
-| 改过的老类 | `nexus/TileMultiblock.coreMeta`、`BlockNexus.quiet`、`NexusModule.previewModule(core, meta, tile)`、`TileNexus.previewModules`、`NexusNet.UNIT_DELTA`、`NexusWaila`、`NexusGui.stageKey`、`nexus/client/ModuleRender`、`frame/BlockFrame`（ANCHOR）、`frame/client/FrameClient`（离开世界时 `TileCityModule.clearClient`）、`campus/BlockFitting`（SOCKET、BASIN）、`campus/client/FittingRender`、`PartBlocks`、`ModuleSpec`（`family`）、`Campus`（`RING_FULL`、`offerStatus`）、`Builder`（`Parts.euOnly`、修复的地面）、`Terrain.isTarget`（水）、`campus/client/BuildFx`、`BuildScan`（图标缓存按 128 个码）、`campus/client/Masterplan`（亭子外形）、`Config.moduleUpkeep` |
-| `tools/CampusTextures.java`、`tools/NexusTextures.java` | 样本座和池沿；覆层锚点和模块核心的贴图（§5） |
+| `logic/CampusPlan`、`Parts`、`PartRecipes`、`TerrainRule.forRepairGround` | 场地族的外形（§2）；新部件码（§5）；新配方；修复只往空格里铺地面（§6.1） |
+| 改过的老类 | `nexus/TileMultiblock.coreMeta`、`BlockNexus.quiet`、`NexusModule.previewModule(core, meta, tile)`、`TileNexus.previewModules`、`NexusNet.UNIT_DELTA`、`NexusWaila`、`NexusGui.stageKey`、`nexus/client/ModuleRender`、`frame/BlockFrame`（ANCHOR）、`frame/client/FrameClient`（离开世界时 `TileCityModule.clearClient`）、`campus/BlockFitting`（SOCKET、BASIN）、`campus/client/FittingRender`、`PartBlocks`、`ModuleSpec`（`family`）、`Campus`（`RING_FULL`、`offerStatus`）、`Builder`（`Parts.euOnly`、修复的地面）、`Terrain.isTarget`（水）、`campus/client/BuildFx`、`BuildScan`（图标缓存按 128 个码）、`campus/client/Masterplan`（亭子外形）、`Config.moduleUpkeep`。0.12.0：`TileMultiblock`（`reach()`、`previewShape`）、`TileModule.previewPhase`、`TileNexus`（五个相位形状、`phase()`/`grown()`、`ringDocked`、按轴上场地停靠）、`NexusRender`（每相位一节、模块的地标）、`ModuleRender.landmark`、`NexusGui`/`NexusScreen`/`NexusWaila`/`TerminalView`（内环只数 `ringCount`、场地名、`g`/`z`/`r` 阶段键、没地方的原因）、`fluxlite/gui/TerminalScreen`（内环计数、天顶/根位）、`ModuleSpec`（`Envelope`、`keepOut`、`protect`、`noRoom`、`axis`）、`Campus`（生长、轴上的模块、`siteKeepOut`/`siteProtect`）、`BuildJob`（`grow`、`establish:<p>`、`Kr`）、`Builder`（沉箱的挖和排水、空中建造照常）、`Terrain`、`TerrainRule`（`forDig`/`forDrain`）、`BuildPlan`（`grow`、`zenith`、`root`、DIG/DRAIN、分带、带高度的 keep-out）、`CityBuild`（偏移）、`Blueprint`（`reach`、`inBox`）、`ModuleLook`（`plates`、`liftPad`）、`ModuleMap`（光梯台、齐平的单元层）、`PreviewSites`（轴上的不占名额）、`GhostCells`（挖的格子不画）、`campus/client/BuildRender`/`BuildScan`（透视棱、空中的影子）、`Masterplan`（天顶和根位）、`city/client/CityRender`/`CityFrame`/`CityScreen`、`CityGui`（相位）、`BlockFrame`/`BlockFitting`（光梯的碰撞）、`MatterModule`、`Manifests`、`ResearchTree` |
+| `tools/CampusTextures.java`、`tools/NexusTextures.java` | 样本座和池沿；覆层锚点和模块核心的贴图（§5）；0.12.0 的光梯台 `fitting/lift`、`lift_top`、`lift_glow`，穹顶发生器和潮汐井的核心 `module_core/dome_generator/*`、`module_core/root/*`，物品 `items/phase_alloy`、`items/resonant_glass` |
 
 ## 4. 共用框架
 
 ### 4.1 `ShapeKit`（`kit.py` 和 `b_hall.py` 用到的辅助函数的移植）
 
-- **图例** `partOf(ch)`（CITY 附录 A，全城唯一）：构架 `F` 地基、`B` 基座、`g` 导能基座、`P` 支柱、`C` 导能柱、`R` 环段、`Z` 晶核座、`K` 控制台座、`A` 覆层锚点；地板 `d` 地砖（检查）、`#` 地缝钢、`e` 光带地砖、`:` 格栅、`%` 深色、`k` 踢脚光带、`*` 光井、`W` 墙板、`L` 光缝墙板、`w` 深色墙裙、`n` 光檐；配件 `q` 立柱、`p` 底座、`c` 顶檐、`r` 栏杆、`t` 踏板、`G` 窗格、`h` 全息底座、`o` 样本座、`u` 池沿；软格 `.` 地砖、`+` 光带、`_` 地缝钢、`,` 草（`Parts.GRASS`）、`;` 泥土、`=` 水（`Parts.WATER`）、`{` 墙板、`}` 踏板、`|` 栏杆、内境门位的 `[` 深色墙裙、`!` 光缝墙板、`/` 窗格；`-` → `Parts.AIR`；`~` 控制器和空格 → −1（控制器的部件是模块核心）。附录 A 里的 `f` 浮空地基、`Q` 画布、`^` 光梯是以后批次的部件，`partOf` 现在不认（抛 `IllegalArgumentException`），哪个批次加部件就在这里加一行。
+- **图例** `partOf(ch)`（CITY 附录 A，全城唯一）：构架 `F` 地基、`B` 基座、`g` 导能基座、`P` 支柱、`C` 导能柱、`R` 环段、`Z` 晶核座、`K` 控制台座、`A` 覆层锚点；地板 `d` 地砖（检查）、`#` 地缝钢、`e` 光带地砖、`:` 格栅、`%` 深色、`k` 踢脚光带、`*` 光井、`W` 墙板、`L` 光缝墙板、`w` 深色墙裙、`n` 光檐；配件 `q` 立柱、`p` 底座、`c` 顶檐、`r` 栏杆、`t` 踏板、`G` 窗格、`h` 全息底座、`o` 样本座、`u` 池沿；软格 `.` 地砖、`+` 光带、`_` 地缝钢、`,` 草（`Parts.GRASS`）、`;` 泥土、`=` 水（`Parts.WATER`）、`{` 墙板、`}` 踏板、`|` 栏杆、内境门位的 `[` 深色墙裙、`!` 光缝墙板、`/` 窗格；`-` → `Parts.AIR`；`~` 控制器和空格 → −1（控制器的部件是模块核心）；`^` 光梯台（0.12.0，`Parts.fitting(F_LIFT)` = 码 41，形状里用 `Shape.lift(x, y, z)` 放，记进 `lifts`，行走测试按它连上下两个梯台）。附录 A 里的 `f` 浮空地基、`Q` 画布是以后批次的部件，`partOf` 现在不认（抛 `IllegalArgumentException`），哪个批次加部件就在这里加一行。
 - 字符集：`SOFT` = `.,=;+_{}|[!/`、`soft`、`checked`（不是空格、`-` 和软格）、`checkedTwin`（软格放的是哪个检查字符的部件：`.`→`d`、`+`→`e`、`_`→`#`、`{`→`W`、`}`→`t`、`|`→`r`、`[`→`w`、`!`→`L`、`/`→`G`；草、泥土、水是自己；画面和平面图按它认墙）；行走用的 `PASSABLE`（空格、`-`、水）、`HALF`（`t}` 站在 +0.5）、`NOSTAND`（`r|` 栏杆 1.5 高）、`LOW`（`uh` 池沿和全息底座挡路、不能站）。
 - 几何：`octo(du, dv, half, k)`、`hypot`（整数平方和的 `Math.sqrt`，同 Python 的 `math.hypot`）、`angle`（`StrictMath.atan2`）、`offOctant`、`disc`、`ring`、`key/keyX/keyZ`、`boundary`、`thickBoundary`、`inBall`、`ballShell`、`spiral(cx, cz, yFrom, steps, start, mirror)`（档案馆的井：每个环格一级、半格一级、整格是墙板）、`portal(s, z, yLintel, canopy, cx)`（套件门）。
 - `Shape`：W×H×D 的字符盒（`set/get/clear`、`counts()`）、`unit(name, kind, cells, slots, face)`、`controller`、`decor`（`{x, y, z, 字符}`）、光梯、`asym`（不参加镜像检查的格子，比如生态穹树干的螺旋）、`gateNiche(x0, x1, y0, y1, z)` 和 `niche`（内境门位：把墙格换成软的孪生字符，不是墙就抛 `IllegalArgumentException`；§1）、`symmetric()`、`walk`（状态 `state(x, z, h)`，h 以半格计）、`unitReach`、`controllerReach`；`summary(shape, starts)` → `Summary`（计数、对称、走到的状态数、控制器和每个单元能不能到）。
@@ -158,30 +171,36 @@
 - **`hallController(site, cx, y0, cz, fx, fz, ctrlY, ctrlZ)`** 和 `hallController(m, …)`：前排径向 24、控制器在场地轴上往里 `ctrlZ` 行、Y0+`ctrlY`，朝中枢（场地轴取反）；`archiveController` 现在是它的特例。
 - **档案馆也走这里**：`BuildPlan.ARCHIVE` 照 0.10 的阶段规则原样（立柱在单元前，全息底座、讲台、阅读台在后；`ornaments()` 假），`archive(...)` = `module(..., ARCHIVE)`；`ModulePlanTest.theArchivesPlanIsCellForCellTheSame` 钉住 4 个朝向 × 3 个场地的 12 个校验和，所以 **`BuildJob.V` 还是 2**。
 - **种子装饰**（`ornaments`，种子 `Mix.seed(控制器 x, y, z)`）：`canopyDepth(seed)` 2/3/4（形状自己的雨棚两排，最外一排往外重复）；`annexKind(seed)` 和 `annex(width, depth, seed)`：一侧（`Mix.unit(seed, 43) < 0.5` 时左边 x = −2，否则 x = width+1，即 apron 外排，`ANNEX_OFFSET` 2）、Y0+1、z 从 `ANNEX_FROM` 6 到 depth−7：种植墙（每 4 格一个池沿，其余草）、灯排（每 3 格两节立柱加一个顶檐）、长椅（踏板，每 5 格空一格）、全息牌柱（中间一格：全息底座加两节立柱）。全是 SOFT、在蓝图外。同一座中枢的不同场地种子不同。
-- **`CityBuild(key, shape, height, blueprint, layout, corePart, stages)`**：城市模块的 `ModuleBuild`。`cell` 读形状（≥ `height` 的层是空格：生成器可以多分配层）；`part` 按图例、控制器是 `corePart`；`stage`/`fitRank` 交给模块自己的 `Stages`；`units()` 来自 `UnitLayout`；`decor()` 是形状的 decor（部件码）；`ornaments()` 恒真；`cellOf(x,y,z) = {x, height−1−y, z}`。
-- **阶段的 lang 键**：模块任务都是 9 段；档案馆用 `fluxecho.build.stage.m<n>`，其他城市模块用 `build.stage.c<n>`：`c0` 清理场地、`c1` 场地地面、`c2` 外墙、`c3` 楼面、`c4` 上层外墙、`c5` 屋顶、`c6` 配件和单元、`c7` 装饰、`c8` 落成（`NexusGui.stageKey` 按 `ModuleSpecs.moduleOf(计划键)` 选 `e`/`m`/`c`）。阶段号和键一一对应。
+- **`CityBuild(key, shape, height, blueprint, layout, corePart, stages)`**：城市模块的 `ModuleBuild`。`cell` 读形状（≥ `height` 的层是空格：生成器可以多分配层）；`part` 按图例、控制器是 `corePart`；`stage`/`fitRank` 交给模块自己的 `Stages`；`units()` 来自 `UnitLayout`；`decor()` 是形状的 decor（部件码）；`ornaments()` 恒真；`cellOf(x,y,z) = {x + ox, 蓝图高−1−(y + oy), z + oz}`。
+- **蓝图伸出形状的盒子**（0.12.0，第八个参数 `offset`）：穹顶发生器的腿从吊舱往下伸 39 格到广场，蓝图（腿和吊舱合起来 29×49×25）比形状（吊舱 21×10×21）大。`offset = {横向, 从蓝图最低层往上, 从蓝图前排往后}` 是形状的格 (0, 0, 0) 在蓝图里的位置（吊舱是 `{4, 39, 2}`）；形状的坐标系照旧是模块自己的（y0 是吊舱舱底，每个渲染器和窗口都这么读），蓝图装着它周围的东西。`localOf(a, b, c)`（蓝图格 → 形状点）、`offset()`；`TileCityModule.local/localPoint`、`CityFrame` 都按它换算。不给 `offset` 就是 `{0, 0, 0}`，和 0.11.0 一样（生态穹逐格不变）。
+- **阶段的 lang 键**：大厅族的模块任务都是 9 段；档案馆用 `fluxecho.build.stage.m<n>`，其他大厅族城市模块用 `build.stage.c<n>`：`c0` 清理场地、`c1` 场地地面、`c2` 外墙、`c3` 楼面、`c4` 上层外墙、`c5` 屋顶、`c6` 配件和单元、`c7` 装饰、`c8` 落成。0.12.0 起天顶族用 `z<n>`（7 段：`z0` 清理支腿和吊舱的位置、`z1` 六条支腿、`z2` 吊舱舱底、`z3` 外壳、`z4` 屋顶、`z5` 控制台和守护台、`z6` 落成），根族用 `r<n>`（5 段：`r0` 沉井、`r1` 排水、`r2` 井底、`r3` 潮汐环、坡道和汲口、`r4` 落成），中枢的生长任务用 `g<n>`（`g0` 清理中枢上方、`g1` 新的一段、`g2` 成型；生长用 establish 的阶段号，地面和塔柱两段是空的）。`NexusGui.stageKey` 按计划键选：establish（含 `establish:<p>`）和 forum → `e`，`grow:<p>` → `g`，spec 是天顶族 → `z`、根族 → `r`，档案馆 → `m`，其余 → `c`。阶段号和键一一对应。
 
 ### 4.4 `ModuleSpec` 和营造引擎
 
 - `ModuleSpec(family, key, research, width, depth, height, sites, corePart, colour, plans, controllers, enabled)`：每个场地都要属于这个族（否则 `IllegalArgumentException`）；老的 11 参数构造器 = `HALL`。`footprint` 按族（大厅：横 × 深从前排；亭子：八角外接方）。
 - 生态穹的：`CityModule.ecoDome()` = `HALL`、键 `eco_dome`、研究 `eco_dome`、27×35×21、场地 {2, 6, 4}、`Parts.moduleCore(0)` = 64、`0x7BE08A`、`EcoDomeShape::plan`、`EcoDomeShape::controller`、`() -> true`（没有单独的开关，`campusEnabled` 关掉的是整个营造）。
-- 之后的一切照营造引擎（campus.md §5–§10）：`autoJobs` 按研究和偏好提供（容量 `min(RingSlots.open(PHASE), 7)`，停靠的 0.9.2 大厅也占一个）；开始前账本里要有核心（`need_core`）；keep-out 用 `siteBox`；停靠时按场地收编（`TileNexus.refreshDock` 要有 spec）；修复、取消冷却、模块列表、总图牌子、Waila、终端都是通用的。研究了但只因为内环满了不能提供 → `RING_FULL`（§4.11）。
+- 之后的一切照营造引擎（campus.md §5–§10）：`autoJobs` 按研究和偏好提供（容量 `min(RingSlots.open(中枢的相位), 7)`，停靠的 0.9.2 大厅也占一个）；开始前账本里要有核心（`need_core`）；keep-out 用 `siteBox`；停靠时按场地收编（`TileNexus.refreshDock` 要有 spec）；修复、取消冷却、模块列表、总图牌子、Waila、终端都是通用的。研究了但只因为内环满了不能提供 → `RING_FULL`（§4.11）。
+- **轴上的族**（0.12.0）：`ModuleSpec` 的第 13 个参数 `Envelope`（族是 `axis()` 的必须给，否则 `IllegalArgumentException`）回答大厅用 `footprint`/`siteBox` 回答的问题：`footprint`（俯视的盒子）、`keepOut`（园区任务让开的盒子，可以带高度）、`protect`（除了它自己的任务谁都不拆的空间盒子 `{x0, y0, z0, x1, y1, z1}`）、`noRoom(y0)`（放不下的原因键或 null）。`ModuleSpec.axis()`、`noRoom`、`keepOut`（大厅是整列的 `siteBox`）、`protect`（大厅是从基岩到天空的 `siteBox`）。`Campus` 里轴上的 spec 不占内环（`busy`/`cap` 跳过它）、要 `phaseFits`（`nexus.phase() ≥ family.opens`）和 `roomFor`（`noRoom(Y0)` 为 null）才提供；空场地的判定只看控制器格上有没有已加载的模块（keep-out 和模块中心是给地面上的大厅用的）。停靠：`TileNexus.campusSite` 对轴上的 spec 要控制器格和正面**正好**是场地给的（不是大厅那样 ±3）。细节见 §4.12、campus.md §5。
+- 穹顶发生器：`CityModule.domeGenerator()` = `ZENITH`、键 `dome_generator`、研究 `dome`、21×21×10（吊舱）、场地 {8}、`Parts.moduleCore(7)` = 71、`0x7DB8FF`、`DomeGeneratorShape::plan`、`::controller`、`() -> true`、`Envelope` 交给 `DomeGeneratorShape.footprint/keepOut/protect/noRoom`。潮汐井：`CityModule.root()` = `ROOT`、键 `root`、研究 `tidal_well`、25×25×26、场地 {9}、`Parts.moduleCore(8)` = 72、`0x3FC8E8`、`RootShape::plan`、`::controller`、`() -> true`、`Envelope` 交给 `RootShape`（`keepOut` 是空的）。
 
 ### 4.5 模块核心家族 `fluxecho:module_core`
 
-- **一个方块，meta = 模块**（`logic/ModuleCores`，CITY 附录 C）：0 `eco_dome` · 1 `dual_foil_vault` · 2 `arcane_court` · 3 `blood_covenant` · 4 `hunting_ground` · 5 `mana_fountain` · 6 `resonance_gate` · 7 `dome_generator` · 8 `root` · 9 `sophon_array` · 10 `holo_table` · 11 `sky_sails` · 12 `observatory` · 13 `droplet_hangar` · 14 `weather_station` · 15 `orbital_anchor`；`BUILT` = 1（0.11.0 只有 meta 0 有模块）；第十七个模块（源点之心）起用 `fluxecho:module_core2`（码 80–95，只预留）。`meta(key)`、`key(meta)`、`KEYS`。meta 一旦给了某个模块就永远是它的（是世界里的方块，也是账本里的部件）。
+- **一个方块，meta = 模块**（`logic/ModuleCores`，CITY 附录 C）：0 `eco_dome` · 1 `dual_foil_vault` · 2 `arcane_court` · 3 `blood_covenant` · 4 `hunting_ground` · 5 `mana_fountain` · 6 `resonance_gate` · 7 `dome_generator` · 8 `root` · 9 `sophon_array` · 10 `holo_table` · 11 `sky_sails` · 12 `observatory` · 13 `droplet_hangar` · 14 `weather_station` · 15 `orbital_anchor`；有模块的 meta 是 `ModuleCores.built()` = {0, 7, 8}（0.11.0 只有 0；0.12.0 的 `BUILT` 从个数改成 meta 列表，`built(meta)` 问一个 meta）；第十七个模块（源点之心）起用 `fluxecho:module_core2`（码 80–95，只预留）。`meta(key)`、`key(meta)`、`KEYS`。meta 一旦给了某个模块就永远是它的（是世界里的方块，也是账本里的部件）。
 - 部件码 `Parts.MODULE_CORE + meta`（64–79；`moduleCore(m)`、`isModuleCore`、`MODULE_CORES` 16）；`PartBlocks.block` → `CityModule.core`，`code(block, meta)` 按 meta 反查；`PartRecipes.partOnly` 包含全部 16 个——核心显化得来，建造只收成品，模块任务开始前账本里要有它（同书库核心）。
-- **`BlockModuleCore extends BlockNexus`**（`super("module_core", "module_core")`，铁、亮度 0.5）：`createNewTileEntity` 按 meta（0 → `TileEcoDome`，其余 null）；`damageDropped` = meta；创造栏只列前 `BUILT` 个；`quiet()` = `Builder.QUIET`（`BlockNexus.breakBlock` 新加的钩子：引擎改世界时拆核心不通知附近的多方块，阶段结束统一通知；书库和中枢的核心照旧每次都通知）；`dropsMore` → `TileCityModule.takeDown`；图标 `fluxecho:module_core/<key>/front|front_on|side|top`（`front_on` 是成型时的正面；没模块的 meta 用生态穹的）。
+- **`BlockModuleCore extends BlockNexus`**（`super("module_core", "module_core")`，铁、亮度 0.5）：`createNewTileEntity` 按 meta（0 → `TileEcoDome`，7 → `TileDomeGenerator`，8 → `TileRoot`，其余 null）；`damageDropped` = meta；创造栏只列 `built()` 的 meta；图标只给 `built()` 的 meta 注册；`quiet()` = `Builder.QUIET`（`BlockNexus.breakBlock` 新加的钩子：引擎改世界时拆核心不通知附近的多方块，阶段结束统一通知；书库和中枢的核心照旧每次都通知）；`dropsMore` → `TileCityModule.takeDown`；图标 `fluxecho:module_core/<key>/front|front_on|side|top`（`front_on` 是成型时的正面；没模块的 meta 用生态穹的）。
 - **`ItemBlockModuleCore`**：名字 `tile.fluxecho.module_core.<key>.name`；提示 `fluxecho.<key>.tip`，按住 Shift 是 `fluxecho.<key>.structure`（否则 `gui.shift_build`）；放下用物品的 meta。
 - 框架里配套的两处：`TileMultiblock.coreMeta()`（默认 0）——NEI 预览世界里 `placeOwnBlock` 按它放核心；`NexusModule.previewModule(core, meta, tile)`——中枢城市预览放核心时带 meta。
 
 ### 4.6 `TileCityModule`
 
 - **子类给**：`build()`（`CityBuild`）、`layout()`（`UnitLayout`）、`coreMetaOf()`、`dissolves()`、可选 `passes()`（默认空），加 `TileModule` 的 `moduleKey()`、`moduleColor()`。形状和单元是静态数据，构造器里就能问。
-- **结构**：只有一种形状 `MAIN`；`definition()`/`buildDefinition()` 按模块键缓存，每个字符 `ShapeKit.partOf` → `PartBlocks.block/meta`（`-` 是 StructureLib 的必须为空气，控制器跳过；某个字符没有方块就直接抛）——正是建造放的方块，所以引擎建完就成型。`centreCell` = 地基中心 `cellOf((W−1)/2, 0, (D−1)/2)`（停靠按它找场地）；`coreBlock` = `CityModule.core`、`coreMeta` = `coreMetaOf()`；`descriptionKey` = `<key>.structure`。
-- **溶解**：`flags(ch)`：`dissolves()` 里的字符成型后 `Formed.HIDE`（区块网格不画，交给渲染）；其中也在 `passes()` 里的才 `HIDE|PASS`（去掉碰撞）。人站在旁边、绕着走的溶解格（生态穹的树干穿过两层岛面、又是螺旋梯的中柱）只能 HIDE，否则留下一口能掉下去的井（0.11.0 开发中的 bug，`TileEcoDomeTest.theTrunkHidesButStaysSolid`、`EcoDomeWalkTest.theCellsPlayersPassThroughAreOutOfReach` 守着）。
-- **朝向**：`place(player, front)`——手放在某座已加载中枢、这种模块某个场地的控制器格上时朝向中枢（引擎 commission 的朝向，同档案馆）；`consoleAt` = 形状里 `K` 的格子（`Consoles` 右键开窗口）。
-- **本地坐标**：`local(x,y,z)`（方块 → 形状格）、`localPoint`（世界里的点 → 形状里的点）、`worldOf(lx,ly,lz)`、`worldDir(lx,lz)`。
+- **结构**：默认一种形状 `MAIN`；0.12.0 起子类可以覆写 `shapes()` 给几种（穹顶发生器的 `moored` 和 `floating`，同一个盒子，控制器格相同），`tries(s)` 决定现在试哪几种。`definition()`/`buildDefinition()` 按模块键缓存，带上所有形状，每个字符 `ShapeKit.partOf` → `PartBlocks.block/meta`（`-` 是 StructureLib 的必须为空气，控制器跳过；某个字符没有方块就直接抛）——正是建造放的方块，所以引擎建完就成型。`centreCell` = 地基中心 `cellOf((W−1)/2, 0, (D−1)/2)`（停靠按它找场地）；`coreBlock` = `CityModule.core`、`coreMeta` = `coreMetaOf()`；`descriptionKey` = `<key>.structure`。
+- **`covers()`**（0.12.0）：不再是 ±`reach()` 的立方体，只罩它每个形状绕控制器摆好的盒子（`Blueprint.inBox`）——城市模块的盒子就是它真实的范围；天顶 49 高的盒子做成立方体会以吊舱里的控制器为心往四周伸 50 格、罩住每个大厅位，那里残留的我们的方块就不算散落了（campus.md §5）。帧变化的监听和 `UnitUse` 也问它，每个形状的每一格都在它的盒子里，所以都不会漏。
+- **控制台座**：`consoleAt` = 形状里 `K` 的格子、**而且不属于任何单元**（0.12.0：穹顶发生器的守护台是控制台座 + 样本座组成的单元，点它是用单元，不是开窗口）。
+- **预览的形状**（0.12.0）：NEI 中枢预览立模块之前调 `previewPhase(相位)`（`TileModule` 的钩子，默认什么都不做）；穹顶发生器在相位 IV 起选 `floating`（`TileMultiblock.previewShape`，只在预览世界里有用）。
+- **溶解**：`flags(ch)`：`dissolves()` 里的字符成型后 `Formed.HIDE`（区块网格不画，交给渲染）；其中也在 `passes()` 里的才 `HIDE|PASS`（去掉碰撞）。人站在旁边、绕着走的溶解格（生态穹的树干穿过两层岛面、又是螺旋梯的中柱）只能 HIDE，否则留下一口能掉下去的井（0.11.0 开发中的 bug，`TileEcoDomeTest.theTrunkHidesButStaysSolid`、`EcoDomeWalkTest.theCellsPlayersPassThroughAreOutOfReach` 守着）。**例外**（0.12.0，CITY §4、§4.8）：穹顶发生器的腿（`P`）和发射节点（`C`）是 `HIDE|PASS`，和中枢的 `P`/`C` 一样——腿立在广场上、人碰得到，成型后它们是渲染出来的弧肋，穿过去就是设计；它们不托着任何人站的地面，穿过去也掉不进什么。潮汐井的潮汐环（`R`）照规则：悬在水池上方、没有人站得到的地方（`RootShapeTest.theRingsAreOutOfReach`）。
+- **朝向**：`place(player, front)`——手放在某座已加载中枢、这种模块某个场地的控制器格上时朝向中枢（引擎 commission 的朝向，同档案馆）；`consoleAt` 的格子由 `Consoles` 右键开窗口。
+- **本地坐标**：`local(x,y,z)`（方块 → 形状格，0.12.0 起经 `CityBuild.localOf`，蓝图伸出形状盒子的部分是负的 y）、`localPoint`（世界里的点 → 形状里的点，减去偏移）、`worldOf(lx,ly,lz)`、`worldDir(lx,lz)`。
 - **单元和样本**：`unitCount`、`unitAt`、`slotAt`（样本座 → 槽）、`slotCell`、`unitCells`、`unitSlots` → `{first, count}`、`sample(slot)`（服务端读 handler，客户端读 `clientSamples`）、`samples()`、`unitFill`、`firstFree`、`sampleCount`、`unitName`（如 `G-RB`）、`unitKind`（lang `fluxecho.unit.<kind>`）、`selectUnit` 和字段 `selectedUnit`（服务端；存档 `Unit`，不进描述包，窗口自己同步）、`openOnUnit`（只在服务端、不存档：`UnitUse` 开窗前设上，窗口开在「单元」页后清掉）、`contents()`。
 - **样本 handler**：`layout().slots()` 格（生态穹 36），每格上限 1，**任何物品都收**（结构阶段的选择，CITY §6.1 第 15 条；不像书库那样查重复），tile 失效后不收。
 - **供电**：成型、`nexus() != null`（停靠着）、`nexusEnabled`、有队伍 → 每 tick 从团队无线电网扣 `upkeep()` = `Config.moduleUpkeep`（`nexus.moduleUpkeepEuPerTick`，默认 128），扣到了就 `powered`（`ServerEvents.addTeamTick` 记统计），变化时重发描述包。没电时单元里的东西照样在。每 100 tick `Directory.report`：名字 `tile.fluxecho.module_core.<key>.name`、状态 `fluxecho.dock.<停靠状态>`（停靠没电报 `no_power`），停靠且有电 IDLE、否则 PROBLEM。
@@ -209,32 +228,56 @@
 - MUI1，260×256，背包在 (49,174)，flux 风格加模块色。顶行：标题 (6,5) 120×14；三个标签 状态 / 单元 / 平面 在 x 130/172/214、y 4，各 40×15（`TAB_X`，`city.gui.tab_status/units/plan`），页只在客户端。页面区 y 22–140；下面一条（分隔线 y 142，内容 (9,145) 242×26）：样本数（`city.gui.foot.samples`：保管的样本 n/m，共 k 个单元）、停靠状态、当前页的提示（`foot.status/units/plan`）——三个标签之后标题太窄，停靠状态挪到了这条里。
 - **状态页**：左边 (11,26) 154×110，每行 12 像素：结构、停靠、供电、维持（`city.gui.status.upkeep_value` n EU/t）、相位、场地、单元（`status.units_value`：n 个单元 · a/b 个样本）、主人，最后一行提示（`status.hint.unformed/undocked/no_power/running`）；悬停 `status.tip`（各行的键都在 `city.gui.status.` 下）。右边 (176,25) 76×112 一个随状态动的模块色徽记。
 - **单元页**：左边列表 (9,37) 8 行 × 12 像素、宽 106，列表头 (9,25)（`city.gui.units`），翻页箭头 (89,24)、(103,24)（多于 8 个单元才出现，滚轮也翻，循环，`UnitBrowse.page`）；每行名字、种类、装满程度（`city.gui.fill`），点行 → 请服务端显示它。右边单元标题 (126,25) 124×21（名字、种类、`where`「第 n 层 · 高 y」）；格子从 y 52 起每行 6 个、最多 18 个（`GRID_COLS`/`GRID_MAX`；格子数 = 最大单元的槽数，`gridSlots`），在 x 122–254 里居中（生态穹 3 格，从 x 161 起）；提示 (126,107)（`city.gui.hint`/`hint_full`）；◀ ▶ 在 (126,122)、(233,122) 按单元循环（`UnitBrowse.step`），中间 (145,122)「第 n 个 / 共 N 个」（`city.gui.nav`）。
-- **平面页**：`ModuleMap` 的平面图在 x 6–134 里居中（生态穹 83×107 在 (28,27)：一格 3 像素，门在下方，横轴朝走进门的人的右手边）；层标签 (140,26) 每个 26×13、每行 4 个、最多 8 个（`storey_short`，悬停 `storey.tip`）；选中单元的信息 (140,57) 112×60；「打开单元」(140,122) 112×14 → 换到单元页。每层画的是这一层高度上立着的东西（`ModuleMap.Mark`：地面、光带、草、水、墙、实心、玻璃、壁柱、门、栏杆、立柱、楼梯、家具、控制台座、控制器、溶解的树干），单元按装满程度上色（空的暗、装着青、满了模块色），选中的描边；点图选最近的单元（`ModuleMap.nearest`，`REACH` 3 像素内）。
+- **平面页**：`ModuleMap` 的平面图在 x 6–134 里居中（生态穹 83×107 在 (28,27)：一格 3 像素，门在下方，横轴朝走进门的人的右手边）；层标签 (140,26) 每个 26×13、每行 4 个、最多 8 个（`storey_short`，悬停 `storey.tip`）；选中单元的信息 (140,57) 112×60；「打开单元」(140,122) 112×14 → 换到单元页。每层画的是这一层高度上立着的东西（`ModuleMap.Mark`：地面、光带、草、水、墙、实心、玻璃、壁柱、门、栏杆、立柱、楼梯、家具、控制台座、控制器、溶解的树干，0.12.0 加光梯台 `LIFT`——地面上一个呼吸的青色光圈，`^` 本身和脚下是 `^` 的空格都是它）。**嵌在地面里的单元**（0.12.0，`ModuleMap.flush`）：某层有单元格的旁边同一高度是地面类部件（`FLOORS` = `dBFg:e%#*`）——潮汐井的汲口嵌在池沿里、和步道一样高，人站在上面一层——这一层的图就画上面一层（和生态穹的种植床立在楼面上一样）；空格下面是池沿、样本座、底座（`u`/`o`/`h`）时仍画成家具。单元按装满程度上色（空的暗、装着青、满了模块色），选中的描边；点图选最近的单元（`ModuleMap.nearest`，`REACH` 3 像素内）。
 - **选择**：每个窗口自己的（服务端 `Sel`，起点 `selectedUnit`，变了写回 `selectUnit`，下次开窗从这里起）；客户端经 `Link`（`FakeSyncWidget<Integer>`，id 1 `ASK_UNIT`）请求，服务端 `UnitBrowse.valid` 检查后作为同步值发回（`View.unit`），客户端不预测；◀ ▶ 的回调直接在服务端跑。
 - **格子**（`Grid`）：服务端每次访问都按当前选择算出 `first + k`、直接读写模块的 handler（换单元不会留下过期的映射，容器只看到内容变了的格子）；超过这个单元槽数的格子什么都不做；客户端是一份副本，它的检查只按布局预测。客户端每 tick 按页和单元开关格子（`enableGrid`，`SlotWidget.setEnabled` 自己通知服务端）。**动过格子的点击之后服务端下一 tick 整窗重发**（`Link.resend`：原版相信客户端已经预测了点击结果，而选择刚变时客户端的格子可能还是上一个单元，物品也可能被服务端拒了）。`UnitSlot`：热键把整堆塞进空格时只留一件，其余还给玩家（装不下掉脚下）并整窗重发（同档案馆的 `BookSlot`）。Shift 点背包里的物品 = 一格一个填进显示中的单元的空格；Shift 点格子里的样本 = 取回背包。
-- 服务端同步给窗口的（`FakeSyncWidget`）：`formed`、`dockStatus`、`powered`、`upkeep`、场地（停靠时是 `slot()`，否则 −1）、相位（停靠时 `TileNexus.PHASE`，否则 0）、主人名，和打开时的页（`openOnUnit` → 单元页；玩家自己点过标签之后不再管它）。
+- 服务端同步给窗口的（`FakeSyncWidget`）：`formed`、`dockStatus`、`powered`、`upkeep`、场地（停靠时是 `slot()`，否则 −1；状态页按 `SiteFamily.labelKey` 写：环上的场地是 `build.gui.site`「n 号位」，8 是 `build.gui.site_zenith`「天顶」、9 是 `build.gui.site_root`「根位」）、相位（停靠时中枢的 `phase()`，0.12.0 起不再是常量 `TileNexus.PHASE`；否则 0）、主人名，和打开时的页（`openOnUnit` → 单元页；玩家自己点过标签之后不再管它）。
 - 校验器 `standing()`：核心被拆或区块卸载就关窗。`CityGui.map(c)` 按模块键缓存平面图（两端同一份纯数据）。
 
 ### 4.10 通用渲染钩子（`CityRender`、`CityFrame`、`ModuleLook`；CITY §1.6 第 8 条）
 
-- **入口**：`NexusRender` → `ModuleRender.draw` → `CityRender.draw(tile, t, fade)`——没有自己的 `FarDraw` 登记，跟着中枢的渲染器一起画、一起画进光门（gates.md §5）。`NexusRender` 对客户端每个多方块（`ClientTiles.all()`）各算一次距离：模块的**控制器**离相机超过 `effectRange + 48` 就整座不画（中枢在这个距离外只画光柱），最后 16 格按 `fade` 淡出；停没停靠都画（没成型的只画墙裙光线）。
+- **入口**：`NexusRender` → `ModuleRender.draw` → `CityRender.draw(tile, t, fade)`——没有自己的 `FarDraw` 登记，跟着中枢的渲染器一起画、一起画进光门（gates.md §5）。`NexusRender` 对客户端每个多方块（`ClientTiles.all()`）各算一次距离：模块的**控制器**离相机超过 `effectRange + 48` 就整座不画（中枢在这个距离外只画光柱），最后 16 格按 `fade` 淡出；停没停靠都画（没成型的只画墙裙光线）。**地标**（0.12.0，CITY §1.3「地标画到 512」）：超出这个距离、但控制器在 `LANDMARK_RANGE`（512 + 160）以内的模块走 `ModuleRender.landmark` → `CityRender.landmark(m, t)`，只画它的地标——现在只有穹顶发生器有（`DomeGeneratorRender.landmark`：停靠时的穹顶、系泊的远处支腿，§6.2），别的模块什么都不画。
 - **档位** `ModuleLook.tier(在里面, 离盒子的距离, NEAR 24, effectRange)`：`NEAR`（相机在里面或离盒子 ≤ 24 格）、`MID`（≤ `effectRange`）、`FAR`（更远）。
 - **每座城市模块都有**：
   1. **墙裙光线**（`ModuleLook.course`：y1 的 `w` 格（和门位的软墙裙 `[`，同一种方块）朝外的面，按绕楼的角度排序，从正面中间开始、往走进门的人的右手边绕；门洞没有墙裙，线在门口断开；门位开成光门之前线照样连着）：停靠有电 = 模块色，一道脉冲绕一圈（每 tick 走 0.4 个面，生态穹约 16 秒一圈）；停靠没电 = 琥珀色呼吸；没停靠 = 暗灰蓝；未成型 = 更暗，只亮墙裙方块真的立着的面（逐格看世界，独立的核心和盖到一半的楼不会有悬空的线）。每面一条芯，NEAR 再加光晕；FAR 不画（细于一个像素）。
-  2. **成型扫光**：模块色平面加白边升过 `bounds()`（`SWEEP_MS` 2 秒内；迟到的客户端不重播）。
-  3. **名牌**（`ModuleLook.plate`：控制器轴上、雨棚中间的上方 1.75；没有雨棚就在控制器上方 3.6、门外 1.5）：48 格内朝相机，最后 16 格淡出；第一行模块名（`module.<key>`，模块色，1.5 倍），第二行运行时是 `city.plate.on`（运行中 · n/m 个样本，白色），否则是停靠状态（`dock.*`，琥珀色）。
+  2. **成型扫光**：模块色平面加白边升过 `bounds()`（`SWEEP_MS` 2 秒内；迟到的客户端不重播）。穹顶发生器的扫光换成它自己的（`DomeGeneratorRender.sweep`：沿六条腿往上、再穿过吊舱）。
+  3. **名牌**（`ModuleLook.plates(build)`，0.12.0 起一座模块可以有几块，按模块键缓存在 `CityRender.PLATES`）：有门的模块一块（`ModuleLook.plate`：控制器轴上、雨棚中间的上方 1.75；没有雨棚就在控制器上方 3.6、门外 1.5）；**坐光梯进的模块**（形状里有光梯台 `^`，`ModuleLook.liftPad` 找最低的一个：天顶的吊舱、根）没有门，名牌浮在控制台座上的控制器上方（控制器方块脚下往上 `OVER_CONSOLE` 1.4，在天花板下面）；**悬在空中的**（`CityBuild.offset()[1] > 0`，蓝图往下伸出自己的地面，像吊舱的腿）再在舱底下面、光梯井正上方挂第二块（光梯台往下 `BELLY` 2.2），给广场上的人看。相机离某块名牌水平 `PLATE_CLEAR` 1.5、竖直 `PLATE_CLEAR_Y` 4 以内就不画这一块（乘梯穿过舱底的人会从名牌里穿过去）。48 格内朝相机，最后 16 格淡出；第一行模块名（`module.<key>`，模块色，1.5 倍），第二行运行时是 `city.plate.on`（运行中 · n/m 个样本，白色），否则是停靠状态（`dock.*`，琥珀色）。
   4. **样本座里的物品**（只在 NEAR）：离相机 24 格内最近的 256 个有样本的样本座（每座模块各算各的），每个不贴着整块方块或别的样本座的侧面一份：凹槽里一个模块色光点（`Motes`）和一张物品图（先方块图集再物品图集，每个渲染 pass 一层颜色），轻轻浮动；取不到图的物品跳过。凹槽和图的位置是 `ModuleLook` 的常量（`RECESS_LOW/HIGH` 11/16–15/16、`RECESS_IN` 2.7/16、`PICTURE_MID` 13/16、`PICTURE_HALF` 0.1），`FittingRender` 和 `CityRender` 共用：站在种植床的地面上，从池沿外 0.3 到 24 格都能越过池沿和唇边看到样本的中间和上沿，8 格内整张（`ModuleLookTest.aSocketsSampleShowsOverTheRim`）。
-  5. **模块自己的画面**：`m instanceof TileEcoDome` → `EcoDomeRender`（§6）；新模块在这里加一个分支。
-- **预算**（一座模块每帧）：墙裙每面一个芯 quad（生态穹 125 个面），NEAR 加光晕（共约 375）；扫光约 5；名牌约 15 加每个字一个；样本座物品每个敞开的面一个光点加 1–2 层图（生态穹 96 个敞开的面，最多 288）。生态穹合计近约 1,690（上限 2,000）、中约 290（300）、远约 52（64）。
+  5. **模块自己的画面**：`m instanceof TileEcoDome` → `EcoDomeRender`（§6.1）；`TileDomeGenerator` → `DomeGeneratorRender`（§6.2，多传一个 `appear`：支腿和穹顶自己量距离、自己淡出）；`TileRoot` → `RootRender`（§6.3）。新模块在这里加一个分支（有地标的再在 `CityRender.landmark` 里加）。
+- **预算**（一座模块每帧）：墙裙每面一个芯 quad（生态穹 125 个面），NEAR 加光晕（共约 375）；扫光约 5；名牌约 15 加每个字一个（悬空的模块两块）；样本座物品每个敞开的面一个光点加 1–2 层图（生态穹 96 个敞开的面，最多 288）。生态穹合计近约 1,690（上限 2,000）、中约 290（300）、远约 52（64）。穹顶发生器和潮汐井照同样的上限（近 2,000、中 300、远 64），各自的数在 §6.2、§6.3；穹顶发生器的地标另有上限 `DomeLook.BUDGET` 400。
+- **`CityFrame`**（0.12.0）：控制器在形状里的格子取 `CityBuild.controller()`（形状自己的坐标，蓝图可能伸出形状的盒子），不再从蓝图倒推；`local(worldY)` 把世界高度换成形状里的高度（穹顶发生器拿它把扫光的高度换到腿上）。
 - **光影规则**：只在中枢的 `RenderWorldLast` 里画（阴影 pass 已经跳过）、相对 `renderPos*`、只用 quads、每个顶点有朝观察者的法线、不写深度、popAttrib 后手动开贴图；动画只按世界时间算，什么都不计数、不生成、不发包，光门后面再画一遍也一样。每部分（墙裙、扫光、名牌、样本座、模块画面、整体）单独失败：记一次日志、本次运行关掉这一部分，GL 状态在 finally 里恢复（`recover`/`close`）。`CityFrame`：模块本地坐标 → 相机相对坐标（`Blueprint.point` 的逆），朝相机的线条和光带至少约 1 像素宽（每格距离 `PIXEL` 0.0022，每段 ≤ 8 格）。
 - **`ModuleLook` 的其他规则**：`water(build, y, cap)`（这一层每格水的中心和涟漪最多能扩多大还在水上，最多 `cap`）；`beeName(注册名)`（按大写、数字、下划线、点切词，`bee` 单独或后面跟 drone/princess/queen/larva/larvae 才算蜜蜂：Forestry 的 `beeDroneGE` 算，beef、熟牛肉、beeswax、beeCombs、beehouse 不算——不引用蜜蜂模组的类，守可选模组隔离）；`EYE` 1.62、`WATER_TOP` 8/9（静止水面在方块顶下 1/9）、`BASIN_TOP` 10/16、`LIP_TOP` 12/16、`LIP_MIN/MAX` 6/16–10/16。
 
 ### 4.11 Waila、NEI、「建造」页、总图
 
 - **Waila**（`NexusWaila`；提供者登记在 `BlockNexus` 上，所以覆盖模块核心）：`feDock/fePowered/feSamples/feCap/feUnits/feOwner`；正文是停靠状态（停靠没电显示 `no_power`）、`waila.city`「样本 n / m · k 个单元」、主人。
-- **NEI**：模块自己的三维预览（`IMultiblockInfoContainer.registerTileClass(TileEcoDome.class, NexusModule.infoContainer("eco_dome.structure"))`，显示 `MAIN` 和用料）。中枢预览 6–10 级（`TileNexus.previewModules`，CITY §3）：相位允许的每种模块（研究的相位到了）各一座，立在它的偏好里第一个还空着的场地上（偏好都是自己族的场地），控制器在 spec 给的位置、朝中枢，最多 `RingSlots.open(相位)` 座——相位 I 是后面的档案馆和右边的生态穹；有 spec 的模块偏好的场地都被占了就**不立**（debug 日志一行，不占名额），绝不退到别处去和别的模块重叠；只有没 spec 的模块种类（现在没有：书库和生态穹都有 spec）才用空着的内环槽（0.9.2 做法），内环槽和场地号分开记（`logic/PreviewSites`，`PreviewSitesTest`）；不铺园区地面。
+- **NEI**：模块自己的三维预览（`IMultiblockInfoContainer.registerTileClass(TileEcoDome.class, NexusModule.infoContainer("eco_dome.structure"))`，显示 `MAIN` 和用料）。中枢预览 6–10 级（`TileNexus.previewModules`，CITY §3）：相位允许的每种模块（研究的相位到了）各一座，立在它的偏好里第一个还空着的场地上（偏好都是自己族的场地），控制器在 spec 给的位置、朝中枢，最多 `RingSlots.open(相位)` 座——相位 I 是后面的档案馆和右边的生态穹；有 spec 的模块偏好的场地都被占了就**不立**（debug 日志一行，不占名额），绝不退到别处去和别的模块重叠；只有没 spec 的模块种类（现在没有：书库和生态穹都有 spec）才用空着的内环槽（0.9.2 做法），内环槽和场地号分开记（`logic/PreviewSites`，`PreviewSitesTest`）；不铺园区地面。**轴上的种类**（0.12.0：第一个偏好场地是 `SiteFamily.axisSite` 的，天顶 8、根 9）不占名额：场地空着就立，内环名额用完之后、排在它前面的环上种类不立，它照样立（`PreviewSitesTest.axisKindsTakeNoRoom`）。所以相位 II（7 级）是后面的档案馆（场地 4）、右边的生态穹（2）、天顶上的回响穹顶发生器（8）和地下的潮汐井（9）。立每座模块之前调 `m.previewPhase(phase)`（§4.6：穹顶发生器相位 II、III 立在腿上，相位 IV 起浮空）。
 - **「建造」页**：城市模块的阶段名是 `build.stage.c<n>`（§4.3）。没有任务时的模块列表多了 `RING_FULL`：研究了、有空场地、只是内环位置满了（停靠的 0.9.2 大厅也算一个）→「内环已满（停靠的 0.9.2 大厅也占一个）」（`build.module.ring_full`），总图牌子写 `build.masterplan.status.ring_full`「内环已满」（`Campus.offerStatus`，campus.md §10）。
-- **总图**：对角位的虚线是亭子的 `oct(12,16)`（中心 ±36，`Masterplan.DIAGONAL_CHAMFER = CampusPlan.DIAGONAL_K`）；大厅位照旧画 27×35 的占地（档案馆和生态穹同样大）。
+- **总图**：对角位的虚线是亭子的 `oct(12,16)`（中心 ±36，`Masterplan.DIAGONAL_CHAMFER = CampusPlan.DIAGONAL_K`）；大厅位照旧画 27×35 的占地（档案馆和生态穹同样大）。0.12.0 起总图画 `SITES` = 10 个场地：内环 0–7 加轴上的两个——**天顶**是吊舱的八角形（`oct(POD_R, POD_K)` = `oct(10,14)`）虚线画在广场上、在舱底高度（Y0 + `FLOOR_UP` 40）再画一圈，加六条腿的脚（`DomeGeneratorShape.feet()` 各一个小方块），牌子挂在吊舱下面（A 3、离地 `FLOOR_UP − 7.5`，避开光梯井、在自己的名牌下面）；**根**是井的八角形（`oct(11,15)`）虚线画在它上方的广场上，牌子在中枢后面（A −8.5、离地 2.2）。牌子写「天顶」「根位」（`SiteFamily.labelKey`）和那里立着的、在建的或计划的模块，同大厅位。轴上的模块按控制器是不是正好在这座中枢的天顶/根控制器格上认（`axisSiteOf`），颜色用模块自己的；中枢的停靠掩码只记内环（nexus.md §4），所以轴上的「停靠」不看它。
+- **Waila**：中枢那一行的 `feDocked` 0.12.0 起是 `ringDocked()`（只数内环上的模块，对着 `feOpen` = 开放的槽数），轴上的模块不算。
+
+### 4.12 轴上的模块：天顶族和根族（0.12.0，CITY §2.5–2.6、§4.8–4.9）
+
+- **轴上**：`SiteFamily.axis()`（ZENITH、ROOT，以后的 ORBIT）的模块站在中枢的竖轴上，每个园区各一个场地：天顶 8（吊舱舱底 Y0+40，先立在六条腿上）、根 9（井盖 Y0−1 到井底 Y0−26）。它们**不占内环**：`Campus.autoJobs` 不拿它们和 `moduleCap` 比、也不让它们占名额，`busyModules` 只数 `ringDocked()` 和内环场地上的模块任务；NEI 预览同样不算（§4.11）；中枢窗口、Waila、通量终端的停靠数都是 `ringDocked()`（nexus.md §4）。它们**没有门**，坐光梯进：中枢台中心的光梯台（相位 II 起，nexus.md §4.2）往上直达吊舱的光梯台、往下直达井底小岛的光梯台。
+- **`ModuleSpec.Envelope`**（13 个参数的构造器；轴上的族不给就抛）替代大厅的占地和场地盒，四个问题：
+
+| | 天顶：回响穹顶发生器 | 根：潮汐井 |
+|---|---|---|
+| `footprint`（从上面看的盒子） | A ±12、R ±14（腿脚和吊舱，`DomeGeneratorShape.footprint`） | 井的八角形的盒子 ±11（`RootShape.footprint`） |
+| `keepOut`（园区任务不碰的） | 40 根腿柱，每根一个**带高度的盒子** `{x0, z0, x1, z1, yFrom, yTo}`，只管腿在那一柱占的高度：平整柱碰到这段高度就去掉，腿下 Y0 的地砖和 Y0+1 的塔柱、补给口、回收箱留在园区计划里，修复能补回来（`theForumUnderTheLegsStaysInTheCampusPlans`）；腿避开了广场的光井、补给口和回收箱（`theLegsMissTheForumsWellsAndFixtures`） | 没有：它整个在广场下面 |
+| `protect`（只有它自己的任务能拆的空间） | 40 根腿柱的那段高度，加吊舱的清理盒（23×23，Y0+40..Y0+52）；腿下的广场和吊舱下面的中枢还是中枢自己的 | 井的盒子，Y0−26..Y0−1；上面的广场是中枢的，园区的平整和修复停在井盖 |
+| `noRoom(y0)`（放不下的原因） | `y0 + CLEAR_TOP(52) > 255` → `build.module.why.height`「放不下：会超出世界顶部」，即 Y0 ≤ 203 才行 | `y0 − 26 < LOWEST_SLAB(6)` → `build.module.why.depth`「放不下：井会挖进基岩」，即 Y0 ≥ 32（`LOWEST_Y0`） |
+
+  `ModuleSpec.keepOut/protect` 对大厅族还是整列的 `siteBox`（`protect` 是从 0 到 255 的盒子），对轴上的族交给 `Envelope`；`Campus.siteKeepOut/siteProtect` 按模块、场地、中心、正面缓存。campus.md §5 讲这些盒子怎么用。
+- **什么时候提供**：研究了、中枢的 `phase()` ≥ 族的 `opens`（天顶和根都是 2，`Campus.phaseFits`）、`noRoom` 为 null（`roomFor`）、场地空着。不够的时候模块列表是 `NO_ROOM`，带一个原因 `reason`（`Md` 里的 `W`，lang 键在 `build.module.why.` 下：`phase`「中枢要先长到更高的相位」、`height`、`depth`），「建造」页照着写（campus.md §10）。**场地空不空**（`Campus.siteFree`）对轴上的场地只看有没有已加载的模块正好站在它的控制器格上：keep-out 和模块中心是给中枢周围的地面用的，天顶只用腿碰地面。**停靠**：`TileNexus.refreshDock` 认轴上的模块要控制器正好在这座中枢的天顶/根控制器格上、而且朝向对（`campusSite`），不按中心找；停靠不占内环槽（nexus.md §4）。
+- **空中建造**（天顶）：不需要支撑，引擎在空中放方块和在地上一样；先立腿（LEGS 阶段），再在 Y0+40 搭舱底。清理只清腿柱占的那段高度和吊舱的盒子（外扩 `POD_MARGIN` 1，从 Y0+40 到 Y0+`CLEAR_TOP` 52），都不平整（§6.2）。投影：吊舱在头顶 40 格，广场上的人看不清它在哪，所以悬在空中的计划多画一个**影子**（`logic/XRay.hangs/shadow/plumbs`）：一列计划里最低的格子比底座层高 `XRay.AIR` 16 以上、旁边一列也没有更低的格子，就算悬空（大厅的地面在底座层，浮岛和穹顶有地面托着；腿从它出发的那一列托着；舱底下面只有广场，不是它的计划）；悬空部分的轮廓虚线画在广场上（Y0+1 上方一点）、在它的底面再画一遍，八个方向最外的角各垂一条往下慢慢流的虚线（`BuildRender`，`DASH` 2、`DASH_GAP` 1.2；地形后面淡、没挡着的地方亮）。`XRayAirTest`：吊舱悬空、腿不算，影子是吊舱的八角形。
+- **沉箱**（根）：`BuildPlan` 加两种步骤，只把格子掏空，不飞、不放、不检查——`DIG`（3：掏掉井壳里面的格子）和 `DRAIN`（4：之后再把渗进来的液体抽掉）；`digs(kind)` = 这两种，`empties(kind)` = 加上 `AIR`。SINK 阶段从井盖往下一层一层：每层先是它的壳（井盖——中心留空给光梯——、一圈 88 格的井壁、或井底板），再掏这一层的里面；每一段是一个**带**（`Plan` 的 `bands`，`bandEnd(i)`、`bandCount()`），引擎在前一个带做完之前不碰下一个带的任何一步（`Builder` 的窗口截到 `bandEnd(cursor)`），所以掏某一层之前它上面那层的井壁一定立着，外面的水碰到的是墙、不是敞着的井。DRAIN 阶段从上往下把里面每一格再过一遍。一格被掏过之后又会被后面的步骤填上（井底、配件、控制器），所以同一格有几步：`repeat(i)`（前面已经有一步在这格）和 `placedAfter(i)`（后面那一步在这格放的部件，或 −1）。
+  - **判定**（`TerrainRule`）：`forDig(p, module, all, repair)`——这格已经是后面要放的部件 → ALREADY（再建一次或修复的井留着它的井底、配件和控制器）；修复只抽液体（`forDrain`，修复从不清模块的盒子）；否则同清场柱的一格（`forClear`）。`forDrain(p, module, all)`——是后面要放的部件或不是液体 → ALREADY；是液体 → CLEAR（或 `forClear` 留着它时 BLOCKED：谨慎规则下的岩浆、受保护的格子）。`Builder` 的探测对这两种步骤拿 `placedAfter` 当目标。
+  - **引擎**（`Builder.dig`）：立刻做，和清场柱的一格一样走清场的预算和 EU（`buildEuPerClear`），拆下来的东西进回收箱；空着的（或已经是后面要放的部件）在本 tick 的免费额度内免费记 done，额度用完下一 tick 再看；规则或保护模组留着的画红框、跳过（同清场柱）；没有清场预算、没电、回收箱满了就停在这一步（`DIG_STOP`，回收箱满了等成员取东西，不丢）。返回 `DIG_STOP/FREE/LATER/DONE`。
+  - **勘测**：开始前的勘测不把 `DIG`/`DRAIN` 步骤记 done（`BuildPlan.surveySettles` 对它们是 false）——勘测时空着的格子等这一层沉到时可能又有了东西（洞穴里岩浆遇水成的石头、末影人放下的方块），之后不会再有人看它；到它那个带时再判（空的照样免费）。重复的格子勘测只看第一步，后面的在自己的阶段判。`CampusEngineTest.theSurveyLeavesTheCaissonToItsBand`、`theCaissonsStepsDigAndDrain`。
+  - **数字**：剩余时间（ETA）不算 `DIG`/`DRAIN` 步骤（`Campus` 按阶段数剩下的步骤时跳过它们，它们走清场的预算）；进度条的总数算（§9）。
+- **地下的投影**（根）：投影的鬼影面被周围的地形挡着，所以在地下建的计划（`XRay.underground`：有可画的格子低于底座层）多画一层**透视**：还没建（或还没检查过）的格子的棱（`XRay.edges`：一组格子表面的折线——一条网格棱周围四格的填法不平（一格、三格或对角两格）就是折线，同一条线上连着的并成一段，井筒是几百段而不是几万条方块棱），整个计划一份、当前阶段一份；地形后面淡（`XRAY_THROUGH` 0.14）、没挡着的地方亮（`XRAY_SEEN` 0.35），当前阶段更亮（`XRAY_STAGE_THROUGH` 0.3、`XRAY_STAGE_SEEN` 0.7），随鬼影呼吸；最低一层的细线和各阶段的盒子也透过地面画一遍。`BuildScan` 换阶段时、所有格子第一次检查完时、建造中最多每 `XRAY_TICKS` 100 tick 重算一次；悬空的影子只算一次。`GhostCells.drawable` 不画 `DIG`/`DRAIN`（`empties`），`GhostCells.Index` 优先找能画的那一步（`GhostCellsTest.theIndexFindsTheStepThatPlacesABlock`）。`XRayTest`：立方体是 12 条棱、一排是一个盒子且重复的格子只算一次、L 形有凹角、沿棱相碰的格子在那里折、井的轮廓。
 
 ## 5. 新部件（CITY §1.4、附录 C）
 
@@ -243,18 +286,24 @@
 | 样本座 Socket | `fluxecho:fitting` 7 / 码 39 | 2–14/16 的立柱，整高；四个侧面各一个凹槽（宽 5–11/16、高 11–15/16、深 2/16），凹槽边一圈青光，样本浮在里面（`CityRender` 画）；碰撞 2–14/16 整高 | 8 | ×8 `PLP/LCL/PLP`（墙板、光缝墙板、通量结晶） | `fitting/socket`、`socket_top`、`socket_glow`（动画） |
 | 池沿 Basin rim | `fluxecho:fitting` 8 / 码 40 | 10/16 的半高板；中间一条 2/16 高、4/16 宽（6–10/16）的发光唇边，伸向四周同一高度的池沿（像栏杆的臂），单独一块只有中间一个结；并排的两块池沿之间的面不画；碰撞 10/16（唇边到 12/16，高出碰撞 2/16），只有底面算实心 | 4 | ×8 `T T/TST`（地缝钢、钢板） | `fitting/basin`、`basin_top`、`basin_glow`（动画） |
 | 覆层锚点 Cladding anchor | `fluxecho:frame` 9 / 码 9 | 整块，每面一块六角插板（只在贴图里，走构架普通的方块画法）；以后的覆层从这里长 | 6 | ×4 `SRS/RCR/SRS`（不锈钢板、悬浮环段、通量结晶） | `frame/anchor_top`、`anchor_side`、`anchor_top_glow`、`anchor_side_glow`（动画） |
+| 光梯 Light lift（0.12.0） | `fluxecho:fitting` 9 / 码 41（`Parts.F_LIFT`，形状字符 `^`；中枢形状里是 `V`，nexus.md §3） | 整块钢立方，顶面是光梯井的光圈（八片暗叶围着亮芯），侧面素钢；上面没盖着东西时顶面全亮；物品栏里整块、顶面一层光。同一竖列叠放的光梯组成光梯井，乘梯见 nexus.md §4.2；碰撞照常，乘梯的人在自己那一列穿过光梯和配件，光梯上方两格里配件（不是光梯）让任何人穿过（`Lift.passes`、`Lift.boardable`） | 12 | ×1 `LCL/CEC/LCL`（光缝墙板、通量结晶、末影之眼） | `fitting/lift`、`lift_top`、`lift_glow`（动画） |
 | 水 Water | 码 53 | 原版水源，像草和泥土一样放（SOFT） | — | 没有配方，只花 EU：`Parts.euOnly`（草、泥土、水）每格 `buildEuPerClear`，从不记账；`Terrain.isTarget` 认静止或流动的水源（meta 0） | — |
 | 模块核心 | `fluxecho:module_core` meta m / 码 64 + m | `BlockNexus` 控制器（§4.5） | 7（`BlockNexus` 的 `setLightLevel(0.5)`，同中枢和书库核心；CITY 附录写的 8 没照做） | 只收成品（`partOnly`），在中枢显化 | `module_core/<key>/front`、`front_on`（动画）、`side`、`top` |
 
-- 生成：`java tools/CampusTextures.java`（样本座、池沿）、`java tools/NexusTextures.java`（覆层锚点、模块核心），从仓库根目录跑；不要手画。
+- 生成：`java tools/CampusTextures.java`（样本座、池沿，0.12.0 加光梯 `liftSide/liftTop/liftGlow`）、`java tools/NexusTextures.java`（覆层锚点、模块核心，0.12.0 加 `module_core/dome_generator/` 和 `module_core/root/` 的四张——守护蓝的吊舱徽记、潮汐蓝的井徽记——和物品 `items/phase_alloy`、`items/resonant_glass`），从仓库根目录跑；不要手画。
 - 码只往后加（`Parts`：frame 0–15、deck 16–31、fitting 32–47、48–52 老的、53 水、63 `AIR`、64–79 模块核心、80–95 `module_core2` 预留）；`BUILD_FX` 一个码一个字节（≤ 127）；`BuildFx`/`BuildScan` 的图标缓存 0.11.0 起按 128 个码开（0.10 是 64）。
-- 构架 `LIGHT` 现在是 `{0,7,0,12,8,15,4,8,10,6}`、`BlockFrame.TYPES` 10、`full` 含 ANCHOR；配件 `FITTING_LIGHT` `{6,9,10,6,7,0,8,8,4}`、`FITTING_TYPES` 9、`FITTING_NAMES` 加 `socket`、`basin`；`isSideSolid`：踏板和池沿只有底面实心。
-- 精确成本（`PartRecipesTest.theCitysPartsCost`，账本里再展开成原料）：样本座 = 半块墙板 + 半块光缝墙板 + 1/8 通量结晶（4 P + 4 L + 1 C 出 8 个）；池沿 = 半块地缝钢 + 1/8 钢板（4 T + 1 S 出 8 个）；覆层锚点 = 1 不锈钢板 + 1 环段 + 1/4 结晶（4 S + 4 R + 1 C 出 4 个）。
+- 构架 `LIGHT` 现在是 `{0,7,0,12,8,15,4,8,10,6}`、`BlockFrame.TYPES` 10、`full` 含 ANCHOR；配件 `FITTING_LIGHT` `{6,9,10,6,7,0,8,8,4,12}`、`FITTING_TYPES` 10、`FITTING_NAMES` 加 `socket`、`basin`、`lift`（0.11.0 是 9 种，光梯 0.12.0 加）；`BlockFitting.full` 含光梯（整块立方）；`isSideSolid`：踏板和池沿只有底面实心。
+- 精确成本（`PartRecipesTest.theCitysPartsCost`，账本里再展开成原料）：样本座 = 半块墙板 + 半块光缝墙板 + 1/8 通量结晶（4 P + 4 L + 1 C 出 8 个）；池沿 = 半块地缝钢 + 1/8 钢板（4 T + 1 S 出 8 个）；覆层锚点 = 1 不锈钢板 + 1 环段 + 1/4 结晶（4 S + 4 R + 1 C 出 4 个）；光梯 = 4 光缝墙板 + 4 通量结晶 + 1 末影之眼（出 1 个，`PartRecipesTest.theLiftPadCosts`）。
 - 区块网格（`FittingRender`，同 campus.md §11：只读方块和 meta）：样本座的各块每个面都画（凹槽的上下面在方块里面，不能用整柱「顶面、底面贴着不透明方块就剔掉」的规则），发光层只在侧面；池沿用 `Neighbours.fitting` 找同高的池沿伸臂，臂的端头贴着下一块的臂处不发光；物品栏里样本座画整柱、池沿画成东西向的一段。
 - 新方块守 `Builder.QUIET`：构架和配件本来就守；模块核心经 `BlockNexus.quiet()`。
-- **还没做**（以后的批次）：光梯 LIFT（fitting 9 / 码 41，0.12.0）、画布 CANVAS（deck 12 / 码 28，0.14.0）、浮空地基 FLOAT（frame 10 / 码 10，0.16.0）。附录 C 写好的光照数组到时候再长。
+- **还没做**（以后的批次）：画布 CANVAS（deck 12 / 码 28，0.14.0）、浮空地基 FLOAT（frame 10 / 码 10，0.16.0）。附录 C 写好的光照数组到时候再长（构架的 `LIGHT` 0.12.0 没变）。
+- **相位的材料**（0.12.0，BLUEPRINT 3.6，`MatterModule`；不是营造部件，研究花费和两座模块的核心要用）：**相位合金** `fluxecho:phase_alloy`（矿辞 `ingotPhaseAlloy`；GT 电力高炉：2 通量结晶 + 1 钛粉 + 1 回响晶（任意）→ 1，600 tick、1920 EU/t、炉温 2700 K，`COIL_HEAT`；只在 `defaultRecipes` 开着时注册，包在 try/catch 里）和**共鸣玻璃** `fluxecho:resonant_glass`（矿辞 `glassResonant`；在中枢显化，研究 `phase_2`：相位合金 ×1 + `ore:ingotBorosilicateGlass` ×4 → 4，400 tick，不压记录）。两种都是 `ItemMatter`，提示在 lang（`fluxecho.phase_alloy.tip`、`fluxecho.resonant_glass.tip`），贴图由 `NexusTextures` 生成（nexus.md §2）。
 
-## 6. 生态穹（`logic/EcoDomeShape`、`city/TileEcoDome`、`city/client/EcoDomeRender`；CITY §4.1，生成器 `b_hall.py` 的 `eco_dome()`）
+## 6. 建筑
+
+每座建筑一小节：概念、场地、体量、单元、溶解、计数和校验和、阶段、任务的规模和用料、研究和显化、画面和预算。数字都是拿编译好的类算的（`BuildPlan` 的真实计划按 `PartRecipes.cost` 展开，`buildCostScale` 1），README 的表用同一份。
+
+### 6.1 生态穹（`logic/EcoDomeShape`、`city/TileEcoDome`、`city/client/EcoDomeRender`；CITY §4.1，生成器 `b_hall.py` 的 `eco_dome()`）
 
 - **概念**：BLUEPRINT 的《寂静奔跑》森林穹顶。像万神殿那样一座门廊块立在圆厅前，玻璃像邱园的棕榈温室和伊甸园项目，里面是滨海湾花园云雾林那种可以往上爬的种植山（这里是可以爬上去的浮岛）。
 - **场地**：大厅位，偏好 2（中枢右边）→ 6 → 4（`EcoDomeShape.SITES`）；27×35×21（Y0…Y0+20，`WIDTH/DEPTH/HEIGHT`，`MID` 13）；控制器 (13, 2, 0)（`CTRL_X/Y/Z`）在门间柱里、控制台座上方、朝中枢。生成器分配 22 层但只画 y0–y20，所以蓝图 21 高（`GEN_HEIGHT` 22，类加载时检查顶层是空的）。
@@ -287,7 +336,7 @@
   - 原料：玻璃 726、石头 ≈650、石砖 ≈635、钢板 ≈267、荧石粉 ≈170、不锈钢板 152、钢杆 ≈82、通量结晶 ≈46、玻璃板 45、煤粉 ≈43、不锈钢杆 25、碎屑 15、回响晶 13；另要两件成品：**晶核座 1**（树梢，要 GT HV 外壳，`partOnly`）和**生态穹核心 1**。
   - EU：放置约 0.96 M（每块 256；草、水和门洞空气 238 步各 64），清理和平整另算。
   - CITY §4.1 和 `report.py` 的账单（石砖 674、石头 517……）只算形状、不算场地地面，比真实的少；以建造页的材料单为准。
-- **研究** `eco_dome` 生态穹（ECHO，星图 (226, 38)，相位 1；前置 `inner_ring`、`echo_crystal`；算力 16,000；回响晶 ×4、`ore:treeSapling` ×16、`ore:blockGlass` ×32）——`/fluxecho research all` 现在给 9 项。**显化** `eco_dome_core`（同一研究；回响晶 ×4、`ore:treeSapling` ×8、小麦种子 ×16、`ore:circuitHV` ×2、`ore:blockGlass` ×16；1200 tick；不压记录）→ 生态穹核心（`fluxecho:module_core` meta 0）。**维持** `moduleUpkeepEuPerTick` 128 EU/t。
+- **研究** `eco_dome` 生态穹（ECHO，星图 (226, 38)，相位 1；前置 `inner_ring`、`echo_crystal`；算力 16,000；回响晶 ×4、`ore:treeSapling` ×16、`ore:blockGlass` ×32）——`/fluxecho research all` 在 0.11.0 给 9 项（0.12.0 起 12 项，加上 `phase_2`、`dome`、`tidal_well`）。**显化** `eco_dome_core`（同一研究；回响晶 ×4、`ore:treeSapling` ×8、小麦种子 ×16、`ore:circuitHV` ×2、`ore:blockGlass` ×16；1200 tick；不压记录）→ 生态穹核心（`fluxecho:module_core` meta 0）。**维持** `moduleUpkeepEuPerTick` 128 EU/t。
 - **画面**（`EcoDomeRender`，在 `CityRender` 之上；CITY §4.1 Visuals）：
   - **成型**（不论停靠）：树干和晶核座变成**光之树**——3 股光（每股 24 段）绕着柔和的芯从池面盘到晶核座，一道脉冲往上爬；树冠下 6 根枝；顶灯下 140 片发光树叶慢慢摇；16 片光叶飘落，落在树冠岛、浮岛或花园上；顶灯和树冠的光晕。没停靠时亮度 0.3、停靠没电 0.6。NEAR 外只画一根光芯和树冠的一团光晕（15 quads）。
   - **停靠**：穹顶的亮肋（八条经肋从鼓座到顶灯，y12、y16 两道纬环）以模块的绿色**呼吸**，一道光波往上升；肋贴着真实的玻璃台阶走，相机在外面画在玻璃外侧，在鼓座、穹顶或门厅里画在内侧。MID 每隔一段画一段、没有光晕、环 16 段；FAR 只有经肋，每段四层长，没有环（≤ 32）。
@@ -296,18 +345,78 @@
   - 每部分（光之树、呼吸肋、全息、花粉、蝴蝶、涟漪）单独失败；表（贴着玻璃的肋、种植床、花园）从 `EcoDomeShape` 一次算好。
 - **修复不动花园**：花园是玩家的（开阔的草地就是给他们放蜂箱和作物的）。修复任务里草、泥土、水这些 SOFT 地面步骤只在格子空着时放（`TerrainRule.forRepairGround`：`forBuild` 是 PLACE 就 PLACE，否则 ALREADY；`Builder.verdict` 的第五个参数 `repair`）；耕地、蜂箱下的泥土、玩家放的方块都留着。第一次建造照旧（整片清空规则下照样换掉），结构格和地砖照旧。
 
+### 6.2 回响穹顶发生器（`logic/DomeGeneratorShape`、`logic/DomeLook`、`city/TileDomeGenerator`、`city/client/DomeGeneratorRender`；CITY §4.8，生成器 `b_sky.py` 的 `dome_pod()`、`dome_legs()`）
+
+- **概念**：天顶上将撑起全队穹顶的吊舱。一只碟形吊舱悬在中枢上空 40 格，先**系泊**在六条从广场升起的弧形腿上（相位 II、III），相位 IV 的释放任务（0.16.0）拆掉腿让它浮空。没有门，中枢上的光梯直达舱内。
+- **场地**：天顶 8（`SITES`），每个园区一个，不占内环（§4.12）。吊舱 21×21×10（`SIZE`、`HEIGHT`，`MID` 10），八角形 `oct(10,14)`（`POD_R/POD_K` = `CampusPlan.ZENITH_R/K`），舱底在 Y0+`FLOOR_UP`(40)。**两个坐标系**：模块的坐标是吊舱自己的（x 横向 = 10 − R，y 从舱底往上，z 从吊舱正面 = 10 − A），渲染和窗口都按它读；蓝图是腿和吊舱合起来的盒子，29 宽（R 14..−14）、49 高（Y0+1..Y0+49）、25 深（A 12..−12，`BP_WIDTH/HEIGHT/DEPTH`），吊舱的 (0,0,0) 在蓝图的 `OFFSET` {4, 39, 2}（`CityBuild` 的偏移，§4.3）。控制器 (10, 2, 6)（`CTRL_X/Y/Z`）= 园区 (A 4, R 0, Y0+42)，在光梯台前 4 格的控制台座上，朝 +A（大门）；光梯台在吊舱中心 (10, 0, 10) = (A 0, R 0, Y0+40)。
+- **体量**：舱底（厚边是模块地基 `F`、里面是软的地砖 `.`、中心光梯台 `^`）；y1–y5 的环形墙（y1 深色墙裙 `w`，y2–4 玻璃 `G`、八条线上亮壁柱 `L`，y5 墙板）；y6 檐口 `n` 和天花板；阶梯碟形屋顶（y7 `oct(7,9)` 的环、y8 `oct(5,6)`、y9 玻璃顶 `oct(2,3)`）；屋顶上六个**发射节点**（导能柱 `C`，y7，离轴 (±7, ±4)、(0, ±8)，`NODE_Y`、`nodes()`）。室内是一圈环厅，围着中间的光梯井。剪影：六条腿托着一只碟。
+- **腿**（`legs()`，`LEG_CELLS` 234）：构架支柱 `P`，从广场 Y0+1 到舱沿下面 Y0+39（`LEG_TOP` 39），角度 30 + 60k 度，半径 `9 + 5 (1 − h/38)^1.6`（`LEG_HEAD` 9、`LEG_FOOT` 14、`LEG_CURVE` 1.6，h = 0..38）；R ≥ 0 一侧的三条用 `StrictMath` 算、按生成器的 `round` 半数取偶（`Math.rint`），另一侧镜像（生成器把顶上那格两侧取整得不一样，§1.5）。脚在 (A, R) = (12, ±7)、(0, ±14)、(−12, ±7)（`feet()`）。腿避开广场的光井、补给口和回收箱。腿占 40 根柱子（`legColumns()`：每柱最低和最高的腿格），清理、keep-out 和保护都按柱、按高度（§4.12）。
+- **两个形状**（`TileDomeGenerator.shapes()`）：`moored`（`MOORED_BP`，吊舱加腿，检查 1,261 格）在先，`floating`（`FLOATING_BP`，同一个盒子、只有吊舱，检查 1,027 格）只在它下面那座已成型中枢（`under()`：控制器正好是这座中枢的天顶控制器格，停没停靠都认）长到相位 IV（`FLOAT_PHASE`）起才试——所以相位 II、III 腿被拆了吊舱就散架，不会浮起来。NEI 预览相位 IV 起画浮空的（`previewPhase`）。
+- **单元**：7 个**守护台**（种类 `ward`，lang `fluxecho.unit.ward`「守护台」），每个 = y1 的控制台座 `K` + 上面 y2 的样本座 `o`，1 槽（0.19.0 起每个放一种穹顶功能的核心；结构阶段任何物品），共 7 槽。顺序（= 槽号，永不改），位置是离光梯台的 (dx, dz)（同 §6.1：+x 是右、+z 是后）：
+
+| 单元 | 名 | 位置 | 槽 |
+|---|---|---|---|
+| 0 | ward-1 | (6, 0) 右 | 0 |
+| 1 | ward-2 | (−6, 0) 左 | 1 |
+| 2 | ward-3 | (0, 6) 后 | 2 |
+| 3 | ward-4 | (4, 4) 右后 | 3 |
+| 4 | ward-5 | (−4, 4) 左后 | 4 |
+| 5 | ward-6 | (4, −4) 右前 | 5 |
+| 6 | ward-7 | (−4, −4) 左前 | 6 |
+
+  守护台的控制台座属于单元，点它是用单元（`consoleAt` 不算它，§4.6）；控制器下面那个才开窗口。窗口平面图一层（站高 1）。
+- **不检查的格子**（CITY §4.8，§1.5）：八个门洞（四个平面和四个斜面各 3 宽，y1–y4，`door()`）先用玻璃 `/` 封着（96 格，等天环的栈桥来接），光梯井穿过屋顶的那一段（y6–y9，`shaftCap()`）先盖着（y6–8 是墙板 `{`、y9 是玻璃 `/`，等轨道锚的任务打开）——都是软格，和旁边一样的方块，结构检查不看。所以吊舱现在只能坐光梯进。`RAW` 是生成器原样的格子（门洞和井口空着），`SHAPE` 是建的（加上这 100 格）。
+- **溶解**：`DISSOLVES = PASSES = "PC"`——成型后腿和发射节点都不画（交给渲染的弧肋和电弧），而且能穿过（§4.6 的例外：和中枢的 `P`/`C` 一样，腿立在广场上人碰得到，穿过去就是设计；它们不托着任何人站的地面）。`TileDomeGeneratorTest.theLegsAndNodesDissolveAndLetPlayersThrough`。
+- **计数**：吊舱（生成器原样）`W` 540、`.` 276、`G` 172、`F` 80、`n` 80、`L` 76、`w` 56、`K` 8、`o` 7、`C` 6、`^` 1、`~` 1 = 检查 1,027、软 276；建的再加门洞玻璃 96 和井口 4 = 软 376，吊舱 1,403 步，加腿 234 = **1,637 步**。校验和：`dome_pod()` 整层 `4099585315`、前三条腿（30、90、150 度，`a,r,dy;`）`2025965872`（`DomeGeneratorShapeTest`）。行走从光梯台出发：生成器原样 293 个状态（环厅和门洞），建的 269 个（玻璃封住的门洞成了墙）；到得了控制器和 7 个守护台。
+- **阶段**（`Z_CLEAR … Z_COMMISSION` 共 7 段，lang `build.stage.z0–z6`：清理支腿和吊舱的位置、六条支腿、吊舱舱底、外壳、屋顶、控制台和守护台、落成；`BuildPlan.zenith`）：CLEAR = 40 根腿柱、每根只清腿占的那段高度（广场的地砖和腿下的补给口、回收箱都留着），加吊舱的盒子外扩 `POD_MARGIN` 1（23×23 = 529 根）从 Y0+40 到 Y0+`CLEAR_TOP` 52，不平整，从中枢往外；LEGS = 234 格腿，六条一起、按层从下往上；FLOOR = 舱底，从轴往外；SHELL = y1–y5 的墙和门洞的玻璃，从下往上；ROOF = 檐口、天花板、碟顶、井口和发射节点，从下往上；FIT = 控制器的控制台座，再按单元顺序每个守护台一组（控制台座 + 样本座）；COMMISSION = 控制器（回响穹顶发生器核心）。每个检查格按 `Blueprint.world` 摆在 `moored` 蓝图里，所以 HARD 步骤就是这个形状的结构检查看的格子（`ZenithPlanTest`：4 个朝向，HARD 1,261）。
+- **任务的规模和用料**：
+  - 步数 1,637：LEGS 234 · FLOOR 357 · SHELL 400 · ROOF 630 · FIT 15 · COMMISSION 1；清理 569 根柱子（腿 40 + 吊舱 529）、最多 7,111 格。没有种子装饰，四个朝向一样。
+  - 原料：石砖 ≈390、不锈钢杆 366、玻璃 269、石头 138、钢板 ≈97、不锈钢板 80、碎屑 ≈67、荧石粉 ≈45、通量结晶 ≈22、玻璃板 12、回响晶 10、煤粉 7、末影之眼 1（光梯）；另要**回响穹顶发生器核心 1**（码 71，`partOnly`）。
+  - EU：放置 1,637 × 256 = 419,072（约 0.42 M）；清理每格 `buildEuPerClear`，最多 7,111 格（空气不花）。
+  - 节奏的巧合：`BuildPace.modulePace` 按阶段号给 `M_FLOOR`（1）× 1.5，天顶的阶段 1 是 LEGS，所以腿按 1.5 倍的节奏放（§9）。
+- **研究** `dome` 回响穹顶（GUARD，星图 (180, 168)，相位 2；前置 `phase_2`；算力 30,000；`ore:plateTitanium` ×16、`ore:circuitEV` ×4、`ore:ingotPhaseAlloy` ×8、`ore:glassResonant` ×16、`ore:gemEchoCrystal` ×4、末影之眼 ×8）。**显化** `dome_generator_core`（同一研究；回响晶 ×8、末影之眼 ×8、相位合金 ×8、`ore:circuitEV` ×2、共鸣玻璃 ×8；1600 tick；不压记录）→ 回响穹顶发生器核心（`fluxecho:module_core` meta 7）。TE id `fluxecho:dome_generator`；主题色守护蓝 `0x7DB8FF`。**维持** `moduleUpkeepEuPerTick` 128 EU/t；穹顶的功能 0.19.0 起才有，现在停靠有电只是画面全亮。
+- **画面**（`DomeGeneratorRender`，在 `CityRender` 之上；位置都是 `DomeLook` 的纯算术；CITY §4.8 Visuals）：
+  - **成型扫光**：每条腿随支柱消失升起一圈守护蓝的光环，一片光穿过吊舱（`sweep`）。
+  - **成型、系泊**：每条腿是一根渐细的钢弧肋，沿着腿格取整前的曲线（`DomeLook.legPoint`，`DomeLookTest.theRibsRunThroughTheLegCells`：每格离肋 ≤ √0.5），切成 `LEG_SEGMENTS` 13 段，关节一圈光、一道光波沿六条腿爬进吊舱，内侧一条光线；脚宽 `FOOT_HALF` 0.55、头宽 `HEAD_HALF` 0.3。腿自己量到腿盒子的距离定档位（NEAR 13 段、MID 4 段没有关节环、FAR 每条 `FAR_LEG_LINES` 2 条线），FAR 按地标的淡出算、和超出范围后的地标接上。发射节点是小晶体，晶体浮在屋顶上方（`EMITTER_Y` 12.5，Y0+52.5），六个节点各一缕光连上去。
+  - **停靠**（闲置的样子）：六道**电弧**从节点射向穹顶（`arcEnd`、`arcPoint`，往上弓）；**穹顶**半径 `DomeLook.shellRadius(中枢相位)`（64、104、128、160 对应 II–V），几乎看不见：只有它碰到地面的一圈柔光带和顶上几格闪烁的六边形（`apexCells`、`shimmer`）。没电时穹顶和电弧暗淡的琥珀色、慢慢闪；有电时电弧、晶体和关节全亮。电弧 FAR 不画。
+  - **地标**（`landmark`，超出模块的绘制范围后由 `NexusRender` 调，和 `draw` 二选一）：系泊的腿的远处线条（任何停靠状态都画——腿的支柱在任何距离都是隐藏的，否则相位 IV 之前吊舱看着像浮着），停靠时再画穹顶和晶体的一团光；都在最后 `LANDMARK_FADE` 64 格淡出，画到 `LANDMARK` 512。
+  - **预算**（每帧，在 `CityRender` 之上）：腿 NEAR 约 700、MID 约 120、FAR 36（`farLegQuads`）；节点和晶体 64 加 8 个光点；电弧 6 × 14 段，NEAR 带光晕 168、MID 一半、FAR 没有；穹顶 `DomeLook.shellQuads`：半径 64 最多 280、104 和 128 最多 290、160 最多 352（地面分段 192 格内 64、320 格内 56、更远 32；六边形 320 格内且半径 64 时两圈、否则一圈；线按每段 ≤ `PIECE` 8 格切，`PIECE` 必须等于 `CityFrame` 的）。加上墙裙、名牌和守护台的样本，近 < 2,000、中 < 300；地标（穹顶、远处的腿、晶体的光）任何距离任何半径 ≤ `DomeLook.BUDGET` 400（`landmarkQuads`：半径 64 最多 317、104 和 128 最多 327、160 最多 389；`DomeLookTest.theDomeKeepsItsBudget`、`theCountIsTheDrawing`）。
+  - 每部分（腿肋、发射器、电弧、穹顶、成型扫光）单独失败；朝相机的面才画，不写深度。
+
+### 6.3 潮汐井（`logic/RootShape`、`logic/RootLook`、`logic/Tide`、`city/TileRoot`、`city/client/RootRender`；CITY §4.9，生成器 `b_root.py` 的 `tidal_well()`）
+
+- **概念**：中枢下面的井，通量层的潮汐从这里涌上来。根是一个往下长的模块（`root`），三个形状：这一版建第一个**潮汐井**（`WELL` "well"）；**深根**（`DEEP` "root"，相位 IV）和**地脉核**（`CORE` "core"，UV）只移植成数据（`RootShape.deepRoot()` 25×39×25、检查 5,028、校验和 `2817673059`；`leyCore()` 25×57×25、检查 5,826、校验和 `21006675`），以后的批次建；那时它们的单元要把井的 8 个汲口排在最前（槽号是井的），虽然生成器先列出深根的槽位。控制器一直在小岛上。
+- **场地**：根 9（`SITES`），每个园区一个，不占内环，地面上什么都不占（§4.12）。25×25×26（`SIZE`、`HEIGHT` = `DEPTH` 26，`MID` 12）：井筒 `oct(11,15)`（`WELL_R/WELL_K` = `CampusPlan.ROOT_R/K`），井盖 y25 = Y0−1（`LID_Y`，在广场的地砖和中枢台下面，中心留空给光梯），井底板 y0 = Y0−26（`SLAB_Y`）。坐标就是模块的蓝图：x 横向 = 12 − R，y 从井底板往上（Y0 − 26 + y），z 从正面 = 12 − A。控制器 (12, 3, 10)（`CTRL_X/Y/Z`）= 园区 (A 2, R 0, Y0−23)，在光梯台前 2 格的控制台座上、眼睛高度，朝 +A；光梯台在小岛中心 (12, 1, 12)（`PAD_X/Y/Z`）= Y0−25，人站在 Y0−24。**深度检查**：井底板不能低于 y 6（`LOWEST_SLAB`，基岩到 y 4），所以中枢的底座层要 Y0 ≥ 32（`LOWEST_Y0`），否则 `build.module.why.depth`（§4.12）。
+- **体量**：井底板和井盖（边是模块地基 `F`、里面 `B`），y1–y24 的井壁（一圈 88 格）：八条线上亮肋 `L`，三道**通量层带**（y6/12/18 深色墙裙 `w`、上面 y7/13/19 檐口 `n`，`BANDS`：表层、记忆层、深层），其余墙板。地面层 y1（`FLOOR_Y`，步道）：中心**小岛** `oct(2,3)`（`B`，光梯台、控制器），四座 3 宽的**桥**沿两条轴，**潮汐池**（水 `=`，八角距离 ≤ 7）、池沿 `u`（距离 8）、靠墙的步道 `d`。池上方三道**潮汐环**（构架悬浮环段 `R`，y6、y11、y16，内半径 2.5、3.5、4.5，各一格宽，`RING_Y/RING_R`）。一条**螺旋坡道**（软：螺旋不能镜像）在八角距离 9–10 的带上，从 200°（`RAMP_START`）顺时针爬 0.97 圈（`RAMP_TURN`），半格一级，从步道上到井盖下 4 格（站高 y21，Y0−5），坡道内侧距离 8 上有栏杆（站高 4 起）。
+- **单元**：8 个**潮汐汲口**（种类 `tap`，lang `fluxecho.unit.tap`「潮汐汲口」），每个 = 嵌在池沿里的一个样本座，1 槽（0.19.0 起放潮汐动力的燃料；结构阶段任何物品），共 8 槽。顺序（= 槽号，永不改）`tap-1 … tap-8`：第 t 个在方位 22.5 + 45(t−1) 度（两座桥之间）上离它最近的池沿格。汲口和步道一样高，人站在上面一层，所以窗口平面图画上面一层（`ModuleMap.flush`，§4.9）。
+- **溶解**：`DISSOLVES = PASSES = "R"`——成型后三道环交给渲染的潮汐环，能穿过；照规则，它们悬在池上、没有人站得到（`RootShapeTest.theRingsAreOutOfReach`）。
+- **计数**：`W` 1,440、`B` 677、`F` 176、`L` 144、`n` 264、`w` 264、`d` 196、`=` 84、`R` 76、`{` 64、`}` 54、`|` 36、`u` 20、`o` 8、`K`/`^`/`~`/`-` 各 1 = 检查 3,268 · 软 238（坡道和栏杆 154、水 84）· 空气 1（井盖中心）= **3,507 步**；校验和 `996641253`（`RootShapeTest`）。行走从小岛的光梯台出发 414 个状态，到得了控制器和 8 个汲口，坡道顶在 y21。
+- **阶段**（`R_SINK … R_COMMISSION` 共 5 段，lang `build.stage.r0–r4`：沉井、排水、井底、潮汐环坡道和汲口、落成；`BuildPlan.root`，沉箱见 §4.12）：SINK = 从井盖往下每层两个带——先是这层的壳（井盖带它空着的中心、一圈井壁、或井底板），再掏这层里面（`DIG`）；DRAIN = 里面每一格从上往下再过一遍（`DRAIN`）；FLOOR = 地面层的小岛和光梯台、桥、池沿、步道，从轴往外；FIT = 控制器的控制台座、三道潮汐环、螺旋坡道和栏杆（软）、8 个汲口各一组（按单元顺序），池水最后（池沿完整之后）；COMMISSION = 控制器（潮汐井核心）。**没有清场柱**：沉箱正好掏它的里面，计划里没有一格碰到底座层 Y0。HARD 步骤就是结构检查看的格子（`RootPlanTest`，4 个朝向）。
+- **任务的规模和用料**：
+  - 步数 19,299：SINK 10,842（井盖 417、24 层井壁各 88、井底板 417、掏 7,896）· DRAIN 7,896 · FLOOR 237 · FIT 323（控制台座 1、环 76、坡道和栏杆 154、汲口 8、水 84）· COMMISSION 1。井里面 24 层 × 329 格 = 7,896 格，掏一遍、抽一遍，所以计划比形状多 15,792 步（`DIG`/`DRAIN`，不算进剩余时间）；SINK 有 50 个带（49 个带的起点）。
+  - 原料：石砖 ≈1,451、不锈钢板 ≈600、钢板 ≈149、荧石粉 ≈111、石头 103、碎屑 ≈96、煤粉 ≈34、钢杆 27、通量结晶 ≈25、回响晶 22、玻璃板 ≈5、不锈钢杆 ≈1、末影之眼 1（光梯）；另要**潮汐井核心 1**（码 72，`partOnly`）；水 84 格只花 EU。
+  - EU：放置 881,472（约 0.88 M：3,422 步各 256，水 84 和井盖中心的空气各 64）；掏每格 `buildEuPerClear`，最多 7,896 格（约 0.51 M，空着的格子不花）；排水只有真有液体的格子花。
+- **研究** `tidal_well` 潮汐井（ENERGY，星图 (92, 160)，相位 2；前置 `phase_2`、`upkeep_1`；算力 30,000；`ore:plateTitanium` ×16、`ore:circuitEV` ×4、`ore:ingotPhaseAlloy` ×8、`ore:glassResonant` ×8、`ore:gemFluxCrystal` ×16）。**显化** `root_core`（同一研究；回响晶 ×8、相位合金 ×8、共鸣玻璃 ×4、`ore:plateTitanium` ×16、`ore:circuitEV` ×2；1600 tick；不压记录）→ 潮汐井核心（`fluxecho:module_core` meta 8）。TE id `fluxecho:root`；主题色潮汐蓝 `0x3FC8E8`。**维持** 128 EU/t；潮汐和汲口的作用 0.19.0 起才有。
+- **潮汐**（`logic/Tide`，BLUEPRINT 3.11）：只按世界时间（`World.getWorldTime()`，`/time set` 会动它、关了昼夜循环就停）算的曲线，每个客户端每帧一样：一天涨落一次，午夜（`FULL` 18000）最高、正午最低；幅度随月相（`MOON` 8 天一轮：满月大潮 ±`SPRING` 20%、新月小潮 ±`NEAP` 5%，之间按比例），一天平均正好是平均值；换月相在日出（曲线过平均值的地方），不会跳。潮汐井吃两倍（`WELL` 2：大潮 ±40%）。`level`（0.8–1.2）、`norm`（−1..1，按大潮归一）。`TideTest`。
+- **画面**（`RootRender`，位置是 `RootLook` 的；CITY §4.9 Visuals）：
+  - **成型**：三道环变成画出来的钢环，随潮汐起落（大潮顶 `RISE` 1.25 格，上面的环晚 `LAG` 400 tick 跟上），一边转（`SPIN` 0.004 弧度/tick，潮汐再让它摆 `SWAY` 0.8，中间那道反着转），每道环一条光缝，光点沿着走；永远不低到碰到小岛或桥上站着的人的头（`HEAD` 1.8 + `CLEAR` 0.5）、不进坡道（`RootLookTest.theRingsStayClearOfThePeople`）。
+  - **停靠**：八条亮肋的光往上涌（`ribs`、`ribRuns`：被通量层带截断）；三道通量层带各自的颜色（表层 = 井的颜色、记忆层偏紫、深层偏深根的绿 `0x5FD3A8`）；池面发光，潮越高越亮。从地面看：中枢台周围、井上方广场的格栅带（`RootLook.grate`）随潮汐发光，潮高过 `CREST_FROM` 0.75 时环的波峰像光刃一样从格栅里透出来（最高 `CREST_HIGH` 0.9）。
+  - **有电**：池面焦散（两组交叉的摇曳光线），画在静止水面上方 0.035（光影包的水盖不住）。
+  - **预算**（每帧，在 `CityRender` 之上）：NEAR 环最多 4 面 × 8 弧 × 3 段（只画朝相机的面，约一半）加光缝和光点（三道约 290）、肋每格一条线一层光晕（约 300）、带每面一条线（约 230）、池每格水一团光两条线（约 330）、地面每格格栅一团光和 16 道光刃（`BLADES`，各一条芯一层光晕，32 quads）；MID 每弧一段、没有光缝，肋每段一条线，没有带，池只有光（约 200）；FAR 环画成线（48）。加上名牌和汲口的样本，近 < 2,000、中 < 300、远 < 64。
+  - 每部分（潮汐环、上涌的肋、通量层带、水池、格栅光）单独失败。
+
 ## 7. 加一座建筑（照生态穹）
 
 1. **形状**：把生成器（`city/gen/b_*.py`）逐行移植成 `logic/XShape`（用 `ShapeKit`，图例不改名）；`XShapeTest`：整层校验和、计数（检查/软/空气/decor）、对称（不对称的格子登记进 `asym`，并确认 `Blueprint.world` 的精确映射对它们成立）、控制器和控制台座、门洞空气、每个字符都是图例部件、每格有阶段；`XWalkTest`：走到控制器和每个单元、溶解后能穿过的格子够不着。生成器自己改了形状，先改生成器、重跑 `report.py`（更新 `plans.txt`），再移植。有内境的建筑，CITY §4.15 的 3×4 门位在生成器里就用 `s.gate_niche(xs, ys, z)` 标成软格（同样的方块，§1），移植成 `s.gateNiche(x0, x1, y0, y1, z)`；`XShapeTest` 照 `EcoDomeShapeTest.theGateNicheIsSoftAndStillBuilt` 写明哪几格（软、蓝图里是空格、`checkedTwin` 是原来的墙、阶段跟着墙），计划照 `ModulePlanTest.theGateNicheIsBuiltSoft` 查它们是 SOFT 步骤、部件不变。门位里不能有单元格（单元格永远是检查格，`gateNiche` 只认墙）：二向箔仓的门位在二向箔（一个单元）里面，移植它的时候（0.14.0）要先定怎么办。
 2. **单元**：生成器里的单元 → `new UnitLayout(SHAPE)`；新的单元种类加 lang `fluxecho.unit.<kind>`（两份）。单元顺序从此是槽号。
 3. **建造**：`new CityBuild(KEY, SHAPE, HEIGHT, BLUEPRINT, UNITS, Parts.moduleCore(meta), stages)`，`Stages.stage` 照 CITY §4.x 的阶段表，`fitRank` 不能是 0；`plan(...)` = `BuildPlan.module(..., BUILD)`、`controller(...)` = `BuildPlan.hallController(BUILD, ...)`。`ModulePlanTest` 那样测：HARD = 检查格（4 朝向 × 每个场地）、阶段内容、单元组连续且按顺序、清理盒、种子装饰。
-4. **核心**：在 `ModuleCores` 用表里的 meta（附录 C 已经给每个模块分好了），`BUILT` 加一；`BlockModuleCore.createNewTileEntity` 加分支；`tools/NexusTextures.java` 生成 `module_core/<key>/{front,front_on,side,top}`（`registerBlockIcons` 按 `BUILT` 注册，缺贴图就是紫黑块）。
-5. **tile**：`TileX extends TileCityModule`：`moduleKey`、`moduleColor`（CITY §1.1 的主题色）、`build`、`layout`、`coreMetaOf`、`dissolves`、`passes`（只放人碰不到的格子）。
-6. **登记**（`CityModule`）：preInit `registerTileEntity(TileX.class, "fluxecho:<key>")`；init `registerTileClass(TileX.class, NexusModule.infoContainer("<key>.structure"))`、`previewModule(core, meta, TileX::new)`、`ModuleSpecs.register(new ModuleSpec(family, key, research, W, D, H, sites, Parts.moduleCore(meta), colour, XShape::plan, XShape::controller, enabled))`（场地偏好照 CITY §2.2）；postInit 显化 `<key>_core`。
+4. **核心**：在 `ModuleCores` 用表里的 meta（附录 C 已经给每个模块分好了），加进 `BUILT`（0.12.0 起是 meta 的列表 `{0, 7, 8}`，不再是个数）；`BlockModuleCore.createNewTileEntity` 加分支；`tools/NexusTextures.java` 生成 `module_core/<key>/{front,front_on,side,top}`（`registerBlockIcons` 按 `built()` 注册，缺贴图就是紫黑块）。
+5. **tile**：`TileX extends TileCityModule`：`moduleKey`、`moduleColor`（CITY §1.1 的主题色）、`build`、`layout`、`coreMetaOf`、`dissolves`、`passes`（只放人碰不到的格子，或像穹顶发生器的腿那样不托任何人站的地面、穿过去就是设计的——写明是例外并在 tile 的测试里钉住，§4.6）；几个形状的覆写 `shapes()`/`tries()`/`previewPhase()`（照 `TileDomeGenerator`）。
+6. **登记**（`CityModule`）：preInit `registerTileEntity(TileX.class, "fluxecho:<key>")`；init `registerTileClass(TileX.class, NexusModule.infoContainer("<key>.structure"))`、`previewModule(core, meta, TileX::new)`、`ModuleSpecs.register(new ModuleSpec(family, key, research, W, D, H, sites, Parts.moduleCore(meta), colour, XShape::plan, XShape::controller, enabled))`（场地偏好照 CITY §2.2；轴上的族用 13 个参数的构造器给 `Envelope`，照 `CityModule.domeGenerator()`/`root()`）；postInit 显化 `<key>_core`。
 7. **研究**：`ResearchTree` 加节点（CITY 附录 B 的分支、相位、前置；`ResearchTreeTest`：坐标离边 ≥ 16、间距 ≥ 24；相位 ≤ `PHASE_NOW` 的要有算力和材料，占位成本用该相位的外壳板和电路：EV 钛/`circuitEV`、IV 钨钢、LuV 铬、ZPM 铱、UV 锇）、`Research` 常量、lang `research.node.<id>` 和 `.desc`；`research all` 只给本版本能做的。
-8. **渲染**：`XRender`（照 `EcoDomeRender`：本地坐标的表一次算好、按档位画、每部分单独失败、守预算）在 `CityRender.draw` 的模块画面那一段加分支；新的纯规则放 `ModuleLook` 或自己的 logic 类并写测试。
-9. **lang 两份**：`tile.fluxecho.module_core.<key>.name`、`fluxecho.<key>.tip`、`fluxecho.<key>.structure`、`fluxecho.module.<key>`、单元种类、研究；阶段用现成的 `build.stage.c<n>`（还是 9 段的话不用新键）。
-10. **不是大厅族**：先在那个批次里把族做出来（CITY §2.1 每个族要给：外形 → `footprint`/`siteBox`、控制器位置和朝向、场地地面、清理盒（往上、往下或空中）、keep-out、按相位开放的个数）：`BuildPlan` 的计划和控制器工厂、`ModuleSpec.footprint`、`TileNexus.refreshDock` 的收编（现在按 `CampusPlan.moduleCentre(site, depth)` 找）、`CampusPlanTest`/`SitePlanTest` 的断言、总图。
+8. **渲染**：`XRender`（照 `EcoDomeRender`：本地坐标的表一次算好、按档位画、每部分单独失败、守预算）在 `CityRender.draw` 的模块画面那一段加分支；新的纯规则放 `ModuleLook` 或自己的 logic 类（照 `DomeLook`、`RootLook`）并写测试。要画到 512 格的地标照 `DomeGeneratorRender.landmark` 在 `CityRender.landmark` 里加分支，并像 `DomeLook.landmarkQuads` 那样在测试里按每个距离钉住预算。
+9. **lang 两份**：`tile.fluxecho.module_core.<key>.name`、`fluxecho.<key>.tip`、`fluxecho.<key>.structure`、`fluxecho.module.<key>`、单元种类、研究；阶段用现成的 `build.stage.c<n>`（还是 9 段的话不用新键；阶段不一样的给自己的前缀，照天顶的 `z<n>`、根的 `r<n>`，在 `NexusGui.stageKey` 里按 spec 的族选，§4.3）。运行时拼出来的键（阶段、`why` 原因、场地名）`LangTest` 查不到，照 `TileRootTest.itsRunTimeKeysAreInBothLangFiles` 自己写一个。
+10. **不是大厅族**：先在那个批次里把族做出来（CITY §2.1 每个族要给：外形 → `footprint`/`siteBox`、控制器位置和朝向、场地地面、清理盒（往上、往下或空中）、keep-out、按相位开放的个数）：`BuildPlan` 的计划和控制器工厂、`ModuleSpec.footprint`、`TileNexus.refreshDock` 的收编（大厅位按 `CampusPlan.moduleCentre(site, depth)` 找，轴上的场地按控制器格和朝向精确认，`campusSite`）、`CampusPlanTest`/`SitePlanTest` 的断言、总图。0.12.0 的天顶族和根族是现成的例子（§4.12）：`ModuleSpec.Envelope`（占地、带高度的 keep-out、保护盒、`noRoom`）、空中建造和影子、沉箱的 `DIG`/`DRAIN` 和带、地下投影的透视。
 11. **随批次一起**（CITY §5.2）：改了已有的计划就提 `BuildJob.V`；任务书（`build_quests.py` 的 `echo_nexus()`，每座建筑一个任务，key 按模块键）；README 的表、CHANGELOG、两份 lang、这篇手册和 campus.md/nexus.md、BLUEPRINT §3.14、`CLAUDE.md` §5；回复里说清楚哪些只能进游戏看。
 
 ## 8. 测试
@@ -327,9 +436,21 @@
 | `logic/PreviewSitesTest` | 中枢城市预览：相位 I 是后面的档案馆和右边的生态穹、场地都被占了的模块不立（不占名额，后面的照样立）、两座模块不会在同一个场地、内环槽和场地分开记（没 spec 的种类用槽，内环满了只影响它们）、名额用完就停 |
 | `city/CityGuiTest` | 格子每次访问都按显示的单元找槽、选择检查和循环、超过槽数的格子什么都不做、客户端的格子只预测、三页的布局放得下 |
 | `city/TileEcoDomeTest` | `Blueprint.world` 是 StructureLib 的映射、控制器和控制台座、每个样本座是自己的槽、每格属于自己的种植床、树干隐藏但实心、`local` 是 `worldOf` 的逆、引擎建好的穹顶的框架就是计划的 |
-| 改过的 | `LangTest.everyChatMessageGetsItsArguments`（§4.8）；`ResearchTreeTest.theEcoDome`（`PHASE_NOW` 还是 1）；`PartRecipesTest.theCitysPartsCost` 和部件表；`CampusPlanTest`（对角中心 ±36）；`TerrainRuleTest.aRepairLaysGroundOnlyWhereNothingIs`；`CampusEngineTest.aRepairKeepsTheGarden`、`aFullRingIsNamed` |
+| `logic/DomeGeneratorShapeTest` | 吊舱和 `dome_pod()` 逐格一致（整层 CRC `4099585315`）和计数（检查 1,027、软 276）；门洞的玻璃（96）和井口（4）是软格、不在蓝图里；控制器、光梯台和 7 个守护台；从光梯台走到控制器和每个守护台（生成器原样 293 个状态，建的 269）；腿是生成器的前三条镜像（CRC `2025965872`，234 格）；两个蓝图（系泊 1,261、浮空 1,027）；吊舱每格有阶段；`Envelope`（占地、腿柱的带高度盒子、保护盒、Y0 ≤ 203）；腿避开广场的光井、补给口和回收箱；腿下的广场留在园区计划里 |
+| `logic/ZenithPlanTest` | HARD = 系泊形状的检查格（1,261，4 个朝向）、1,637 步；阶段内容和顺序（腿、舱底、外壳、屋顶、守护台成组、控制器最后）；清理（腿柱只到腿的高度、吊舱的盒子到 Y0+52、不平整）；只认天顶场地 |
+| `logic/DomeLookTest` | 弧肋穿过每个腿格、脚在广场、头碰舱底、渐细；电弧落在穹顶上、往外往上弓；穹顶半径 64/104/128/160；顶上的六边形在球面上、会闪；穹顶和地标在每个距离、每个半径都在预算内（≤ 400）；quads 的计数就是画法（`PIECE` 8）；地标在 512 前 64 格淡出 |
+| `logic/RootShapeTest` | 井和 `tidal_well()` 逐格一致（CRC `996641253`）、计数（检查 3,268、软 238、空气 1、3,507 步）；深根和地脉核是生成器的（CRC `2817673059`、`21006675`，检查 5,028、5,826）；井盖（中心是空气）、井壁、井底板；小岛、光梯台、控制器和 8 个汲口；从光梯台走到控制器和每个汲口（414 个状态，坡道顶在 y21）；环够不着；每格有阶段；`Envelope`（没有 keep-out、保护盒 Y0−26..Y0−1、Y0 ≥ 32） |
+| `logic/RootPlanTest` | HARD = 井的检查格（3,268，4 个朝向），步数 = 检查 + 软 + 空气 + 2 × 7,896；阶段；沉箱从井盖一层层往下、每层先壳后掏、掏之前上面那层的井壁已经立着；掏过的格子知道后面放什么（`placedAfter`）；带从阶段里面开始；只认根的场地 |
+| `logic/TideTest` | 午夜最高、正午最低；月相定幅度（大潮 ±20%、小潮 ±5%）；一天平均正好是平均值；曲线不跳 |
+| `logic/RootLookTest` | 环不碰人（小岛和桥上的头、坡道）；环随潮汐（上面的晚、中间的反转）；肋的线在墙上；通量层带朝井里；格栅带就是广场的格栅 |
+| `logic/XRayTest`、`logic/XRayAirTest` | 透视的棱：立方体 12 条、一排一个盒子且重复只算一次、L 形的凹角、沿棱相碰的格子在那里折、井的轮廓；悬空：吊舱悬空、腿不算，影子是吊舱的八角形 |
+| `logic/AxisModulesLookTest` | 吊舱两块名牌（控制器上方、舱底下）、井一块（控制器上方）、大厅还是雨棚上一块；吊舱的平面图有光梯台和守护台；井的平面图画步道那一层（汲口嵌在池沿里）；轴上场地的名字（天顶、根位） |
+| `city/TileDomeGeneratorTest` | 两个蓝图按 StructureLib 的映射摆格；控制器、控制台座和守护台（守护台的控制台座属于单元）；`local` 是 `worldOf` 的逆、一直到腿上；腿和节点溶解且能穿过；先系泊、相位 IV 起才试浮空；引擎建好的发生器的框架就是计划的 |
+| `city/TileRootTest` | 蓝图映射；控制器、控制台座和汲口；`local` 是 `worldOf` 的逆；井是唯一的形状、环能穿过；沉好的井的框架就是计划的；spec 在地面上什么都不占；运行时拼的键（阶段 `r0–r4`、`why.depth`、模块和汲口的名字、相位合金和共鸣玻璃）两份 lang 都有 |
+| 光梯、生长 | `LiftShaftTest`、`LiftInputTest`、`LiftLookTest`、`GrowPlanTest`：见 nexus.md §10 |
+| 改过的 | `LangTest.everyChatMessageGetsItsArguments`（§4.8）；`ResearchTreeTest.theEcoDome`（0.11.0 时 `PHASE_NOW` 1，0.12.0 起 2）；`PartRecipesTest.theCitysPartsCost` 和部件表；`CampusPlanTest`（对角中心 ±36）；`TerrainRuleTest.aRepairLaysGroundOnlyWhereNothingIs`；`CampusEngineTest.aRepairKeepsTheGarden`、`aFullRingIsNamed`；0.12.0：`PartsTest.theCodesOf012`（码 41、光 12）和模块核心的 meta 7、8（`built()` 按 meta 排序，二向箔仓还没有）；`PartRecipesTest.theLiftPadCosts`；`ShapeKitTest`（`^` 是光梯台，`Q` 照样抛）；`SitePlanTest`（天顶和根各一个场地、`theAxisModulesTakeNoRingRoom`）；`PreviewSitesTest.axisKindsTakeNoRoom`；`BlueprintTest.theBoxHoldsEveryCellAndNothingPastIt`（`inBox`）；`GhostCellsTest.theIndexFindsTheStepThatPlacesABlock`；`TerrainRuleTest.theCaissonDigsAndDrains`；`CampusEngineTest` 的沉箱、勘测、散落和生长几条（campus.md §15） |
 
-全仓 101 个测试类、623 个测试（0.11.0；0.10.1 是 88 个类、536 个）。
+全仓 117 个测试类、732 个测试（0.12.0；0.11.0 是 101 个类、623 个，0.10.1 是 88 个类、536 个）。
 
 ## 9. 已知问题、只能进游戏看的
 
@@ -343,23 +464,32 @@
   - 停靠状态在下面那条里，不在标题里。
   - 拆模块核心时样本掉在核心处，不进队伍仓库（档案馆的书进仓库）。
   - 生态穹没有单独的配置开关（`ModuleSpec.enabled` 恒真）。
-  - 内环容量：相位 I 只有 2 个位置（`RingSlots.open(1)`），档案馆和生态穹正好占满；停靠着的 0.9.2 大厅也算一个（campus.md 的规则），另一个模块就显示「内环已满」，拆下大厅核心或到了相位 II 才有位置。
+  - 内环容量：相位 I 只有 2 个位置（`RingSlots.open(1)`），档案馆和生态穹正好占满；停靠着的 0.9.2 大厅也算一个（campus.md 的规则），另一个模块就显示「内环已满」，拆下大厅核心或长到相位 II（4 个位置，`RingSlots.open(2)`）才有位置。天顶和根不占内环（§4.12）。
   - 单元只能由构架和配件组成（`UnitUse` 只登记在这两种方块上）。
   - 树干在光之树里是一根看不见但实心的柱子（设计如此：它撑着两层岛面）。
-  - 只有 meta 0 有模块：别的 meta 的核心（只能用命令拿到）放下没有 tile，图标是生态穹的。
-  - `covers()` 是宽松的立方体（生态穹 ±36），同 campus.md §16。
+  - 只有 meta 0、7、8 有模块（`ModuleCores.built()`）：别的 meta 的核心（只能用命令拿到）放下没有 tile，图标是生态穹的（`BlockModuleCore.built(meta)`）。
+  - `covers()`：0.11.0 是宽松的立方体（生态穹 ±36）；0.12.0 起城市模块只罩它每个形状绕控制器摆好的盒子（`TileCityModule.covers`、`Blueprint.inBox`：生态穹是它自己的盒子，天顶是腿和吊舱合起来的 29×49×25，根是 25×26×25），所以旁边的残留算散落（campus.md §5）；档案馆照旧是立方体（campus.md §16）。
   - 窗口里选择变化后一个往返内点格子，作用在新单元上（之后整窗重发，显示对齐，不丢东西）。
+  - **0.12.0**：
+    - 回响穹顶发生器和潮汐井现在什么都不做：守护台和汲口只保管样本，穹顶、潮汐和功能核心 0.19.0 起；停靠有电时照样每 tick 扣 128 EU（`moduleUpkeepEuPerTick`，和生态穹一样）。潮汐曲线已经在画（环、池、格栅），但不影响任何数值。
+    - 吊舱只能坐光梯进：八个门洞用玻璃封着（等 0.16.0 的栈桥）、光梯井的井口盖着（等轨道锚），都是软格。`floating` 形状只在中枢长到相位 IV 才试，这一版中枢只能长到相位 II，所以吊舱一直系泊；释放任务（拆腿、浮起来）0.16.0 才有。
+    - 根的深根和地脉核只是数据（`RootShape.deepRoot()`、`leyCore()`），`TileRoot` 只有 `well` 一个形状。
+    - 根的任务步数是 19,299：进度条的总数和「已放/总数」包括沉箱的 15,792 步 `DIG`/`DRAIN`（掏空的格子和空着的格子走得很快），剩余时间不算它们。
+    - 天顶的腿按 1.5 倍节奏放：`BuildPace.modulePace` 按阶段号给 `M_FLOOR`（1）加速，天顶的阶段 1 正好是 LEGS（巧合，不是设计）。
+    - 天顶的 `covers()` 是 29×49×25 的盒子（腿和吊舱合起来），根是 25×26×25（上面 `covers()` 那条）；城市模块不再用 `reach()` 的立方体。
+    - 轴上的模块只按控制器格和朝向精确停靠（`TileNexus.campusSite`）：手放的核心偏一格就不停靠（引擎放的总在那一格上）。
 - **只能进游戏看**（开着和关着 Complementary 各看一遍）：光之树、呼吸的肋（外面和里面）、全息（作物生长阶段、绕圈的蜜蜂）、花粉、蝴蝶、池面涟漪、成型扫光、墙裙光线（三种停靠状态和未成型）、名牌、样本座凹槽里的物品（越过池沿）、远处的样子（FAR）和帧率是否在预算内；样本座和池沿的区块网格和物品栏图标、池沿连起来的唇边、覆层锚点的六角插板、模块核心的贴图；窗口的样子和手感、点单元打开在「单元」页、Shift 点、热键、平面图和点选；树干在光之树里是实心的；Waila 那一行；「建造」页和总图的「内环已满」；整个建造（投影、阶段、单元整组飞、雨棚和附属、池水）、NEI 的生态穹预览和中枢城市预览。
+- **0.12.0 只能进游戏看的**（同样开着和关着光影各一遍）：光梯的手感（跳起、潜行、起步和刹车、视野变宽、声音、穿过中枢和吊舱的地面、撞到东西弹回再落下、没有摔落伤害；见 nexus.md §4.2）和光束；吊舱的穹顶壳（地面的光带、顶上闪烁的六边形，在广场上和 512 格外看，不同相位的半径）；电弧（有电和没电的琥珀色）、晶体和光线；远处的腿（中枢范围外是线、地标里接得上，任何停靠状态都不能看着像浮着）；成型扫光沿腿上升；潮汐环随潮汐起落（午夜和正午、满月和新月）、肋和通量层带的光、池面焦散、广场格栅带的光和高潮时的光刃；沉箱在地下一层层沉下去（先壳后掏、地下水和岩浆、排水、回收箱）、透视投影（地形后面淡、没挡着的亮、当前阶段）、吊舱的影子和垂线；两块名牌（舱内和舱底）；窗口的「天顶」「根位」和平面图（光梯台、守护台、井的步道层）；NEI 的中枢城市预览加了两座模块后的加载时间（7–10 级）、浮空的吊舱（相位 IV 起的预览）；新贴图（光梯、两个核心、相位合金、共鸣玻璃）。
 
 ## 10. 安全修改须知
 
 - **内境门位**：门位的格子是软格（CITY §4.15）；别改回检查格（已建的穹顶也照样成型，但 0.19.0 开门就得改检查的形状、提 `BuildJob.V`），也别在门位里放单元。开门的那一版把这些格子换成光门。
-- **形状**：`EcoDomeShape` 就是生成器；要改先改 `b_hall.py`、重跑 `report.py`，再改移植、重钉校验和；改了检查格，已建的生态穹就不成型，改了计划放什么要提 `BuildJob.V`。`Blueprint.world` 的映射要和 StructureLib 逐格一致（生态穹有不镜像的格子）；`ShapeKit` 的 `hypot`/`angle` 换法不能动（和 Python 逐格一致）。
-- **永不改、不复用**：单元顺序和每个单元的槽数（`Samples` 按槽号存）；`ModuleCores` 的 meta 和 `KEYS`；部件码（9、39、40、53、64–79，只往后加）；TE id `fluxecho:eco_dome`、注册名 `fluxecho:module_core`；研究 id `eco_dome`、显化 id `eco_dome_core`；NBT `Samples`、`Unit`；描述包 `P/Dk/Rv/Ep/B/Bi`；`NexusNet.UNIT_DELTA = 5`；`Campus.ModuleStatus` 的 ordinal（`RING_FULL` = 5，只能在末尾加）；`SiteFamily` 的名字；配置键 `nexus.moduleUpkeepEuPerTick`；阶段号和 `build.stage.c<n>` 的对应。
-- **场地常量**：`DIAGONAL_*`、`GATEHOUSE_*`、`ALLEE_*`、`STREET_*` 是后面批次建亭子、大门楼、井字街的依据，改了要同时改 `siteplan.py` 和 `SitePlanTest`；大厅的常量照 campus.md §17。
-- **溶解**：`passes()` 只放人碰不到的格子；能穿过的格子要在行走测试里证明够不着。
+- **形状**：`EcoDomeShape`、`DomeGeneratorShape`、`RootShape` 就是生成器（`b_hall.py`、`b_sky.py`、`b_root.py`）；要改先改生成器、重跑 `report.py`，再改移植、重钉校验和；改了检查格，已建的模块就不成型，改了计划放什么要提 `BuildJob.V`（0.12.0 的天顶和根是新计划，没改任何旧计划，所以 V 没提，还是 2；campus.md §4）。穹顶发生器的腿是半边算再镜像的（`StrictMath`、`Math.rint`），别换成两边各算（生成器两边取整不一样，会多出不对称的格子）；门洞和井口的软格（`door()`、`shaftCap()`）等以后的栈桥和轨道锚开，别改回检查格。`Blueprint.world` 的映射要和 StructureLib 逐格一致（生态穹有不镜像的格子）；`ShapeKit` 的 `hypot`/`angle` 换法不能动（和 Python 逐格一致）。
+- **永不改、不复用**：单元顺序和每个单元的槽数（`Samples` 按槽号存；0.12.0 的 `ward-1…7` 和 `tap-1…8`，以后根的深根和地脉核要把这 8 个汲口排在最前）；`ModuleCores` 的 meta 和 `KEYS`（0.12.0：7 `dome_generator`、8 `root`）；部件码（9、39、40、41、53、64–79，只往后加；光梯是 fitting meta 9）；TE id `fluxecho:eco_dome`、`fluxecho:dome_generator`、`fluxecho:root`，注册名 `fluxecho:module_core`；研究 id `eco_dome`、`phase_2`、`dome`、`tidal_well`，显化 id `eco_dome_core`、`dome_generator_core`、`root_core`、`resonant_glass`；物品注册名 `fluxecho:phase_alloy`、`fluxecho:resonant_glass` 和矿辞 `ingotPhaseAlloy`、`glassResonant`（研究花费按矿辞写）；场地号（天顶 8、根 9：记录的场地和任务键 `module:dome_generator@8`、`module:root@9` 存档）；形状名（`moored`、`floating`、`well`，以后的 `root`、`core`；存在 `Sh` 里）；NBT `Samples`、`Unit`，任务的 `Kr`（带高度的 keep-out）；描述包 `P/Dk/Rv/Ep/B/Bi`；`NexusNet.UNIT_DELTA = 5`、`LIFT = 3`（C→S）、`LIFT_RIDE = 6`（S→C）；`Campus.ModuleStatus` 的 ordinal（`RING_FULL` = 5，只能在末尾加）；`SiteFamily` 的名字；`BuildPlan` 的步骤种类（`HARD/SOFT/AIR` 0–2、`DIG` 3、`DRAIN` 4）；配置键 `nexus.moduleUpkeepEuPerTick`；阶段号和 `build.stage.c<n>`、`z<n>`、`r<n>`、`g<n>` 的对应；lang 键 `build.module.why.<原因>`（存在 `Md` 的 `W` 里）。
+- **场地常量**：`DIAGONAL_*`、`GATEHOUSE_*`、`ALLEE_*`、`STREET_*` 是后面批次建亭子、大门楼、井字街的依据，改了要同时改 `siteplan.py` 和 `SitePlanTest`；大厅的常量照 campus.md §17。`ZENITH_R/K`、`ROOT_R/K`、`FLOOR_UP`、`DEPTH` 和两个控制器的位置决定已建的吊舱和井在哪、怎么停靠（按控制器格精确认），改了已建的就对不上；`LOWEST_Y0` 32 和 `CLEAR_TOP` 52 是 `noRoom` 的依据。
+- **溶解**：`passes()` 只放人碰不到的格子，能穿过的格子要在行走测试里证明够不着（潮汐井的环，`RootShapeTest.theRingsAreOutOfReach`）。**唯一的例外**是穹顶发生器的腿和发射节点（`P`、`C`，和中枢的 `P`/`C` 一样）：人碰得到，但它们不托任何人站的地面，穿过去就是设计（CITY §4、§4.8），由 `TileDomeGeneratorTest.theLegsAndNodesDissolveAndLetPlayersThrough` 钉住。再加这样的例外要写明、钉测试；托着人的格子（楼面、楼梯、像生态穹树干那样的中柱）永远不能 PASS。
 - **确定性**：`ShapeKit`、`CityBuild`、`BuildPlan.module` 和种子装饰不读配置、不用随机数和 `Math` 的三角函数（`Mix` + `StrictMath`）；客户端用同样的输入算出同一份投影。
-- **渲染**：守 §4.10 的光影规则和预算；凹槽、池沿、水面的常量只在 `ModuleLook` 里改（区块网格和样本画在一起）；`onRenderLast` 里什么都不累加。
+- **渲染**：守 §4.10 的光影规则和预算；凹槽、池沿、水面的常量只在 `ModuleLook` 里改（区块网格和样本画在一起）；`onRenderLast` 里什么都不累加。`DomeLook.PIECE` 必须等于 `CityFrame` 切线的长度（8），否则 `landmarkQuads` 数的就不是画的；地标的预算 `DomeLook.BUDGET` 400 由测试按每个距离、每个半径钉住，加东西先改计数再改画法。潮汐只按 `World.getWorldTime()` 算（`Tide`），不要读服务器的状态或计数。
 - **同步**：样本只走描述包和 `UNIT_DELTA`；`BookPacket` 的预算保证 < 28 kB；增量要带 `Ep`/`Rv`，客户端按槽合并。
 - **聊天消息**：参数个数不少于两份 lang 里的占位符（`LangTest` 只查字面写出的键）。
 - **`Builder.QUIET`**：新方块的 `onBlockAdded/breakBlock` 要守；新的核心方块经 `BlockNexus.quiet()`。
@@ -370,8 +500,8 @@
 
 | 版本 | 名字 | 基础设施 | 建筑 |
 |---|---|---|---|
-| **0.11.0**（本篇） | 百工 | 通用模块框架：场地族（大厅搬上去）；`ShapeKit`；通用单元（`UnitLayout`、`UnitUse`、样本存储和增量包、样本座里画物品）；通用模块窗口；通用渲染钩子；形状的通用建造计划（按层和部件类分阶段、单元成组、SOFT、AIR、decor、种子装饰）；新部件 SOCKET、BASIN、ANCHOR、WATER、`module_core` 家族；NEI 通用预览；总图画亭子外形（对角位挪到 ±36 的 25×25） | **生态穹**（相位 I） |
-| 0.12.0 | 相位 | **相位生长**（`grow:<p>` 任务、按当前相位检查中枢、`PHASE_NOW` 2、`phase_2` 有真实花费）；**光梯**（LIFT 部件、乘梯、光束）；**ZENITH 族**（系泊/浮空两种形状、腿是 LEGS 阶段、空中建造、不检查的门格）；**ROOT 族**（沉箱 SINK + DRAIN 阶段、地下投影只画透视的边、深度检查）；最简的**相位合金**、**共鸣玻璃**物品（研究花费要用） | **回响穹顶发生器**（系泊）、**潮汐井** |
+| 0.11.0（已发布） | 百工 | 通用模块框架：场地族（大厅搬上去）；`ShapeKit`；通用单元（`UnitLayout`、`UnitUse`、样本存储和增量包、样本座里画物品）；通用模块窗口；通用渲染钩子；形状的通用建造计划（按层和部件类分阶段、单元成组、SOFT、AIR、decor、种子装饰）；新部件 SOCKET、BASIN、ANCHOR、WATER、`module_core` 家族；NEI 通用预览；总图画亭子外形（对角位挪到 ±36 的 25×25） | **生态穹**（相位 I） |
+| **0.12.0**（本篇，做完了，还没进游戏试） | 相位 | **相位生长**（`grow:<p>` 任务、中枢按当前相位检查（五个形状）、`PHASE_NOW` 2、`phase_2` 有真实花费，nexus.md §4.1）；**光梯**（LIFT 部件、乘梯、光束，nexus.md §4.2）；**ZENITH 族**（系泊/浮空两种形状、腿是 LEGS 阶段、空中建造和影子、不检查的门格、带高度的 keep-out）；**ROOT 族**（沉箱 SINK + DRAIN 阶段和带、地下投影的透视、深度检查）；`Envelope`、轴上的模块不占内环；最简的**相位合金**、**共鸣玻璃**物品（研究花费要用） | **回响穹顶发生器**（系泊，§6.2）、**潮汐井**（§6.3） |
 | 0.13.0 | 四亭 | **PAVILION 族**：切角门、中心控制器、apron 和林荫道地面、偏好列表、内城上限 8 的准备 | **秘法庭**、**血契坛**、**回响猎场**、**魔力泉阵** |
 | 0.14.0 | 门与仓 | **GATE 族**（跨在路上：通道不建、塔柱保留、路中间的亭里放控制器）；**CANVAS** 部件；画布上画物品 | **谐振塔**、**二向箔仓** |
 | 0.15.0 | 外环 | **相位 III**（`grow:3`、内城 8 含大门、`MAX_CAMPUS_MODULES` 8）；**外环建立**（环带平整、井字街、外环步道、大道、外门、外林荫道、门前标记）；**OUTER_DIAG** 和预留的 **OUTER_FLANK** 族；园区半径和间距（CITY §2.9：`buildMinSpacing` 默认 312）；最简的**记忆丝** | **智子阵列**、**全息沙盘** |
@@ -381,6 +511,6 @@
 
 0.18.0 之后 BLUEPRINT 3.3、3.7–3.9 的每座结构都立着、能走进去、能成型；NEI 的城市预览随每批长大（6–10 级）。
 
-**每批都要带上**（CITY §5.2）：改了已有的计划就 `BuildJob.V` + 1（0.12.0：`NexusShape` 相位 ≥ II 和 establish 认识光梯台）；该相位开放的研究要有真实花费（`ResearchTreeTest`：相位 ≤ `PHASE_NOW` ⇒ 算力 > 0 且有材料；占位用该相位的外壳板和电路，数值以后定）；每座建筑一个任务（`build_quests.py` 的 `echo_nexus()`，key 按模块键）；测试：形状、行走、单元、计划（HARD = 检查格 × 4 朝向 × 允许的场地）、场地（`siteplan.py` 的断言进 `SitePlanTest`/`CampusPlanTest`）、光梯路径、沉箱顺序（根）、释放（天顶）；回复里说清楚只能进游戏看的（每个画面、乘梯的手感、穹顶壳、水下的沉箱、NEI 城市预览的加载时间）。
+**每批都要带上**（CITY §5.2）：改了已有的计划就 `BuildJob.V` + 1（0.12.0 没提：相位 I 的 establish 计划逐格没变，光梯台只在相位 ≥ II 的形状和新的 `grow:<p>`、`establish:<p>` 计划里，天顶和根是新计划，带高度的 keep-out 盒子单独存在 `Kr`、整列盒子的任务存档不变；`GrowPlanTest.phaseOneIsUnchanged`，`BuildPlanTest` 一行没改，campus.md §4）；该相位开放的研究要有真实花费（`ResearchTreeTest`：相位 ≤ `PHASE_NOW` ⇒ 算力 > 0 且有材料；占位用该相位的外壳板和电路，数值以后定）；每座建筑一个任务（`build_quests.py` 的 `echo_nexus()`，key 按模块键）；测试：形状、行走、单元、计划（HARD = 检查格 × 4 朝向 × 允许的场地）、场地（`siteplan.py` 的断言进 `SitePlanTest`/`CampusPlanTest`）、光梯路径、沉箱顺序（根）、释放（天顶）；回复里说清楚只能进游戏看的（每个画面、乘梯的手感、穹顶壳、水下的沉箱、NEI 城市预览的加载时间）。
 
 **结构之后**（CITY §5.3，0.19.0 起，按用户想先玩到什么排）：潮汐（BLUEPRINT 3.11）和潮汐井发电；穹顶的功能（3.8）；各模块的功能（并行回响、存储、算力、魔力、血、猎物、天气、水滴、卫星）；覆层和相位核（3.4）；各建筑门位后面的折叠区内境和城中城大厅（3.10）；帆阵、地脉核、源点之心的发电（3.9）；所有数值。CITY §6.1 替用户做的选择列在 BLUEPRINT 第七节，等用户确认。

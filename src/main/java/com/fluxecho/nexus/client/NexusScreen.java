@@ -24,6 +24,7 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ResearchTree;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.Manifests;
 import com.fluxecho.nexus.NexusGui;
 import com.fluxecho.nexus.TileNexus;
@@ -95,7 +96,7 @@ public final class NexusScreen {
         hgradient(1, 1, w * 0.6, h - 1, CYAN, 0.28f, CYAN, 0f);
         rect(1, h - 1, w - 1, h, CYAN, 0.6f);
         end();
-        String left = EchoText.t("nexus.gui.title", EchoText.t("nexus.phase." + TileNexus.PHASE));
+        String left = EchoText.t("nexus.gui.title", EchoText.t("nexus.phase." + n.phase()));
         text(left, 4, 3, CYAN, 1f);
         String status = n.guiStatus;
         right(
@@ -461,7 +462,8 @@ public final class NexusScreen {
         for (Campus.ModuleState m : b.modules) {
             if (y + 16 > h - 10) break;
             // a built module names its site in its status line
-            String site = m.site >= 0 && m.status != Campus.ModuleStatus.BUILT ? EchoText.t("build.gui.site", m.site)
+            String site = m.site >= 0 && m.status != Campus.ModuleStatus.BUILT
+                ? EchoText.t(SiteFamily.labelKey(m.site), m.site)
                 : "";
             float siteW = font().getStringWidth(site) * 0.75f;
             small(fit(EchoText.t("module." + m.key), (int) ((w - 8 - siteW) / 0.75f)), 2, y, 0.75f, WHITE, 1f);
@@ -482,11 +484,12 @@ public final class NexusScreen {
             case BUILDING:
                 return EchoText.t("build.module.building");
             case BUILT:
-                return EchoText.t("build.module.built", m.site);
+                return EchoText.t("build.module.built", EchoText.t(SiteFamily.labelKey(m.site), m.site));
             case RING_FULL:
                 return EchoText.t("build.module.ring_full");
             default:
-                return EchoText.t("build.module.no_room");
+                // why there is no room, when the campus says (0.12.0: the phase, the height)
+                return EchoText.t(m.reason.isEmpty() ? "build.module.no_room" : m.reason);
         }
     }
 
@@ -558,7 +561,7 @@ public final class NexusScreen {
             gradient(0, 0, w, h, DEEP, 1f, PANE, 1f);
             frame(0, 0, w, h, SEAM, 1f);
             end();
-            String label = b.live() && b.site >= 0 ? EchoText.t("build.gui.site", b.site) : "—";
+            String label = b.live() && b.site >= 0 ? EchoText.t(SiteFamily.labelKey(b.site), b.site) : "—";
             smallCentered(
                 fit(label, (int) ((w - 2) / 0.75f)),
                 w / 2.0,

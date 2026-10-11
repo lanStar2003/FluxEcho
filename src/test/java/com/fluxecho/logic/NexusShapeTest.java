@@ -76,18 +76,62 @@ class NexusShapeTest {
             assertEquals(16 * p, s.count(NexusShape.RING));
             assertEquals(3 * p, s.count(NexusShape.CONDUIT));
             assertEquals(p, s.count(NexusShape.SEAT));
-            assertEquals(97, s.count(NexusShape.BASE) + s.count(NexusShape.LIT));
+            // from phase II the lift pad takes the place of the lit hub in the middle of the base (0.12.0)
+            int pads = p >= NexusShape.LIFT_FROM ? 1 : 0;
+            assertEquals(pads, s.count(NexusShape.LIFT));
+            assertEquals(97 - pads, s.count(NexusShape.BASE) + s.count(NexusShape.LIT));
+            assertEquals(pads == 1 ? NexusShape.LIFT : NexusShape.LIT, at(s, 0, 0, 0));
             if (p == 1) continue;
-            // the phase below stands unchanged inside it
+            // the phase below stands unchanged inside it, but for the pad that replaced the hub at phase II
             Blueprint below = NexusShape.phase(p - 1);
-            for (int y = 0; y < below.height(); y++) for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++)
+            for (int y = 0; y < below.height(); y++) for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) {
+                if (p == NexusShape.LIFT_FROM && y == 0 && dx == 0 && dz == 0) continue;
                 assertEquals(at(below, dx, y, dz), at(s, dx, y, dz), "phase " + p + " at " + dx + "," + y + "," + dz);
+            }
         }
         assertEquals(
             26,
             NexusShape.phase(5)
                 .height(),
             "five rings: the finished nexus");
+    }
+
+    /**
+     * The growth job's cells (0.12.0): the stage a phase adds to the phase below, bottom-up, and at phase II the lift
+     * pad first; together with the phase below they are exactly the phase's blueprint.
+     */
+    @Test
+    void theStageCellsAreWhatAPhaseAdds() {
+        assertTrue(
+            NexusShape.stageCells(1)
+                .isEmpty(),
+            "phase I is the establish job's");
+        assertTrue(
+            NexusShape.stageCells(NexusShape.PHASES + 1)
+                .isEmpty());
+        for (int p = 2; p <= NexusShape.PHASES; p++) {
+            Blueprint s = NexusShape.phase(p), below = NexusShape.phase(p - 1);
+            java.util.List<int[]> cells = NexusShape.stageCells(p);
+            int added = 0;
+            for (int y = 0; y < s.height(); y++) for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) {
+                char now = at(s, dx, y, dz), was = y < below.height() ? at(below, dx, y, dz) : ' ';
+                if (now != was) added++;
+            }
+            assertEquals(added, cells.size(), "phase " + p);
+            int lastY = -1;
+            for (int[] c : cells) {
+                assertEquals((char) c[3], at(s, c[1], c[0], c[2]), "phase " + p);
+                assertTrue(c[0] >= lastY, "bottom-up");
+                lastY = c[0];
+                if (c[3] == NexusShape.LIFT) assertEquals(NexusShape.LIFT_FROM, p);
+            }
+            if (p == NexusShape.LIFT_FROM) assertEquals(NexusShape.LIFT, cells.get(0)[3], "the pad first");
+            assertEquals(p, NexusShape.phaseOf(NexusShape.shapeName(p)));
+        }
+        assertEquals(0, NexusShape.phaseOf("main"));
+        assertEquals(0, NexusShape.phaseOf("phase9"));
+        assertEquals(0, NexusShape.phaseOf(null));
+        assertEquals("phase1", NexusShape.shapeName(0));
     }
 
     @Test
@@ -117,5 +161,22 @@ class NexusShapeTest {
             new int[] { 0, 62, 5 },
             top.world(5, top.height() - 1, 5, 0, 64, 0, 0, -1),
             "the base does not move with the phase");
+    }
+
+    @Test
+    void theReachOfEachPhase() {
+        // the cube a nexus covers round its controller: 12 for phase I (as in 0.11.0) and for phase II, which a phase-I
+        // nexus may form as next
+        assertEquals(12, NexusShape.reach(1));
+        assertEquals(12, NexusShape.reach(2));
+        assertEquals(17, NexusShape.reach(3));
+        assertEquals(22, NexusShape.reach(4));
+        assertEquals(27, NexusShape.reach(5));
+        assertEquals(12, NexusShape.reach(0), "clamped");
+        assertEquals(27, NexusShape.reach(9), "clamped");
+        for (int p = 1; p <= NexusShape.PHASES; p++) {
+            Blueprint b = NexusShape.phase(p);
+            assertEquals(Math.max(b.width(), Math.max(b.depth(), b.height())) + 1, NexusShape.reach(p));
+        }
     }
 }

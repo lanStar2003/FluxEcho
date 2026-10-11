@@ -1,5 +1,8 @@
 package com.fluxecho.logic;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The Flux Nexus (blueprint 3.3): an 11 x 11 octagonal base whose eight spokes carry the flux to the middle, and on it
  * one stage per phase, five blocks tall each: four ribs leaning in from the base's diagonals to hold a ring of sixteen
@@ -12,17 +15,27 @@ package com.fluxecho.logic;
  */
 public final class NexusShape {
 
-    /** Base, lit base (the spokes), rib, conduit, ring segment, crystal seat, console stand. */
-    public static final char BASE = 'B', LIT = 'G', PILLAR = 'P', CONDUIT = 'C', RING = 'R', SEAT = 'S', CONSOLE = 'K';
+    /**
+     * Base, lit base (the spokes), rib, conduit, ring segment, crystal seat, console stand, and (0.12.0) the light-lift
+     * pad in the middle of the base from phase II on.
+     */
+    public static final char BASE = 'B', LIT = 'G', PILLAR = 'P', CONDUIT = 'C', RING = 'R', SEAT = 'S', CONSOLE = 'K',
+        LIFT = 'V';
 
     public static final int RADIUS = 5, STAGE = 5, PHASES = 5;
+    /** The first phase whose base holds the lift pad. */
+    public static final int LIFT_FROM = 2;
     /** The controller's height above the base. */
     public static final int CONTROLLER_UP = 2;
 
     private static final Blueprint[] SHAPES = new Blueprint[PHASES];
+    private static final int[] REACH = new int[PHASES];
 
     static {
-        for (int p = 1; p <= PHASES; p++) SHAPES[p - 1] = new Blueprint(build(p));
+        for (int p = 1; p <= PHASES; p++) {
+            SHAPES[p - 1] = new Blueprint(build(p));
+            REACH[p - 1] = SHAPES[p - 1].reach();
+        }
     }
 
     /** What the nexus checks for today. */
@@ -33,6 +46,15 @@ public final class NexusShape {
     /** The nexus of a phase, 1 to {@link #PHASES}. */
     public static Blueprint phase(int p) {
         return SHAPES[Math.max(1, Math.min(PHASES, p)) - 1];
+    }
+
+    /**
+     * How far from the controller the nexus of a phase may have blocks ({@link Blueprint#reach}): 12 for phases I and
+     * II (the 11 x 11 base, 6 and 11 high), then 17, 22 and 27. A nexus covers the phase it may form as next
+     * ({@code TileNexus}), so a phase-I nexus reaches as far as it did before it could grow.
+     */
+    public static int reach(int phase) {
+        return REACH[Math.max(1, Math.min(PHASES, phase)) - 1];
     }
 
     /** Blocks from the bottom of the base to the top of the highest ring. */
@@ -58,7 +80,7 @@ public final class NexusShape {
             int layer = height - 1 - y; // from the top
             for (int c = 0; c < size; c++) {
                 StringBuilder row = new StringBuilder();
-                for (int a = 0; a < size; a++) row.append(cell(y, a - RADIUS, c - RADIUS));
+                for (int a = 0; a < size; a++) row.append(cell(phase, y, a - RADIUS, c - RADIUS));
                 layers[layer][c] = row.toString();
             }
         }
@@ -66,7 +88,57 @@ public final class NexusShape {
     }
 
     /**
-     * The part at height {@code y} above the base's bottom, {@code (dx, dz)} from its middle ({@code dz < 0} front).
+     * The part of the nexus of a phase at height {@code y} above the base's bottom, {@code (dx, dz)} from its middle
+     * ({@code dz < 0} front): {@link #cell(int, int, int)}, but the base's middle is the lift pad from phase II on.
+     */
+    public static char cell(int phase, int y, int dx, int dz) {
+        if (y > STAGE * phase) return ' ';
+        if (y == 0 && dx == 0 && dz == 0 && phase >= LIFT_FROM) return LIFT;
+        return cell(y, dx, dz);
+    }
+
+    /**
+     * The cells the phase's stage adds to the phase below, {y, dx, dz, character} (y up from the base's bottom,
+     * {@code dz < 0} front), bottom-up; at phase II also the lift pad that takes the place of the base's lit middle.
+     * Empty for phase I (the establish job raises it whole).
+     */
+    public static List<int[]> stageCells(int phase) {
+        List<int[]> out = new ArrayList<>();
+        if (phase < 2 || phase > PHASES) return out;
+        if (phase == LIFT_FROM) out.add(new int[] { 0, 0, 0, LIFT });
+        for (int y = STAGE * (phase - 1) + 1; y <= STAGE * phase; y++) {
+            for (int dz = -RADIUS; dz <= RADIUS; dz++) for (int dx = -RADIUS; dx <= RADIUS; dx++) {
+                char ch = cell(y, dx, dz);
+                if (ch != ' ') out.add(new int[] { y, dx, dz, ch });
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The phase of a shape name {@code phaseN} (the nexus's multi-shape names), or 0 for any other name.
+     */
+    public static int phaseOf(String shape) {
+        if (shape == null || !shape.startsWith(SHAPE_PREFIX)) return 0;
+        try {
+            int p = Integer.parseInt(shape.substring(SHAPE_PREFIX.length()));
+            return p >= 1 && p <= PHASES ? p : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** The nexus's shape name of a phase: {@code phase1} to {@code phase5}. */
+    public static String shapeName(int phase) {
+        return SHAPE_PREFIX + Math.max(1, Math.min(PHASES, phase));
+    }
+
+    /** The prefix of the nexus's shape names. */
+    public static final String SHAPE_PREFIX = "phase";
+
+    /**
+     * The part at height {@code y} above the base's bottom, {@code (dx, dz)} from its middle ({@code dz < 0} front), in
+     * the phase-I base (the lit hub in the middle).
      */
     static char cell(int y, int dx, int dz) {
         if (y == 0) {

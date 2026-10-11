@@ -6,8 +6,8 @@ import javax.imageio.ImageIO;
  * Draws the textures of the campus builder (0.10.0): the deck tiles the nexus paves its campus and builds its facades
  * with, the fittings a shelf unit and a library interior are assembled from, three extras for the shelf-unit look of
  * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), the supply
- * port's faces, (0.10.1) the recycle bin's, and (0.11.0) the city's sample socket and basin rim. Run from the
- * repository root: {@code java tools/CampusTextures.java}.
+ * port's faces, (0.10.1) the recycle bin's, (0.11.0) the city's sample socket and basin rim, and (0.12.0) the
+ * light-lift pad. Run from the repository root: {@code java tools/CampusTextures.java}.
  * <p>
  * The palette is the dark tech of the nexus: navy steel, blue-grey tiles, and light only in thin cyan lines. Every tile
  * that is laid side by side (floor, wall panels, bands, unit plinths and crowns) tiles seamlessly, and its light lines
@@ -31,7 +31,7 @@ public class CampusTextures {
     static final String[] DECK_NAMES = { "deck", "trim", "lit", "grate", "dark", "skirt", "chevron", "well", "panel",
         "panel_lit", "panel_dark", "cornice" };
     static final String[] FITTING_NAMES = { "post", "plinth", "crown", "rail", "tread", "glaze", "pedestal", "socket",
-        "basin" };
+        "basin", "lift" };
 
     interface Px {
 
@@ -56,13 +56,13 @@ public class CampusTextures {
 
         Px[] side = { CampusTextures::postSide, CampusTextures::plinthSide, CampusTextures::crownSide,
             CampusTextures::railSide, CampusTextures::treadSide, CampusTextures::glaze, CampusTextures::pedestalSide,
-            CampusTextures::socketSide, CampusTextures::basinSide };
+            CampusTextures::socketSide, CampusTextures::basinSide, CampusTextures::liftSide };
         Px[] top = { CampusTextures::postTop, CampusTextures::plinthTop, CampusTextures::crownTop,
             CampusTextures::railTop, CampusTextures::treadTop, CampusTextures::glaze, CampusTextures::pedestalTop,
-            CampusTextures::socketTop, CampusTextures::basinTop };
+            CampusTextures::socketTop, CampusTextures::basinTop, CampusTextures::liftTop };
         Px[] glow = { CampusTextures::postGlow, CampusTextures::plinthGlow, CampusTextures::crownGlow,
             CampusTextures::railGlow, CampusTextures::treadGlow, null, CampusTextures::pedestalGlow,
-            CampusTextures::socketGlow, CampusTextures::basinGlow };
+            CampusTextures::socketGlow, CampusTextures::basinGlow, CampusTextures::liftGlow };
         for (int i = 0; i < FITTING_NAMES.length; i++) {
             still("blocks/fitting/" + FITTING_NAMES[i], side[i]);
             still("blocks/fitting/" + FITTING_NAMES[i] + "_top", top[i]);
@@ -609,6 +609,51 @@ public class CampusTextures {
         double s = Math.max(along ? swell(y / 16.0, f) : 0, across || side ? swell(x / 16.0, f) : 0);
         int lo = mix(LIT, CYAN, (x == 6 || x == 9) && along || (y == 6 || y == 9) && across ? 0.55 : 0.3);
         return line(lo, s, 0.5);
+    }
+
+    // ---- the light-lift pad (0.12.0)
+
+    /**
+     * A light-lift pad's side: a navy steel block with a bright upper edge, a dark lower one and a recessed cyan seam
+     * under its top, so a pad set into a floor reads as one flush plate.
+     */
+    static int liftSide(int x, int y, int f) {
+        if (y == 0) return STEEL_HI;
+        if (y == 1) return STEEL;
+        if (y == 2) return CHANNEL;
+        if (y == 15) return 0x10202E;
+        if (x == 0 || x == 15) return STEEL_LO;
+        return grain(NAVY, x, y, 107, 0.03);
+    }
+
+    /**
+     * A light-lift pad's top: a steel rim round an iris of eight dark blades closing on a light core, the blades'
+     * edges in shadow, so the face reads as an opening in the floor.
+     */
+    static int liftTop(int x, int y, int f) {
+        if (x == 0 || y == 0) return STEEL_HI;
+        if (x == 15 || y == 15) return 0x10202E;
+        double d = dist(x, y);
+        if (d > 6.6) return grain(STEEL, x, y, 109, 0.04);
+        if (d > 5.8) return CHANNEL;
+        if (d < 1.6) return mix(CYAN, LIT, 0.4);
+        // eight blades turning in, each with a shadowed leading edge
+        double a = Math.atan2(y - 7.5, x - 7.5) + d * 0.35;
+        double blade = (a / (Math.PI / 4)) - Math.floor(a / (Math.PI / 4));
+        return blade < 0.14 ? SHADOW : grain(mix(NAVY, STEEL_LO, d / 6), x, y, 113, 0.03);
+    }
+
+    /**
+     * The iris's light: the core and a ring of cyan round the blades' tips, and a thin circle at the rim; the swell
+     * runs outward from the core, so the pad seems to breathe.
+     */
+    static int liftGlow(int x, int y, int f) {
+        double d = dist(x, y);
+        double s = swell(d / 8.0, f);
+        if (d < 1.6) return line(mix(LIT, CYAN, 0.2), s, 0.6);
+        if (d >= 1.6 && d < 2.4) return line(mix(LIT, CYAN, 0.45), s, 0.5);
+        if (d > 5.9 && d < 6.6) return line(mix(LIT, CYAN, 0.55), s, 0.45);
+        return 0;
     }
 
     // ---- frame extras

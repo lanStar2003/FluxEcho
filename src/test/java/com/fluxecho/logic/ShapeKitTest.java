@@ -19,7 +19,7 @@ class ShapeKitTest {
 
     @Test
     void theLegendIsUniqueAndComplete() {
-        String checked = "FBgPCRZKAd#e:%k*WLwnqpcrtGhou";
+        String checked = "FBgPCRZKAd#e:%k*WLwnqpcrtGhou^";
         Set<Integer> seen = new LinkedHashSet<>();
         for (char ch : checked.toCharArray()) {
             assertTrue(ShapeKit.checked(ch), "'" + ch + "'");
@@ -36,7 +36,8 @@ class ShapeKitTest {
         assertFalse(ShapeKit.checked('-'));
         assertTrue(ShapeKit.checked('~'));
         assertThrows(IllegalArgumentException.class, () -> ShapeKit.partOf('S'), "the Archive's shelf is no city part");
-        assertThrows(IllegalArgumentException.class, () -> ShapeKit.partOf('^'), "the lift pad comes later");
+        assertEquals(Parts.fitting(Parts.F_LIFT), ShapeKit.partOf('^'), "the light-lift pad (0.12.0)");
+        assertThrows(IllegalArgumentException.class, () -> ShapeKit.partOf('Q'), "the canvas comes later");
     }
 
     /**

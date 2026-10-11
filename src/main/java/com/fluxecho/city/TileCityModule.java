@@ -68,8 +68,7 @@ import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
  * <p>
  * NBT: {@code Samples} (the handler), {@code Unit} (the unit its window shows), and the multiblock's own keys.
  * Description: {@code P} powered, {@code Dk} dock status, {@code Rv}/{@code Ep} the sample revision and the tile's
- * life,
- * and the samples ({@code B}/{@code Bi}).
+ * life, and the samples ({@code B}/{@code Bi}).
  */
 public abstract class TileCityModule extends TileModule implements ITileWithModularUI {
 
@@ -166,6 +165,22 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         return build().blueprint();
     }
 
+    /**
+     * Whether the block could belong to it (0.12.0): it lies in the box of one of its shapes round the controller
+     * ({@link Blueprint#inBox}), not in the cube of {@link #reach()}. A city module's box is its real extent, and the
+     * cube of a tall one reaches far past it: the zenith's 49-high box would make a cube of 50 each way round a
+     * controller 42 over the forum, over every hall site, and its leftover blocks of ours there would stop being loose
+     * for the campus's terrain rule. The watchers of frame changes and the use of units ({@link UnitUse}) ask it too;
+     * every cell of every shape lies in its box, so neither misses one.
+     */
+    @Override
+    public boolean covers(World w, int x, int y, int z) {
+        if (w != worldObj) return false;
+        ForgeDirection f = front();
+        for (Shape s : shapes()) if (s.bp.inBox(x, y, z, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ)) return true;
+        return false;
+    }
+
     @Override
     protected int[] centreCell() {
         CityBuild b = build();
@@ -183,13 +198,20 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     }
 
     /**
-     * The structure of its one shape, {@link #MAIN}: every character of the blueprint as the block and meta the campus
-     * builder places for it. {@code -} is StructureLib's own "must be air" and the controller is skipped.
+     * The structure of its shapes ({@link #MAIN} for most; the Echo Dome Generator's {@code moored} and
+     * {@code floating}, 0.12.0): every character of the blueprints as the block and meta the campus builder places for
+     * it. {@code -} is StructureLib's own "must be air" and the controller is skipped.
      */
     private IStructureDefinition<TileMultiblock> define(boolean record) {
-        Blueprint bp = build().blueprint();
+        List<Shape> all = shapes();
+        String[] names = new String[all.size()];
+        Blueprint[] bps = new Blueprint[all.size()];
         Set<Character> seen = new LinkedHashSet<>();
-        for (Blueprint.Cell c : bp.cells()) seen.add(c.ch);
+        for (int i = 0; i < names.length; i++) {
+            names[i] = all.get(i).name;
+            bps[i] = all.get(i).bp;
+            for (Blueprint.Cell c : bps[i].cells()) seen.add(c.ch);
+        }
         List<Object> parts = new ArrayList<>();
         for (char ch : seen) {
             if (ch == ShapeKit.AIR || ch == ShapeKit.CONTROLLER || ch == ShapeKit.NONE) continue;
@@ -200,7 +222,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
             parts.add(b);
             parts.add(PartBlocks.meta(code));
         }
-        return define(record, new String[] { MAIN }, new Blueprint[] { bp }, parts.toArray());
+        return define(record, names, bps, parts.toArray());
     }
 
     @Override
@@ -251,11 +273,14 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         return -1;
     }
 
-    /** The console stand under the controller opens the module's window. */
+    /**
+     * The console stand under the controller opens the module's window; a console that is part of a unit (the Echo
+     * Dome Generator's ward consoles, 0.12.0) is the unit's, used as a unit ({@link UnitUse}).
+     */
     @Override
     public boolean consoleAt(int x, int y, int z) {
         int[] l = local(x, y, z);
-        return build().cell(l[0], l[1], l[2]) == 'K';
+        return build().cell(l[0], l[1], l[2]) == 'K' && layout().unitOfCell(l[0], l[1], l[2]) < 0;
     }
 
     // ---- the local frame
@@ -263,14 +288,15 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     /** A block as a point of the module's shape: {x, y, z} (it may lie outside the shape). */
     public int[] local(int x, int y, int z) {
         int[] c = cellAt(x, y, z);
-        return new int[] { c[0], build().height() - 1 - c[1], c[2] };
+        return build().localOf(c[0], c[1], c[2]);
     }
 
     /** A point in the world as a point of the shape (fractional): {x, y, z} with y counted from the foundation. */
     public double[] localPoint(double x, double y, double z) {
         ForgeDirection f = front();
         double[] p = blueprint().point(x, y, z, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
-        return new double[] { p[0], p[1], p[2] };
+        int[] o = build().offset();
+        return new double[] { p[0] - o[0], p[1] - o[1], p[2] - o[2] };
     }
 
     /** The block a point of the shape is at, {x, y, z}. */

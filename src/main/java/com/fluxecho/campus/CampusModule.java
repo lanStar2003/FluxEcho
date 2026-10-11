@@ -44,9 +44,13 @@ public final class CampusModule {
         recycleBin = bin;
     }
 
-    /** The campus's server handlers: the capture of what a block spills while the builder takes it down. */
+    /**
+     * The campus's handlers: the capture of what a block spills while the builder takes it down, and (0.12.0) the light
+     * lift's riders.
+     */
     public static void init() {
         DropCapture.register();
+        Lift.register();
     }
 
     /**

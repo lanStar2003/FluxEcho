@@ -37,19 +37,23 @@ final class CityFrame {
     final int width, height, depth;
     /** The middle of the controller's block, relative to the camera, and the same point in the shape. */
     private final double cx, cy, cz, midA, midY, midB;
+    /** The controller's block's height in the world. */
+    private final int ctrlY;
 
     CityFrame(TileCityModule m) {
         ForgeDirection f = m.front();
         fx = f.offsetX;
         fz = f.offsetZ;
         CityBuild b = m.build();
-        Blueprint bp = b.blueprint();
         width = b.width();
         height = b.height();
         depth = b.depth();
-        midA = bp.ctrlA + 0.5;
-        midB = bp.ctrlC + 0.5;
-        midY = bp.height() - 1 - bp.ctrlB;
+        // the controller's cell in the shape's own frame (a blueprint may reach out of the shape's box, 0.12.0)
+        int[] ctrl = b.controller();
+        midA = ctrl[0] + 0.5;
+        midB = ctrl[2] + 0.5;
+        midY = ctrl[1];
+        ctrlY = m.yCoord;
         cx = m.xCoord + 0.5 - RenderManager.renderPosX;
         cy = m.yCoord - RenderManager.renderPosY;
         cz = m.zCoord + 0.5 - RenderManager.renderPosZ;
@@ -70,6 +74,11 @@ final class CityFrame {
     /** The camera-relative world z of the shape's point {@code (lx, *, lz)}. */
     double z(double lx, double lz) {
         return cz - (lx - midA) * fx - (lz - midB) * fz;
+    }
+
+    /** The shape's height of a world height (the inverse of {@link #y}, but in the world, not camera-relative). */
+    double local(double worldY) {
+        return worldY - ctrlY + midY;
     }
 
     /** A direction of the shape {@code (dx, dz)} as a world direction: its x. */

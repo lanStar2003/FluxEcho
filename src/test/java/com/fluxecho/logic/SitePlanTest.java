@@ -65,12 +65,38 @@ class SitePlanTest {
         assertArrayEquals(CampusPlan.HALL_SITES, SiteFamily.HALL.sites());
         assertArrayEquals(CampusPlan.PAVILION_SITES, SiteFamily.PAVILION.sites());
         assertArrayEquals(new int[] { 0 }, SiteFamily.GATE.sites());
-        for (SiteFamily f : new SiteFamily[] { SiteFamily.ZENITH, SiteFamily.ROOT, SiteFamily.OUTER_DIAG,
-            SiteFamily.OUTER_FLANK, SiteFamily.SKY, SiteFamily.ORBIT, SiteFamily.THIRD })
-            assertEquals(0, f.sites().length, f + " stands off the inner ring");
+        for (SiteFamily f : new SiteFamily[] { SiteFamily.OUTER_DIAG, SiteFamily.OUTER_FLANK, SiteFamily.SKY,
+            SiteFamily.ORBIT, SiteFamily.THIRD }) assertEquals(0, f.sites().length, f + " stands off the inner ring");
+        // the axis (0.12.0): the zenith over the nexus and the root under it, one site each past the ring's eight
+        assertArrayEquals(new int[] { SiteFamily.ZENITH_SITE }, SiteFamily.ZENITH.sites());
+        assertArrayEquals(new int[] { SiteFamily.ROOT_SITE }, SiteFamily.ROOT.sites());
+        assertEquals(SiteFamily.ZENITH, SiteFamily.of(SiteFamily.ZENITH_SITE));
+        assertEquals(SiteFamily.ROOT, SiteFamily.of(SiteFamily.ROOT_SITE));
+        assertTrue(SiteFamily.ZENITH.axis() && SiteFamily.ROOT.axis() && SiteFamily.ORBIT.axis());
+        assertFalse(SiteFamily.HALL.axis() || SiteFamily.PAVILION.axis() || SiteFamily.GATE.axis());
+        assertTrue(SiteFamily.axisSite(SiteFamily.ZENITH_SITE) && SiteFamily.axisSite(SiteFamily.ROOT_SITE));
+        for (int s = 0; s < 8; s++) assertFalse(SiteFamily.axisSite(s));
+        assertEquals(2, SiteFamily.ZENITH.opens);
+        assertEquals(2, SiteFamily.ROOT.opens);
         assertEquals(1, SiteFamily.HALL.opens);
         assertEquals(2, SiteFamily.PAVILION.opens);
         assertEquals(10, SiteFamily.values().length);
+    }
+
+    @Test
+    void theAxisModulesTakeNoRingRoom() {
+        // the counter the nexus window, Waila and the flux terminal show against the ring's open slots (0.12.0)
+        assertEquals(2, SiteFamily.ringCount(2, 4, 8, 9), "the Archive and the Eco Dome; the zenith and the root not");
+        assertEquals(4, SiteFamily.ringCount(1, 2, 4, 6, 8, 9));
+        assertEquals(0, SiteFamily.ringCount(SiteFamily.ZENITH_SITE, SiteFamily.ROOT_SITE));
+        assertEquals(0, SiteFamily.ringCount());
+        for (int s = 0; s < RingSlots.SLOTS; s++) assertTrue(SiteFamily.ringSite(s), "site " + s);
+        assertFalse(SiteFamily.ringSite(-1));
+        assertFalse(SiteFamily.ringSite(SiteFamily.ZENITH_SITE));
+        assertFalse(SiteFamily.ringSite(SiteFamily.ROOT_SITE));
+        // the terminal names the axis sites instead of numbering them
+        assertEquals("build.gui.site_zenith", SiteFamily.labelKey(SiteFamily.ZENITH_SITE));
+        assertEquals("build.gui.site_root", SiteFamily.labelKey(SiteFamily.ROOT_SITE));
     }
 
     @Test

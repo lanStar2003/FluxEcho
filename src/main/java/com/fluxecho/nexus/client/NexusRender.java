@@ -27,6 +27,7 @@ import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.Compact;
+import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.nexus.BlockNexus;
@@ -57,9 +58,16 @@ public final class NexusRender {
     private static final int STEEL = 0x1C3446, STEEL_LIGHT = 0x2C5470, STEEL_DARK = 0x0E1C28, CORE = 0xE8FBFF;
     /** How far (blocks) a powered nexus's sky beam is drawn when the rest of it is not. */
     private static final double BEAM_RANGE = 512;
+    /**
+     * How far (blocks from its controller) a module's landmark is looked for (0.12.0: the zenith's dome, drawn to 512
+     * from its own middle, which lies within 160 of the controller).
+     */
+    private static final double LANDMARK_RANGE = 512 + 160;
     /** Rib segments, and the rib's path in (out from the centre, up from the base): a curve through three points. */
     private static final int RIB_SEGMENTS = 7;
     private static final double[] RIB_FOOT = { 4.5, 0.0 }, RIB_BEND = { 4.7, 3.0 }, RIB_HEAD = { 3.0, 4.4 };
+    /** An upper stage's rib (0.12.0): its foot on the outer edge of the ring below, half a block under the stage. */
+    private static final double[] UPPER_FOOT = { 3.4, -0.38 }, UPPER_BEND = { 4.3, 2.4 };
     /** Set when finding a site module's door failed once: every module keeps its ring bridge from then on. */
     private static boolean siteBridgesOff;
     /** Set once drawing a multiblock has failed and been logged. */
@@ -109,9 +117,10 @@ public final class NexusRender {
             dz = m.zCoord + 0.5 - RenderManager.renderPosZ;
         double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (dist > range + 48) {
-            // past the effects' range only the sky beam is drawn
+            // past the effects' range only the sky beam is drawn, and a module's landmark (the zenith's dome)
             if (m instanceof TileNexus n && dist < BEAM_RANGE)
                 farBeam(n, t, (float) Math.min(1, (BEAM_RANGE - dist) / 64));
+            else if (m instanceof TileModule mod && dist < LANDMARK_RANGE) ModuleRender.landmark(mod, t);
             return;
         }
         float fade = (float) Math.min(1, (range + 48 - dist) / 16);
@@ -175,39 +184,17 @@ public final class NexusRender {
         p *= 0.2f + 0.8f * appear;
         double spin = on ? t * 0.004 : 0;
 
-        // the solid parts: ribs and the ring
+        // the solid parts: ribs and the ring of every stage it has grown (0.12.0: a stage a phase, CITY.md §3), the
+        // upper stages' ribs springing from the ring below, every other ring turning the other way
+        int phase = Math.max(1, Math.min(NexusShape.PHASES, n.phase()));
+        double top = base + NexusShape.STAGE * (phase - 1);
         Shapes.begin(false);
-        for (int i = 0; i < 4; i++) rib(cx, base, cz, i, 0.95f * appear * fade);
-        double ry = base + 4.5;
-        for (int k = 0; k < 8; k++) {
-            double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
-            Shapes.ring(
-                cx,
-                ry + 0.12,
-                cz,
-                2.6,
-                3.4,
-                a0,
-                a1,
-                STEEL,
-                0.95f * appear * fade,
-                STEEL_LIGHT,
-                0.95f * appear * fade);
-            Shapes
-                .ring(cx, ry - 0.12, cz, 2.6, 3.4, a0, a1, STEEL, 0.95f * appear * fade, STEEL, 0.95f * appear * fade);
-            Shapes.band(
-                cx,
-                cz,
-                3.4,
-                ry - 0.12,
-                ry + 0.12,
-                a0,
-                a1,
-                STEEL_LIGHT,
-                0.95f * appear * fade,
-                0.95f * appear * fade);
-            Shapes.band(cx, cz, 2.6, ry - 0.12, ry + 0.12, a0, a1, STEEL, 0.95f * appear * fade, 0.95f * appear * fade);
+        for (int st = 0; st < phase; st++) {
+            double sb = base + NexusShape.STAGE * st, sry = sb + 4.5, sspin = st % 2 == 0 ? spin : -spin;
+            for (int i = 0; i < 4; i++) rib(cx, sb, cz, i, 0.95f * appear * fade, st > 0);
+            ring(cx, sry, cz, sspin, 0.95f * appear * fade);
         }
+        double ry = top + 4.5;
         double bob = Math.sin(t * 0.04) * 0.1, core = ry + bob;
         boolean making = (n.clientActivity & TileNexus.MANIFESTING) != 0;
         Shapes.crystal(cx, core, cz, 0.5, 0.85, t * 0.03, CORE, making ? VIOLET : CYAN, 0.92f * appear * fade);
@@ -218,24 +205,30 @@ public final class NexusRender {
         Shapes.disc(cx, base + 0.03, cz, 5.6, CYAN, 0.12f * p, 0f);
         Shapes.ring(cx, base + 0.04, cz, 4.55, 4.9, 0, Math.PI * 2, CYAN, 0f, CYAN, 0.4f * p * pulse);
         Shapes.ring(cx, base + 0.04, cz, 2.05, 2.25, 0, Math.PI * 2, VIOLET, 0.5f * p, VIOLET, 0f);
-        // the cradle the core floats over, the column feeding it from the base
-        Shapes.ring(cx, base + 3.1, cz, 0.55, 0.95, 0, Math.PI * 2, CYAN, 0.5f * p * pulse, CYAN, 0f);
-        Shapes.ring(cx, base + 3.1, cz, 0.95, 1.05, 0, Math.PI * 2, WHITE, 0.6f * p, WHITE, 0.6f * p);
-        Shapes.beam(cx, base, cz, base + 3.1, 0.3, CORE, 0.5f * p, 0.8f * p);
+        // the cradle the core floats over in the top stage, the column feeding it from the base
+        Shapes.ring(cx, top + 3.1, cz, 0.55, 0.95, 0, Math.PI * 2, CYAN, 0.5f * p * pulse, CYAN, 0f);
+        Shapes.ring(cx, top + 3.1, cz, 0.95, 1.05, 0, Math.PI * 2, WHITE, 0.6f * p, WHITE, 0.6f * p);
+        Shapes.beam(cx, base, cz, top + 3.1, 0.3, CORE, 0.5f * p, 0.8f * p);
         if (on) skyBeam(cx, core, cz, n.yCoord, t, p);
-        for (int k = 0; k < 8; k++) {
-            double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
-            Shapes.ring(cx, ry + 0.13, cz, 3.34, 3.44, a0, a1, CYAN, 0.9f * p, CYAN, 0.9f * p);
-            Shapes.ring(cx, ry + 0.13, cz, 2.56, 2.66, a0, a1, CYAN, 0.6f * p, CYAN, 0.6f * p);
+        for (int st = 0; st < phase; st++) {
+            double sry = base + NexusShape.STAGE * st + 4.5, sspin = st % 2 == 0 ? spin : -spin;
+            for (int k = 0; k < 8; k++) {
+                double a0 = sspin + k * Math.PI / 4 + 0.05, a1 = sspin + (k + 1) * Math.PI / 4 - 0.05;
+                Shapes.ring(cx, sry + 0.13, cz, 3.34, 3.44, a0, a1, CYAN, 0.9f * p, CYAN, 0.9f * p);
+                Shapes.ring(cx, sry + 0.13, cz, 2.56, 2.66, a0, a1, CYAN, 0.6f * p, CYAN, 0.6f * p);
+            }
+            // the seat of a stage the core has risen past: a soft glow on its ring's axis
+            if (st < phase - 1) Shapes.disc(cx, sry, cz, 0.9, CYAN, 0.35f * p * pulse, 0f);
         }
         double counter = on ? -t * 0.008 : 0;
         for (int k = 0; k < 24; k += 2) {
             double a0 = counter + k * Math.PI / 12, a1 = a0 + Math.PI / 12 * 0.8;
             Shapes.ring(cx, ry, cz, 3.78, 3.88, a0, a1, VIOLET, 0.65f * p, VIOLET, 0.65f * p);
         }
-        for (int i = 0; i < 4; i++) seams(cx, base, cz, i, t, p);
+        for (int st = 0; st < phase; st++)
+            for (int i = 0; i < 4; i++) seams(cx, base + NexusShape.STAGE * st, cz, i, t, p, st > 0);
         boolean researching = (n.clientActivity & TileNexus.RESEARCHING) != 0;
-        if (researching) constellation(n, cx, base + 8.5, cz, t, p);
+        if (researching) constellation(n, cx, top + 8.5, cz, t, p);
         if (sweep != Double.MAX_VALUE) sweep(cx, ry(sweep), cz, appear);
         bridges(n, cx, base, cz, t, p, hints);
         Shapes.end();
@@ -289,11 +282,26 @@ public final class NexusRender {
         if (n.clientHologram) hologram(n, t, fade);
     }
 
-    /** A point of a rib's curve, {@code f} from its foot (0) to its head (1): {out, up}. */
-    private static double[] ribAt(double f) {
+    /**
+     * A point of a rib's curve, {@code f} from its foot (0) to its head (1): {out, up}. A rib of an upper stage
+     * ({@code upper}, 0.12.0) springs from the outer edge of the ring below instead of from the dais.
+     */
+    private static double[] ribAt(double f, boolean upper) {
         double g = 1 - f;
-        return new double[] { g * g * RIB_FOOT[0] + 2 * g * f * RIB_BEND[0] + f * f * RIB_HEAD[0],
-            g * g * RIB_FOOT[1] + 2 * g * f * RIB_BEND[1] + f * f * RIB_HEAD[1] };
+        double[] foot = upper ? UPPER_FOOT : RIB_FOOT, bend = upper ? UPPER_BEND : RIB_BEND;
+        return new double[] { g * g * foot[0] + 2 * g * f * bend[0] + f * f * RIB_HEAD[0],
+            g * g * foot[1] + 2 * g * f * bend[1] + f * f * RIB_HEAD[1] };
+    }
+
+    /** One stage's ring of steel at height {@code ry}, turned {@code spin}: eight segments with a gap between each. */
+    private static void ring(double cx, double ry, double cz, double spin, float a) {
+        for (int k = 0; k < 8; k++) {
+            double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
+            Shapes.ring(cx, ry + 0.12, cz, 2.6, 3.4, a0, a1, STEEL, a, STEEL_LIGHT, a);
+            Shapes.ring(cx, ry - 0.12, cz, 2.6, 3.4, a0, a1, STEEL, a, STEEL, a);
+            Shapes.band(cx, cz, 3.4, ry - 0.12, ry + 0.12, a0, a1, STEEL_LIGHT, a, a);
+            Shapes.band(cx, cz, 2.6, ry - 0.12, ry + 0.12, a0, a1, STEEL, a, a);
+        }
     }
 
     /** Rib {@code i}'s way out from the centre: a diagonal, {x, z}. */
@@ -303,12 +311,12 @@ public final class NexusRender {
     }
 
     /** A rib: segments of steel along the curve, a small gap between each, thinning towards the head. */
-    private static void rib(double cx, double base, double cz, int i, float a) {
+    private static void rib(double cx, double base, double cz, int i, float a, boolean upper) {
         double[] u = ribDir(i);
         double[] side = { -u[1], 0, u[0] };
         for (int k = 0; k < RIB_SEGMENTS; k++) {
             double f0 = (k + 0.06) / RIB_SEGMENTS, f1 = (k + 0.94) / RIB_SEGMENTS;
-            double[] p = ribAt(f0), q = ribAt(f1);
+            double[] p = ribAt(f0, upper), q = ribAt(f1, upper);
             double dr = q[0] - p[0], dh = q[1] - p[1], len = Math.hypot(dr, dh);
             // across the rib in the plane it bends in, away from the centre
             double[] out = { u[0] * dh / len, -dr / len, u[1] * dh / len };
@@ -348,17 +356,17 @@ public final class NexusRender {
     }
 
     /** The light in a rib: its joints and a line up its inner edge, breathing slowly. */
-    private static void seams(double cx, double base, double cz, int i, double t, float p) {
+    private static void seams(double cx, double base, double cz, int i, double t, float p, boolean upper) {
         double[] u = ribDir(i);
         float breath = 0.35f + 0.65f * (float) (0.5 + 0.5 * Math.sin(t * 0.035 + i * Math.PI / 2));
         for (int k = 0; k <= RIB_SEGMENTS; k++) {
-            double[] q = ribAt(k / (double) RIB_SEGMENTS);
+            double[] q = ribAt(k / (double) RIB_SEGMENTS, upper);
             double x = cx + u[0] * q[0], y = base + q[1], z = cz + u[1] * q[0];
             double sx = -u[1] * 0.24, sz = u[0] * 0.24;
             Shapes.string(x - sx, y, z - sz, x + sx, y, z + sz, 0.07, CYAN, 0.9f * p * breath, 0.9f * p * breath);
         }
         for (int k = 0; k < RIB_SEGMENTS * 2; k++) {
-            double[] a = ribAt(k / (RIB_SEGMENTS * 2.0)), b = ribAt((k + 1) / (RIB_SEGMENTS * 2.0));
+            double[] a = ribAt(k / (RIB_SEGMENTS * 2.0), upper), b = ribAt((k + 1) / (RIB_SEGMENTS * 2.0), upper);
             // a hair inside the rib's inner face
             double ia = a[0] - 0.17, ib = b[0] - 0.17;
             Shapes.string(
@@ -396,7 +404,14 @@ public final class NexusRender {
         if (!n.formed() || (n.clientActivity & TileNexus.POWERED) == 0 || fade <= 0) return;
         int[] c = n.centre();
         Shapes.begin(true);
-        skyBeam(rx(c[0] + 0.5), ry(c[1] + 1.0) + 4.5, rz(c[2] + 0.5), n.yCoord, t, fade);
+        int phase = Math.max(1, Math.min(NexusShape.PHASES, n.phase()));
+        skyBeam(
+            rx(c[0] + 0.5),
+            ry(c[1] + 1.0) + NexusShape.STAGE * (phase - 1) + 4.5,
+            rz(c[2] + 0.5),
+            n.yCoord,
+            t,
+            fade);
         Shapes.end();
     }
 
@@ -591,7 +606,7 @@ public final class NexusRender {
             scan(6, h - 12, w - 6, h - 6, (float) t, WHITE, 0.08f * a);
         }
         FluxDraw.end();
-        text(EchoText.t("nexus.gui.title", EchoText.t("nexus.phase." + TileNexus.PHASE)), 5, 3, CYAN, a);
+        text(EchoText.t("nexus.gui.title", EchoText.t("nexus.phase." + n.phase())), 5, 3, CYAN, a);
         text(
             on ? EchoText.t("nexus.holo.powered", Compact.si(n.clientUpkeep)) : EchoText.t("nexus.status.no_power"),
             5,

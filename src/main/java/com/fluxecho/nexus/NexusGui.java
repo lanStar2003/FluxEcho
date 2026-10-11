@@ -30,7 +30,10 @@ import com.fluxecho.core.FluxMachineGui;
 import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.PartRecipes;
+import com.fluxecho.logic.RootShape;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.client.NexusScreen;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
@@ -798,15 +801,34 @@ public final class NexusGui {
 
     /**
      * The lang key (under {@code fluxecho.}) of a stage: {@code build.stage.e<n>} for the campus's own jobs,
-     * {@code build.stage.m<n>} for the Echo Archive (its shelves and porch) and {@code build.stage.c<n>} for the city's
-     * other modules (0.11.0), whose stages have the same numbers. A job past its last stage (a module waiting for its
-     * structure to form, a finished job) shows its last stage.
+     * {@code build.stage.m<n>} for the Echo Archive (its shelves and porch), {@code build.stage.c<n>} for the city's
+     * other modules (0.11.0), whose stages have the same numbers; since 0.12.0 {@code build.stage.g<n>} for the growth
+     * of the nexus (clearing, the new stage, forming) and {@code build.stage.z<n>} for the zenith's Echo Dome Generator
+     * (clearing, the legs, the floor, the shell, the roof, the fittings, commissioning), {@code build.stage.r<n>} for
+     * the root's Tidal Well (the caisson sinking, draining, the floor, the fittings, commissioning). A job past its
+     * last stage (a module waiting for its structure to form, a finished job) shows its last stage.
      */
     public static String stageKey(String planKey, int stage) {
-        boolean campus = BuildPlan.ESTABLISH.equals(planKey) || BuildPlan.FORUM.equals(planKey);
-        int last = campus ? BuildPlan.E_FIXTURE : BuildPlan.M_COMMISSION;
-        String module = ModuleSpecs.moduleOf(planKey);
-        String family = campus ? "e" : module == null || BuildPlan.LIBRARY.equals(module) ? "m" : "c";
+        String family;
+        int last;
+        ModuleSpec spec = ModuleSpecs.ofJob(planKey);
+        if (BuildPlan.establishPhase(planKey) > 0 || BuildPlan.FORUM.equals(planKey)) {
+            family = "e";
+            last = BuildPlan.E_FIXTURE;
+        } else if (BuildPlan.growPhase(planKey) > 0) {
+            family = "g";
+            last = BuildPlan.E_FORM;
+        } else if (spec != null && spec.family == SiteFamily.ZENITH) {
+            family = "z";
+            last = DomeGeneratorShape.Z_COMMISSION;
+        } else if (spec != null && spec.family == SiteFamily.ROOT) {
+            family = "r";
+            last = RootShape.R_COMMISSION;
+        } else {
+            String module = ModuleSpecs.moduleOf(planKey);
+            family = module == null || BuildPlan.LIBRARY.equals(module) ? "m" : "c";
+            last = BuildPlan.M_COMMISSION;
+        }
         return "build.stage." + family + Math.max(0, Math.min(stage, last));
     }
 
@@ -850,11 +872,8 @@ public final class NexusGui {
             new FakeSyncWidget.IntegerSyncer(() -> Math.round(n.researchFraction() * 1000), v -> n.guiResearchPm = v));
         b.widget(
             new FakeSyncWidget.IntegerSyncer(() -> Math.round(n.manifestFraction() * 1000), v -> n.guiManifestPm = v));
-        b.widget(
-            new FakeSyncWidget.IntegerSyncer(
-                () -> n.docked()
-                    .size(),
-                v -> n.guiDocked = v));
+        // the modules on the inner ring against its open slots: the axis modules (0.12.0) take no room there
+        b.widget(new FakeSyncWidget.IntegerSyncer(n::ringDocked, v -> n.guiDocked = v));
         b.widget(new FakeSyncWidget.IntegerSyncer(n::openSlots, v -> n.guiOpen = v));
         b.widget(new FakeSyncWidget.IntegerSyncer(n::boundCount, v -> n.guiBound = v));
         b.widget(new FakeSyncWidget.IntegerSyncer(n::recordCount, v -> n.guiRecords = v));

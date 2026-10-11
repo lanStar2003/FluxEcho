@@ -81,10 +81,10 @@ public class BlockFitting extends Block {
         return meta >= 0 && meta < Parts.FITTING_TYPES ? Parts.FITTING_LIGHT[meta] : 0;
     }
 
-    /** Whether the meta is a whole cube: the plinth, the crown and the glaze. */
+    /** Whether the meta is a whole cube: the plinth, the crown, the glaze and (0.12.0) the light-lift pad. */
     public static boolean full(int meta) {
         int t = type(meta);
-        return t == Parts.F_PLINTH || t == Parts.F_CROWN || t == Parts.F_GLAZE;
+        return t == Parts.F_PLINTH || t == Parts.F_CROWN || t == Parts.F_GLAZE || t == Parts.F_LIFT;
     }
 
     /**
@@ -193,11 +193,19 @@ public class BlockFitting extends Block {
         setBlockBounds(0, 0, 0, 1, 1, 1);
     }
 
-    /** A rail collides as its centre post and one bar per arm, half a block taller than itself like a fence. */
+    /**
+     * A rail collides as its centre post and one bar per arm, half a block taller than itself like a fence. A
+     * light-lift rider passes through the fittings (and the pads) on the column of its ride (0.12.0,
+     * {@link Lift#passes}), and any player through the fittings (not the pads) in the two cells over a pad, so the pad
+     * can be boarded ({@link Lift#boardable}).
+     */
     @Override
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void addCollisionBoxesToList(World w, int x, int y, int z, AxisAlignedBB mask, List list, Entity e) {
-        if (type(w.getBlockMetadata(x, y, z)) != Parts.F_RAIL) {
+        int meta = w.getBlockMetadata(x, y, z);
+        if (e != null && Lift.passes(e, x, y, z, type(meta) == Parts.F_LIFT)) return;
+        if (e != null && type(meta) != Parts.F_LIFT && Lift.boardable(e, x, y, z)) return;
+        if (type(meta) != Parts.F_RAIL) {
             setBlockBoundsBasedOnState(w, x, y, z);
             super.addCollisionBoxesToList(w, x, y, z, mask, list, e);
             return;

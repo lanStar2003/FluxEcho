@@ -48,6 +48,13 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Further than {@code buildGhostRange}, in {@code outline} mode, or while the job is still surveying, only the stages'
  * bounding boxes are outlined; {@code off} draws nothing.
  * <p>
+ * Two kinds of plan are drawn more (0.12.0). One that builds under the ground (the root's caisson) is hidden by the
+ * terrain its ghost lies in, so its x-ray is drawn as well: the edges of its cells still to build, faintly through
+ * everything and brighter where nothing covers them, the current stage's brighter still, and its lowest layer and its
+ * outlines through the ground too. One that builds high in the air (the zenith's pod) gets its shadow: the outline of
+ * what hangs, dashed on the ground under it and drawn again at its underside, with plumb lines dropped from its
+ * outermost corners, so a player on the forum sees where the ghost overhead stands.
+ * <p>
  * It only streams what {@link BuildScan} worked out in the client tick (the selected cells, their faces' corners and
  * texture coordinates), so a frame drawn several times (the light gates draw the world again, {@link FarDraw}) costs no
  * world reads and looks the same each time; animation follows the world time alone. Shader-safe: drawn after the
@@ -84,9 +91,17 @@ public final class BuildRender {
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
     private static final int GHOST = 0, PLANE = 1, LAYER = 2, BLOCKED = 3, OUTLINES = 4, EDGE = 5, RING = 6,
-        CREASES = 7, MACHINES = 8, WELLS = 9, ALL = 10;
+        CREASES = 7, MACHINES = 8, WELLS = 9, XRAY = 10, AIR = 11, ALL = 12;
     private static final String[] NAMES = { "ghost", "scan plane", "lowest layer", "blocked boxes", "outlines",
-        "grading edge", "completion ring", "creases", "machine boxes", "well light", "drawing" };
+        "grading edge", "completion ring", "creases", "machine boxes", "well light", "x-ray", "shadow", "drawing" };
+    /**
+     * The x-ray's alphas at the top of a breath: through the terrain and where nothing covers it, the whole plan's and
+     * the current stage's (0.12.0).
+     */
+    private static final float XRAY_THROUGH = 0.14f, XRAY_SEEN = 0.35f, XRAY_STAGE_THROUGH = 0.3f,
+        XRAY_STAGE_SEEN = 0.7f;
+    /** A plumb line's dashes and gaps (blocks). */
+    private static final double DASH = 2, DASH_GAP = 1.2;
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     /** Whether the ghost's GL state is pushed (and must be popped). */
@@ -195,6 +210,14 @@ public final class BuildRender {
             } finally {
                 close();
             }
+            if (!OFF[XRAY] && g.underground && g.xray.length + g.xrayStage.length > 0) try {
+                xray(g, tint, a);
+            } catch (Throwable x) {
+                recover();
+                fail(XRAY, x);
+            } finally {
+                close();
+            }
             if (!OFF[LAYER] && building && g.hasLayer() && g.layerStage == stage) try {
                 layer(g, tint, 0.7f * a);
             } catch (Throwable x) {
@@ -216,6 +239,14 @@ public final class BuildRender {
         } catch (Throwable x) {
             recover();
             fail(OUTLINES, x);
+        } finally {
+            close();
+        }
+        if (!ended && g != null && g.hangY != Integer.MIN_VALUE && g.shadow.length > 0 && !OFF[AIR]) try {
+            air(g, t);
+        } catch (Throwable x) {
+            recover();
+            fail(AIR, x);
         } finally {
             close();
         }
@@ -414,9 +445,22 @@ public final class BuildRender {
 
     // ---- light on the ghost
 
-    /** Thin lines round the top of each cell of the lowest layer still to build. */
+    /**
+     * Thin lines round the top of each cell of the lowest layer still to build; for an underground plan (0.12.0) once
+     * faintly through the ground and once where nothing covers them.
+     */
     private static void layer(BuildScan.Ghost g, int tint, float a) {
         Shapes.begin(true);
+        if (g.underground) {
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            layerPass(g, tint, 0.35f * a);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+        }
+        layerPass(g, tint, a);
+        Shapes.end();
+    }
+
+    private static void layerPass(BuildScan.Ghost g, int tint, float a) {
         Tessellator tes = start();
         int quads = 0, ai = alpha255(a);
         for (int i : g.layer) {
@@ -434,7 +478,114 @@ public final class BuildRender {
             }
         }
         finish(tes);
+    }
+
+    // ---- under the ground and in the air (0.12.0)
+
+    /**
+     * The x-ray of an underground plan: the edges of its cells still to build, once faintly through everything and
+     * once where nothing covers them, the current stage's brighter, breathing with the ghost.
+     */
+    private static void xray(BuildScan.Ghost g, int tint, float rel) {
+        Shapes.begin(true);
+        int light = Shapes.mix(tint, 0xFFFFFF, 0.3);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        segments(g, g.xray, tint, XRAY_THROUGH * rel);
+        segments(g, g.xrayStage, light, XRAY_STAGE_THROUGH * rel);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        segments(g, g.xray, tint, XRAY_SEEN * rel);
+        segments(g, g.xrayStage, light, XRAY_STAGE_SEEN * rel);
         Shapes.end();
+    }
+
+    /** Segments relative to the ghost's origin (six floats each) as thin lines in one colour. */
+    private static void segments(BuildScan.Ghost g, float[] e, int rgb, float a) {
+        if (e.length == 0 || a <= 0.005f) return;
+        double bx = g.ox - camX, by = g.oy - camY, bz = g.oz - camZ;
+        Tessellator tes = start();
+        tes.setColorRGBA_I(rgb, alpha255(a));
+        int quads = 0;
+        for (int k = 0; k + 5 < e.length; k += 6) {
+            quads += line(
+                tes,
+                bx + e[k],
+                by + e[k + 1],
+                bz + e[k + 2],
+                bx + e[k + 3],
+                by + e[k + 4],
+                bz + e[k + 5],
+                LINE);
+            if (quads >= FLUSH) {
+                tes = restart(tes);
+                tes.setColorRGBA_I(rgb, alpha255(a));
+                quads = 0;
+            }
+        }
+        finish(tes);
+    }
+
+    /**
+     * The shadow of what a plan builds high in the air: the outline of the hanging part dashed on the ground under it
+     * (just over the floor level, Y0 + 1) and drawn again at its underside, and plumb lines dropping between the two
+     * from its outermost corners, the dashes running down slowly; faintly through the terrain and brighter where
+     * nothing covers them.
+     */
+    private static void air(BuildScan.Ghost g, double t) {
+        double ground = g.oy + 1.05 - camY, under = g.hangY - 0.02 - camY;
+        Shapes.begin(true);
+        for (int pass = 0; pass < 2; pass++) {
+            boolean through = pass == 0;
+            if (through) GL11.glDisable(GL11.GL_DEPTH_TEST);
+            float k = through ? 0.35f : 1f;
+            Tessellator tes = start();
+            int quads = 0;
+            int[] e = g.shadow;
+            for (int i = 0; i + 3 < e.length; i += 4) {
+                double x0 = e[i] - camX, z0 = e[i + 1] - camZ, x1 = e[i + 2] - camX, z1 = e[i + 3] - camZ;
+                tes.setColorRGBA_I(CYAN, alpha255(0.3f * k));
+                quads += dashed(tes, x0, ground, z0, x1, ground, z1, 1.2, 0.8, 0);
+                tes.setColorRGBA_I(CYAN, alpha255(0.45f * k));
+                quads += line(tes, x0, under, z0, x1, under, z1, LINE * 1.3);
+                if (quads >= FLUSH) {
+                    tes = restart(tes);
+                    quads = 0;
+                }
+            }
+            double run = (t * 0.05) % (DASH + DASH_GAP);
+            for (int i = 0; i + 1 < g.plumbs.length; i += 2) {
+                double x = g.plumbs[i] - camX, z = g.plumbs[i + 1] - camZ;
+                tes.setColorRGBA_I(LIGHT, alpha255(0.35f * k));
+                quads += dashed(tes, x, under, z, x, ground, z, DASH, DASH_GAP, run);
+            }
+            finish(tes);
+            if (through) GL11.glEnable(GL11.GL_DEPTH_TEST);
+        }
+        Shapes.end();
+    }
+
+    /**
+     * A dashed line from one camera-relative point to another: dashes {@code dash} long with {@code gap} between,
+     * shifted {@code shift} along it; returns the quads added.
+     */
+    private static int dashed(Tessellator t, double x0, double y0, double z0, double x1, double y1, double z1,
+        double dash, double gap, double shift) {
+        double dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (len < 1e-9) return 0;
+        int q = 0;
+        for (double s = shift - (dash + gap); s < len; s += dash + gap) {
+            double a = Math.max(0, s), b = Math.min(len, s + dash);
+            if (b <= a) continue;
+            q += line(
+                t,
+                x0 + dx * a / len,
+                y0 + dy * a / len,
+                z0 + dz * a / len,
+                x0 + dx * b / len,
+                y0 + dy * b / len,
+                z0 + dz * b / len,
+                LINE);
+        }
+        return q;
     }
 
     /**
@@ -475,16 +626,29 @@ public final class BuildRender {
 
     // ---- outlines, the grading edge, blocked cells, the ring
 
-    /** Each stage's box as thin lines, the current stage's brighter. */
+    /**
+     * Each stage's box as thin lines, the current stage's brighter; an underground plan's (0.12.0) once faintly
+     * through the ground as well.
+     */
     private static void outlines(BuildScan.Ghost g, int stage) {
         if (g.stageBounds == null) return;
         Shapes.begin(true);
+        if (g.underground) {
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            outlinePass(g, stage, 0.4f);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+        }
+        outlinePass(g, stage, 1f);
+        Shapes.end();
+    }
+
+    private static void outlinePass(BuildScan.Ghost g, int stage, float k) {
         Tessellator tes = start();
         int quads = 0;
         for (int s = 0; s < g.stageBounds.length; s++) {
             int[] b = g.stageBounds[s];
             if (b == null) continue;
-            tes.setColorRGBA_I(CYAN, alpha255(s == stage ? 0.7f : 0.35f));
+            tes.setColorRGBA_I(CYAN, alpha255((s == stage ? 0.7f : 0.35f) * k));
             quads += boxEdges(
                 tes,
                 b[0] - camX,
@@ -500,7 +664,6 @@ public final class BuildRender {
             }
         }
         finish(tes);
-        Shapes.end();
     }
 
     /**

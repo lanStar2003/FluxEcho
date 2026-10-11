@@ -18,6 +18,8 @@ public final class Blueprint {
     private final String[][] layers;
     /** The controller's cell: across, layer from the top, row from the front. */
     public final int ctrlA, ctrlB, ctrlC;
+    /** {@link #reach()}, once worked out (0 before). */
+    private int reach;
 
     public Blueprint(String[][] layers) {
         this.layers = layers;
@@ -46,6 +48,15 @@ public final class Blueprint {
 
     public int height() {
         return layers.length;
+    }
+
+    /**
+     * How far from its controller a structure of this blueprint may have blocks, whichever way it faces: its longest
+     * side, and one more (the cube a multiblock covers, {@code TileMultiblock.covers}).
+     */
+    public int reach() {
+        if (reach == 0) reach = Math.max(width(), Math.max(depth(), height())) + 1;
+        return reach;
     }
 
     public int depth() {
@@ -133,6 +144,16 @@ public final class Blueprint {
         // world() maps across onto (fz, -fx) and back onto (-fx, -fz); both are unit vectors at right angles
         int across = dx * fz - dz * fx, back = -(dx * fx + dz * fz);
         return new int[] { ctrlA + across, ctrlB - (by - y), ctrlC + back };
+    }
+
+    /**
+     * Whether a block lies in the blueprint's box (every cell of its width, height and depth, drawn or not) for a
+     * controller at {@code (x, y, z)} whose front faces {@code (fx, 0, fz)}: the real extent of a structure of this
+     * blueprint, much tighter than the cube of {@link #reach()} for a tall or flat one.
+     */
+    public boolean inBox(int bx, int by, int bz, int x, int y, int z, int fx, int fz) {
+        int[] c = cell(bx, by, bz, x, y, z, fx, fz);
+        return c[0] >= 0 && c[0] < width() && c[1] >= 0 && c[1] < height() && c[2] >= 0 && c[2] < depth();
     }
 
     /**

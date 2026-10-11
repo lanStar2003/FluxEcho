@@ -71,6 +71,13 @@ public abstract class TileModule extends TileMultiblock {
         return slot;
     }
 
+    /**
+     * The nexus's NEI city preview stands this module for a phase (0.12.0, tiers 6 to 10): a module whose shape
+     * follows the phase (the zenith stands on its legs at phases II and III and floats from IV) picks it here, before
+     * the preview builds it. Nothing by default.
+     */
+    protected void previewPhase(int phase) {}
+
     @Override
     protected void serverTick() {
         if (worldObj.getTotalWorldTime() > dockedUntil && nexus != null) {

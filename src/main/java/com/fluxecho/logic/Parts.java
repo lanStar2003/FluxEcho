@@ -8,7 +8,8 @@ package com.fluxecho.logic;
  * <p>
  * The codes are saved (the ledger's parts, flights in the air) and sent ({@code BUILD_FX}, one byte a code): a code
  * is only ever appended, never renumbered or reused. 0.11.0 appends the frame's cladding anchor (9), the fittings'
- * socket (39) and basin rim (40), water (53) and the module cores of {@code fluxecho:module_core} (64 + meta).
+ * socket (39) and basin rim (40), water (53) and the module cores of {@code fluxecho:module_core} (64 + meta); 0.12.0
+ * the fittings' light-lift pad (41).
  */
 public final class Parts {
 
@@ -39,10 +40,10 @@ public final class Parts {
 
     // fitting metas
     public static final int F_POST = 0, F_PLINTH = 1, F_CROWN = 2, F_RAIL = 3, F_TREAD = 4, F_GLAZE = 5, F_PEDESTAL = 6,
-        F_SOCKET = 7, F_BASIN = 8, FITTING_TYPES = 9;
+        F_SOCKET = 7, F_BASIN = 8, F_LIFT = 9, FITTING_TYPES = 10;
     public static final String[] FITTING_NAMES = { "post", "plinth", "crown", "rail", "tread", "glaze", "pedestal",
-        "socket", "basin" };
-    public static final int[] FITTING_LIGHT = { 6, 9, 10, 6, 7, 0, 8, 8, 4 };
+        "socket", "basin", "lift" };
+    public static final int[] FITTING_LIGHT = { 6, 9, 10, 6, 7, 0, 8, 8, 4, 12 };
 
     private Parts() {}
 

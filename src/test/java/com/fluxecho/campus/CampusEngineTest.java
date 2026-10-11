@@ -25,17 +25,23 @@ import net.minecraft.util.ChatComponentTranslation;
 
 import org.junit.jupiter.api.Test;
 
+import com.fluxecho.city.TileDomeGenerator;
+import com.fluxecho.city.TileRoot;
 import com.fluxecho.logic.ArchiveShape;
 import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.FxCodec;
 import com.fluxecho.logic.Mix;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.RootShape;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.logic.TerrainRule;
+import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.nexus.TileNexus;
 
 /**
@@ -1041,5 +1047,277 @@ class CampusEngineTest {
         v.read(t);
         assertTrue(v.skipBlocked, "跳过受阻 is the campus's, shown with no job too");
         assertFalse(v.hasJob());
+    }
+
+    /**
+     * The root's caisson (0.12.0): its dig and drain steps take the dig and drain rules, and a repair's dig only
+     * drains.
+     */
+    @Test
+    void theCaissonsStepsDigAndDrain() {
+        BuildPlan.Step dig = new BuildPlan.Step(0, 40, 0, Parts.AIR, 0, BuildPlan.NO_GROUP, BuildPlan.DIG),
+            drain = new BuildPlan.Step(0, 40, 0, Parts.AIR, 1, BuildPlan.NO_GROUP, BuildPlan.DRAIN);
+        TerrainRule.Probe stone = new TerrainRule.Probe();
+        stone.natural = true;
+        TerrainRule.Probe water = new TerrainRule.Probe();
+        water.fluid = water.replaceable = water.natural = true;
+        for (boolean all : new boolean[] { true, false }) {
+            assertEquals(TerrainRule.Verdict.CLEAR, Builder.verdict(dig, stone, true, all, false));
+            assertEquals(TerrainRule.Verdict.ALREADY, Builder.verdict(dig, stone, true, all, true), "a repair drains");
+            assertEquals(TerrainRule.Verdict.CLEAR, Builder.verdict(dig, water, true, all, true));
+            assertEquals(TerrainRule.Verdict.ALREADY, Builder.verdict(drain, stone, true, all, false));
+            assertEquals(TerrainRule.Verdict.CLEAR, Builder.verdict(drain, water, true, all, false));
+        }
+        stone.target = true;
+        assertEquals(
+            TerrainRule.Verdict.ALREADY,
+            Builder.verdict(dig, stone, true, true, false),
+            "what fills it stays");
+    }
+
+    /**
+     * The survey before 开始 marks no caisson cell done (0.12.0): an empty cave pocket inside the shaft is judged done
+     * by the dig rule, but something may stand there by the time its band is sunk, so only the band's own pass marks
+     * it.
+     */
+    @Test
+    void theSurveyLeavesTheCaissonToItsBand() {
+        BuildPlan.Step dig = new BuildPlan.Step(0, 40, 0, Parts.AIR, 0, BuildPlan.NO_GROUP, BuildPlan.DIG);
+        TerrainRule.Probe air = new TerrainRule.Probe();
+        air.air = true;
+        for (boolean all : new boolean[] { true, false })
+            assertEquals(TerrainRule.Verdict.ALREADY, Builder.verdict(dig, air, true, all, false), "empty: dug");
+        assertFalse(BuildPlan.surveySettles(BuildPlan.DIG));
+        assertFalse(BuildPlan.surveySettles(BuildPlan.DRAIN));
+        for (byte kind : new byte[] { BuildPlan.HARD, BuildPlan.SOFT, BuildPlan.AIR })
+            assertTrue(BuildPlan.surveySettles(kind), "kind " + kind);
+    }
+
+    /**
+     * A formed nexus covers only as far as the phase it may form as next (0.12.0): a phase-I nexus reaches 12 blocks,
+     * as in 0.10.1, so a frame block of ours left 20 blocks in front of it is loose and the clear-all rule takes it
+     * down and credits it, while a block inside its base is not; a phase-II nexus reaches as far as phase III.
+     */
+    @Test
+    void ourStrayBlocksInFrontOfAPhaseOneNexusAreLoose() {
+        for (int facing = 2; facing <= 5; facing++) {
+            TileNexus n = new TileNexus() {
+
+                @Override
+                public boolean formed() {
+                    return true;
+                }
+            };
+            n.xCoord = CX;
+            n.yCoord = Y0 + 2;
+            n.zCoord = CZ;
+            n.place((UUID) null, null, facing);
+            int fx = n.front().offsetX, fz = n.front().offsetZ;
+            List<TileNexus> loaded = Collections.singletonList(n);
+            int x = CX + 20 * fx, z = CZ + 20 * fz;
+            assertFalse(Terrain.inFormedReach(loaded, null, x, Y0 + 1, z), "20 in front: left over");
+            TerrainRule.Probe p = new TerrainRule.Probe();
+            p.ours = true;
+            p.loose = !Terrain.inFormedReach(loaded, null, x, Y0 + 1, z);
+            assertEquals(TerrainRule.Verdict.REPLACE, TerrainRule.forClear(p, false, true), "taken down and credited");
+            assertTrue(Terrain.inFormedReach(loaded, null, CX + 3 * fx, Y0 + 1, CZ + 3 * fz), "on its base");
+            assertTrue(Terrain.inFormedReach(loaded, null, CX, Y0 + 2 + 12, CZ), "its next stage's height");
+            assertFalse(Terrain.inFormedReach(loaded, null, CX, Y0 + 2 + 13, CZ));
+            // grown to phase II, it covers phase III: 17
+            n.regrow(2);
+            assertTrue(Terrain.inFormedReach(loaded, null, CX + 17 * fx, Y0 + 1, CZ + 17 * fz));
+            assertFalse(Terrain.inFormedReach(loaded, null, x, Y0 + 1, z));
+        }
+    }
+
+    /**
+     * A formed zenith or root covers only its own box (0.12.0), not the cube of its longest side round its controller
+     * (50 each way for the zenith, 27 for the root): a frame block of ours left on a 0.9.2 hall site (radius 32, at
+     * the front, the side or a diagonal) is loose and the clear-all rule takes it down and credits it, while a cell of
+     * a leg, of the pod or of the well is covered.
+     */
+    @Test
+    void ourStrayBlocksOnTheHallSitesAreLooseRoundTheZenithAndTheRoot() {
+        int[][] halls = { { 32, 0 }, { 0, 32 }, { 0, -32 }, { -32, 0 }, { 22, 22 }, { 22, -22 }, { -22, 22 } };
+        for (int[] f : FACINGS) {
+            int[] zc = DomeGeneratorShape.controller(SiteFamily.ZENITH_SITE, CX, Y0, CZ, f[0], f[1]);
+            TileDomeGenerator zenith = new TileDomeGenerator() {
+
+                @Override
+                public boolean formed() {
+                    return true;
+                }
+            };
+            zenith.xCoord = zc[0];
+            zenith.yCoord = zc[1];
+            zenith.zCoord = zc[2];
+            zenith.place((UUID) null, null, zc[3]);
+            int[] rc = RootShape.controller(SiteFamily.ROOT_SITE, CX, Y0, CZ, f[0], f[1]);
+            TileRoot root = new TileRoot() {
+
+                @Override
+                public boolean formed() {
+                    return true;
+                }
+            };
+            root.xCoord = rc[0];
+            root.yCoord = rc[1];
+            root.zCoord = rc[2];
+            root.place((UUID) null, null, rc[3]);
+            for (List<? extends TileMultiblock> loaded : Arrays.<List<? extends TileMultiblock>>asList(
+                Collections.singletonList(zenith),
+                Collections.singletonList(root))) {
+                for (int[] h : halls) for (int dy : new int[] { 1, 3 }) {
+                    int[] w = CampusPlan.toWorld(h[0], h[1], f[0], f[1]);
+                    String at = "hall cell " + h[0] + "," + h[1] + " +" + dy + " facing " + f[0] + "," + f[1];
+                    assertFalse(Terrain.inFormedReach(loaded, null, CX + w[0], Y0 + dy, CZ + w[1]), at);
+                    TerrainRule.Probe p = new TerrainRule.Probe();
+                    p.ours = true;
+                    p.loose = !Terrain.inFormedReach(loaded, null, CX + w[0], Y0 + dy, CZ + w[1]);
+                    assertEquals(TerrainRule.Verdict.REPLACE, TerrainRule.forClear(p, false, true), at);
+                }
+            }
+            List<TileDomeGenerator> zl = Collections.singletonList(zenith);
+            for (int[] leg : DomeGeneratorShape.legs()) {
+                int[] w = CampusPlan.toWorld(leg[0], leg[1], f[0], f[1]);
+                assertTrue(Terrain.inFormedReach(zl, null, CX + w[0], Y0 + leg[2], CZ + w[1]), "a leg cell");
+            }
+            int[] pod = CampusPlan.toWorld(0, 9, f[0], f[1]);
+            assertTrue(Terrain.inFormedReach(zl, null, CX + pod[0], Y0 + 45, CZ + pod[1]), "the pod");
+            int[] wall = CampusPlan.toWorld(0, 11, f[0], f[1]);
+            assertTrue(
+                Terrain.inFormedReach(Collections.singletonList(root), null, CX + wall[0], Y0 - 10, CZ + wall[1]),
+                "the well");
+        }
+    }
+
+    /**
+     * A growth that waits for 开始 holds no repair of a broken nexus up (0.12.0): the repair takes its place and the
+     * growth goes back to the head of the queue, and 开始 on it is refused while the nexus is unformed. A growth that
+     * has begun (its lift pad landing takes the nexus apart for a moment) holds it up, as the establish job does, and
+     * 开始 resumes it: the two rules never both close.
+     */
+    @Test
+    void aGrowthWaitingForStartHoldsNoRepairOfTheNexus() {
+        BuildJob grow = BuildJob.grow(2);
+        grow.state = BuildState.State.PROJECTING;
+        assertFalse(Campus.holdsNexusRepair(grow), "offered, not started");
+        assertFalse(Campus.holdsNexusRepair(BuildJob.grow(2)), "queued behind another job");
+        List<BuildJob> queue = new ArrayList<>();
+        BuildJob rep = BuildJob.repairNexus(Collections.emptyList(), 1);
+        assertSame(rep, Campus.admit(grow, queue, rep), "the repair takes its place");
+        assertSame(grow, queue.get(0), "and it waits at the head of the queue");
+        assertTrue(Campus.growsUnformed(grow, false), "开始 refused while the nexus is unformed");
+        assertFalse(Campus.growsUnformed(grow, true));
+        assertFalse(Campus.growsUnformed(BuildJob.module(spec(), 4), false), "only a growth");
+
+        BuildJob started = BuildJob.grow(2);
+        started.state = BuildState.State.BUILDING;
+        started.started = true;
+        assertTrue(Campus.holdsNexusRepair(started));
+        BuildJob touched = BuildJob.grow(2);
+        touched.state = BuildState.State.BUILDING;
+        touched.started = true;
+        touched.touched = true;
+        assertTrue(Campus.holdsNexusRepair(touched));
+        assertFalse(Campus.growsUnformed(touched, false), "a growth that has begun goes on");
+        BuildJob flying = BuildJob.grow(2);
+        flying.state = BuildState.State.PROJECTING;
+        flying.flights.add(new BuildJob.Flight(0, 10, false, true));
+        assertTrue(Campus.holdsNexusRepair(flying));
+        // started but nothing placed yet, then paused by the player: 开始 resumes it (修复 is held by it)
+        BuildJob paused = BuildJob.grow(2);
+        paused.state = BuildState.State.PAUSED;
+        paused.pause = BuildState.Pause.PLAYER;
+        paused.started = true;
+        assertTrue(Campus.holdsNexusRepair(paused));
+        assertFalse(Campus.growsUnformed(paused, false), "a started growth is resumed, not refused");
+        // over every begun-or-not combination of a growth that has not ended, an unformed nexus leaves exactly one of
+        // 开始 and 修复 open
+        for (int bits = 0; bits < 8; bits++) {
+            BuildJob j = BuildJob.grow(2);
+            j.state = BuildState.State.PROJECTING;
+            j.started = (bits & 1) != 0;
+            j.touched = (bits & 2) != 0;
+            if ((bits & 4) != 0) j.flights.add(new BuildJob.Flight(0, 10, false, true));
+            assertTrue(
+                Campus.holdsNexusRepair(j) != Campus.growsUnformed(j, false),
+                "exactly one of 修复 and 开始 for combination " + bits);
+        }
+        assertTrue(Campus.holdsNexusRepair(BuildJob.establish(Collections.emptyList())));
+        assertTrue(Campus.holdsNexusRepair(BuildJob.repairNexus(Collections.emptyList(), 2)));
+        assertFalse(Campus.holdsNexusRepair(BuildJob.module(spec(), 4)));
+        started.state = BuildState.State.CANCELLED;
+        assertFalse(Campus.holdsNexusRepair(started), "over");
+    }
+
+    /**
+     * 修复 on a growth that stopped as incomplete (0.12.0) does not start the growth over (its plan cannot put a broken
+     * base right): the growth ends, not declined, and the nexus is repaired as the new phase once the growth's stage
+     * and pad stand, else as the phase it grew to.
+     */
+    @Test
+    void repairingAnIncompleteGrowthRepairsTheNexusAsItsPhase() {
+        BuildJob g = BuildJob.grow(2);
+        g.state = BuildState.State.PAUSED;
+        g.pause = BuildState.Pause.INCOMPLETE;
+        g.started = true;
+        g.touched = true;
+        g.stage = BuildPlan.E_FORM;
+        Campus c = active(nexus(3), BuildJob.V, g, null, null);
+        assertEquals("fluxecho.build.repair_queued", c.repairNow());
+        assertEquals(
+            BuildState.State.CANCELLED,
+            c.job()
+                .state());
+        assertEquals(Collections.singletonList("repair:establish"), c.queue());
+        NBTTagCompound saved = new NBTTagCompound();
+        c.writeNBT(saved);
+        BuildJob r = BuildJob.read(
+            saved.getCompoundTag("Campus")
+                .getTagList("Queue", 10)
+                .getCompoundTagAt(0));
+        assertEquals(BuildPlan.establishKey(2), r.planKey(), "the new phase: base, stages and pad");
+        assertFalse(
+            c.carried()
+                .getCompoundTag("Declined")
+                .hasKey(BuildPlan.growKey(2)),
+            "not declined");
+
+        BuildJob early = BuildJob.grow(2);
+        early.stage = BuildPlan.E_CORE;
+        assertEquals(1, Campus.repairPhase(early, 1), "its stage does not stand yet");
+        assertEquals(2, Campus.repairPhase(g, 1));
+        assertEquals(3, Campus.repairPhase(g, 3), "never lower than the nexus grew");
+        assertEquals(2, Campus.repairPhase(BuildJob.module(spec(), 4), 2));
+    }
+
+    /**
+     * The zenith's height-ranged keep-out boxes (0.12.0) are saved apart ({@code Kr}), so a job with only whole-column
+     * boxes is saved exactly as before (no new key, {@code Ko} as it was), and both kinds come back.
+     */
+    @Test
+    void heightRangedBoxesAreSavedApart() {
+        List<int[]> old = Arrays.asList(new int[] { 1, 2, 3, 4 }, new int[] { -10, -20, -5, -8 });
+        NBTTagCompound before = BuildJob.forum(old)
+            .write();
+        assertFalse(before.hasKey("Kr"), "a 0.11.0 job's save is unchanged");
+        assertArrayEquals(new int[] { 1, 2, 3, 4, -10, -20, -5, -8 }, before.getIntArray("Ko"));
+
+        List<int[]> mixed = Arrays.asList(new int[] { 1, 2, 3, 4 }, new int[] { 7, 8, 7, 8, Y0 + 18, Y0 + 26 });
+        NBTTagCompound t = BuildJob.forum(mixed)
+            .write();
+        assertArrayEquals(new int[] { 1, 2, 3, 4 }, t.getIntArray("Ko"));
+        assertArrayEquals(new int[] { 7, 8, 7, 8, Y0 + 18, Y0 + 26 }, t.getIntArray("Kr"));
+        BuildJob r = BuildJob.read(t);
+        assertEquals(2, r.keepOut.size());
+        assertTrue(BuildJob.sameBoxes(mixed, r.keepOut), "both kinds back");
+        assertFalse(r.retarget(mixed), "the same boxes after a load: no new survey");
+        // a box of another size is no keep-out box
+        assertEquals(
+            1,
+            BuildJob.forum(Arrays.asList(new int[] { 1, 2, 3 }, new int[] { 1, 2, 3, 4 }))
+                .keepOut()
+                .size());
     }
 }

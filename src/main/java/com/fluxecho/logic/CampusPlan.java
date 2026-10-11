@@ -71,6 +71,11 @@ public final class CampusPlan {
     public static final int GATEHOUSE_FROM = 23, GATEHOUSE_TO = 39, GATEHOUSE_HALF = 15, GATE_PASSAGE = 6;
     /** The four well-field streets (phase III): the bands {@code |cross|} 18..20 out to radial 60, outside the ring. */
     public static final int STREET_FROM = 18, STREET_TO = 20, STREET_REACH = 60;
+    /**
+     * The axis envelopes seen from above (0.12.0, CITY.md §2.1): the zenith pod {@code oct(10, 14)} over the nexus (its
+     * legs reach the forum at radius 14), the root's well {@code oct(11, 15)} under it.
+     */
+    public static final int ZENITH_R = 10, ZENITH_K = 14, ROOT_R = 11, ROOT_K = 15;
 
     /** The dais, the nexus base {@code oct(5, 7)}; paving never touches it. */
     private static final int BASE_R = 5, BASE_K = 7;
@@ -252,6 +257,15 @@ public final class CampusPlan {
         return oct(a, r, BASE_R, BASE_K);
     }
 
+    /**
+     * Whether the establish job lays a grate tile at the cell: the grate band round the dais, {@code oct(6, 8)} less
+     * the dais, where the forum's lit ribs do not cross it (0.12.0: the Tidal Well's glow shows through it, CITY.md
+     * §2.6). The same cells {@link #establishFloor} gives the grate code.
+     */
+    public static boolean grateBand(int a, int r) {
+        return oct(a, r, GRATE_R, GRATE_K) && !inBase(a, r) && !rib(a, r);
+    }
+
     /** Whether the cell belongs to the forum, {@code oct(16, 22)} less the dais. */
     public static boolean inForum(int a, int r) {
         return oct(a, r, FORUM_R, FORUM_K) && !inBase(a, r);
@@ -333,7 +347,8 @@ public final class CampusPlan {
 
     /**
      * Whether (a, r) lies in a module envelope of the site: a hall site's {@code width x depth} footprint
-     * ({@link #inHall}), a pavilion's octagon ({@link #inPavilion}) or the gatehouse ({@link #inGatehouse}).
+     * ({@link #inHall}), a pavilion's octagon ({@link #inPavilion}), the gatehouse ({@link #inGatehouse}), and on the
+     * axis (0.12.0) the zenith pod's octagon {@code oct(10, 14)} or the root's {@code oct(11, 15)} (seen from above).
      */
     public static boolean inEnvelope(int site, int width, int depth, int a, int r) {
         switch (family(site)) {
@@ -341,6 +356,10 @@ public final class CampusPlan {
                 return inHall(site, width, depth, a, r);
             case PAVILION:
                 return inPavilion(site, a, r);
+            case ZENITH:
+                return oct(a, r, ZENITH_R, ZENITH_K);
+            case ROOT:
+                return oct(a, r, ROOT_R, ROOT_K);
             default:
                 return inGatehouse(a, r);
         }

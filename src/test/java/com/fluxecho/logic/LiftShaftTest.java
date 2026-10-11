@@ -1,0 +1,248 @@
+package com.fluxecho.logic;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import com.fluxecho.logic.LiftShaft.Cell;
+import com.fluxecho.logic.LiftShaft.Ride;
+
+/**
+ * The light lift's rule (0.12.0, CITY.md §2.5): which pad a ride goes to, where it stops below something else, what a
+ * rider passes through, and how it is moved, on the axis shaft of a campus (dais pad at Y0, the nexus's column, the
+ * pod's pad at Y0 + 40) and on made-up columns.
+ */
+class LiftShaftTest {
+
+    /** A column of cells by height; anything not set is open air. */
+    private static final class Col implements LiftShaft.Column {
+
+        final Map<Integer, Cell> cells = new HashMap<>();
+
+        Col set(int y, Cell c) {
+            cells.put(y, c);
+            return this;
+        }
+
+        Col fill(int y0, int y1, Cell c) {
+            for (int y = y0; y <= y1; y++) cells.put(y, c);
+            return this;
+        }
+
+        @Override
+        public Cell at(int y) {
+            return cells.getOrDefault(y, Cell.OPEN);
+        }
+    }
+
+    private static final int Y0 = 64;
+
+    /** The axis of a phase-II campus: the ground, the dais pad, the nexus's middle column, the pod with its pad. */
+    private static Col axis() {
+        Col c = new Col().fill(0, Y0 - 1, Cell.SOLID)
+            .set(Y0, Cell.PAD);
+        // conduits y1..3, a seat y4, conduits y6..8, a seat y9 (frame blocks: ours)
+        c.fill(Y0 + 1, Y0 + 4, Cell.OURS)
+            .fill(Y0 + 6, Y0 + 9, Cell.OURS);
+        c.set(Y0 + 40, Cell.PAD);
+        // the shaft's soft cap over the pod's pad: deck panels (not ours as a rider sees them) and glaze (a fitting)
+        c.fill(Y0 + 46, Y0 + 48, Cell.SOLID)
+            .set(Y0 + 49, Cell.OURS);
+        return c;
+    }
+
+    @Test
+    void upTheAxisToThePod() {
+        Ride r = LiftShaft.plan(axis(), Y0, 1);
+        assertNotNull(r);
+        assertEquals(1, r.dir);
+        assertFalse(r.blocked);
+        assertEquals(Y0 + 1, r.from);
+        assertEquals(Y0 + 41, r.to, "standing on the pod's pad");
+        assertEquals(r.to, r.peak);
+        assertEquals(67, r.ticks(), "40 blocks at 0.6 a tick");
+        assertArrayEquals(new int[] { Y0, Y0 + 43 }, r.span());
+    }
+
+    @Test
+    void downFromThePodToTheDais() {
+        Ride r = LiftShaft.plan(axis(), Y0 + 40, -1);
+        assertNotNull(r);
+        assertEquals(-1, r.dir);
+        assertEquals(Y0 + 41, r.from);
+        assertEquals(Y0 + 1, r.to, "standing on the dais pad, inside the nexus's column");
+        assertArrayEquals(new int[] { Y0, Y0 + 43 }, r.span());
+    }
+
+    @Test
+    void noPadUpOrDownMeansNoRide() {
+        Col c = new Col().fill(0, 9, Cell.SOLID)
+            .set(10, Cell.PAD);
+        assertNull(LiftShaft.plan(c, 10, 1), "open sky and no pad: an ordinary jump");
+        assertNull(LiftShaft.plan(c, 10, -1), "solid right under the pad: nowhere to sink");
+        // the bottom pad of the axis cannot sink, the pod's has no pad over it (its shaft is capped until the orbit)
+        assertNull(LiftShaft.plan(axis(), Y0, -1));
+        assertNull(LiftShaft.plan(axis(), Y0 + 40, 1));
+        Col capped = new Col().set(10, Cell.PAD)
+            .set(20, Cell.SOLID);
+        assertNull(LiftShaft.plan(capped, 10, 1), "a ceiling and no pad over it: an ordinary jump");
+    }
+
+    @Test
+    void somethingSolidInTheWayIsBumpedAndTheRideSinksBack() {
+        Col c = new Col().fill(0, 9, Cell.SOLID)
+            .set(10, Cell.PAD)
+            .set(20, Cell.SOLID)
+            .set(30, Cell.PAD);
+        Ride r = LiftShaft.plan(c, 10, 1);
+        assertNotNull(r);
+        assertTrue(r.blocked);
+        assertEquals(11, r.from);
+        assertEquals(11, r.to, "back to the start");
+        assertEquals(20 - LiftShaft.BODY, r.peak, 1e-9, "the head just under the block");
+        assertEquals(r.peak, r.goal(false), 1e-9);
+        assertEquals(r.to, r.goal(true), 1e-9);
+        assertEquals((int) Math.ceil(2 * (r.peak - 11) / LiftShaft.SPEED), r.ticks());
+        // nothing over the target pad to stand in: bumped there instead
+        Col low = new Col().set(10, Cell.PAD)
+            .set(30, Cell.PAD)
+            .set(32, Cell.SOLID);
+        Ride b = LiftShaft.plan(low, 10, 1);
+        assertTrue(b.blocked);
+        assertEquals(32 - LiftShaft.BODY, b.peak, 1e-9);
+        // no room to rise at all
+        Col tight = new Col().set(10, Cell.PAD)
+            .set(13, Cell.SOLID);
+        assertNull(LiftShaft.plan(tight, 10, 1));
+    }
+
+    @Test
+    void sinkingStopsOnWhatIsBelowWhenAPlayerFits() {
+        Col c = new Col().fill(0, 20, Cell.SOLID)
+            .set(30, Cell.PAD);
+        Ride r = LiftShaft.plan(c, 30, -1);
+        assertNotNull(r);
+        assertFalse(r.blocked);
+        assertEquals(21, r.to, "standing on the ground under the shaft");
+        Col close = new Col().fill(0, 28, Cell.SOLID)
+            .set(30, Cell.PAD);
+        assertNull(LiftShaft.plan(close, 30, -1), "one free cell under the pad is no room");
+        Col fits = new Col().fill(0, 27, Cell.SOLID)
+            .set(30, Cell.PAD);
+        assertEquals(28, LiftShaft.plan(fits, 30, -1).to);
+    }
+
+    @Test
+    void padsTooCloseArePassedOverAndReachIsLimited() {
+        Col c = new Col().set(10, Cell.PAD)
+            .set(12, Cell.PAD)
+            .set(20, Cell.PAD);
+        assertEquals(21, LiftShaft.plan(c, 10, 1).to, "the pad two above is in the head: passed over");
+        assertEquals(13, LiftShaft.plan(c, 20, -1).to, "eight below is a stop");
+        Col far = new Col().set(10, Cell.PAD)
+            .set(10 + LiftShaft.REACH + 1, Cell.PAD);
+        assertNull(LiftShaft.plan(far, 10, 1), "out of reach");
+        Col edge = new Col().set(10, Cell.PAD)
+            .set(10 + LiftShaft.REACH, Cell.PAD);
+        assertNotNull(LiftShaft.plan(edge, 10, 1));
+        assertThrows(IllegalArgumentException.class, () -> LiftShaft.plan(c, 10, 0));
+    }
+
+    @Test
+    void ourBlocksAndPadsArePassedOnlyWhileRiding() {
+        assertTrue(LiftShaft.passes(Cell.PAD, true, false));
+        assertFalse(LiftShaft.passes(Cell.PAD, false, true), "a ride ends standing on its pad");
+        assertFalse(LiftShaft.passes(Cell.PAD, false, false));
+        assertTrue(LiftShaft.passes(Cell.OURS, true, false));
+        assertTrue(LiftShaft.passes(Cell.OURS, false, true), "the grace lets a rider out of the nexus's column");
+        assertFalse(LiftShaft.passes(Cell.OURS, false, false));
+        for (boolean riding : new boolean[] { true, false }) {
+            assertFalse(LiftShaft.passes(Cell.SOLID, riding, true));
+            assertFalse(LiftShaft.passes(Cell.OPEN, riding, true), "air has nothing to pass");
+        }
+    }
+
+    /** Ticking the motion the client applies takes the feet to the goal in the ride's own tick count. */
+    @Test
+    void theMotionReachesTheGoalInTime() {
+        Ride r = LiftShaft.plan(axis(), Y0, 1);
+        double feet = r.from;
+        int ticks = 0;
+        boolean turned = false;
+        while (!(LiftShaft.arrived(feet, r.to) && (!r.blocked || turned)) && ticks < 1000) {
+            double m = LiftShaft.motion(feet, r.goal(turned));
+            assertTrue(Math.abs(m) <= LiftShaft.SPEED + 1e-9);
+            feet += m;
+            ticks++;
+            if (r.blocked && !turned && LiftShaft.arrived(feet, r.peak)) turned = true;
+        }
+        assertEquals(r.ticks(), ticks);
+        Col c = new Col().set(10, Cell.PAD)
+            .set(20, Cell.SOLID)
+            .set(30, Cell.PAD);
+        Ride b = LiftShaft.plan(c, 10, 1);
+        feet = b.from;
+        ticks = 0;
+        turned = false;
+        double top = feet;
+        while (!(LiftShaft.arrived(feet, b.to) && turned) && ticks < 1000) {
+            feet += LiftShaft.motion(feet, b.goal(turned));
+            top = Math.max(top, feet);
+            ticks++;
+            if (!turned && LiftShaft.arrived(feet, b.peak)) turned = true;
+        }
+        assertEquals(b.peak, top, 1e-9, "up to the bump");
+        assertTrue(ticks <= b.ticks() + 1);
+        assertEquals(LiftShaft.STEER_MAX, LiftShaft.steer(0, 10), 1e-9);
+        assertEquals(-0.05, LiftShaft.steer(10.1, 10), 1e-9);
+        assertTrue(LiftShaft.onColumn(5.5, 7.5, 5, 7));
+        assertTrue(LiftShaft.onColumn(6.2, 7.5, 5, 7));
+        assertFalse(LiftShaft.onColumn(6.3, 7.5, 5, 7));
+        assertEquals(40, LiftShaft.GRACE, "two seconds");
+        assertEquals(0.6, LiftShaft.SPEED, 1e-9);
+    }
+
+    @Test
+    void theUnformedDaisPadCanBeBoarded() {
+        // a phase-II nexus that came apart: its middle column's conduits stand over the dais pad as frame blocks, and
+        // every player passes the two the standing room takes (formed, they let everyone through anyway)
+        Col c = axis();
+        assertTrue(LiftShaft.boardable(c.at(Y0 + 1), c.at(Y0), c.at(Y0 - 1)), "the conduit on the pad");
+        assertTrue(LiftShaft.boardable(c.at(Y0 + 2), c.at(Y0 + 1), c.at(Y0)), "the one over it, the head's");
+        assertFalse(LiftShaft.boardable(c.at(Y0 + 3), c.at(Y0 + 2), c.at(Y0 + 1)), "over the head: still solid");
+        assertFalse(LiftShaft.boardable(c.at(Y0 + 4), c.at(Y0 + 3), c.at(Y0 + 2)));
+        // standing there, a jump rides up the unformed column to the pod
+        Ride r = LiftShaft.plan(c, Y0, 1);
+        assertNotNull(r);
+        assertEquals(Y0 + 41, r.to);
+        assertFalse(r.blocked);
+        // nothing but our blocks over a pad: not the pad itself, not a pad over a pad, not what is no one's
+        assertFalse(LiftShaft.boardable(Cell.PAD, Cell.PAD, Cell.SOLID));
+        assertFalse(LiftShaft.boardable(Cell.SOLID, Cell.PAD, Cell.SOLID));
+        assertFalse(LiftShaft.boardable(Cell.OURS, Cell.SOLID, Cell.PAD));
+        assertFalse(LiftShaft.boardable(Cell.OURS, Cell.OURS, Cell.OURS), "our blocks with no pad under them");
+        assertTrue(LiftShaft.boardable(Cell.OURS, Cell.OPEN, Cell.PAD), "the head's cell over an empty one");
+        assertFalse(LiftShaft.boardable(Cell.OURS, Cell.OPEN, Cell.OPEN), "nothing to stand on");
+        assertFalse(LiftShaft.boardable(Cell.OURS, Cell.SOLID, Cell.PAD), "no one stands in a solid block");
+
+        // the conduit on the pad is the block missing (broken, or not yet put back by a repair): the one over it,
+        // where the head goes, is passed, the one over that still not, and a jump still rides up to the pod
+        Col gap = axis().set(Y0 + 1, Cell.OPEN);
+        assertTrue(LiftShaft.boardable(gap.at(Y0 + 2), gap.at(Y0 + 1), gap.at(Y0)), "the head's conduit");
+        assertFalse(LiftShaft.boardable(gap.at(Y0 + 3), gap.at(Y0 + 2), gap.at(Y0 + 1)), "over the head");
+        assertFalse(LiftShaft.boardable(gap.at(Y0 + 4), gap.at(Y0 + 3), gap.at(Y0 + 2)));
+        Ride up = LiftShaft.plan(gap, Y0, 1);
+        assertNotNull(up);
+        assertEquals(Y0 + 41, up.to);
+        assertFalse(up.blocked);
+    }
+}

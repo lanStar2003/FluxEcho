@@ -61,6 +61,11 @@ import com.mojang.authlib.GameProfile;
  * protection mod); the player's pause only by 开始. Running short of power or materials pauses only after a while
  * without progress, and such a pause lifts no sooner than {@link #RESUME_AFTER} ticks later, so a trickle of EU or
  * items does not flip the job (and resend the nexus) every few ticks.</li>
+ * <li>The caisson (0.12.0, the root under the nexus): a {@link BuildPlan#DIG} step is dug out at once, as a clear
+ * column's cell is (the clearing's pace and EU, its block to the recycle store), and a {@link BuildPlan#DRAIN} step
+ * takes away only a fluid that flowed in; neither flies. The builder works no step of a stage's band before the band
+ * before it is done ({@link BuildPlan.Plan#bandEnd}), so the root lays each layer's wall ring before it digs the
+ * layer's inside, from the lid down.</li>
  * <li>A free job ({@link Campus#free}: started in creative mode, or made free by an operator) takes no materials and
  * no EU. An operator's instant build ({@link Campus#instant}) runs the same code paths at {@link #INSTANT_CELLS} cells
  * a tick with flights of one tick and only a few effects.</li>
@@ -197,7 +202,9 @@ public final class Builder {
             pace.flood(INSTANT_CELLS);
             return;
         }
-        double stagePace = job.campusJob() ? BuildPace.establishPace(job.stage) : BuildPace.modulePace(job.stage);
+        // a growth (0.12.0) runs in the establish job's stage numbers
+        boolean nexusStages = job.campusJob() || job.grows();
+        double stagePace = nexusStages ? BuildPace.establishPace(job.stage) : BuildPace.modulePace(job.stage);
         pace.refill(Config.buildBlocksPerTick, stagePace);
         pace.refillClear(Config.buildClearPerTick);
     }
@@ -258,7 +265,7 @@ public final class Builder {
         if (job.pause == BuildState.Pause.INCOMPLETE) {
             // the structure was put right by hand: the next pass sees it formed and moves on
             TileMultiblock t = target(job);
-            if (t != null && t.formed()) resume(job);
+            if (t != null && t.formed() && grownTo(job)) resume(job);
             return;
         }
         boolean shortage = job.pause == BuildState.Pause.MATERIALS || job.pause == BuildState.Pause.POWER;
@@ -305,15 +312,22 @@ public final class Builder {
                 continue;
             }
             BuildPlan.Step s = plan.steps.get(i);
+            if (plan.repeat(i)) {
+                // a cell the caisson dug and fills again (0.12.0): its later steps are judged in their own stage
+                units -= GLANCE;
+                continue;
+            }
             units -= LOOK;
             if (!w.blockExists(s.x, s.y, s.z)) {
                 job.unloaded++;
                 continue;
             }
-            TerrainRule.Probe p = Terrain.probe(w, s.x, s.y, s.z, s.part, campus);
+            TerrainRule.Probe p = probe(w, plan, i, s);
             TerrainRule.Verdict v = verdict(job, s, p);
-            if (v == TerrainRule.Verdict.ALREADY) markDone(job, i);
-            else if (v == TerrainRule.Verdict.BLOCKED) job.addBlocked(s.x, s.y, s.z);
+            if (v == TerrainRule.Verdict.ALREADY) {
+                // a caisson's cell found empty is looked at again when its band is sunk: it may not stay so
+                if (BuildPlan.surveySettles(s.kind)) markDone(job, i);
+            } else if (v == TerrainRule.Verdict.BLOCKED) job.addBlocked(s.x, s.y, s.z);
             else if (taken(v)) counted(job, s.x, s.y, s.z, p);
         }
         if (units > 0) units = surveyColumns(job, plan, w, units);
@@ -432,7 +446,7 @@ public final class Builder {
                 // past the last stage: the cells left for an entity are tried again, then a module waits for its
                 // structure and the campus jobs are done
                 if (!touchUp(job, plan, now, o)) return o;
-                if (job.campusJob()) finish(job, now);
+                if (job.campusJob() || job.grows()) finish(job, now);
                 else waitForm(job, plan, now, o);
                 return o;
             }
@@ -441,8 +455,8 @@ public final class Builder {
                 if (job.clearColumn < plan.clear.size()) return o;
                 campus.graded(job);
             }
-            if (s == BuildPlan.E_FORM && job.campusJob()) {
-                if (!job.raisesNexus()) {
+            if (s == BuildPlan.E_FORM && (job.campusJob() || job.grows())) {
+                if (!job.raisesNexus() && !job.grows()) {
                     nextStage(job, plan);
                     continue;
                 }
@@ -491,7 +505,7 @@ public final class Builder {
      */
     private boolean waitForm(BuildJob job, BuildPlan.Plan plan, long now, Outcome o) {
         TileMultiblock t = target(job);
-        if (t != null && t.formed()) {
+        if (t != null && t.formed() && grownTo(job)) {
             job.formSince = -1;
             job.formTries = 0;
             if (job.stage >= plan.stages) finish(job, now);
@@ -613,9 +627,18 @@ public final class Builder {
         return false;
     }
 
-    /** The structure the job raises: the nexus, or the module whose controller its plan places. */
+    /**
+     * Whether a growth's nexus stands as the phase it grows to (0.12.0); true for every other job. Until then the
+     * nexus still stands as the phase below: its new stage stands on top of a shape that holds without it.
+     */
+    private boolean grownTo(BuildJob job) {
+        return !job.grows() || campus.nexus()
+            .phase() >= job.growPhase();
+    }
+
+    /** The structure the job raises: the nexus (its establish job and repair, its growth), or the module. */
     TileMultiblock target(BuildJob job) {
-        if (job.raisesNexus()) return campus.nexus();
+        if (job.raisesNexus() || job.grows()) return campus.nexus();
         int[] c = campus.moduleController(job);
         if (c == null) return null;
         World w = campus.world();
@@ -626,7 +649,7 @@ public final class Builder {
 
     /** Where the multiblocks are told about a finished stage: the nexus controller, or the module's controller. */
     private int[] anchor(BuildJob job) {
-        if (job.campusJob()) return campus.controller();
+        if (job.campusJob() || job.grows()) return campus.controller();
         return campus.moduleController(job);
     }
 
@@ -844,7 +867,8 @@ public final class Builder {
     private void steps(BuildJob job, BuildPlan.Plan plan, int s, long now, Outcome o) {
         World w = campus.world();
         advanceCursor(job, plan, s);
-        int end = plan.end(s), windowEnd = Math.min(end, job.cursor + window());
+        // a banded stage (the caisson) works only the band of its first unfinished step
+        int end = Math.min(plan.end(s), plan.bandEnd(job.cursor)), windowEnd = Math.min(end, job.cursor + window());
         int free = 0;
         boolean pending = false;
         for (int i = job.cursor; i < windowEnd;) {
@@ -870,6 +894,13 @@ public final class Builder {
             }
             if (!w.checkChunksExist(st.x - 1, st.y - 1, st.z - 1, st.x + 1, st.y + 1, st.z + 1)) {
                 o.unloaded = true;
+                i++;
+                continue;
+            }
+            if (BuildPlan.digs(st.kind)) {
+                int r = dig(job, plan, i, st, now, o, free < freePerTick());
+                if (r == DIG_STOP) return;
+                if (r == DIG_FREE) free++;
                 i++;
                 continue;
             }
@@ -911,6 +942,73 @@ public final class Builder {
         }
         // cells still in flight: the job is not stuck until they landed
         if (pending) o.waiting = true;
+    }
+
+    /** What {@link #dig} did: stop the pass, marked done for free, left for a later pass, done. */
+    private static final int DIG_STOP = -1, DIG_FREE = 0, DIG_LATER = 1, DIG_DONE = 2;
+
+    /**
+     * A {@link BuildPlan#DIG} or {@link BuildPlan#DRAIN} step of the caisson (0.12.0), done at once as a clear column's
+     * cell is: found empty (or already holding what a later step of the plan places there) it is marked done for free
+     * while the tick's free marks last; a cell the rules forbid is shown red and skipped, as a clear column passes it;
+     * anything else is taken down at the clearing's pace for its EU, what it held going to the recycle store. Returns
+     * {@link #DIG_STOP} to end the pass (no clearing budget, no power, a full recycle store), {@link #DIG_FREE} when it
+     * was marked done for free, {@link #DIG_LATER} when no free mark was left this tick, else {@link #DIG_DONE}.
+     */
+    private int dig(BuildJob job, BuildPlan.Plan plan, int i, BuildPlan.Step st, long now, Outcome o,
+        boolean freeLeft) {
+        TerrainRule.Probe p = probe(campus.world(), plan, i, st);
+        TerrainRule.Verdict v = verdict(job, st, p);
+        if (v == TerrainRule.Verdict.ALREADY) {
+            if (!freeLeft) {
+                o.budget = true;
+                return DIG_LATER;
+            }
+            markDone(job, i);
+            job.unblock(st.x, st.y, st.z);
+            o.progress++;
+            return DIG_FREE;
+        }
+        if (v != TerrainRule.Verdict.BLOCKED) {
+            if (waitsForRoom(p.fluid, v == TerrainRule.Verdict.REPLACE)) {
+                // the recycle store is full: wait here until a member takes something out instead of losing it
+                o.waiting = true;
+                return DIG_STOP;
+            }
+            if (!pace.canClear()) {
+                o.budget = true;
+                return DIG_STOP;
+            }
+            if (!payEu(job, Config.buildEuPerClear)) {
+                o.power = true;
+                return DIG_STOP;
+            }
+            pace.tryClear();
+            if (removeCell(st.x, st.y, st.z, v == TerrainRule.Verdict.REPLACE, now)) {
+                job.cleared++;
+                job.touched = true;
+                job.unblock(st.x, st.y, st.z);
+                job.machineGone(st.x, st.y, st.z);
+                markDone(job, i);
+                o.progress++;
+                return DIG_DONE;
+            }
+        }
+        // the rules or a protection mod keep the cell: shown red and passed, as a clear column passes it
+        job.addBlocked(st.x, st.y, st.z);
+        markSkipped(job, i);
+        o.progress++;
+        return DIG_DONE;
+    }
+
+    /**
+     * The facts about a step's cell: against its own part, or for a {@link BuildPlan#DIG} or {@link BuildPlan#DRAIN}
+     * step against the part a later step of the plan places there ({@link BuildPlan.Plan#placedAfter}), which it leaves
+     * standing.
+     */
+    private TerrainRule.Probe probe(World w, BuildPlan.Plan plan, int i, BuildPlan.Step st) {
+        int target = BuildPlan.digs(st.kind) ? plan.placedAfter(i) : st.part;
+        return Terrain.probe(w, st.x, st.y, st.z, target, campus);
     }
 
     /**
@@ -1213,7 +1311,7 @@ public final class Builder {
      * it to face the nexus, keeping a player owner it has (the nexus's owner when it has none).
      */
     private void recommission(BuildJob job, TileMultiblock t) {
-        if (job.raisesNexus()) return;
+        if (job.raisesNexus() || job.grows()) return;
         int[] c = campus.moduleController(job);
         if (c == null || c.length < 4 || t.xCoord != c[0] || t.yCoord != c[1] || t.zCoord != c[2]) return;
         if (t.owner() != null && t.front()
@@ -1426,10 +1524,13 @@ public final class Builder {
     /**
      * {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} with the job's kind and the rule given. A repair
      * lays its soft ground (grass, dirt, water) only where the cell is empty ({@link TerrainRule#forRepairGround}): the
-     * players' garden stays.
+     * players' garden stays. The caisson's steps (0.12.0) dig ({@link TerrainRule#forDig}: a repair only drains) and
+     * drain ({@link TerrainRule#forDrain}); their probe looks for what a later step places in the cell.
      */
     static TerrainRule.Verdict verdict(BuildPlan.Step s, TerrainRule.Probe p, boolean module, boolean all,
         boolean repair) {
+        if (s.kind == BuildPlan.DIG) return TerrainRule.forDig(p, module, all, repair);
+        if (s.kind == BuildPlan.DRAIN) return TerrainRule.forDrain(p, module, all);
         if (repair && s.kind == BuildPlan.SOFT && Parts.euOnly(s.part))
             return TerrainRule.forRepairGround(p, module, all);
         if (s.kind != BuildPlan.AIR) return TerrainRule.forBuild(p, module, all);

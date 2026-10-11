@@ -154,7 +154,15 @@ public final class Terrain {
 
     /** Whether a formed nexus or module of ours could use the cell ({@code covers}): its blocks are not left over. */
     private static boolean inFormedReach(World w, int x, int y, int z) {
-        for (TileMultiblock m : NexusRegistry.loaded(w)) if (m.formed() && m.covers(w, x, y, z)) return true;
+        return inFormedReach(NexusRegistry.loaded(w), w, x, y, z);
+    }
+
+    /**
+     * Whether one of the multiblocks, formed, covers the cell ({@link TileMultiblock#covers}: a cube round its
+     * controller as far as it reaches, a nexus as far as its next phase, 0.12.0).
+     */
+    static boolean inFormedReach(Iterable<? extends TileMultiblock> multiblocks, World w, int x, int y, int z) {
+        for (TileMultiblock m : multiblocks) if (m.formed() && m.covers(w, x, y, z)) return true;
         return false;
     }
 

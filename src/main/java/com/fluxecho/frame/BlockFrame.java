@@ -19,6 +19,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Builder;
+import com.fluxecho.campus.Lift;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -150,11 +151,16 @@ public class BlockFrame extends Block {
         setBlockBounds(0, 0, 0, 1, 1, 1);
     }
 
-    /** Parts that gave way to a formed multiblock's drawing let players through. */
+    /**
+     * Parts that gave way to a formed multiblock's drawing let players through, and so does every part on the column of
+     * a light-lift ride to its rider (0.12.0, {@link Lift#passes}) and every part in the two cells over a light-lift
+     * pad to any player, so the pad can be boarded ({@link Lift#boardable}).
+     */
     @Override
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void addCollisionBoxesToList(World w, int x, int y, int z, AxisAlignedBB mask, List list, Entity e) {
         if ((Formed.flags(w, x, y, z) & Formed.PASS) != 0) return;
+        if (e != null && (Lift.passes(e, x, y, z, false) || Lift.boardable(e, x, y, z))) return;
         setBlockBoundsBasedOnState(w, x, y, z);
         super.addCollisionBoxesToList(w, x, y, z, mask, list, e);
     }

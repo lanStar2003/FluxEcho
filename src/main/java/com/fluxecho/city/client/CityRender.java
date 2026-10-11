@@ -29,7 +29,9 @@ import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.PartBlocks;
 import com.fluxecho.city.TileCityModule;
+import com.fluxecho.city.TileDomeGenerator;
 import com.fluxecho.city.TileEcoDome;
+import com.fluxecho.city.TileRoot;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.core.EchoText;
@@ -44,14 +46,18 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * What every city module shows of itself (0.11.0, CITY.md §1.1 and §1.6 item 8), one renderer for every
- * {@link TileCityModule}; a module kind's own visuals come on top ({@link EcoDomeRender}).
+ * {@link TileCityModule}; a module kind's own visuals come on top ({@link EcoDomeRender}; 0.12.0
+ * {@link DomeGeneratorRender}, whose dome is a landmark drawn past the effects' range too, {@link #landmark}, and
+ * {@link RootRender}).
  * <ul>
  * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
  * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
  * dim grey-blue otherwise. Not formed (a panel mined, the last cells not yet built) the line stays, dimmer, along the
  * stretches of wall that stand, and nothing else is drawn.</li>
- * <li>While it forms, a plane of its colour sweeps up through its box.</li>
- * <li>Its name plate over the portal's canopy ({@link ModuleLook#plate}), turned to the camera within
+ * <li>While it forms, a plane of its colour sweeps up through its box (the Echo Dome Generator's up its legs and
+ * through its pod).</li>
+ * <li>Its name plate over the portal's canopy ({@link ModuleLook#plates}; over the controller inside a module the
+ * light lift enters, and under the floor of one hanging in the air, 0.12.0), turned to the camera within
  * {@link #PLATE_RANGE} blocks: its name in its colour and, under it, its state.</li>
  * <li>Near it (the camera inside or within {@link #NEAR} blocks of its box): the sample each socket keeps, floating in
  * the socket's lit recess on every side that is open, with a soft glow behind it; the nearest {@link #ITEMS} within
@@ -100,6 +106,10 @@ public final class CityRender {
 
     /** Each module kind's plinth course, worked out once from its shape. */
     private static final Map<String, int[][]> COURSES = new ConcurrentHashMap<>();
+    /** Each module kind's name plates ({@link ModuleLook#plates}), worked out once from its shape. */
+    private static final Map<String, List<double[]>> PLATES = new ConcurrentHashMap<>();
+    /** How near (blocks across, and up or down) a plate may come to the camera before it is left out. */
+    private static final double PLATE_CLEAR = 1.5, PLATE_CLEAR_Y = 4;
     /** Scratch of one draw: the sockets to draw ({slot, x, y, z} and the distance squared). */
     private static int[][] near = new int[64][];
     private static double[] nearD = new double[64];
@@ -142,7 +152,9 @@ public final class CityRender {
                 close();
             }
             if (sweep != Double.MAX_VALUE && !OFF[SWEEP]) try {
-                sweep(m, sweep, (1 - appear) * fade);
+                // the Dome Generator's sweep runs up its legs and through its pod rather than through its whole box
+                if (m instanceof TileDomeGenerator g) DomeGeneratorRender.sweep(g, sweep, (1 - appear) * fade);
+                else sweep(m, sweep, (1 - appear) * fade);
             } catch (Throwable x) {
                 recover();
                 fail(SWEEP, x);
@@ -150,7 +162,8 @@ public final class CityRender {
                 close();
             }
             if (!OFF[PLATE]) try {
-                plate(f, m, fade * appear);
+                for (double[] at : PLATES.computeIfAbsent(m.moduleKey(), k -> ModuleLook.plates(m.build())))
+                    plate(f, m, at, fade * appear);
             } catch (Throwable x) {
                 recover();
                 fail(PLATE, x);
@@ -159,6 +172,9 @@ public final class CityRender {
             }
             if (!OFF[OWN]) try {
                 if (m instanceof TileEcoDome d) EcoDomeRender.draw(d, f, t, fade * appear, cam, tier);
+                else if (m instanceof TileDomeGenerator g)
+                    DomeGeneratorRender.draw(g, f, t, fade * appear, cam, tier, appear);
+                else if (m instanceof TileRoot r) RootRender.draw(r, f, t, fade * appear, cam, tier);
             } catch (Throwable x) {
                 recover();
                 fail(OWN, x);
@@ -177,6 +193,23 @@ public final class CityRender {
             recover();
             close();
             fail(ALL, x);
+        }
+    }
+
+    /**
+     * What a city module shows past the range the rest of it is drawn in (0.12.0): its landmark, if it has one (the
+     * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"); nothing for the others. Called by the nexus's
+     * renderer for a module beyond its effects' range.
+     */
+    public static void landmark(TileCityModule m, double t) {
+        if (OFF[ALL] || OFF[OWN]) return;
+        try {
+            if (m instanceof TileDomeGenerator g) DomeGeneratorRender.landmark(g, t);
+        } catch (Throwable x) {
+            recover();
+            fail(OWN, x);
+        } finally {
+            close();
         }
     }
 
@@ -288,12 +321,14 @@ public final class CityRender {
     // ---- the name plate
 
     /**
-     * The name plate over the portal: a faint pane turned to the camera with a line of the module's colour, its name
-     * in that colour and its state under it. Fades out over the last 16 of its {@link #PLATE_RANGE} blocks.
+     * A name plate ({@link ModuleLook#plates}: over the portal, or over the controller of a module the lift enters): a
+     * faint pane turned to the camera with a line of the module's colour, its name in that colour and its state under
+     * it. Fades out over the last 16 of its {@link #PLATE_RANGE} blocks; left out when the camera is right at it (a
+     * rider rising through the pod's floor passes its plate under the floor).
      */
-    private static void plate(CityFrame f, TileCityModule m, float fade) {
-        double[] p = ModuleLook.plate(m.build());
+    private static void plate(CityFrame f, TileCityModule m, double[] p, float fade) {
         double x = f.x(p[0], p[2]), y = f.y(p[1]), z = f.z(p[0], p[2]);
+        if (Math.abs(x) < PLATE_CLEAR && Math.abs(z) < PLATE_CLEAR && Math.abs(y) < PLATE_CLEAR_Y) return;
         double d = Math.sqrt(x * x + y * y + z * z);
         float a = (float) Math.min(1, (PLATE_RANGE - d) / 16) * 0.9f * fade;
         if (a <= 0.05f) return;

@@ -346,6 +346,20 @@ public final class PartRecipes {
                 crystal));
         list.add(recipe(Parts.fitting(Parts.F_BASIN), 8, "Basin Rim", rows("T T", "TST"), 'T', trim, 'S', steelPlate));
 
+        // the light-lift pad (0.12.0, CITY.md §1.4): pads stacked in one column make a lift shaft
+        list.add(
+            recipe(
+                Parts.fitting(Parts.F_LIFT),
+                1,
+                "Light Lift Pad",
+                rows("LCL", "CEC", "LCL"),
+                'L',
+                panelLit,
+                'C',
+                crystal,
+                'E',
+                "item:minecraft:ender_eye"));
+
         // the supply port: crafted by hand, taken as a finished item by the builder
         list.add(
             recipe(

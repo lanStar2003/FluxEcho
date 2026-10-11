@@ -97,7 +97,7 @@ public final class TerminalView {
         NBTTagList avail = new NBTTagList();
         int records = Records.count(team);
         for (ResearchTree.Node node : ResearchTree.all()) {
-            if (ResearchTree.check(node, n.unlocked(), TileNexus.PHASE, records) == ResearchTree.Block.NONE) {
+            if (ResearchTree.check(node, n.unlocked(), n.phase(), records) == ResearchTree.Block.NONE) {
                 NBTTagCompound r = new NBTTagCompound();
                 r.setString("id", node.id);
                 avail.appendTag(r);
@@ -114,15 +114,16 @@ public final class TerminalView {
             mods.appendTag(r);
         }
         t.setTag("modules", mods);
+        // the modules taking room on the inner ring (0.12.0): the axis modules are listed but take none
+        t.setInteger("ring", n.ringDocked());
         t.setTag("build", build(n));
     }
 
     /**
      * The campus's construction for the nexus page: {@code ac} whether the campus is active, and with a job {@code k}
      * its key, {@code pk} its plan key (for {@code BuildJob.name}), {@code st} and {@code ps} its state and pause
-     * (lower
-     * case, as in the lang keys {@code fluxecho.build.state.} and {@code .pause.}), {@code sg} its stage, {@code done}
-     * the steps placed and {@code total} the steps of its plan.
+     * (lower case, as in the lang keys {@code fluxecho.build.state.} and {@code .pause.}), {@code sg} its stage,
+     * {@code done} the steps placed and {@code total} the steps of its plan.
      */
     static NBTTagCompound build(TileNexus n) {
         NBTTagCompound b = new NBTTagCompound();

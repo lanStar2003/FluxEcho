@@ -19,12 +19,14 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.campus.PartBlocks;
 import com.fluxecho.campus.client.BuildClient;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.Owners;
@@ -34,9 +36,11 @@ import com.fluxecho.frame.FrameModule;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.PreviewSites;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.matter.ItemEchoCrystal;
 import com.fluxecho.research.Research;
 import com.fluxecho.research.ResearchData;
@@ -49,13 +53,21 @@ import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
 
 /**
- * The Flux Nexus (blueprint 3.3), phase I: anchored on its owner's team wireless network, it draws an upkeep, makes
- * flux compute for research (blueprint 3.5), runs the manifestation table ({@link Manifests}) and docks the modules
- * standing on its inner ring ({@link RingSlots}). Teams bound to it with a flux terminal share their research with it.
+ * The Flux Nexus (blueprint 3.3): anchored on its owner's team wireless network, it draws an upkeep, makes flux compute
+ * for research (blueprint 3.5), runs the manifestation table ({@link Manifests}) and docks the modules standing on its
+ * inner ring ({@link RingSlots}) and, since 0.12.0, on its axis (the zenith over it, the root under it). Teams bound to
+ * it with a flux terminal share their research with it.
+ * <p>
+ * It grows (0.12.0, CITY.md §3): it stands as one of five shapes, {@code phase1} to {@code phase5}
+ * ({@link NexusShape}), and its phase ({@link #phase}) is the highest it has formed as ({@link #grown}, saved as
+ * {@code Grown} and sent as {@code Gr}). The campus raises each stage (a growth job,
+ * {@link com.fluxecho.logic.BuildPlan#grow}); the structure check tries the phase it grew to first, and the next one
+ * only once its teams have that phase's research, never a lower one, so a grown nexus that lost a block comes apart
+ * (and is repaired as it was) instead of falling back a phase.
  */
 public class TileNexus extends TileMultiblock implements ISidedInventory, ITileWithModularUI {
 
-    public static final int INPUTS = 6, OUTPUTS = 2, PHASE = 1;
+    public static final int INPUTS = 6, OUTPUTS = 2;
     /** The most modules an active campus docks: every site but the gate's. */
     public static final int MAX_CAMPUS_MODULES = 7;
     /** What the client copy shows is going on. */
@@ -83,6 +95,10 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     private int manifestTicks, manifestMax;
     private ItemStack pending;
     private boolean hologram;
+    /** The highest phase it has formed as (0.12.0); 1 for a nexus that never grew. Saved, and sent to the client. */
+    private int grown = 1;
+    /** Its shapes, phase I to V, made once. */
+    private static List<Shape> phases;
 
     // live, server
     private boolean powered;
@@ -124,10 +140,60 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         return NexusShape.PHASE_1;
     }
 
+    /** Its five shapes, {@code phase1} to {@code phase5} (0.12.0); the first is phase I, the nexus of every campus. */
+    @Override
+    protected List<Shape> shapes() {
+        if (phases == null) {
+            List<Shape> l = new ArrayList<>();
+            for (int p = 1; p <= NexusShape.PHASES; p++) l.add(new Shape(NexusShape.shapeName(p), NexusShape.phase(p)));
+            phases = Collections.unmodifiableList(l);
+        }
+        return phases;
+    }
+
+    /**
+     * How far from the controller its blocks may lie ({@link #covers}): as far as the phase it may form as next, one
+     * over the phase it grew to ({@link NexusShape#reach}). A phase-I nexus reaches 12, as before it could grow, so the
+     * blocks of ours left over 20 blocks in front of it are still loose for the campus's terrain rule; the next stage
+     * stays inside, so a stage being raised still has the nexus look at it again. Worked out from {@link #grown} each
+     * time, so it follows a growth, a core put back grown, a load and the client's description at once.
+     */
+    @Override
+    protected int reach() {
+        return NexusShape.reach(Math.min(NexusShape.PHASES, grown + 1));
+    }
+
+    /**
+     * Which phases the check may find (server side): the one it grew to, and a higher one once its teams have that
+     * phase's research and this version reaches it; never a lower one. A phase-II nexus that lost a block of its stage
+     * comes apart rather than standing as phase I (which its lift pad keeps from matching anyway).
+     */
+    @Override
+    protected boolean tries(Shape s) {
+        int p = NexusShape.phaseOf(s.name);
+        if (p < grown) return false;
+        return p == grown || p <= researchedPhase();
+    }
+
+    /** The highest phase its teams have the research for, up to the phase this version reaches. */
+    private int researchedPhase() {
+        int p = 1;
+        while (p < ResearchTree.PHASE_NOW && has(ResearchTree.phaseResearch(p + 1))) p++;
+        return p;
+    }
+
     @Override
     protected IStructureDefinition<TileMultiblock> definition() {
-        if (definition == null)
-            definition = define(true, new String[] { MAIN }, new Blueprint[] { blueprint() }, parts());
+        if (definition == null) {
+            List<Shape> all = shapes();
+            String[] names = new String[all.size()];
+            Blueprint[] shapes = new Blueprint[all.size()];
+            for (int i = 0; i < names.length; i++) {
+                names[i] = all.get(i).name;
+                shapes[i] = all.get(i).bp;
+            }
+            definition = define(true, names, shapes, parts());
+        }
         return definition;
     }
 
@@ -150,9 +216,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     private static Object[] parts() {
         BlockFrame f = FrameModule.frame;
+        int lift = Parts.fitting(Parts.F_LIFT);
         return new Object[] { NexusShape.BASE, f, BlockFrame.BASE, NexusShape.LIT, f, BlockFrame.BASE_LIT,
             NexusShape.PILLAR, f, BlockFrame.PILLAR, NexusShape.CONDUIT, f, BlockFrame.CONDUIT, NexusShape.RING, f,
-            BlockFrame.RING, NexusShape.SEAT, f, BlockFrame.SEAT, NexusShape.CONSOLE, f, BlockFrame.CONSOLE };
+            BlockFrame.RING, NexusShape.SEAT, f, BlockFrame.SEAT, NexusShape.CONSOLE, f, BlockFrame.CONSOLE,
+            NexusShape.LIFT, PartBlocks.block(lift), PartBlocks.meta(lift) };
     }
 
     @Override
@@ -170,7 +238,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         // tiers past the last show the last, so NEI finds where its slider ends
         int tier = trigger == null ? 1 : Math.max(1, Math.min(2 * NexusShape.PHASES, trigger.stackSize));
         int phase = (tier - 1) % NexusShape.PHASES + 1;
-        if (realWorld()) phase = Math.min(phase, PHASE);
+        if (realWorld()) phase = Math.min(phase, phase());
         build("phase" + phase, NexusShape.phase(phase), trigger, hintsOnly);
         if (tier > NexusShape.PHASES && !realWorld()) previewModules(phase, trigger, hintsOnly);
     }
@@ -204,6 +272,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             specs.add(spec);
             preferred.add(spec == null ? null : spec.sites);
         }
+        // an axis module (the zenith, the root) takes no room on the ring (PreviewSites counts its site apart)
         List<PreviewSites.Place> places = PreviewSites.places(preferred, RingSlots.open(phase));
         for (int i = 0; i < places.size(); i++) {
             PreviewSites.Place place = places.get(i);
@@ -240,6 +309,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             worldObj.setBlock(x, y, z, kind.core, kind.meta, 2);
             worldObj.setTileEntity(x, y, z, m);
             m.facing = front;
+            // the zenith stands on its legs at phases II and III and floats from phase IV (CITY.md §3)
+            m.previewPhase(phase);
             ItemStack one = trigger == null ? null : trigger.copy();
             if (one != null) one.stackSize = 1;
             m.construct(one, hintsOnly);
@@ -282,10 +353,41 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         sync();
     }
 
-    /** The middle of its base: x, y (the base's level), z. */
+    /**
+     * The middle of its base: x, y (the base's level), z. Every phase puts the base in the same place, so it is worked
+     * out in the phase-I blueprint, whatever shape it stands as.
+     */
     public int[] centre() {
-        Blueprint b = blueprint();
-        return cellPos(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack());
+        Blueprint b = NexusShape.PHASE_1;
+        ForgeDirection f = front();
+        return b.world(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack(), xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
+    }
+
+    /**
+     * Its phase (0.12.0): the highest it has formed as, 1 to 5 ({@link #grown}). The research it may start, the modules
+     * its inner ring docks ({@link RingSlots#open}), the growth the campus offers next and the zenith and the root
+     * follow it. The client has it from the description.
+     */
+    public int phase() {
+        return grown;
+    }
+
+    /** The highest phase it has formed as; a repair puts it back as that phase. */
+    public int grown() {
+        return grown;
+    }
+
+    /**
+     * A core carrying its campus was put back (server side): the nexus had grown to {@code phase} before, so it forms
+     * as that phase again and a repair builds that phase. Never lowers it.
+     */
+    public void regrow(int phase) {
+        int p = Math.max(1, Math.min(NexusShape.PHASES, phase));
+        if (p <= grown) return;
+        grown = p;
+        frameChanged();
+        markDirty();
+        sync();
     }
 
     // ---- teams and research
@@ -384,7 +486,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         ResearchTree.Node n = ResearchTree.get(id);
         if (n == null) return "fail.unknown";
         UUID team = Owners.team(p.getUniqueID());
-        ResearchTree.Block block = ResearchTree.check(n, unlockedNow(), PHASE, Records.count(team));
+        ResearchTree.Block block = ResearchTree.check(n, unlockedNow(), phase(), Records.count(team));
         if (block != ResearchTree.Block.NONE) return "fail." + block.name()
             .toLowerCase();
         if (!Costs.takeFrom(p, n.costs)) return "fail.items";
@@ -417,8 +519,27 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     @Override
     protected void formedChanged(boolean now) {
-        if (now) Research.grant(team(), Research.ANCHOR);
+        if (now) {
+            Research.grant(team(), Research.ANCHOR);
+            grow(NexusShape.phaseOf(shapeName()));
+        }
         unlockedAge = 1000;
+    }
+
+    /** It formed as another phase (0.12.0): a higher one is its phase from now on. */
+    @Override
+    protected void shapeChanged(String was) {
+        grow(NexusShape.phaseOf(shapeName()));
+    }
+
+    /** It stands as the phase: when that is higher than it ever grew, the nexus has grown, and its teams hear of it. */
+    private void grow(int p) {
+        if (p <= grown) return;
+        grown = p;
+        unlockedAge = 1000;
+        markDirty();
+        sync();
+        for (UUID t : teams()) tell(t, "fluxecho.nexus.grew", "fluxecho.nexus.phase." + p);
     }
 
     @Override
@@ -572,12 +693,13 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * Which modules it takes: its teams' formed modules, as many as it has room for ({@link #openSlots}). A module is
-     * found, in this order of precedence, (1) on the hall site the campus recorded for it, (2) standing on a hall site
-     * of an active campus (its centre within 3 blocks of where the site puts a module of its kind, at most one block
-     * up or down, its front towards the nexus): it is adopted and the site recorded, or (3) on a slot of the 0.9.2
-     * inner ring. A module on a site docks under the site's number, which points the same way as the ring slot of that
-     * number. Docked and rejected modules get a lease of 220 ticks.
+     * Which modules it takes: its teams' formed modules, as many as its ring has room for ({@link #openSlots}). A
+     * module is found, in this order of precedence, (1) on the site the campus recorded for it, (2) standing on a site
+     * of an active campus (a hall: its centre within 3 blocks of where the site puts a module of its kind, at most one
+     * block up or down, its front towards the nexus; an axis module, 0.12.0: its controller exactly where its site puts
+     * it, facing that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2 inner ring. A module on
+     * a site docks under the site's number, which points the same way as the ring slot of that number; the axis sites
+     * (8 the zenith, 9 the root) take no room on the ring. Docked and rejected modules get a lease of 220 ticks.
      */
     void refreshDock(long now) {
         int[] c = centre();
@@ -589,8 +711,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         List<Integer> slots = new ArrayList<>();
         List<Integer> ranks = new ArrayList<>();
         Set<TileModule> seen = new HashSet<>();
-        // (1) the modules on recorded hall sites
-        for (int site = 0; site < RingSlots.SLOTS; site++) {
+        // (1) the modules on recorded sites (the hall sites, and the axis sites since 0.12.0)
+        for (int site : campus.recordedSites()) {
             int[] at = campus.siteController(site);
             if (at == null || !worldObj.blockExists(at[0], at[1], at[2])) continue;
             if (!(worldObj.getTileEntity(at[0], at[1], at[2]) instanceof TileModule m) || m.isInvalid() || !m.formed())
@@ -609,7 +731,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             int[] mc = m.centre();
             int slot, rank;
             // (2) a module standing on a hall site of an active campus is adopted; (3) else the 0.9.2 ring
-            int site = active ? hallSite(m, mc, c, fx, fz) : -1;
+            int site = active ? campusSite(m, mc, c, fx, fz) : -1;
             if (site >= 0) {
                 slot = site;
                 rank = 1;
@@ -628,21 +750,46 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             ranks.add(rank);
         }
         docked.clear();
-        boolean[] taken = new boolean[RingSlots.SLOTS];
-        for (int rank = 0; rank <= 2; rank++) for (int k = 0; k < RingSlots.SLOTS; k++) {
+        Set<Integer> taken = new HashSet<>();
+        java.util.SortedSet<Integer> order = new java.util.TreeSet<>(slots);
+        int ring = 0;
+        for (int rank = 0; rank <= 2; rank++) for (int k : order) {
+            boolean axis = SiteFamily.axisSite(k);
             for (int i = 0; i < found.size(); i++) {
                 if (ranks.get(i) != rank || slots.get(i) != k) continue;
                 TileModule m = found.get(i);
-                if (taken[k]) m.reject(this, k, "slot_taken", now + 220);
-                else if (docked.size() >= open) m.reject(this, k, open == 0 ? "ring_closed" : "ring_full", now + 220);
+                if (taken.contains(k)) m.reject(this, k, "slot_taken", now + 220);
+                else if (!axis && ring >= open) m.reject(this, k, open == 0 ? "ring_closed" : "ring_full", now + 220);
                 else {
-                    taken[k] = true;
+                    taken.add(k);
                     docked.add(m);
+                    if (!axis) ring++;
                     m.dock(this, k, now + 220);
                 }
             }
         }
         dockKnown = true;
+    }
+
+    /**
+     * The site of an active campus a module stands on, or -1: a hall site ({@link #hallSite}), or for a module on the
+     * nexus's axis (0.12.0) a site of its spec whose controller cell and front are exactly the module's.
+     */
+    private static int campusSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        if (spec == null) return -1;
+        if (!spec.axis()) return hallSite(m, mc, c, fx, fz);
+        for (int site : spec.sites) {
+            int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
+            if (at != null && at.length > 3
+                && at[0] == m.xCoord
+                && at[1] == m.yCoord
+                && at[2] == m.zCoord
+                && m.front()
+                    .ordinal() == at[3])
+                return site;
+        }
+        return -1;
     }
 
     /**
@@ -681,11 +828,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * How many modules it can dock: the slots its phase opens once its teams have the inner ring, and on an active
-     * campus at most seven (every site but the gate's).
+     * How many modules its inner ring can dock: the slots its phase opens once its teams have the inner ring, and on an
+     * active campus at most seven (every site but the gate's). The axis modules (0.12.0) take none of them.
      */
     public int openSlots() {
-        int open = has(Research.INNER_RING) ? RingSlots.open(PHASE) : 0;
+        int open = has(Research.INNER_RING) ? RingSlots.open(phase()) : 0;
         return campus.active() ? Math.min(open, MAX_CAMPUS_MODULES) : open;
     }
 
@@ -761,13 +908,30 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         int a = (powered ? POWERED : 0) | (research.isEmpty() ? 0 : RESEARCHING)
             | (manifest.isEmpty() ? 0 : MANIFESTING);
         int mask = 0;
-        for (TileModule m : docked()) if (m.slot() >= 0) mask |= 1 << m.slot();
-        int key = a | mask << 3 | openSlots() << 11;
+        for (TileModule m : docked()) if (onRing(m)) mask |= 1 << m.slot();
+        int key = a | mask << 3 | openSlots() << 11 | grown << 15;
         activity = a;
         if (key != lastSent) {
             lastSent = key;
             sync();
         }
+    }
+
+    /** Whether a docked module stands on the inner ring (the bridges, the docked mask), not on the axis. */
+    private static boolean onRing(TileModule m) {
+        return SiteFamily.ringSite(m.slot());
+    }
+
+    /**
+     * The docked modules that take room on the inner ring ({@link SiteFamily#ringCount}): what the windows show against
+     * {@link #openSlots}. The axis modules (0.12.0) dock too but take none.
+     */
+    public int ringDocked() {
+        List<TileModule> d = docked();
+        int[] sites = new int[d.size()];
+        int i = 0;
+        for (TileModule m : d) sites[i++] = m.slot();
+        return SiteFamily.ringCount(sites);
     }
 
     // ---- client copy
@@ -780,7 +944,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         if (pending != null) t.setTag("M", pending.writeToNBT(new NBTTagCompound()));
         int mask = 0;
         int[] colors = new int[RingSlots.SLOTS];
-        for (TileModule m : docked()) if (m.slot() >= 0) {
+        for (TileModule m : docked()) if (onRing(m)) {
             mask |= 1 << m.slot();
             colors[m.slot()] = m.moduleColor();
         }
@@ -790,6 +954,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         t.setBoolean("H", hologram);
         t.setInteger("C", (int) Math.round(computeRate() * 10));
         t.setLong("U", formed ? upkeep() : 0);
+        t.setByte("Gr", (byte) grown);
         // the campus: only what changes on its state transitions; the progress numbers go over NexusNet
         NBTTagCompound cp = new NBTTagCompound();
         campus.writeSync(cp);
@@ -809,6 +974,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         clientHologram = t.getBoolean("H");
         clientCompute10 = t.getInteger("C");
         clientUpkeep = t.getLong("U");
+        if (t.hasKey("Gr")) grown = Math.max(1, Math.min(NexusShape.PHASES, t.getByte("Gr")));
         Campus.View v = new Campus.View();
         if (t.hasKey("Cp")) v.read(t.getCompoundTag("Cp"));
         clientCampus = v;
@@ -834,6 +1000,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         t.setInteger("ManifestMax", manifestMax);
         if (pending != null) t.setTag("Pending", pending.writeToNBT(new NBTTagCompound()));
         t.setBoolean("Holo", hologram);
+        t.setInteger("Grown", grown);
         campus.writeNBT(t);
     }
 
@@ -861,6 +1028,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         manifestMax = t.getInteger("ManifestMax");
         pending = t.hasKey("Pending") ? ItemStack.loadItemStackFromNBT(t.getCompoundTag("Pending")) : null;
         hologram = t.getBoolean("Holo");
+        grown = Math.max(1, Math.min(NexusShape.PHASES, t.getInteger("Grown")));
         campus.readNBT(t);
     }
 

@@ -9,6 +9,11 @@ import java.util.List;
  * {@link ShapeKit.Shape} drawn in the city legend, its units ({@link UnitLayout}), the part its controller is placed as
  * (its module core), and its stage rule. Every cell's part comes from the legend ({@link ShapeKit#partOf}); the
  * controller is the module's core. The DECOR stage takes the shape's canopy and the seeded ornaments.
+ * <p>
+ * The blueprint usually is the shape's box itself. A module whose structure reaches out of its shape's box (0.12.0: the
+ * Echo Dome Generator's legs reach 39 blocks down from its pod to the forum) gives the blueprint cell of the shape's
+ * origin ({@link #offset}): the shape's frame stays the module's own frame (y0 its floor, as every renderer and window
+ * reads it), and the blueprint holds what lies round it.
  */
 public final class CityBuild implements BuildPlan.ModuleBuild {
 
@@ -28,6 +33,8 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
     private final Stages stages;
     private final List<List<int[]>> units;
     private final List<int[]> decor;
+    /** Where the shape's box lies in the blueprint's: across, up from the blueprint's bottom, from its front row. */
+    private final int ox, oy, oz;
 
     /**
      * @param height   the blueprint's height (the shape's box may hold empty layers above it)
@@ -35,6 +42,20 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
      */
     public CityBuild(String key, ShapeKit.Shape shape, int height, Blueprint blueprint, UnitLayout layout, int corePart,
         Stages stages) {
+        this(key, shape, height, blueprint, layout, corePart, stages, new int[] { 0, 0, 0 });
+    }
+
+    /**
+     * A module whose blueprint reaches out of its shape's box (0.12.0).
+     *
+     * @param offset where the shape's cell (0, 0, 0) lies in the blueprint: {across, up from the blueprint's lowest
+     *               layer, rows from its front}
+     */
+    public CityBuild(String key, ShapeKit.Shape shape, int height, Blueprint blueprint, UnitLayout layout, int corePart,
+        Stages stages, int[] offset) {
+        ox = offset[0];
+        oy = offset[1];
+        oz = offset[2];
         this.key = key;
         this.shape = shape;
         this.height = height;
@@ -76,7 +97,19 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
 
     @Override
     public int[] cellOf(int x, int y, int z) {
-        return new int[] { x, height - 1 - y, z };
+        return new int[] { x + ox, blueprint.height() - 1 - (y + oy), z + oz };
+    }
+
+    /** The shape's point {x, y, z} of a blueprint cell {across, layer from the top, row from the front}. */
+    public int[] localOf(int a, int b, int c) {
+        return new int[] { a - ox, blueprint.height() - 1 - b - oy, c - oz };
+    }
+
+    /**
+     * Where the shape's cell (0, 0, 0) lies in the blueprint: {across, up from its lowest layer, rows from its front}.
+     */
+    public int[] offset() {
+        return new int[] { ox, oy, oz };
     }
 
     @Override

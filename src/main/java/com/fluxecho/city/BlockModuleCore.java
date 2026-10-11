@@ -28,7 +28,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * builder edits the world ({@link Builder#QUIET}) a broken core does not tell the multiblocks round it.
  * <p>
  * Icons per meta: {@code fluxecho:module_core/<module>/front}, {@code front_on}, {@code side}, {@code top}; a meta
- * without a module yet shows the Eco Dome's.
+ * without a module yet shows the Eco Dome's. 0.12.0 adds the Echo Dome Generator (meta 7) and the root's Tidal Well
+ * (meta 8).
  */
 public class BlockModuleCore extends BlockNexus {
 
@@ -42,6 +43,8 @@ public class BlockModuleCore extends BlockNexus {
     @Override
     public TileEntity createNewTileEntity(World w, int meta) {
         if (meta == ModuleCores.ECO_DOME) return new TileEcoDome();
+        if (meta == ModuleCores.DOME_GENERATOR) return new TileDomeGenerator();
+        if (meta == ModuleCores.ROOT) return new TileRoot();
         return null;
     }
 
@@ -53,7 +56,7 @@ public class BlockModuleCore extends BlockNexus {
     @Override
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void getSubBlocks(Item item, CreativeTabs tab, List list) {
-        for (int m = 0; m < ModuleCores.BUILT; m++) list.add(new ItemStack(item, 1, m));
+        for (int m : ModuleCores.built()) list.add(new ItemStack(item, 1, m));
     }
 
     @Override
@@ -67,20 +70,20 @@ public class BlockModuleCore extends BlockNexus {
         c.takeDown(w, x, y, z);
     }
 
-    /** The meta clamped to one that has a module (and icons). */
+    /** The meta clamped to one that has a module (and icons): the Eco Dome's for the reserved ones. */
     static int built(int meta) {
-        return meta >= 0 && meta < ModuleCores.BUILT ? meta : 0;
+        return ModuleCores.built(meta) ? meta : ModuleCores.ECO_DOME;
     }
 
     @Override
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister r) {
-        int n = ModuleCores.BUILT;
+        int n = ModuleCores.KEYS.length;
         front = new IIcon[n];
         frontOn = new IIcon[n];
         side = new IIcon[n];
         top = new IIcon[n];
-        for (int m = 0; m < n; m++) {
+        for (int m : ModuleCores.built()) {
             String p = FluxEcho.MODID + ":module_core/" + ModuleCores.KEYS[m] + "/";
             front[m] = r.registerIcon(p + "front");
             frontOn[m] = r.registerIcon(p + "front_on");

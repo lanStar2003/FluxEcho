@@ -48,6 +48,31 @@ class PreviewSitesTest {
         assertEquals(1, p.get(4).site);
     }
 
+    /**
+     * The zenith and the root (0.12.0) stand on their own axis sites and take no room on the ring: at phase II (four
+     * modules) the Archive, the Eco Dome and the dome generator all stand, and a full ring still leaves an axis kind
+     * after it standing.
+     */
+    @Test
+    void axisKindsTakeNoRoom() {
+        int[] zenith = DomeGeneratorShape.SITES, root = { SiteFamily.ROOT_SITE };
+        List<PreviewSites.Place> p = PreviewSites
+            .places(Arrays.asList(LIBRARY, ECO_DOME, zenith, root), RingSlots.open(2));
+        assertEquals(4, p.size());
+        assertEquals(4, p.get(0).site);
+        assertEquals(2, p.get(1).site);
+        assertEquals(SiteFamily.ZENITH_SITE, p.get(2).site);
+        assertEquals(SiteFamily.ROOT_SITE, p.get(3).site);
+        // room for one: the Archive stands, the Eco Dome is left out, the zenith still stands
+        List<PreviewSites.Place> one = PreviewSites.places(Arrays.asList(LIBRARY, ECO_DOME, zenith, VAULT), 1);
+        assertEquals(3, one.size(), "the kinds after the last axis kind are not looked at");
+        assertEquals(4, one.get(0).site);
+        assertFalse(
+            one.get(1)
+                .placed());
+        assertEquals(SiteFamily.ZENITH_SITE, one.get(2).site);
+    }
+
     @Test
     void noTwoKindsShareASite() {
         List<int[]> prefs = new ArrayList<>();

@@ -179,6 +179,20 @@ class PartRecipesTest {
         assertEquals(8, PartRecipes.get(Parts.fitting(Parts.F_BASIN)).yield);
     }
 
+    /** The light-lift pad of 0.12.0: four lit panels, four flux crystals and an ender eye make one. */
+    @Test
+    void theLiftPadCosts() {
+        PartRecipes.Recipe r = PartRecipes.get(Parts.fitting(Parts.F_LIFT));
+        assertArrayEquals(new String[] { "LCL", "CEC", "LCL" }, r.pattern);
+        assertEquals(1, r.yield);
+        Map<String, Long> want = new TreeMap<>();
+        for (Map.Entry<String, Long> e : PartRecipes.cost(Parts.deck(Parts.D_PANEL_LIT))
+            .entrySet()) want.merge(e.getKey(), 4 * e.getValue(), Long::sum);
+        want.merge("ore:gemFluxCrystal", 4 * U, Long::sum);
+        want.merge("item:minecraft:ender_eye", U, Long::sum);
+        assertEquals(want, PartRecipes.cost(Parts.fitting(Parts.F_LIFT)));
+    }
+
     @Test
     void costsAreExactExpansions() {
         for (PartRecipes.Recipe r : PartRecipes.all()) {

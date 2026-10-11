@@ -433,6 +433,9 @@ public class StarMapScreen extends GuiScreen implements NexusNet.ClientSink {
             case DONE:
                 return EchoText.t("research.state.done");
             case LATER_PHASE:
+                // a phase this version reaches only waits for the nexus to grow; the others come in a later version
+                if (ResearchTree.availableNow(n))
+                    return EchoText.t("research.state.needs_phase", EchoText.t("nexus.phase." + n.nexusPhase()));
                 return EchoText.t("research.state.later_phase", EchoText.t("nexus.phase." + n.phase));
             case RECORDS:
                 return EchoText

@@ -15,10 +15,25 @@ public final class ModuleCores {
     public static final String[] KEYS = { "eco_dome", "dual_foil_vault", "arcane_court", "blood_covenant",
         "hunting_ground", "mana_fountain", "resonance_gate", "dome_generator", "root", "sophon_array", "holo_table",
         "sky_sails", "observatory", "droplet_hangar", "weather_station", "orbital_anchor" };
-    /** How many metas have a module in this version (0 to {@code BUILT - 1}); the rest are reserved. */
-    public static final int BUILT = 1;
+    /**
+     * The metas that have a module in this version, in meta order (0.11.0 the Eco Dome; 0.12.0 the Echo Dome
+     * Generator and the root's Tidal Well); the rest are reserved. Their cores are listed in the creative tab and have
+     * their own icons.
+     */
+    private static final int[] BUILT = { ECO_DOME, DOME_GENERATOR, ROOT };
 
     private ModuleCores() {}
+
+    /** The metas that have a module in this version, in meta order (a copy). */
+    public static int[] built() {
+        return BUILT.clone();
+    }
+
+    /** Whether the meta has a module in this version. */
+    public static boolean built(int meta) {
+        for (int m : BUILT) if (m == meta) return true;
+        return false;
+    }
 
     /** The meta of a module key, or -1. */
     public static int meta(String key) {

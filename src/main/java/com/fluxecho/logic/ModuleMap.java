@@ -53,7 +53,9 @@ public final class ModuleMap {
         /** The controller. */
         CORE,
         /** A part that gives way to the module's drawing once it forms (the Eco Dome's trunk). */
-        TRUNK
+        TRUNK,
+        /** A light-lift pad (0.12.0): where the lift comes in. */
+        LIFT
     }
 
     /** The most pixels a block takes on a plan. */
@@ -88,7 +90,8 @@ public final class ModuleMap {
         h = depth * cell + 2;
         storeys = layout.storeys();
         marks = new Mark[storeys.length][];
-        for (int s = 0; s < storeys.length; s++) marks[s] = plan(build, storeys[s], dissolves);
+        for (int s = 0; s < storeys.length; s++)
+            marks[s] = plan(build, storeys[s] + (flush(build, layout, storeys[s]) ? 1 : 0), dissolves);
         List<List<int[]>> t = new ArrayList<>();
         for (UnitLayout.Unit u : layout.units()) {
             List<int[]> own = new ArrayList<>();
@@ -199,6 +202,31 @@ public final class ModuleMap {
 
     // ---- what a block shows
 
+    /** The floor parts a unit set flush into a floor sits among (0.12.0). */
+    private static final String FLOORS = "dBFg:e%#*";
+
+    /**
+     * Whether the units of a storey are set flush into its floor (0.12.0: the Tidal Well's taps lie in the pool's rim
+     * at
+     * the level of the walkway, people standing one higher): a unit cell of that level has a floor part beside it at
+     * the same level. Its plan then shows what stands one level up, over that floor, as for a storey whose units stand
+     * on it (the Eco Dome's planters).
+     */
+    static boolean flush(CityBuild b, UnitLayout layout, int level) {
+        for (UnitLayout.Unit u : layout.units()) {
+            if (u.floor != level) continue;
+            for (int[] c : u.cells) {
+                if (c[1] != level) continue;
+                for (int[] o : SIDES) {
+                    int x = c[0] + o[0], z = c[2] + o[1];
+                    if (x < 0 || x >= b.width() || z < 0 || z >= b.depth()) continue;
+                    if (FLOORS.indexOf(b.cell(x, level, z)) >= 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** A storey's plan at height {@code y}: every block, then walls inside a mass made {@link Mark#SOLID}. */
     private Mark[] plan(CityBuild b, int y, String dissolves) {
         Mark[] out = new Mark[width * depth];
@@ -237,6 +265,8 @@ public final class ModuleMap {
                 return Mark.CORE;
             case 'K':
                 return Mark.CONSOLE;
+            case '^':
+                return Mark.LIFT;
             case 'G':
             case '/':
                 return Mark.GLAZE;
@@ -278,6 +308,13 @@ public final class ModuleMap {
             case ShapeKit.NONE:
             case ShapeKit.AIR:
                 return Mark.NONE;
+            case '^':
+                return Mark.LIFT;
+            case 'u':
+            case 'o':
+            case 'h':
+                // a basin rim, a socket or a pedestal set flush into the floor stays furniture
+                return Mark.FIXTURE;
             case ',':
             case ';':
                 return Mark.GRASS;

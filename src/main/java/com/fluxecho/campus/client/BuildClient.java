@@ -396,14 +396,11 @@ public final class BuildClient {
             .append(c[2])
             .append('|')
             .append(f.ordinal());
-        for (int[] b : v.keepOut) sig.append('|')
-            .append(b[0])
-            .append(',')
-            .append(b[1])
-            .append(',')
-            .append(b[2])
-            .append(',')
-            .append(b[3]);
+        for (int[] b : v.keepOut) {
+            sig.append('|');
+            for (int i = 0; i < b.length; i++) sig.append(i == 0 ? "" : ",")
+                .append(b[i]);
+        }
         Key k = new Key(n.getWorldObj().provider.dimensionId, n.xCoord, n.yCoord, n.zCoord);
         String s = sig.toString();
         CachedPlan cached = PLANS.get(k);

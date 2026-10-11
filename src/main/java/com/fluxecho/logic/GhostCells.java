@@ -45,7 +45,7 @@ public final class GhostCells {
     public static final class Cells {
 
         public final int[] x, y, z, part, stage;
-        /** {@link BuildPlan#HARD}, {@link BuildPlan#SOFT} or {@link BuildPlan#AIR}. */
+        /** {@link BuildPlan#HARD}, {@link BuildPlan#SOFT}, {@link BuildPlan#AIR}, {@link BuildPlan#DIG} or DRAIN. */
         public final byte[] kind;
 
         /**
@@ -87,9 +87,12 @@ public final class GhostCells {
             return x.length;
         }
 
-        /** Whether the cell is drawn as a ghost at all: it places a block (not an {@link BuildPlan#AIR} step). */
+        /**
+         * Whether the cell is drawn as a ghost at all: it places a block (not an {@link BuildPlan#AIR} step, nor one
+         * the caisson digs or drains).
+         */
         public boolean drawable(int i) {
-            return kind[i] != BuildPlan.AIR && part[i] != Parts.AIR;
+            return !BuildPlan.empties(kind[i]) && part[i] != Parts.AIR;
         }
     }
 
@@ -443,15 +446,21 @@ public final class GhostCells {
 
     // ---- looking cells up by position
 
-    /** Finds a plan's step by its cell (a plan has at most one step per cell). */
+    /**
+     * Finds a plan's step by its cell. A plan mostly has one step per cell; the root's caisson (0.12.0) digs and drains
+     * a cell before a later step fills it, and then the step that places the block is the one found.
+     */
     public static final class Index {
 
         private final PosMap map;
 
-        /** Indexes every cell, drawable or not; of two steps at one cell (plans have none) the first is kept. */
+        /**
+         * Indexes every cell, drawable or not; of two steps at one cell the first drawable one is kept, else the first.
+         */
         public Index(Cells c) {
             map = new PosMap(c.size());
-            for (int i = 0; i < c.size(); i++) map.put(pos(c.x[i], c.y[i], c.z[i]), i);
+            for (int i = 0; i < c.size(); i++) if (c.drawable(i)) map.put(pos(c.x[i], c.y[i], c.z[i]), i);
+            for (int i = 0; i < c.size(); i++) if (!c.drawable(i)) map.put(pos(c.x[i], c.y[i], c.z[i]), i);
         }
 
         /** The step index at the cell, or -1. */

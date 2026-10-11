@@ -33,9 +33,12 @@ import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.LiftRule;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.RingSlots;
+import com.fluxecho.logic.RootShape;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.ItemBlockNexusCore;
 import com.fluxecho.nexus.TileModule;
@@ -59,6 +62,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * camera. A site with a module on it is brighter, in the module's colour; the site of the current job is cyan; an empty
  * hall site names the module the campus plans there and where it stands (0.10.1: 「回响书库（需研究）」), so a player
  * sees what comes next and how to unlock it.
+ * <p>
+ * The two sites on the nexus's axis (0.12.0): the zenith ({@link SiteFamily#ZENITH_SITE}) as the pod's octagon dashed
+ * on the forum, drawn again up at the pod's floor (Y0 + 40), and the squares of its six legs' feet, its sign under the
+ * pod; the root ({@link SiteFamily#ROOT_SITE}) as the well's octagon dashed on the forum over it, its sign behind the
+ * nexus. Their signs name them (天顶, 根位) and what stands, is built or is planned there, as a hall site's do.
  * <p>
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
@@ -98,6 +106,13 @@ public final class Masterplan {
      * {@code |du| + |dv|} passes this.
      */
     private static final int DIAGONAL_CHAMFER = CampusPlan.DIAGONAL_K;
+
+    /** The sites the masterplan shows: the inner ring's and the two on the nexus's axis (0.12.0). */
+    private static final int SITES = SiteFamily.ROOT_SITE + 1;
+    /** The zenith's pod and the root's well seen from above, and the zenith's legs' feet (0.12.0). */
+    private static final double[][] POD = octagon(DomeGeneratorShape.POD_R, DomeGeneratorShape.POD_K),
+        WELL = octagon(RootShape.WELL_R, RootShape.WELL_K), FOOT = octagon(0, 1);
+    private static final List<int[]> FEET = DomeGeneratorShape.feet();
 
     /** The parts that fail on their own. */
     private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2;
@@ -197,6 +212,7 @@ public final class Masterplan {
                     begun = true;
                 }
                 Frame f = new Frame(ox, oy, oz, n.front().offsetX, n.front().offsetZ);
+                Frame up = new Frame(ox, oy + DomeGeneratorShape.FLOOR_UP, oz, f.fx, f.fz);
                 Site[] sites = sites(n, v, tiles, c, f.fx, f.fz);
                 float breath = 0.85f + 0.15f * (float) Math.sin(t * 0.06);
                 for (int pass = 0; pass < 2; pass++) {
@@ -221,11 +237,18 @@ public final class Masterplan {
                             outline(tes, f, diagonal(), dc[0], dc[1], true, 0.12, st.rgb, a, !st.occupied);
                         }
                     }
+                    // the axis: the zenith's pod on the forum and up at its floor, its legs' feet; the root's well
+                    Site zen = sites[SiteFamily.ZENITH_SITE], root = sites[SiteFamily.ROOT_SITE];
+                    float za = zen.alpha * k * (zen.job ? breath : 1f), ra = root.alpha * k * (root.job ? breath : 1f);
+                    outline(tes, f, POD, 0, 0, true, 0.12, zen.rgb, za, true);
+                    outline(tes, up, POD, 0, 0, true, 0.14, zen.rgb, Math.min(0.35f, za * 1.3f), false);
+                    for (int[] foot : FEET) outline(tes, f, FOOT, foot[0], foot[1], true, 0.1, zen.rgb, za, false);
+                    outline(tes, f, WELL, 0, 0, true, 0.12, root.rgb, ra, true);
                     drawing = false;
                     tes.draw();
                     if (through) GL11.glEnable(GL11.GL_DEPTH_TEST);
                 }
-                for (int s = 0; s < RingSlots.SLOTS; s++) {
+                for (int s = 0; s < SITES; s++) {
                     double[] at = signAt(s);
                     double[] r = f.at(at[0], at[1]);
                     signs.add(new Sign(r[0], oy + at[2], r[1], sites[s].title, sites[s].caption, sites[s].rgb, 2f));
@@ -254,35 +277,43 @@ public final class Masterplan {
      * number, or a loaded module standing in its envelope), whether the current job builds there, and its sign.
      */
     private static Site[] sites(TileNexus n, Campus.View v, List<TileMultiblock> tiles, int[] c, int fx, int fz) {
-        Site[] out = new Site[RingSlots.SLOTS];
+        Site[] out = new Site[SITES];
         int jobSite = -1;
         String jobModule = null;
         if (v.hasJob() && !BuildState.ended(v.stateEnum())) {
             jobModule = ModuleSpecs.moduleOf(v.planKey);
             jobSite = jobModule == null ? -1 : v.site;
         }
-        String[] names = new String[RingSlots.SLOTS];
-        boolean[] standing = new boolean[RingSlots.SLOTS];
+        String[] names = new String[SITES];
+        int[] colours = new int[SITES];
+        boolean[] standing = new boolean[SITES];
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
-            int[] mc = mod.centre();
-            int[] l = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
-            if (Math.abs(mc[1] - c[1]) > 8) continue;
-            int s = siteOf(l[0], l[1]);
+            int s = axisSiteOf(mod, c, fx, fz);
+            if (s < 0) {
+                int[] mc = mod.centre();
+                int[] l = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
+                if (Math.abs(mc[1] - c[1]) > 8) continue;
+                s = siteOf(l[0], l[1]);
+            }
             if (s < 0) {
                 if (!mod.clientDocked || mod.clientSlot < 0 || !Arrays.equals(mod.clientNexus, c)) continue;
                 s = mod.clientSlot;
             }
-            if (s >= RingSlots.SLOTS) continue;
+            if (s >= SITES) continue;
             standing[s] = true;
-            if (names[s] == null) names[s] = mod.moduleKey();
+            if (names[s] == null) {
+                names[s] = mod.moduleKey();
+                colours[s] = mod.moduleColor();
+            }
         }
-        for (int s = 0; s < RingSlots.SLOTS; s++) {
+        for (int s = 0; s < SITES; s++) {
             Site st = new Site();
-            boolean docked = (n.clientDockedMask & 1 << s) != 0;
+            boolean axis = SiteFamily.axisSite(s);
+            boolean docked = !axis && (n.clientDockedMask & 1 << s) != 0;
             st.occupied = s != 0 && (docked || standing[s]);
             st.job = s == jobSite;
-            st.title = EchoText.t("build.gui.site", s);
+            st.title = EchoText.t(SiteFamily.labelKey(s), s);
             if (s == 0) {
                 st.rgb = CYAN;
                 st.alpha = 0.22f;
@@ -292,15 +323,17 @@ public final class Masterplan {
                 st.alpha = 0.3f;
                 st.caption = EchoText.t("build.masterplan.building", EchoText.t("module." + jobModule));
             } else if (st.occupied) {
-                int col = docked ? n.clientModuleColor[s] : 0;
+                int col = docked ? n.clientModuleColor[s] : axis ? colours[s] : 0;
                 st.rgb = col == 0 ? WHITE : col;
                 st.alpha = 0.28f;
                 st.caption = names[s] != null ? EchoText.t("module." + names[s]) : EchoText.t("build.masterplan.taken");
             } else {
+                // a hall site and an axis site name what the campus plans there; a diagonal is reserved still
+                boolean plans = s % 2 == 0 || axis;
                 st.rgb = DIM;
                 st.alpha = s % 2 == 0 ? 0.2f : 0.15f;
-                st.caption = EchoText.t(s % 2 == 0 ? "build.masterplan.hall" : "build.masterplan.reserved");
-                Campus.ModuleState planned = s % 2 == 0 ? planned(v, s) : null;
+                st.caption = EchoText.t(s % 2 == 0 && !axis ? "build.masterplan.hall" : "build.masterplan.reserved");
+                Campus.ModuleState planned = plans ? planned(v, s) : null;
                 if (planned != null) {
                     // the module planned here and where it stands: 「回响书库（需研究）」
                     st.caption = EchoText.t(
@@ -340,9 +373,27 @@ public final class Masterplan {
         return -1;
     }
 
+    /**
+     * The site of the nexus's axis a module stands on (0.12.0): its controller is where the zenith's or the root's
+     * stands for this nexus, facing its front; -1 for any other.
+     */
+    private static int axisSiteOf(TileModule m, int[] c, int fx, int fz) {
+        int[][] at = { DomeGeneratorShape.controller(SiteFamily.ZENITH_SITE, c[0], c[1], c[2], fx, fz),
+            RootShape.controller(SiteFamily.ROOT_SITE, c[0], c[1], c[2], fx, fz) };
+        int[] sites = { SiteFamily.ZENITH_SITE, SiteFamily.ROOT_SITE };
+        for (int i = 0; i < at.length; i++) {
+            if (at[i][0] == m.xCoord && at[i][1] == m.yCoord && at[i][2] == m.zCoord) return sites[i];
+        }
+        return -1;
+    }
+
     /** Where a site's sign stands: {A, R, height over the floor}. */
     private static double[] signAt(int site) {
         if (site == 0) return new double[] { 31, 0, 4.2 };
+        // the zenith's under the pod (off the lift's shaft, below its own plate), seen from the forum; the root's
+        // behind the nexus
+        if (site == SiteFamily.ZENITH_SITE) return new double[] { 3, 0, DomeGeneratorShape.FLOOR_UP - 7.5 };
+        if (site == SiteFamily.ROOT_SITE) return new double[] { -8.5, 0, 2.2 };
         int[] ax = CampusPlan.siteAxis(site);
         if (site % 2 == 0) {
             // in front of the hall's door, at eye height for someone on the forecourt

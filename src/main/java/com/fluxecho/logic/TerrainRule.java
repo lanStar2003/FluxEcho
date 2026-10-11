@@ -266,6 +266,30 @@ public final class TerrainRule {
     }
 
     /**
+     * The verdict for a cell the root's caisson digs out (0.12.0, a {@code DIG} step), probed against the part a later
+     * step of its plan places there: that part already → ALREADY (a well raised again, or repaired, keeps its floor,
+     * its fittings and its controller); in a repair only a fluid that flowed in is taken ({@link #forDrain}), as a
+     * repair never clears a module's box; otherwise as a cell of a clear column ({@link #forClear(Probe, boolean,
+     * boolean)}).
+     */
+    public static Verdict forDig(Probe p, boolean module, boolean all, boolean repair) {
+        if (p.target) return Verdict.ALREADY;
+        return repair ? forDrain(p, module, all) : forClear(p, module, all);
+    }
+
+    /**
+     * The verdict for a cell the root's caisson drains (0.12.0, a {@code DRAIN} step) after it was dug: only a fluid
+     * that flowed in is taken away (CLEAR, or BLOCKED where {@link #forClear(Probe, boolean, boolean)} keeps it: lava
+     * under the conservative rule, a guarded cell); air, any other block and the part a later step places there (the
+     * pool's water once it is laid) → ALREADY.
+     */
+    public static Verdict forDrain(Probe p, boolean module, boolean all) {
+        if (p.target || !p.fluid) return Verdict.ALREADY;
+        Verdict v = forClear(p, module, all);
+        return v == Verdict.ALREADY ? Verdict.CLEAR : v;
+    }
+
+    /**
      * The verdict for the floor-level cell (Y0) of a graded column that the plan does not pave: it becomes grass
      * whatever was there (0.10.1, a unified floor). The grass already → ALREADY; guarded → BLOCKED; air, a replaceable
      * block or a fluid → PLACE (lava only under the clear-all rule; the conservative rule leaves it); anything else as

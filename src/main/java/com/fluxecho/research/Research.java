@@ -17,7 +17,8 @@ public final class Research {
     public static final String ANCHOR = ResearchTree.ANCHOR, INNER_RING = ResearchTree.INNER_RING,
         ECHO_CRYSTAL = ResearchTree.ECHO_CRYSTAL, LIBRARY = ResearchTree.LIBRARY,
         LIBRARY_REACH = ResearchTree.LIBRARY_REACH, COMPUTE_1 = ResearchTree.COMPUTE_1,
-        UPKEEP_1 = ResearchTree.UPKEEP_1, GRIT_YIELD = ResearchTree.GRIT_YIELD, ECO_DOME = ResearchTree.ECO_DOME;
+        UPKEEP_1 = ResearchTree.UPKEEP_1, GRIT_YIELD = ResearchTree.GRIT_YIELD, ECO_DOME = ResearchTree.ECO_DOME,
+        PHASE_2 = ResearchTree.PHASE_2, DOME = ResearchTree.DOME, TIDAL_WELL = ResearchTree.TIDAL_WELL;
 
     private Research() {}
 

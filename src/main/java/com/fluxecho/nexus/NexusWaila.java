@@ -153,10 +153,8 @@ public final class NexusWaila implements IWailaDataProvider {
             tag.setDouble("feCompute", n.computeRate());
             tag.setString("feResearch", n.research());
             tag.setFloat("feDone", n.researchFraction());
-            tag.setInteger(
-                "feDocked",
-                n.docked()
-                    .size());
+            // the modules on the inner ring only: the axis modules (0.12.0) take no room there
+            tag.setInteger("feDocked", n.ringDocked());
             tag.setInteger("feOpen", n.openSlots());
             tag.setString("feOwner", n.ownerName());
         } else if (te instanceof TileLibrary l) {

@@ -36,6 +36,11 @@ public final class NexusNet {
 
     /** Client to server. */
     public static final int ASK_MAP = 0, START = 1, CANCEL = 2;
+    /**
+     * Client to server (0.12.0): a player on a light-lift pad asks for a ride ({@link com.fluxecho.campus.Lift}:
+     * {@code X Y Z} the pad, {@code D} +1 up or -1 down).
+     */
+    public static final int LIFT = 3;
     /** Server to client: the star map's answers. */
     public static final int MAP = 0, RESULT = 1;
     /**
@@ -49,6 +54,12 @@ public final class NexusNet {
      * ({@link com.fluxecho.city.TileCityModule#receiveDelta}), coded as the library's books are.
      */
     public static final int UNIT_DELTA = 5;
+    /**
+     * Server to client (0.12.0): the light-lift ride the server started for the player, or that there is none (or it
+     * ended): {@code D} +1, -1 or 0, {@code X Z} the column, {@code From To Peak} the feet heights, {@code Bl} whether
+     * it bumps the ceiling and sinks back ({@link com.fluxecho.campus.Lift}).
+     */
+    public static final int LIFT_RIDE = 6;
 
     private static SimpleNetworkWrapper channel;
     private static final Queue<Object[]> SERVER_INBOX = new ConcurrentLinkedQueue<>();
@@ -100,6 +111,10 @@ public final class NexusNet {
     }
 
     static void handle(EntityPlayerMP p, int kind, NBTTagCompound data) {
+        if (kind == LIFT) {
+            com.fluxecho.campus.Lift.request(p, data);
+            return;
+        }
         TileNexus n = nexus(data);
         if (kind == ASK_MAP) {
             tell(p, MAP, map(n, p, data));
@@ -133,7 +148,7 @@ public final class NexusNet {
         t.setBoolean("Member", n.member(p));
         t.setBoolean("Formed", n.formed());
         t.setBoolean("Powered", n.powered());
-        t.setInteger("Phase", TileNexus.PHASE);
+        t.setInteger("Phase", n.phase());
         t.setDouble("Compute", n.computeRate());
         t.setString("Research", n.research());
         t.setFloat("Done", n.researchFraction());
@@ -239,6 +254,15 @@ public final class NexusNet {
                         com.fluxecho.city.TileCityModule.receiveDelta((NBTTagCompound) m[1]);
                     } catch (RuntimeException ex) {
                         com.fluxecho.FluxEcho.LOG.warn("City module packet failed", ex);
+                    }
+                    continue;
+                }
+                if (kind == LIFT_RIDE) {
+                    // the light lift's answer, to its client handler
+                    try {
+                        com.fluxecho.campus.Lift.receiveClient((NBTTagCompound) m[1]);
+                    } catch (RuntimeException ex) {
+                        com.fluxecho.FluxEcho.LOG.warn("Light lift packet failed", ex);
                     }
                     continue;
                 }

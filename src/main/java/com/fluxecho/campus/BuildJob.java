@@ -25,16 +25,15 @@ import com.fluxecho.logic.NexusShape;
 
 /**
  * One construction job of a nexus campus and how far it has got: which plan it builds (the establish job, the forum of
- * a 0.9.2 nexus, a module on a hall site, a repair of one of those, or the 0.10.1 refresh of a campus laid out by an
- * older plan), where it is in its life
+ * a 0.9.2 nexus, a module on a site, a repair of one of those, the 0.10.1 refresh of a campus laid out by an older
+ * plan, or since 0.12.0 the growth of the nexus to its next phase), where it is in its life
  * ({@link BuildState}), which stage it is in, which steps are done or skipped, how far the clearing has dug, which
  * cells are in flight, and the counts the GUI shows.
  * <p>
  * The plan itself is never saved: {@link #planFor} recomputes it from the job key, the nexus's position and front, the
  * {@link CampusPlan} seeded with the nexus controller's position, and the keep-out boxes saved with the job, so the
  * client can compute the same plan from the synced key ({@link Campus.View}). The done and skipped sets are indexes
- * into
- * that plan and are only valid for the plan version {@link #V} they were saved with.
+ * into that plan and are only valid for the plan version {@link #V} they were saved with.
  */
 public final class BuildJob {
 
@@ -191,11 +190,29 @@ public final class BuildJob {
         return new BuildJob(k, k, site);
     }
 
-    /** A repair of the nexus ({@code repair:establish}), the same plan as the establish job. */
+    /** A repair of a phase-I nexus ({@code repair:establish}), the same plan as the establish job. */
     public static BuildJob repairNexus(List<int[]> keepOut) {
-        BuildJob j = new BuildJob(REPAIR + BuildPlan.ESTABLISH, BuildPlan.ESTABLISH, -1);
+        return repairNexus(keepOut, 1);
+    }
+
+    /**
+     * A repair of the nexus ({@code repair:establish}) as it has grown (0.12.0): the establish plan of its phase
+     * ({@link BuildPlan#establishKey}), so a grown nexus is put back with its stages and its lift pad, never as the
+     * phase-I nexus.
+     */
+    public static BuildJob repairNexus(List<int[]> keepOut, int phase) {
+        BuildJob j = new BuildJob(REPAIR + BuildPlan.ESTABLISH, BuildPlan.establishKey(phase), -1);
         j.setKeepOut(keepOut);
         return j;
+    }
+
+    /**
+     * The growth of a formed nexus to {@code phase} (0.12.0, {@code grow:<phase>}, {@link BuildPlan#grow}): the stage
+     * of that phase, and at phase II the light-lift pad; it ends once the nexus stands as the new phase.
+     */
+    public static BuildJob grow(int phase) {
+        String k = BuildPlan.growKey(phase);
+        return new BuildJob(k, k, -1);
     }
 
     /** A repair of the module on a site ({@code repair:<site>}), the same plan as its module job. */
@@ -216,7 +233,15 @@ public final class BuildJob {
 
     private void setKeepOut(List<int[]> boxes) {
         keepOut.clear();
-        if (boxes != null) for (int[] b : boxes) if (b != null && b.length == 4) keepOut.add(b.clone());
+        if (boxes != null) for (int[] b : boxes) if (keepOutBox(b)) keepOut.add(b.clone());
+    }
+
+    /**
+     * Whether a keep-out box has a form a plan takes: {x0, z0, x1, z1} (whole columns) or, since 0.12.0,
+     * {x0, z0, x1, z1, yFrom, yTo} (the columns over those heights only).
+     */
+    static boolean keepOutBox(int[] b) {
+        return b != null && (b.length == 4 || b.length == 6);
     }
 
     /**
@@ -228,7 +253,7 @@ public final class BuildJob {
     boolean retarget(List<int[]> boxes) {
         if (touched || !flights.isEmpty() || BuildState.ended(state)) return false;
         List<int[]> next = new ArrayList<>();
-        if (boxes != null) for (int[] b : boxes) if (b != null && b.length == 4) next.add(b);
+        if (boxes != null) for (int[] b : boxes) if (keepOutBox(b)) next.add(b);
         if (sameBoxes(next, keepOut)) return false;
         setKeepOut(next);
         restart(keepClear);
@@ -304,19 +329,32 @@ public final class BuildJob {
         return finishedAt;
     }
 
-    /** The keep-out boxes {x0, z0, x1, z1} its plan was made with (read-only). */
+    /**
+     * The keep-out boxes its plan was made with (read-only): {x0, z0, x1, z1}, or {x0, z0, x1, z1, yFrom, yTo} for a
+     * height-ranged one (0.12.0).
+     */
     public List<int[]> keepOut() {
         return Collections.unmodifiableList(keepOut);
     }
 
     /** Whether it builds the establish or forum plan (the campus round the nexus) rather than a module. */
     public boolean campusJob() {
-        return BuildPlan.ESTABLISH.equals(planKey) || BuildPlan.FORUM.equals(planKey);
+        return raisesNexus() || BuildPlan.FORUM.equals(planKey);
     }
 
-    /** Whether its plan raises the nexus itself (the establish job and its repair). */
+    /** Whether its plan raises the nexus itself (the establish job and its repair, at any phase). */
     public boolean raisesNexus() {
-        return BuildPlan.ESTABLISH.equals(planKey);
+        return BuildPlan.establishPhase(planKey) > 0;
+    }
+
+    /** Whether it grows the nexus to its next phase (0.12.0, {@code grow:<phase>}). */
+    public boolean grows() {
+        return BuildPlan.growPhase(planKey) > 0;
+    }
+
+    /** The phase a growth job grows the nexus to, or 0 for any other job. */
+    public int growPhase() {
+        return BuildPlan.growPhase(planKey);
     }
 
     /** Whether it is a repair. */
@@ -329,9 +367,18 @@ public final class BuildJob {
         return REFRESH.equals(key);
     }
 
-    /** Whether it goes ahead of the queued jobs ({@link Campus#admit}): a repair, or the refresh of the campus. */
+    /** Whether it goes ahead of the queued jobs ({@link Campus#admit}): a repair, the refresh, or a growth. */
     public boolean priority() {
-        return repair() || refresh();
+        return rank() > 0;
+    }
+
+    /**
+     * Where it queues ({@link Campus#admit}): 2 a repair or the refresh of the campus, 1 the growth of the nexus
+     * (0.12.0: after the repairs, before the modules), 0 every other job.
+     */
+    public int rank() {
+        if (repair() || refresh()) return 2;
+        return grows() ? 1 : 0;
     }
 
     /** Whether the job itself is free ({@link #free}); the campus may make every job free ({@link Campus#free}). */
@@ -379,6 +426,10 @@ public final class BuildJob {
     public static IChatComponent name(String key, String planKey) {
         if (key == null || key.isEmpty()) return new ChatComponentTranslation("fluxecho.build.gui.none");
         if (REFRESH.equals(key)) return new ChatComponentTranslation("fluxecho.build.job.refresh");
+        int grow = BuildPlan.growPhase(planKey);
+        if (grow > 0) return new ChatComponentTranslation(
+            "fluxecho.build.job.grow",
+            new ChatComponentTranslation("fluxecho.nexus.phase." + grow));
         String module = ModuleSpecs.moduleOf(planKey);
         if (key.startsWith(REPAIR)) {
             IChatComponent what = module != null ? new ChatComponentTranslation("fluxecho.module." + module)
@@ -395,15 +446,19 @@ public final class BuildJob {
     // ---- the plan
 
     /**
-     * The plan of a job, the same on the server and the client: {@code establish}, {@code forum} or
-     * {@code module:<module>@<site>} for a nexus whose base centre is {@code (cx, y0, cz)}, whose front is
-     * {@code (fx, fz)} and whose controller is at {@code ctrl}, with the campus plan seeded from that controller. Null
-     * when the plan key names a module this game does not know.
+     * The plan of a job, the same on the server and the client: {@code establish} (or {@code establish:<phase>} for
+     * the repair of a grown nexus), {@code forum}, {@code grow:<phase>} or {@code module:<module>@<site>} for a nexus
+     * whose base centre is {@code (cx, y0, cz)}, whose front is {@code (fx, fz)} and whose controller is at
+     * {@code ctrl}, with the campus plan seeded from that controller. Null when the plan key names a module this game
+     * does not know.
      */
     public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
         int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut) {
-        if (BuildPlan.ESTABLISH.equals(planKey))
-            return BuildPlan.establish(cp, cx, y0, cz, fx, fz, NexusShape.PHASE_1, ctrlX, ctrlY, ctrlZ, keepOut);
+        int raise = BuildPlan.establishPhase(planKey);
+        if (raise > 0)
+            return BuildPlan.establish(cp, cx, y0, cz, fx, fz, NexusShape.phase(raise), ctrlX, ctrlY, ctrlZ, keepOut);
+        int grow = BuildPlan.growPhase(planKey);
+        if (grow > 0) return BuildPlan.grow(grow, cx, y0, cz, fx, fz, ctrlX, ctrlY, ctrlZ);
         if (BuildPlan.FORUM.equals(planKey)) return BuildPlan.forum(cp, cx, y0, cz, fx, fz, keepOut);
         ModuleSpec spec = ModuleSpecs.ofJob(planKey);
         int site = ModuleSpecs.siteOf(planKey);
@@ -709,6 +764,9 @@ public final class BuildJob {
         t.setLong("Pa", projectedAt);
         t.setLong("Ft", finishedAt);
         t.setIntArray("Ko", boxes(keepOut));
+        // the height-ranged boxes (0.12.0) apart, so the whole-column ones are saved exactly as before
+        int[] ranged = boxes(keepOut, 6);
+        if (ranged.length > 0) t.setIntArray("Kr", ranged);
         t.setIntArray("D", bits(done));
         t.setIntArray("Sk", bits(skipped));
         t.setInteger("Cc", clearColumn);
@@ -785,8 +843,7 @@ public final class BuildJob {
         j.keepClear = t.getBoolean("Kc");
         j.projectedAt = t.getLong("Pa");
         j.finishedAt = t.getLong("Ft");
-        int[] ko = t.getIntArray("Ko");
-        for (int i = 0; i + 3 < ko.length; i += 4) j.keepOut.add(new int[] { ko[i], ko[i + 1], ko[i + 2], ko[i + 3] });
+        readBoxes(t, j.keepOut);
         unbits(t.getIntArray("D"), j.done);
         unbits(t.getIntArray("Sk"), j.skipped);
         j.clearColumn = t.getInteger("Cc");
@@ -843,10 +900,34 @@ public final class BuildJob {
         return out;
     }
 
+    /** The whole-column keep-out boxes {x0, z0, x1, z1} of the list, flat ({@code Ko}). */
     static int[] boxes(List<int[]> l) {
-        int[] out = new int[4 * l.size()];
-        for (int i = 0; i < l.size(); i++) System.arraycopy(l.get(i), 0, out, 4 * i, 4);
+        return boxes(l, 4);
+    }
+
+    /** The keep-out boxes of the list that have {@code size} numbers, flat. */
+    static int[] boxes(List<int[]> l, int size) {
+        int n = 0;
+        for (int[] b : l) if (b.length == size) n++;
+        int[] out = new int[size * n];
+        int at = 0;
+        for (int[] b : l) if (b.length == size) {
+            System.arraycopy(b, 0, out, at, size);
+            at += size;
+        }
         return out;
+    }
+
+    /**
+     * Reads the keep-out boxes saved as {@code Ko} (whole columns, four numbers each) and {@code Kr} (height-ranged,
+     * six numbers each, 0.12.0) into {@code into}.
+     */
+    static void readBoxes(NBTTagCompound t, List<int[]> into) {
+        int[] ko = t.getIntArray("Ko");
+        for (int i = 0; i + 3 < ko.length; i += 4) into.add(new int[] { ko[i], ko[i + 1], ko[i + 2], ko[i + 3] });
+        int[] kr = t.getIntArray("Kr");
+        for (int i = 0; i + 5 < kr.length; i += 6)
+            into.add(new int[] { kr[i], kr[i + 1], kr[i + 2], kr[i + 3], kr[i + 4], kr[i + 5] });
     }
 
     private static int[] bits(BitSet b) {

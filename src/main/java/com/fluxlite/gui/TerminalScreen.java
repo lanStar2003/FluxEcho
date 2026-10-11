@@ -9,6 +9,7 @@ import com.fluxecho.campus.BuildJob;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.ClientLedger;
 import com.fluxecho.logic.ResearchTree;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.TerminalView;
 import com.fluxecho.research.client.StarMapScreen;
 import com.fluxlite.gui.ui.Canvas;
@@ -292,9 +293,11 @@ public class TerminalScreen extends ControlCenterScreen {
         }
         NBTTagList mods = term.getTagList("modules", 10);
         int open = term.getInteger("open");
+        // the modules on the inner ring (0.12.0: the axis modules are listed too but take no room there)
+        int ring = term.hasKey("ring") ? term.getInteger("ring") : mods.tagCount();
         text(
             c,
-            open <= 0 ? tr("fluxlite.gui.term.ring_closed") : tr("fluxlite.gui.term.ring", mods.tagCount(), open),
+            open <= 0 ? tr("fluxlite.gui.term.ring_closed") : tr("fluxlite.gui.term.ring", ring, open),
             x,
             my,
             Theme.LABEL2);
@@ -304,13 +307,11 @@ public class TerminalScreen extends ControlCenterScreen {
             if (ry + ROW > y + h) break;
             card(c, x, ry, w, ROW - 2);
             c.circle(x + 8, ry + 8, 3, 0xFF000000 | m.getInteger("c"));
-            text(
-                c,
-                tr("fluxlite.gui.term.slot", m.getInteger("slot") + 1) + "  "
-                    + tr("fluxecho.module." + m.getString("k")),
-                x + 16,
-                ry + 4,
-                Theme.LABEL);
+            int slot = m.getInteger("slot");
+            // a ring module by its slot, an axis module by its site's name (天顶, 根位)
+            String where = SiteFamily.axisSite(slot) ? tr("fluxecho." + SiteFamily.labelKey(slot))
+                : tr("fluxlite.gui.term.slot", slot + 1);
+            text(c, where + "  " + tr("fluxecho.module." + m.getString("k")), x + 16, ry + 4, Theme.LABEL);
             textRight(c, tr("fluxecho.dock." + m.getString("dock")), x + w - 8, ry + 4, Theme.LABEL2);
         }
     }

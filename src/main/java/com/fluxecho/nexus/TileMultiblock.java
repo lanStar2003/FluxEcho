@@ -85,7 +85,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     private Map<Long, Integer> formedCells;
     /** The single shape of a multiblock that does not name its shapes, made once. */
     private List<Shape> mainOnly;
-    /** How far from the controller any of its shapes reaches, once worked out. */
+    /** How far from the controller any of its shapes reaches, once worked out ({@link #reach()}). */
     private int reach = -1;
 
     // client
@@ -114,6 +114,15 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     /** The shape a save from before shapes were remembered stood as; null for the first. */
     protected String legacyShape() {
         return null;
+    }
+
+    /**
+     * A preview (NEI) shows the multiblock as one of its shapes other than the first (0.12.0: the zenith floating at
+     * phases IV and V); unknown names are ignored. Only for preview tiles: a real one finds its shape itself.
+     */
+    protected void previewShape(String name) {
+        if (realWorld()) return;
+        for (Shape s : shapes()) if (s.name.equals(name)) shape = name;
     }
 
     /** The shape it stands (or last stood) as: the remembered one, else the first. */
@@ -484,16 +493,30 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         cellsSet = false;
     }
 
-    /** Whether the block could belong to any of its shapes: a cube round the controller as large as the largest. */
+    /**
+     * Whether the block could belong to it: a cube round the controller {@link #reach()} each way (a city module
+     * narrows it to the box of its shapes, 0.12.0). The watchers of frame changes ask it, and so does the campus's
+     * terrain rule (a block of ours inside a formed structure's cube is not left over).
+     */
     @Override
     public boolean covers(World w, int x, int y, int z) {
         if (w != worldObj) return false;
+        int r = reach();
+        return Math.abs(x - xCoord) <= r && Math.abs(y - yCoord) <= r && Math.abs(z - zCoord) <= r;
+    }
+
+    /**
+     * How far from the controller its blocks may lie ({@link #covers}): by default the longest side of the largest of
+     * its shapes, and one more, worked out once. A multiblock whose shapes grow far past what it stands as (the nexus's
+     * five phases, 0.12.0) reaches only as far as what it stands as, or may form as next.
+     */
+    protected int reach() {
         if (reach < 0) {
             int r = 0;
-            for (Shape s : shapes()) r = Math.max(r, Math.max(s.bp.width(), Math.max(s.bp.depth(), s.bp.height())));
-            reach = r + 1;
+            for (Shape s : shapes()) r = Math.max(r, s.bp.reach());
+            reach = r;
         }
-        return Math.abs(x - xCoord) <= reach && Math.abs(y - yCoord) <= reach && Math.abs(z - zCoord) <= reach;
+        return reach;
     }
 
     @Override
@@ -516,10 +539,10 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
 
     /**
      * Builds (or shows) the structure for the trigger: in a real world the shape it stands (or last stood) as, in a
-     * preview the first of its shapes.
+     * preview the first of its shapes unless the preview picked another ({@link #previewShape}, 0.12.0).
      */
     protected void buildShape(ItemStack trigger, boolean hintsOnly) {
-        Shape s = realWorld() ? currentShape() : shapes().get(0);
+        Shape s = currentShape();
         build(s.name, s.bp, trigger, hintsOnly);
     }
 
