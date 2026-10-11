@@ -213,6 +213,21 @@ public final class ResearchTree {
         return Collections.unmodifiableCollection(NODES.values());
     }
 
+    /**
+     * Whether a node can be researched at all in this version: its phase is reached ({@link #PHASE_NOW}). The others
+     * are the placeholders of later phases the star map shows greyed out ({@link Block#LATER_PHASE}).
+     */
+    public static boolean availableNow(Node n) {
+        return n != null && n.phase <= PHASE_NOW;
+    }
+
+    /** Every node that can be researched in this version ({@link #availableNow}), in the tree's order. */
+    public static List<Node> availableNow() {
+        List<Node> out = new ArrayList<>();
+        for (Node n : NODES.values()) if (availableNow(n)) out.add(n);
+        return out;
+    }
+
     /** Why a node cannot be started, or {@link Block#NONE}. */
     public enum Block {
         NONE,
@@ -231,7 +246,7 @@ public final class ResearchTree {
      */
     public static Block check(Node n, Set<String> done, int phase, int records) {
         if (done.contains(n.id)) return Block.DONE;
-        if (n.phase > phase || n.phase > PHASE_NOW) return Block.LATER_PHASE;
+        if (n.phase > phase || !availableNow(n)) return Block.LATER_PHASE;
         for (String r : n.requires) if (!done.contains(r)) return Block.REQUIRES;
         if (records < n.minRecords) return Block.RECORDS;
         return Block.NONE;

@@ -46,6 +46,12 @@ import com.fluxecho.nexus.TileMultiblock;
  * touching something crafted (planks, glass, a door, a torch, a chest...), which a tree never does; leaves that never
  * decay (vanilla leaves placed by hand); farmland and what grows on it; hay bales and jack-o'-lanterns. Dirt, sand
  * and raw stone placed by hand cannot be told from the ground and are still taken for terrain.
+ * <p>
+ * Since 0.10.1 the probe also says what the clear-all rule needs ({@code buildClearAll}): whether the block is a tile
+ * entity that is not an ore (a machine or a chest the survey counts), whether the cell lies in a protected box
+ * whatever the block is, whether the {@code buildBlocked} list names it, and whether it is a log, leaves or a plant
+ * (grading fills over those). Under that rule nothing asks whether a player built a block, so the search through a
+ * log's tree is skipped.
  */
 public final class Terrain {
 
@@ -93,30 +99,39 @@ public final class Terrain {
         if (p.air) return p;
         Kind k = kind(b);
         p.replaceable = b.isReplaceable(w, x, y, z);
-        p.fluid = m.isLiquid() || b instanceof BlockLiquid || b instanceof IFluidBlock;
+        p.fluid = isFluid(b);
         p.lava = m == Material.lava;
         p.hasTile = b.hasTileEntity(meta);
         p.unbreakable = b.getBlockHardness(w, x, y, z) < 0;
         p.gtOre = k.ore || (p.hasTile && bwOre(w.getTileEntity(x, y, z)));
         int code = PartBlocks.code(b, meta);
         p.ours = code >= 0 && (Parts.isFrame(code) || Parts.isDeck(code) || Parts.isFitting(code));
-        p.port = code == Parts.SUPPLY_PORT;
+        p.port = code == Parts.SUPPLY_PORT || code == Parts.RECYCLE_BIN;
+        // a machine or a chest: our own port and bin are credited as parts, not dismantled
+        p.te = p.hasTile && !p.gtOre && !p.port;
         if ((p.ours || p.port) && !p.target) p.loose = !inFormedReach(w, x, y, z);
         if (campus != null) {
-            p.oursInOtherStructure = (p.ours || p.port) && campus.protectedCell(x, y, z);
+            p.protectedArea = campus.protectedCell(x, y, z);
+            p.oursInOtherStructure = (p.ours || p.port) && p.protectedArea;
             p.otherNexusArea = campus.otherCampusAt(x, z);
         }
 
         boolean listedBlocked = TerrainRule.listed(k.name, Arrays.asList(Config.buildBlocked));
+        p.listed = listedBlocked;
         boolean rawGtStone = TerrainRule.rawGtStone(k.className, meta);
         boolean wood = b.isWood(w, x, y, z);
+        p.wood = wood;
+        p.leaves = b.isLeaves(w, x, y, z);
+        p.plant = k.plant;
         p.crafted = listedBlocked || k.vanillaCrafted || (k.craftedName && !rawGtStone) || (k.gtStone && !rawGtStone);
-        if (!p.crafted && !p.hasTile && builtByHand(w, x, y, z, b, meta, k, wood)) p.crafted = true;
+        // the clear-all rule never asks whether a player built it, so the search through a log's tree is skipped
+        if (!p.crafted && !p.hasTile && !Config.buildClearAll && builtByHand(w, x, y, z, b, meta, k, wood))
+            p.crafted = true;
 
         TerrainRule.Nature n = new TerrainRule.Nature();
         n.hasTile = p.hasTile;
         n.wood = wood;
-        n.leaves = b.isLeaves(w, x, y, z);
+        n.leaves = p.leaves;
         n.replaceable = p.replaceable;
         n.plant = k.plant;
         n.oreGenStone = b.isReplaceableOreGen(w, x, y, z, Blocks.stone);
@@ -287,23 +302,19 @@ public final class Terrain {
             || m == Material.piston;
     }
 
-    /**
-     * Whether the block keeps its drops in the spoils when cleared (ores, those of the ore dictionary too, and logs).
-     */
-    public static boolean spoils(World w, int x, int y, int z, Block b) {
-        Kind k = kind(b);
-        if (k.ore || b.isWood(w, x, y, z)) return true;
-        int meta = w.getBlockMetadata(x, y, z);
-        if (b.hasTileEntity(meta)) return bwOre(w.getTileEntity(x, y, z));
-        return b.getMaterial() == Material.rock && dictOre(b, meta, k);
+    /** Whether the block is a fluid: water, lava or a modded fluid (by material or by class). */
+    public static boolean isFluid(Block b) {
+        return b.getMaterial()
+            .isLiquid() || b instanceof BlockLiquid
+            || b instanceof IFluidBlock;
     }
 
-    /** Whether the cell already holds the part (any meta for grass and the library core). */
+    /** Whether the cell already holds the part (any meta for grass, the library core and the recycle bin). */
     public static boolean isTarget(Block b, int meta, int part, boolean air) {
         if (part == Parts.AIR) return air;
         Block want = PartBlocks.block(part);
         if (want == null || want == Blocks.air || b != want) return false;
-        if (part == Parts.GRASS || part == Parts.LIBRARY_CORE) return true;
+        if (part == Parts.GRASS || part == Parts.LIBRARY_CORE || part == Parts.RECYCLE_BIN) return true;
         return meta == PartBlocks.meta(part);
     }
 

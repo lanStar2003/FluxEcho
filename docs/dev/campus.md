@@ -1,7 +1,7 @@
 # 开发手册 · 营造：园区、自动建造、投影、回响档案馆（0.10.0 起）
 
 > 改 `campus/`、`campus/client/`、档案馆（`library/` 里 0.10.0 的部分）、`nexus/ItemBlockNexusCore`，或者要给中枢加一个由它自己建造的模块之前读这一篇。中枢本体、研究、显化、多方块框架、0.9.2 书库大厅见 [nexus.md](nexus.md)；画在世界里的东西先守 [gates.md](gates.md) §5；总览见 `CLAUDE.md`。
-> 路径相对 `src/main/java/com/fluxecho/`。`EchoText.t("x")` 对应 lang 键 `fluxecho.x`。文中数字和键都按 0.10.0 的代码核对过。
+> 路径相对 `src/main/java/com/fluxecho/`。`EchoText.t("x")` 对应 lang 键 `fluxecho.x`。文中数字和键都按 0.10.1 的代码核对过。
 
 ## 0. 定位
 
@@ -10,22 +10,34 @@
 用户定的（BLUEPRINT 第六节 17）：书库选「长厅」（两层、回廊、旋转楼梯）；书架整组为单位；建立时平整整片园区（只花 EU）；深色科技；流程是 放核心 → 自建 → 研究 → 投影 → 供料 → 自动放置 + 特效。由此定下的规矩：
 - **一切先勘测、出投影，成员按「开始」才动工**（取代"放下就算同意"）；旧中枢（0.9.2 存档、潜行放的核心）什么都不动，直到成员按「铺设广场」（例外：拆下后带着园区放回原处的核心怎么放都接着用原来的园区，§8）。
 - **建造投影默认开**（`buildProjection=full`），和状态全息是两回事；全息照旧默认关。
-- 中枢的建造从不拆玩家的东西：拿不准就算 BLOCKED（标红、暂停或跳过），见 §5。
+- **0.10.1 起要清理的地方整片清空**（`buildClearAll`，默认开）：机器、箱子连同里面的东西都拆，进园区的**回收箱**（`RecycleStore`）；只留受保护的（别的园区、别的结构和 keep-out 盒、成型结构旁边我们的方块、不可破坏、`buildBlocked`、领地保护拒绝的）。关掉回到 0.10.0 的谨慎规则：拿不准就算 BLOCKED（标红、暂停或跳过），见 §5。
+
+**0.10.1**（用户 2026-10-10 第一次试 0.10.0 后，规格 `FluxEcho-campus/spec/M7.md`）：用户在雪地针叶林里建好了中枢，但 Y0 那层留着树叶、原木、雪块、花和梯子（0.10.0 只清 Y0+1 以上、只填 Y0 的空格），树干旁和洼地留下 3–9 格深的坑（只填 2 格、只填露天的），光井凹进一格被当成坑；没做书库研究，看不到书库在哪、怎么解锁。用户要的：一次开完研究的命令、清理时全部清空并把方块回收进回收箱、创造模式不交材料。于是：
+- 清理规则改成整片清空（§5 地形判定），拆除走玩家挖方块的路径、掉落和洒出来的东西由 `DropCapture` 接住进回收箱（§5 拆除）；投影画黄框、「建造」页报「将拆除 N 个机器/箱子」。
+- 回收箱：`RecycleStore` + 方块 `fluxecho:recycle_bin`（§6）；取代 0.10.0 的 27 格收获。
+- 统一地面：平整柱的 Y0 格没铺砖的一律换成草，下面填到 `buildFillDepth`（默认 4）为止、碰到地壳就停；光井和地面齐平，客户端在上面画光柱（§2、§5、§11）。0.10.0 的园区排一次「整修园区」（§7）。
+- 免费和立即：创造模式按开始的任务免费、`/fluxecho build free`、`/fluxecho build finish`（§7）；`/fluxecho research all|reset`。
+- 停靠的 0.9.2 大厅不再算书库；「建造」页没有任务时列出模块和状态，总图的模块位牌子写计划的模块（`Campus.modules()`，§10）。
 
 ## 1. 文件
 
 | 文件 | 作用 |
 |---|---|
-| `campus/CampusModule` | 注册 `fluxecho:deck`、`fluxecho:fitting`、`fluxecho:supply_port`（TE 同名）；postInit 注册地板、配件、补给口的配方（`defaultRecipes && nexusEnabled`，每条单独 try/catch）；`init()` 空着 |
+| `campus/CampusModule` | 注册 `fluxecho:deck`、`fluxecho:fitting`、`fluxecho:supply_port`、`fluxecho:recycle_bin`（后两个 TE 同名，回收箱注册后才设 `recycleBin` 字段）；`init()` 注册 `DropCapture` 的事件处理；postInit 注册地板、配件、补给口、回收箱的配方（`defaultRecipes && nexusEnabled`，`PartBlocks.block` 为 null 的跳过，每条单独 try/catch） |
 | `campus/BlockDeck`、`ItemBlockDeck` | 地板/墙板，12 个 meta（§3） |
 | `campus/BlockFitting`、`ItemBlockFitting` | 配件，7 个 meta；`onUse(Use)` 钩子（档案馆书架用）、`railArm`、`box`、`full` |
-| `campus/BlockSupplyPort`（物品 `BlockSupplyPort.ItemPort`）、`TileSupplyPort` | 补给口（§6） |
+| `campus/BlockSupplyPort`（物品 `BlockSupplyPort.ItemPort`）、`TileSupplyPort` | 补给口（§6）；`nearestNexus`、`walkwayFacing` 也给回收箱用 |
+| `campus/BlockRecycleBin`（物品 `BlockRecycleBin.ItemBin`）、`TileRecycleBin`、`NexusLink` | 回收箱方块（0.10.1，§6）：链接中枢、给自动化的 27 个虚拟格、右键开界面；`NexusLink.linkTo` 是引擎放下回收箱后调的 |
+| `campus/RecycleStore` | 回收箱的存储（0.10.1，§6）：物品原型 → long 数量，纯数据 + NBT；按种类和按字节两种上限 |
+| `campus/RecycleOverflow` | `WorldSavedData` `fluxecho_recycle`（0.10.1，§6）：拆中枢核心时核心装不下的回收物，按队伍暂存，之后放回团队中枢的回收箱 |
+| `campus/RecycleGui`、`RecyclePage`、`client/RecycleScreen` | 回收箱界面（MUI1）：服务端按页发、点击按索引 + 哈希找回种类；客户端画法 |
+| `campus/DropCapture` | 拆一格时接住冒出来的物品实体（`EntityJoinWorldEvent`，±2 格）（0.10.1，§5） |
 | `campus/PartBlocks` | 部件码 ↔ 方块/meta/物品/配方原料：**唯一**把部件码变成 `Block` 的地方；`code(Block, meta)` 反查；`register(Recipe)` 注册配方 |
-| `campus/Campus` | 一座中枢的园区：legacy/active、当前任务和队列、账本、投入槽、收获、模块位记录、GUI/核心/补给口调用的入口（都返回 `fluxecho.build.*` 键） |
-| `campus/BuildJob` | 一项任务：任务键和计划键、状态、阶段、done/skipped/flying 位集、飞行中的格子、计数、keep-out；NBT |
-| `campus/Builder` | 引擎：勘测、清场与平整、发射、落地、等结构成型；`QUIET` |
-| `campus/Terrain` | 从世界填 `TerrainRule.Probe`（自然地形、玩家建的、GT 矿和矿辞的矿、我们自己的方块和补给口、它们是不是散落的） |
-| `campus/ModuleSpec`、`ModuleSpecs` | 中枢能自己建的模块（书库的在 `LibraryModule.init` 登记） |
+| `campus/Campus` | 一座中枢的园区：legacy/active、当前任务和队列、账本、投入槽、回收箱存储、模块位记录、免费/立即、模块列表（`modules()`）、整修园区、GUI/核心/补给口/回收箱/命令调用的入口（都返回 `fluxecho.build.*` 键） |
+| `campus/BuildJob` | 一项任务：任务键和计划键、状态、阶段、done/skipped/flying 位集、飞行中的格子、计数（含要拆的机器）、keep-out、免费；NBT |
+| `campus/Builder` | 引擎：勘测、清场与平整、发射、落地、拆除（`removeCell`）、等结构成型；免费和立即模式；`QUIET` |
+| `campus/Terrain` | 从世界填 `TerrainRule.Probe`（自然地形、玩家建的、GT 矿和矿辞的矿、我们自己的方块、补给口和回收箱、它们是不是散落的、机器/箱子、受保护的盒子、名单、原木树叶植物）；`isFluid` |
+| `campus/ModuleSpec`、`ModuleSpecs` | 中枢能自己建的模块（书库的在 `LibraryModule.init` 登记）；`siteBox`（0.10.1）：记在模块位上的模块在场地上占的整块地方（占地外扩 1，加上计划伸出去的前庭、散水、雨棚，`BuildPlan.extent`；keep-out 和保护盒都用它） |
 | `campus/CampusRegistry` | `WorldSavedData` `fluxecho_campus`：每座园区的维度、中心、半径；送过免费补给口的位置 |
 | `campus/FxBatch`、`CampusNet` | 四 tick 一批（满一页就当 tick 发）的发射/清除特效，按页发包；`BUILD_FX`、`BUILD_STATE` 发包 |
 | `campus/client/CampusClient` | 客户端注册入口（`ClientProxy.init` 调，`FrameClient` 之后） |
@@ -33,9 +45,13 @@
 | `campus/client/BuildClient` | 客户端的建造数据：进度、飞行、清除、计划缓存（普通代码可以引用，只有内部 `Hooks` 是 SideOnly） |
 | `campus/client/BuildScan`、`BuildRender` | 投影：客户端 tick 里扫描、选格；`RenderWorldLast` 里只画 |
 | `campus/client/BuildFx` | 发射弧线、货物方块、打印、落地闪光；清除的粒子和声音 |
-| `campus/client/Masterplan` | 园区总图、放核心的预览 |
+| `campus/client/Masterplan` | 园区总图（模块位牌子写计划的模块和状态）、放核心的预览 |
+| `campus/client/WellScan` | 客户端 tick 里找附近 active 园区真实铺着的光井，给 `BuildRender` 画光柱（0.10.1，§11） |
+| `command/CommandFluxEcho`、`logic/EchoCommand` | `/fluxecho` 命令（0.10.1，§7）；参数解析、补全、挑最近的中枢是纯逻辑 |
 | `logic/Mix`、`Parts`、`PartRecipes`、`GtPattern` | 种子哈希；部件码；配方表（合成 = 成本）；GT 工具字母 |
-| `logic/CampusPlan`、`BuildPlan`、`BuildLedger`、`BuildState`、`BuildPace`、`TerrainRule`、`FxCodec`、`LiftRule` | 园区布局与铺砖；建造计划；账本；状态机；节奏和飞行时间；地形判定；格子打包；核心抬升 |
+| `logic/CampusPlan`、`BuildPlan`、`BuildLedger`、`BuildState`、`BuildPace`、`TerrainRule`、`FxCodec`、`LiftRule` | 园区布局与铺砖；建造计划；账本；状态机；节奏和飞行时间（`flood` 给立即模式）；地形判定（含 0.10.1 的整片清空、地面和填坑）；格子打包；核心抬升 |
+| `logic/Removal`、`RecycleSlots` | 一格怎么拆、拆完还剩什么（0.10.1）；回收箱给自动化的虚拟格（0.10.1） |
+| `research/Research`、`ResearchData` | `grantAll`/`reset`、`revokeAll`：命令的一次开完和清空研究 |
 | `logic/GhostCells`、`LaunchPhase` | 投影的选格/面/棱/最低层；发射时间线和弧线 |
 | `logic/ArchiveShape`、`LibraryUnits`、`UnitLook`、`SpineColour`、`Blueprint`（`cell`/`point`） | 档案馆形状；书架单元；书架外观规则；书脊颜色；蓝图反算 |
 | `nexus/ItemBlockNexusCore`、`BlockNexusCore` | 核心抬升放置和拒绝；拆核心带走余额、显化和园区，放回原处园区接着用（§8） |
@@ -43,16 +59,16 @@
 | `library/TileLibrary`、`Units`、`ArchiveGui`、`ArchiveMap`、`BookPacket`、`BookSlot`、`LibraryVault`、`LibraryGui`、`BlockLibraryCore` | 档案馆的服务端和界面（§12） |
 | `library/client/ArchiveRender`、`ArchiveLook`、`ArchiveFrame`、`ArchiveScreen`、`LibraryBooks`、`LibraryRender` | 档案馆的画面（`LibraryRender` 按形状分派） |
 | `frame/client/ShelfUnits`、`FrameClient` | 书格画成书架单元的一格（区块网格）；登记 `shelf_board` 图标 |
-| `tools/CampusTextures.java` | 地板、配件、书架单元、补给口的贴图（`java tools/CampusTextures.java`） |
+| `tools/CampusTextures.java` | 地板、配件、书架单元、补给口、回收箱的贴图（`java tools/CampusTextures.java`） |
 
 ## 2. 园区坐标与场地（`CampusPlan`）
 
 - **坐标**：中心 `C = TileNexus.centre()`（底座中心），`Y0 = C.y` 是底座那层，也是铺砖那层；人站在 Y0+1，控制器在 Y0+2。本地坐标 `A` 沿中枢正面向前、`R` 向右（俯视顺时针）：`dx = A·fx − R·fz`，`dz = A·fz + R·fx`（和 `RingSlots.offset` 一样），`toWorld`/`toLocal` 互逆；`key(a, r)` 打包成 long。
 - **八角** `oct(a, r, Rmax, K)`：`|A| ≤ Rmax && |R| ≤ Rmax && |A|+|R| ≤ K`。底座 `oct(5,7)`、格栅带 `oct(6,8)`、广场 `oct(16,22)`（`FORUM_R/K`）、环道 `oct(19,26)`（`RING_R/K`）、平整圆盘 `oct(64,90)`（`GRADE_R/K`；`gradeArea()` = 圆盘去掉底座，13580 格，和种子无关）。
 - **场地**：场地 k 在正前方顺时针 45°·k。0 = 大门；`HALL_SITES = {4, 2, 6}` 是模块位（偏好顺序：正后、右、左）；1/3/5/7 是对角预留（`diagonalCentre` = (±34, ±34)，`DIAGONAL_SIZE` 23）。`moduleCentre(site, depth)` = 场地轴 × (`HALL_FRONT` 24 + (depth−1)/2)：大厅前排在径向 24，档案馆（depth 35）的中心在 41。`hallSiteAt` 两轴容差各 ±3；`inHall(site, w, d, a, r)` 是占地判定。
-- **大门**：A 17–36、|R| ≤ 3，节点 A 25–29 和远端门槛 A 34–36 放宽到 |R| ≤ 5。四根塔柱 (27, ±5)、(35, ±5)；补给口 (9, 5)，站在 Y0+1 的地砖上。
+- **大门**：A 17–36、|R| ≤ 3，节点 A 25–29 和远端门槛 A 34–36 放宽到 |R| ≤ 5。四根塔柱 (27, ±5)、(35, ±5)；补给口 (9, 5)、回收箱 (10, 5)（`recycleBin()`，0.10.1，紧挨着补给口、离中枢远一格），都站在 Y0+1 的地砖上（测试：回收箱格是 establish 地面、不是光井、不是塔柱）。
 - **铺砖**（移植 `spec/gen/synth_campus.py` 的 `tile()`，按优先级）：光井 → 广场肋线（轴线和对角线，Chebyshev ≤ 10 实线、外面隔格）LIT → 格栅带 GRATE → 大门中线偶数格 LIT → 大厅门槛（径向 23、|s| ≤ 3）LIT、大厅脊线（径向 20–23 偶数格）LIT、门前箭头（顶点径向 22、臂长 4）CHEVRON → 大门两边 TRIM → apron 内圈（阴影缝）和外缘勾边 TRIM → Voronoi 缝 TRIM（种子点在每 6 格一圈的极坐标环上）→ 侧叶里的深色团（0.55）→ 深色团（3×3，概率 `clamp((r−12)/140, 0, 0.35)`）→ 其余 DECK。
-  - 光井 3×3：广场 (±9, ±9) 四个候选各 75% 保留，再加两个侧叶各一个；`wells()` 的格子在 Y0 是空气、Y0−1 是 WELL。
+  - 光井 3×3：广场 (±9, ±9) 四个候选各 75% 保留（沿对角线挪 −1/0/+1），再加两个侧叶各一个；`wells()` 的格子在 Y0 铺 WELL，和别的地砖齐平（0.10.1；0.10.0 是 Y0 空气 + Y0−1 WELL，玩家当成了坑）。光由客户端画（§11 `WellScan`）。
   - 侧叶：四条对角线里按种子挑两条（`lobeSites()`），那一段环道多出深色团和一个光井——打破对称。
   - 广场开放边按 0.45 成 2×2 掉格（离大门/环道 3 格内不掉），只对 establish 集合（广场 ∪ 大门 ∪ 环道）算。
   - `siteFloor(site, w, d)`：前庭（径向 20–23，半宽 8, 8, 7, 6）+ apron（占地外扩 2 格，后角超出 3 的切掉，内圈 TRIM）+ 脊线 + 门槛 + 箭头。**只增不改**：从不碰 establish 地面、底座、环道以内和大门的格子，铺好的砖不会被重新评估。
@@ -69,7 +85,8 @@
 | 16–31 `DECK + meta` | 地板/墙板 `fluxecho:deck`（`D_*`，0–11 在用） |
 | 32–47 `FITTING + meta` | 配件 `fluxecho:fitting`（`F_*`，0–6 在用） |
 | 48 `LIBRARY_CORE`、49 `SUPPLY_PORT` | 书库核心（任意 meta）、补给口 |
-| 50 `GRASS`、51 `DIRT`、63 `AIR` | 平整填坑用的草和泥土；必须变成空气的格子 |
+| 50 `GRASS`、51 `DIRT`、63 `AIR` | 平整的地面草和填坑的泥土；必须变成空气的格子 |
+| 52 `RECYCLE_BIN` | 回收箱（0.10.1，任意 meta；`CampusModule.recycleBin` 还是 null 时 `PartBlocks.block` 返回 null，引擎跳过这一步、不记账单） |
 
 **地板/墙板 `fluxecho:deck`**（石质、硬度 3、抗性 15、镐 1，不刷怪；`DeckRender`：先 `renderStandardBlock`，再关 AO 用 `0xF000F0` 画 `_glow` 层；LIT 的侧面用一条水平光线的 `lit_side`、底面不发光）：
 
@@ -82,7 +99,7 @@
 | 4 `dark` | 深色地砖 | 0 | ×8 `DTD/TDT/DTD`（地砖、地缝钢） | 深色团 |
 | 5 `skirt` | 踢脚光带 | 6 | ×8 `TTT/TgT/TTT`（地缝钢、荧石粉） | 目前没有计划用它，只能手放 |
 | 6 `chevron` | 箭头地砖 | 7 | ×8 `LTL/TLT/LTL`（光带地砖、地缝钢） | 门前箭头 |
-| 7 `well` | 光井 | 12 | ×4 `L L/ G /L L`（光带地砖、荧石块） | 光井底（Y0−1） |
+| 7 `well` | 光井 | 12 | ×4 `L L/ G /L L`（光带地砖、荧石块） | 光井（Y0，和地面齐平；0.10.0 在 Y0−1） |
 | 8 `panel` | 墙板 | 0 | ×16 `BBB/BPB/BBB`（任意石砖、钢板） | 档案馆墙、屋顶、楼梯整级 |
 | 9 `panel_lit` | 光缝墙板 | 8 | ×8 `PPP/gPg/PPP`（墙板、荧石粉） | 壁柱 |
 | 10 `panel_dark` | 深色墙裙 | 4 | ×8 `PPP/PcP/PPP`（墙板、煤粉） | 墙脚一圈 |
@@ -102,61 +119,80 @@
 
 **补给口 `fluxecho:supply_port`**（铁质、硬度 5、抗性 10、镐 1；朝向存在 TE 里，方块 meta 保持 0）：×1 `PCP/PHP/PPP`（钢板、通量结晶、漏斗）。
 
-**`PartRecipes`：一张表同时管合成和建造成本**。每条：部件、产量、1–3 行图案、键 → 原料 spec（`ore:<名>`、`item:<mod>:<名>[@meta]`（32767 = 任意）、`part:<码>`；解析同 `ResearchTree.Cost.parse`，不带数量）。`cost(part)` 把 `part:` 递归展开成原料，单位 `UNIT = 65536` = 1/65536 件；每层都必须整除（类加载时检查，错了直接抛）。例：地砖 = `{ore:stone: 32768, ore:plateSteel: 4096}`（半块石头 + 1/16 钢板）。`partOnly`：晶核座（要 GT HV 外壳，表里写不出来，`FrameModule` 手写配方）、书库核心、补给口——建造时只收成品。构架部件也从这张表注册（0.10.0 起**回响书格 ×32**，石砖接受任意变种）。
+**回收箱 `fluxecho:recycle_bin`**（0.10.1，`BlockRecycleBin`，TE `fluxecho:recycle_bin`；铁质、硬度 5、抗性 10、镐 1；朝向存在 TE 里（`Facing`，描述包 `F`），方块 meta 保持 0，任何 meta 都算建好）：×1 `PCP/PBP/PPP`（钢板 ×7、`item:minecraft:chest`、通量结晶）。`onBlockAdded/breakBlock` 同样守 `QUIET`。
+
+**`PartRecipes`：一张表同时管合成和建造成本**。每条：部件、产量、1–3 行图案、键 → 原料 spec（`ore:<名>`、`item:<mod>:<名>[@meta]`（32767 = 任意）、`part:<码>`；解析同 `ResearchTree.Cost.parse`，不带数量）。`cost(part)` 把 `part:` 递归展开成原料，单位 `UNIT = 65536` = 1/65536 件；每层都必须整除（类加载时检查，错了直接抛）。例：地砖 = `{ore:stone: 32768, ore:plateSteel: 4096}`（半块石头 + 1/16 钢板）。`partOnly`：晶核座（要 GT HV 外壳，表里写不出来，`FrameModule` 手写配方）、书库核心、补给口、回收箱（0.10.1）——建造时只收成品。构架部件也从这张表注册（0.10.0 起**回响书格 ×32**，石砖接受任意变种）。
 - **GT 工具字母的坑**（`GtPattern`）：`GTModHandler.addCraftingRecipe` 把图案里的小写 `bcdfhijkmprswx` 当成合成工具（c 撬棍、r 软锤……），把工具追加到键后面，Forge 的有序配方保留同一个键的最后一个值——原料被工具顶掉，GT 还报成功。`GtPattern.safe` 把**所有**小写键换成配方里没用过的大写字母（行和键一起改、键序不变），`PartBlocks.register` 在交给 `EchoRecipes.shaped` 之前调用。`GtPatternTest` 守着。
-- 三个方块和构架的 `onBlockAdded/breakBlock` 只在 `!Builder.QUIET` 时调 `FrameEvents.changed`（构架从 `onBlockPlacedBy` 挪到了 `onBlockAdded`，投影仪和建造放的也算）；建造期间由引擎每阶段结束统一通知一次。
-- 贴图：`tools/CampusTextures.java` 生成 `blocks/deck/<n>`（有光的加 `_glow`，8 帧 frametime 3）、`lit_side`、`blocks/fitting/<n>` + `_top` + `_glow`、`blocks/frame/shelf_niche|shelf_board|book_spine`、`blocks/supply_port/{top,side,front}`。调色板锁定：地砖 `#3E4C58`、地缝钢 `#101C28`、光 `#C8F8FF` 在 `#1C3446` 上、深色 `#2C3842`、墙板 `#45525E`、钢 `#2C5470`、青 `#4FE3FF`、书库紫 `#8A5CFF`。
+- 地板、配件、补给口、回收箱和构架的 `onBlockAdded/breakBlock` 只在 `!Builder.QUIET` 时调 `FrameEvents.changed`（构架从 `onBlockPlacedBy` 挪到了 `onBlockAdded`，投影仪和建造放的也算）；建造期间由引擎每阶段结束统一通知一次。
+- 贴图：`tools/CampusTextures.java` 生成 `blocks/deck/<n>`（有光的加 `_glow`，8 帧 frametime 3）、`lit_side`、`blocks/fitting/<n>` + `_top` + `_glow`、`blocks/frame/shelf_niche|shelf_board|book_spine`、`blocks/supply_port/{top,side,front}`、`blocks/recycle_bin/{top,side,front}`（0.10.1，静态：补给口那种深蓝钢箱体，正面是紫到青的进料口）。调色板锁定：地砖 `#3E4C58`、地缝钢 `#101C28`、光 `#C8F8FF` 在 `#1C3446` 上、深色 `#2C3842`、墙板 `#45525E`、钢 `#2C5470`、青 `#4FE3FF`、书库紫 `#8A5CFF`。
 
 ## 4. 建造计划（`BuildPlan`）
 
 计划是纯数据：一项任务按顺序放的每一格（世界坐标）+ 开工前要清的柱子，只由任务的输入算出（`CampusPlan`、中心、正面、模块的场地、establish/forum 的 keep-out 盒），**不读配置、不读世界**。任务只存计划键和 keep-out，计划每次重算（`BuildJob.planFor`），客户端用同样的输入算出同一份投影。
 
-- **Step**：`x, y, z, part, stage, group, kind`；`HARD`（结构检查会看的格子）、`SOFT`（地砖、光井、塔柱、补给口、雨棚）、`AIR`（门洞、光井顶，必须变空气）。`group` = 书架单元的序号（15 格：3 底座 + 9 书格 + 3 顶檐，连续排列，一起发射一起落地），其余 `NO_GROUP`。**Column**：`x, z, yFrom, yTo, grade`，从上往下清自然方块，`grade` 的柱子清完再填坑。一个阶段内：先按层从下往上，再从中枢往外（`RIPPLE`），沿任务轴的镜像格相邻。不会有重复格（测试）。
-- **任务键**：`establish`、`forum`、`module:<模块>@<场地>`（`moduleKey`，如 `module:library@4`）；修复是 `repair:establish`、`repair:<场地>`，计划键是被修的那个。
-- **establish**（`E_CLEAR, E_CORE, E_FORM, E_FLOOR, E_FIXTURE`）：CLEAR = 底座上方的柱子（从 Y0+1，控制器那一柱只清它上面）+ `gradeArea()` 的平整柱（Y0+1 到 Y0+`CLEAR_UP` 24，`grade`；引擎再按 `buildClearHeight` 截短）；CORE = 相位 I 除控制器外的每一格（控制台座先放，再导能辐线由内向外、底座按八角距离、肋柱/导能柱/晶核座/环段从下往上，每层从正前方顺时针）；FORM 没有步骤（等中枢成型）；FLOOR = `establishFloor()` 由内向外，光井是 Y0 空气 + Y0−1 WELL；FIXTURE = 四根塔柱（两节构架支柱 + 一节导能柱，Y0+1 到 Y0+3）再补给口（Y0+1）。
-- **forum**：同上但没有中枢本体（给 0.9.2 的中枢）。
-- **keep-out**：`moduleKeepOut(centre)` = 模块地基中心 ±`MODULE_KEEP_OUT`(7)（13×13 地基外扩一格）。盒子里的平整柱、地砖（含光井）、塔柱、补给口都去掉；底座柱和中枢本体从不去掉（所以放核心要拒绝压在模块上，§8）。任务把盒子存成 `Ko` 并同步，客户端必须用同一份，否则投影和服务端不一致。
-- **archive**（`M_CLEAR … M_COMMISSION` 共 9 段）：控制器在场地轴上、前排径向 24、Y0+`CTRL_Y`(2)，朝向中枢（场地轴取反，`archiveController` 返回 `{x, y, z, facing}`），每格用 `Blueprint.world` 摆，所以 HARD 格正好是结构检查看的格子（测试 4 个朝向 × 3 个场地）。CLEAR = 占地外扩 `ARCHIVE_MARGIN`(1) 的盒子，Y0+1 到 Y0+`HEIGHT`+`ARCHIVE_HEADROOM`(=Y0+18)，**不按配置截短**（山不能留在房子里）；FLOOR = `siteFloor` + 室内软地面（地砖，轴线上 z1–z28 偶数格 LIT 脊线）；SHELL = y0 的模块地基、y1–y5 外墙（墙板、壁柱、窗格、墙裙、门间立柱、门楣）和所有门洞空气格；DECK = y6 一层（回廊楼板、光边、平台、墙的 y6 带）、栏杆、两座旋转楼梯；UPPER = y7–y11 外墙；ROOF = y12–y15；FIT = 书架立柱，再按 `LibraryUnits.UNITS` 顺序每个书架一组 15 格，再全息底座、讲台、阅读台；DECOR = 门口雨棚（`ArchiveShape.decor()`，14 格悬浮环段）；COMMISSION = 控制器（`LIBRARY_CORE`），最后一步。
-- **规模**（示例种子；地面砖数随种子差几块）：establish 1464 步（CORE 134、FLOOR 1317、FIXTURE 13）、13677 根柱子；forum 1330 步；档案馆 6237 步（FLOOR 1120、SHELL 744、DECK 808、UPPER 600、ROOF 1119、FIT 1831、DECOR 14、COMMISSION 1）、1073 根柱子。
-- **版本**：`BuildJob.V = 1`。**改了 `BuildPlan`、`CampusPlan` 或模块形状里任何会改变任务放什么的东西，就把 V 加一**：旧任务读进来时进度位集作废、飞行中的格子按记下的部件退款、已过清场阶段的不再清场（`afterLoad`）。
+- **Step**：`x, y, z, part, stage, group, kind`；`HARD`（结构检查会看的格子）、`SOFT`（地砖、光井、塔柱、补给口、回收箱、雨棚）、`AIR`（档案馆的门洞，必须变空气；0.10.0 的光井顶在 0.10.1 去掉了）。`group` = 书架单元的序号（15 格：3 底座 + 9 书格 + 3 顶檐，连续排列，一起发射一起落地），其余 `NO_GROUP`。**Column**：`x, z, yFrom, yTo, grade`，从上往下清（清什么由 §5 的规则定），`grade` 的柱子清完再把 Y0 格换成草、往下填坑（§5 平整）。一个阶段内：先按层从下往上，再从中枢往外（`RIPPLE`），沿任务轴的镜像格相邻。不会有重复格（测试）。
+- **任务键**：`establish`、`forum`、`module:<模块>@<场地>`（`moduleKey`，如 `module:library@4`）；修复是 `repair:establish`、`repair:<场地>`，计划键是被修的那个；整修园区是 `refresh`（`BuildJob.REFRESH`，0.10.1），计划键 `forum`（§7）。
+- **establish**（`E_CLEAR, E_CORE, E_FORM, E_FLOOR, E_FIXTURE`）：CLEAR = 底座上方的柱子（从 Y0+1，控制器那一柱只清它上面）+ `gradeArea()` 的平整柱（Y0+1 到 Y0+`CLEAR_UP` 24，`grade`；引擎再按 `buildClearHeight` 截短）；CORE = 相位 I 除控制器外的每一格（控制台座先放，再导能辐线由内向外、底座按八角距离、肋柱/导能柱/晶核座/环段从下往上，每层从正前方顺时针）；FORM 没有步骤（等中枢成型）；FLOOR = `establishFloor()` 由内向外，全在 Y0 一层（光井的 WELL 也在 Y0，0.10.1）；FIXTURE = 四根塔柱（两节构架支柱 + 一节导能柱，Y0+1 到 Y0+3），再补给口和它旁边的回收箱（都在 Y0+1，0.10.1 起 14 步）。
+- **forum**：同上但没有中枢本体（给 0.9.2 的中枢；整修园区也用它）。
+- **keep-out**：`moduleKeepOut(centre)` = 模块地基中心 ±`MODULE_KEEP_OUT`(7)（13×13 地基外扩一格）。盒子里的平整柱、地砖（含光井）、塔柱、补给口、回收箱都去掉；底座柱和中枢本体从不去掉（所以放核心要拒绝压在模块上，§8）。任务把盒子存成 `Ko` 并同步，客户端必须用同一份，否则投影和服务端不一致。
+- **archive**（`M_CLEAR … M_COMMISSION` 共 9 段）：控制器在场地轴上、前排径向 24、Y0+`CTRL_Y`(2)，朝向中枢（场地轴取反，`archiveController` 返回 `{x, y, z, facing}`），每格用 `Blueprint.world` 摆，所以 HARD 格正好是结构检查看的格子（测试 4 个朝向 × 3 个场地）。CLEAR = 占地外扩 `ARCHIVE_MARGIN`(1) 的盒子，Y0+1 到 Y0+`HEIGHT`+`ARCHIVE_HEADROOM`(=Y0+18)，**不按配置截短**（山不能留在房子里）；0.10.1 起这些柱子也 `grade`：没铺砖的 Y0 格换成草、下面填坑，和园区圆盘一样；FLOOR = `siteFloor` + 室内软地面（地砖，轴线上 z1–z28 偶数格 LIT 脊线）；SHELL = y0 的模块地基、y1–y5 外墙（墙板、壁柱、窗格、墙裙、门间立柱、门楣）和所有门洞空气格；DECK = y6 一层（回廊楼板、光边、平台、墙的 y6 带）、栏杆、两座旋转楼梯；UPPER = y7–y11 外墙；ROOF = y12–y15；FIT = 书架立柱，再按 `LibraryUnits.UNITS` 顺序每个书架一组 15 格，再全息底座、讲台、阅读台；DECOR = 门口雨棚（`ArchiveShape.decor()`，14 格悬浮环段）；COMMISSION = 控制器（`LIBRARY_CORE`），最后一步。
+- **规模**（示例种子，`BuildPlanTest` 的朝北中枢；地面砖数随种子差几块）：establish 1411 步（CORE 134、FLOOR 1263、FIXTURE 14）、13677 根柱子；forum 1277 步、13580 根柱子；档案馆 6237 步（FLOOR 1120、SHELL 744、DECK 808、UPPER 600、ROOF 1119、FIT 1831、DECOR 14、COMMISSION 1）、1073 根柱子。0.10.0 是 establish 1464（FLOOR 1317：54 个光井格各两步）、FIXTURE 13、forum 1330。
+- **版本**：`BuildJob.V = 2`（0.10.1：光井齐平、回收箱、档案馆的清理盒也平整；0.10.0 是 1）。**改了 `BuildPlan`、`CampusPlan` 或模块形状里任何会改变任务放什么的东西，就把 V 加一**：旧任务读进来时进度位集作废、飞行中的格子按记下的部件退款、已过清场阶段的不再清场（`afterLoad`）。
 
 ## 5. 服务端引擎
 
-**入口和 tick**（`TileNexus.serverTick` 第一件事，成型与否都跑）：`if (nexusEnabled && campusEnabled) campus.tick()`。`Campus.tick`：出过异常就不再跑（记一次日志、清 `QUIET`，直到中枢重新加载）；首 tick `afterLoad`（登记 `CampusRegistry`、`dropStale(2·GRADE_R)`、旧版本任务重开、半途的任务重新勘测）；legacy 只发提示；active：收投入槽 → 放回原处的园区到了 `Rc` 那一 tick 就 `afterResume`（§8）→ 每 20 tick `watchStructures`（记中枢/模块散架的时间，模块没了就忘掉场地）→ 每 100 tick `autoJobs` → 没有当前任务就取队首 → `builder.tick(job)` → 结束、没有飞行中的格子、过了 `DONE_LINGER`(100 tick，让客户端看到完成和完成光环) 就换下一个 → `flush`。
+**入口和 tick**（`TileNexus.serverTick` 第一件事，成型与否都跑）：`if (nexusEnabled && campusEnabled) campus.tick()`。`Campus.tick`：出过异常就不再跑（记一次日志、清 `QUIET`，直到中枢重新加载）；首 tick `afterLoad`（登记 `CampusRegistry`、`dropStale(2·GRADE_R)`、旧版本任务重开、半途的任务重新勘测）；每 100 tick 的第 50 tick（legacy 也做）`takeOverflow`（§6 暂存）；legacy 只发提示；active：收投入槽 → 放回原处的园区到了 `Rc` 那一 tick 就 `afterResume`（§8）→ 每 20 tick `watchStructures`（记中枢/模块散架的时间，模块没了就忘掉场地）→ 每 100 tick `autoJobs`（先 `offerRefresh`，§7）和 `watchModules`（`modules()` 的哈希变了就重发描述包，§10）→ 没有当前任务就取队首 → `builder.tick(job)` → 结束、没有飞行中的格子、过了 `DONE_LINGER`(100 tick，让客户端看到完成和完成光环) 就换下一个 → `flush`。
 
-**`Builder.tick`**：先落地到期的飞行；然后按状态：SURVEY 勘测；WAITING 直接转 BUILDING；BUILDING 补预算、跑一遍、判断卡住；PAUSED 补预算、`tryResume`。有耗电就 `ServerEvents.addTeamTick`。
-- **勘测**：每 tick `SURVEY_UNITS` = 4096 单位，完整检查一格 8，已完成/已跳过/飞行中的步骤和清场柱里的空格 1（约 512 次完整检查）；只用 `blockExists`，**不加载不生成区块**；已经对的格子直接记 done，统计要清的方块（`natural`：判 CLEAR 的步骤格 + 清场柱里 CLEAR/REPLACE 的格子，开始前在「建造」页显示为「将清理」）、受阻格子、未加载格子和平整要填的格子；完成后 `BuildState.surveyed` → PROJECTING（记 `projectedAt`）或 WAITING/PAUSED。
-- **清场**（阶段 0）：按顺序逐柱从上往下，每 tick `CLEAR_UNITS` 4096（同上计价）；每拆一格花一份 `buildClearPerTick` 预算和 `buildEuPerClear` EU；平整柱清完再填坑（下面）。判定用 `forClear`（`Builder.clearVerdict`）：BLOCKED 的格子只标红、留在原地，**清场不因此暂停**；模块任务的 REPLACE（散落的我们的方块）拆掉后按部件记进账本，不进收获。
-- **放置**：在当前阶段第一个未完成的步骤之后 `WINDOW`=256 步里找；已经对的格子免费记 done（每 tick ≤ 64）；BLOCKED 的 SOFT 格或开着「跳过受阻」就跳过，否则标红并让任务卡住；其余在飞行数 < `MAX_FLIGHTS`(256) 且预算够时发射。书架单元整组：未完成的格子一起付钱一起发射，飞行数 + 组大小 ≤ 256 且 `BuildPace.canGroup` 才发。
-- **发射**（`launch`，全有或全无）：账本逐格扣（先成品后原料，§6），EU 逐格算（`Builder.stepEu`）：每格 `buildEuPerBlock`，这一格要先拆东西时再加 `buildEuPerClear`（书架整组发射时只有要拆的那几格加收），AIR/草/泥土的格子只算 `buildEuPerClear`；从队伍无线电网一次扣（`GTWirelessBackend.INSTANCE.add(team, −eu)`），扣不到就全部退款（缺电）。飞行时间 `BuildPace.flightTicks` = `clamp(12 + 距离/6, 14, 30)` tick（距离从晶核 Y0+4.5 算）。`Flight` 记下步骤、落地 tick、是否用了成品、是否扣过账、部件和成本倍率，退款按自己记的来。establish/forum 的补给口：账本里没有补给口时**免费送一次**（同一位置只送一次，`CampusRegistry.portGifted`；修复从不送）。
-- **落地**（`landOne`）：再探一次。已经对了 → 退款记 done；BLOCKED → 退款（SOFT/跳过受阻时跳过）；格子里有生物（放的是实心方块）→ 等 10 tick × 3 次，之后地砖让人（跳过），结构格每 40 tick 再等、最多再 30 次（约 1 分钟）后跳过（成型检查会再试）；要拆的是矿（含矿辞的矿）或原木而收获放不下 → 每 20 tick 再试并通知成员一次（`spoils_full`）。然后设 `QUIET`：先拆（假玩家发 `BlockEvent.BreakEvent`，被取消 = 受保护；拆的是我们自己的错部件 → 账本 `addPart` 1:1；矿和原木的掉落在拆之前算好放进收获），再放（先 `setBlock`，再用 `BlockSnapshot` + `ForgeEventFactory.onPlayerBlockPlace` 发放置事件，被取消就 `restoringBlockSnapshots` 还原）。受保护：结构格让任务暂停 PROTECTED，SOFT 格跳过。放下的是模块核心 → `commission`（`place(owner, name, facing)`、`FrameEvents.changed`、`recordSite`）；是补给口 → `TileSupplyPort.linkAt`。
-- **阶段结束**：在锚点（中枢控制器或模块控制器）`FrameEvents.changed` 一次 + `nexus.frameChanged()`。
+**`Builder.tick`**：先落地到期的飞行；然后按状态：SURVEY 勘测；WAITING 直接转 BUILDING；BUILDING 补预算、跑一遍、判断卡住；PAUSED 补预算、`tryResume`。有耗电就 `ServerEvents.addTeamTick`。`fast = campus.instant(job)`：立即模式（`/fluxecho build finish`，§7）下补预算换成 `pace.flood(INSTANT_CELLS)`，勘测和清场的单位 ×`INSTANT_WORK`(8)，窗口、飞行上限、每 tick 免费记 done 都是 `INSTANT_CELLS`(2048)，飞行 1 tick，发射和清除特效每 tick 最多 `INSTANT_FX`(32) 个，暂停的恢复每 tick 都试、不等 `RESUME_AFTER`。
+- **勘测**：每 tick `SURVEY_UNITS` = 4096 单位，完整检查一格 8，已完成/已跳过/飞行中的步骤和清场柱里的空格 1（约 512 次完整检查）；只用 `blockExists`，**不加载不生成区块**；已经对的格子直接记 done，统计要拆的格子（`natural`：判 CLEAR/REPLACE 的步骤格 + 清场柱里 CLEAR/REPLACE 的格子 + 平整要拆的格子，开始前在「建造」页显示为「将清理」）、其中的机器和箱子（`Probe.te`：计数 `machines`，前 `MAX_BLOCKED` 64 格记进 `machineCells`，拆掉一格就删掉它——投影的黄框和「将拆除 N 个机器/箱子」）、受阻格子、未加载格子；平整柱用 `surveyGrade`（和引擎同一个 `TerrainRule.gradeColumn`，按需探测，过了地壳不再看）数出要填/要换的格子（`toFill`），Y0 格受阻就标红，别的园区里的柱子不看；完成后 `BuildState.surveyed` → PROJECTING（记 `projectedAt`）或 WAITING/PAUSED。
+- **清场**（阶段 0）：按顺序逐柱从上往下，每 tick `CLEAR_UNITS` 4096（同上计价）；每拆一格花一份 `buildClearPerTick` 预算和 `buildEuPerClear` EU（免费任务不花 EU，`payEu`）；平整柱清到 Y0+1，再从 Y0 往下平整（下面）。判定用 `Builder.clearVerdict` = `TerrainRule.forClear(p, module, buildClearAll)`：BLOCKED 的格子只标红、留在原地，**清场不因此暂停**；CLEAR/REPLACE 交给 `removeCell`（下面的拆除），拆不掉（受保护、出错）也只标红。要进回收箱的拆除在回收箱满时等（`waitsForRoom`：`Removal.needsRoom` 且 `Campus.recycleFull()`，这一 tick 停在这一格）。
+- **放置**：在当前阶段第一个未完成的步骤之后 `WINDOW`=256 步里找；已经对的格子免费记 done（每 tick ≤ 64）；BLOCKED 的 SOFT 格或开着「跳过受阻」就跳过，否则标红并让任务卡住；其余在飞行数 < `MAX_FLIGHTS`(256) 且预算够时发射。书架单元整组：未完成的格子一起付钱一起发射，飞行数 + 组大小 ≤ 256 且 `BuildPace.canGroup` 才发。部件在这局游戏里没有方块的步骤（回收箱方块没注册时，`Builder.placeable`）跳过、不收钱。
+- **发射**（`launch`，全有或全无）：账本逐格扣（先成品后原料，§6），EU 逐格算（`Builder.stepEu`）：每格 `buildEuPerBlock`，这一格要先拆东西时再加 `buildEuPerClear`（书架整组发射时只有要拆的那几格加收），AIR/草/泥土的格子只算 `buildEuPerClear`；从队伍无线电网一次扣（`GTWirelessBackend.INSTANCE.add(team, −eu)`），扣不到就全部退款（缺电）。**免费任务**（`Campus.free(job)`：创造模式开始的，或中枢开了 `freeBuild`）不扣账本也不扣 EU。飞行时间 `BuildPace.flightTicks` = `clamp(12 + 距离/6, 14, 30)` tick（距离从晶核 Y0+4.5 算；立即模式 1 tick）。`Flight` 记下步骤、落地 tick、是否用了成品、是否扣过账、部件和成本倍率，退款按自己记的来。establish/forum（含整修园区）的补给口和回收箱（`Builder.gift`）：账本里没有成品时**免费送一次**（同一位置只送一次，`CampusRegistry.portGifted`，两种共用一张表；修复从不送；落地成功才 `markPortGifted`）。
+- **落地**（`landOne`）：再探一次。已经对了 → 退款记 done；BLOCKED → 退款（SOFT/跳过受阻时跳过）；格子里有生物（放的是实心方块）→ 等 10 tick × 3 次，之后地砖让人（跳过，记进 `gaveWay`，最后补一遍时再放，见下面），结构格每 40 tick 再等、最多再 30 次（约 1 分钟）后跳过（成型检查会再试）；这一格要拆、拆下的东西要进回收箱而回收箱满了 → 每 `RETRY_SPOILS` 20 tick 再试（第一次通知成员 `spoils_full`，有空后重置）。然后先拆（`removeCell`，下面；拆不掉 → 受保护），再放（设 `QUIET`，先 `setBlock`，再用 `BlockSnapshot` + `ForgeEventFactory.onPlayerBlockPlace` 发放置事件，被取消就 `restoringBlockSnapshots` 还原）。受保护：结构格让任务暂停 PROTECTED，SOFT 格跳过。放下的是模块核心 → `commission`（`place(owner, name, facing)`、`FrameEvents.changed`、`recordSite`）；是补给口 → `TileSupplyPort.linkAt`；是回收箱 → `NexusLink.linkTo`（链接这座中枢、正面朝主轴）。
+- **阶段结束**：在锚点（中枢控制器或模块控制器）`FrameEvents.changed` 一次 + `nexus.frameChanged()`。清场阶段做完时 `campus.graded(job)`（§7 整修园区的版本记录）。
 - **等成型**（`waitForm`：establish 的 E_FORM，模块任务最后一段之后）：第一次进来先 `recommission`——**已经站在控制器格上的模块核心**（手放的、中枢没加载时放的）没被 commission 过，可能朝向不对，转成朝向中枢（有玩家主人就保留，没有就给中枢主人），再 `frameChanged`；`FORM_WAIT` 200 tick 没成型就 `recheck`（done 的 HARD 格现在不对的重做，跳过的格子现在能放的重试）并回到那一段；`FORM_TRIES` 3 轮后暂停 INCOMPLETE。成型 → 下一段或完成（通知成员 `done`）。
-- **平整填坑**：只填露天的坑——Y0+1 到清场高度之间没有挡路的方块（自己的步骤不算；勘测时将被清掉的不算），且高度图 ≤ 清场高度 + 1；坑 = 从 Y0 往下连续的空格（空气或可替换、不是岩浆，水算），最深 `buildFillDepth`；Y0 本身是实地就不填（地下室、洞穴、屋顶下的房间都不动）。Y0 放草（上面是实心就放泥土），下面放泥土；别的园区里、受保护盒子里不填；格子里有生物等 30 tick 后留着不填。只花 EU（`buildEuPerClear`），计 `toFill`/`filled`。
+- **平整**（0.10.1 重写；`grade` 的柱子在清完 Y0+1 以上之后，别的园区里的柱子不平整）：从 Y0 往下到 `Y0 − buildFillDepth`（默认 4，共 depth+1 格）逐格 `gradeCell`，规则同 `TerrainRule.gradeColumn`：Y0 格（地面）用 `forFloor`，下面用 `forFill`；计划自己的格子（铺砖的 Y0 格等）跳过、但不结束这一列；第一个 BLOCKED 结束这一列（地壳，或必须留着的地面——地面受阻标红）。PLACE 直接放；CLEAR/REPLACE 先 `removeCell` 再放；ALREADY 不动。地面放草，上面是留下来的实心方块（`getMaterial().isSolid()`）时放泥土（`floorPart`，`gradeProbe` 也按这个判目标），下面放泥土。每格一份清场预算和一份 `buildEuPerClear`（拆 + 放只算一次）；格子里有生物等 30 tick（`DEFER × DEFERS`）后先留着这一格（`leftOpen`，记进 `touchUp`，最后补一遍时再平整）、接着往下；拆或放被拒绝 → 这一列停（地面标红）。计 `toFill`/`filled`（拆掉的也计 `cleared`）。0.10.0 的规则（只填露天的坑、最深 2、Y0 是实地就不动、Y0 那一层的树叶原木雪块留着、`BuildJob` 的 `fillTo`/`Ct`）去掉了。
+- **最后补一遍**（`Builder.touchUp`，0.10.1）：最后一段之后、任务结束（模块是等成型）之前，把有生物站着而先留下的格子补上：让过路的 SOFT 步骤（`gaveWay`）格子空了就 `retryGaveWay` 取消跳过、退回它所在的阶段重新放（中间的阶段一下就过）；先留着的平整格（`touchUp`，`openCells()` 从低到高）格子空了就 `gradeCell`；还有生物站着就等（任务不算卡住）。从 `touchUpSince` 起最多 `TOUCH_UP_WAIT` = `DEFER_LONG × LONG_DEFERS` = 1200 tick（一分钟，和结构格等人一样久），到时 `endTouchUp` 放弃，剩下的就留着。
 
-**地形判定**（`Terrain` 填 `Probe`，`TerrainRule` 判）：
-- `forBuild(p, module)`（步骤自己的格子）：已是目标 → ALREADY；空气/可替换/流体（不是岩浆）→ PLACE；岩浆、不可破坏、别的园区、我们的方块但在别的结构里 → BLOCKED；GT 矿 → CLEAR；**模块任务**遇到散落的补给口 → REPLACE；其他有 TE 的 → BLOCKED；我们自己的错部件 → REPLACE；玩家建的 → BLOCKED；自然 → CLEAR；其余 BLOCKED。`forClear(p, module)`（清场柱，格子最后必须是空的）：空气或非流体的可替换 → ALREADY；不可破坏、别的园区、别的结构里的我们的方块 → BLOCKED；GT 矿 → CLEAR；**模块任务**遇到散落的我们的方块（构架、地板、配件、补给口）→ REPLACE（拆掉、按部件记账）；TE、我们的方块、玩家建的、岩浆 → BLOCKED；自然（含水）→ CLEAR；其余 BLOCKED。`module` = 任务建或修的是模块（`BuildJob.module() != null`）；中枢自己的 establish/forum 和它们的修复从不拆我们的方块（单参数版 = `false`）。AIR 步骤（`Builder.verdict`）：空气 ALREADY，可替换 CLEAR，其余照 `forBuild`、PLACE 改 CLEAR。
-- **自然**（`TerrainRule.natural`）：没 TE、不在 `buildBlocked` 名单上，且（`buildClearable` 名单强制算；或 Forge `isWood`/`isLeaves`/`isReplaceable`、`IPlantable`/`IShearable`、`isReplaceableOreGen(…, stone)`、材质 ground/grass/sand/clay/snow/craftedSnow/ice/packedIce/leaves/plants/vine/gourd/cactus/coral）。**其余岩石**（材质 rock）只在是整块不透明立方体（`isOpaqueCube && renderAsNormalBlock`）、不算玩家建的、**且确知是世界生成的**时才算：原版 `stone`/`netherrack`/`end_stone`/meta 0 的 `sandstone`（`naturalRock`）、平顶山生物群系里的 `hardened_clay`/`stained_hardened_clay`（`mesaClay`：`BiomeGenMesa` 或 BiomeDictionary 的 MESA）、GT 的原始花岗岩/大理石/玄武岩（`rawGtStone`）、矿辞里有 `ore` 开头名字的方块（`Terrain.dictOre`，按方块和 meta 缓存）。石英块、雕纹/平滑砂岩、黑曜石、GT 混凝土、平顶山外的陶瓦、别的模组的石头都可能是玩家的，**一律 BLOCKED**：投影画红框；在步骤格上就照常受阻/跳过，在清场柱里只是留着、不暂停。名单写 `modid:name` 或 `modid:*`。
-- **玩家建的**：原版圆石、苔石、石砖、砖块、木板、耕地、干草块、南瓜灯；注册名含 `brick`/`smooth`/`cobble`/`planks`（GT 原始石头除外）；GT 的 `BlockStonesAbstract` 系方块（花岗岩、大理石、玄武岩、混凝土）除原始石头外都算；`buildBlocked`；再加 `builtByHand`：手放的原版树叶（meta 第 4 位）、耕地上的作物、一组相连原木（含斜角，最多 256 根）有一根挨着加工过的东西（木板、玻璃、门、火把、箱子、铁……；结果记 200 tick，静态表弱引用着世界，`Terrain.serverStopped()` 清空）。手放的泥土、沙子、原版石头分不出来，照样当地形。
+**地形判定**（`Terrain` 填 `Probe`，`TerrainRule` 判；`Builder.verdict`/`clearVerdict`/`gradeVerdict` 按 `Config.buildClearAll` 选规则）：
+- **整片清空**（`all = true`，0.10.1 默认，用户要的「自动清空所有的方块」）：`Probe.guarded()` = 不可破坏、别的园区（`otherNexusArea`）、别的结构里的我们的方块（`oursInOtherStructure`）、保护盒（`protectedArea`）、`buildBlocked`（`listed`）。
+  - `forBuild(p, module, true)`（步骤自己的格子）：已是目标 → ALREADY；空气/可替换/任何流体（岩浆也是，方块直接占它的位置）→ PLACE；guarded → BLOCKED；我们的方块（`ours`/`port`）→ REPLACE；其余（天然与否、带 TE 的）→ CLEAR。
+  - `forClear(p, module, true)`（清场柱，格子最后必须是空的）：空气 → ALREADY；guarded → BLOCKED；我们的方块：`loose` → REPLACE，否则（成型结构的部件）BLOCKED；其余 → CLEAR（高草、薄雪、流体——岩浆也清成空气——和 TE 都算）。这条规则下 `module` 不起作用：**每项任务**都把散落的我们的方块按部件记账。
+  - `forFloor(p, module, all)`（平整柱的 Y0 格，计划不铺的）：已是目标 → ALREADY；guarded → BLOCKED；空气、可替换或流体 → PLACE（岩浆只在 `all` 时）；其余照 `forClear(p, module, all)`（CLEAR/REPLACE 拆掉再放草，ALREADY 当 PLACE，BLOCKED 留着）——所以谨慎规则下只换天然的地面。
+  - `forFill(p, all)`（Y0 以下）：guarded → BLOCKED；空气、可替换、流体 → PLACE（岩浆只在 `all` 时，否则 BLOCKED）；`all` 时我们的方块（旧园区埋下的，比如 0.10.0 凹下去的光井底）→ REPLACE；原木/树叶/植物（`wood`/`leaves`/`plant`）→ CLEAR（`all` 时带 TE 的 BLOCKED；谨慎规则下要天然且不是玩家建的）；其余（地面、石头、箱子）→ BLOCKED，就是地壳。
+  - `gradeColumn(cells, module, all)`（数组版，和按需探测的 `IntFunction` 版）：`cells[0]` 是 Y0；null = 计划自己的格子（结果也是 null，不结束这一列）；第一个 BLOCKED 之后全是 null、不再探测。引擎（`gradeCell`）和勘测（`surveyGrade`）用的是同一条规则。
+  - AIR 步骤（`Builder.verdict`）：空气 ALREADY，可替换且不是岩浆 → CLEAR，其余照 `forBuild(p, module, all)`、PLACE 改 CLEAR。
+- **谨慎规则**（`all = false`，0.10.0 原样，测试保留）：`forBuild(p, module)`（步骤自己的格子）：已是目标 → ALREADY；空气/可替换/流体（不是岩浆）→ PLACE；岩浆、不可破坏、别的园区、我们的方块但在别的结构里 → BLOCKED；GT 矿 → CLEAR；**模块任务**遇到散落的补给口 → REPLACE；其他有 TE 的 → BLOCKED；我们自己的错部件 → REPLACE；玩家建的 → BLOCKED；自然 → CLEAR；其余 BLOCKED。`forClear(p, module)`（清场柱）：空气或非流体的可替换 → ALREADY；不可破坏、别的园区、别的结构里的我们的方块 → BLOCKED；GT 矿 → CLEAR；**模块任务**遇到散落的我们的方块（构架、地板、配件、补给口、回收箱）→ REPLACE（拆掉、按部件记账）；TE、我们的方块、玩家建的、岩浆 → BLOCKED；自然（含水）→ CLEAR；其余 BLOCKED。`module` = 任务建或修的是模块（`BuildJob.module() != null`）；中枢自己的 establish/forum 和它们的修复不拆我们的方块。谨慎规则下带 TE 的方块只拆两种：GT 矿（含 Bartworks 的 TE 矿），以及模块任务拆散落的补给口/回收箱。
+- **自然**（`TerrainRule.natural`，只有谨慎规则用）：没 TE、不在 `buildBlocked` 名单上，且（`buildClearable` 名单强制算；或 Forge `isWood`/`isLeaves`/`isReplaceable`、`IPlantable`/`IShearable`、`isReplaceableOreGen(…, stone)`、材质 ground/grass/sand/clay/snow/craftedSnow/ice/packedIce/leaves/plants/vine/gourd/cactus/coral）。**其余岩石**（材质 rock）只在是整块不透明立方体（`isOpaqueCube && renderAsNormalBlock`）、不算玩家建的、**且确知是世界生成的**时才算：原版 `stone`/`netherrack`/`end_stone`/meta 0 的 `sandstone`（`naturalRock`）、平顶山生物群系里的 `hardened_clay`/`stained_hardened_clay`（`mesaClay`：`BiomeGenMesa` 或 BiomeDictionary 的 MESA）、GT 的原始花岗岩/大理石/玄武岩（`rawGtStone`）、矿辞里有 `ore` 开头名字的方块（`Terrain.dictOre`，按方块和 meta 缓存）。石英块、雕纹/平滑砂岩、黑曜石、GT 混凝土、平顶山外的陶瓦、别的模组的石头都可能是玩家的，**一律 BLOCKED**：投影画红框；在步骤格上就照常受阻/跳过，在清场柱里只是留着、不暂停。名单写 `modid:name` 或 `modid:*`。
+- **玩家建的**（`crafted`，只有谨慎规则用）：原版圆石、苔石、石砖、砖块、木板、耕地、干草块、南瓜灯；注册名含 `brick`/`smooth`/`cobble`/`planks`（GT 原始石头除外）；GT 的 `BlockStonesAbstract` 系方块（花岗岩、大理石、玄武岩、混凝土）除原始石头外都算；`buildBlocked`；再加 `builtByHand`：手放的原版树叶（meta 第 4 位）、耕地上的作物、一组相连原木（含斜角，最多 256 根）有一根挨着加工过的东西（木板、玻璃、门、火把、箱子、铁……；结果记 200 tick，静态表弱引用着世界，`Terrain.serverStopped()` 清空）。`buildClearAll` 开着时 `Terrain.probe` 不做 `builtByHand`（原木的搜索省掉）。手放的泥土、沙子、原版石头分不出来，照样当地形。
 - **GT 矿**按类名反射找一次：`gregtech.common.blocks.BlockOresAbstract`、`bartworks.system.material.BWTileEntityMetaGeneratedOre`（TE）、`gtPlusPlus.core.block.base.BlockBaseOre`；GT 石头 `gregtech.common.blocks.BlockStonesAbstract` 只用来标出加工过的变种。**原始石头按类名精确判**：类正好是 `TerrainRule.GT_GRANITES`（`gregtech.common.blocks.BlockGranites`）或 `GT_STONES`（`…BlockStones`）且 meta%8==0（混凝土 `BlockConcretes` 同一个父类，永远算建的）。
-- **我们的方块**：`ours` = 构架、地板、配件；`port` = 补给口（有 TE，`ours` 不含它）。`loose` = 是我们的（`ours` 或 `port`）、不是这一格的目标、而且不在任何已加载的**已成型**中枢或模块的 `covers()` 里（`TileMultiblock.covers`：控制器周围 ±(最大形状的最长边 + 1) 的立方体，档案馆 ±36、中枢 ±12）——比如拆了核心的 0.9.2 大厅留下的构架和书格。
-- **保护**：`oursInOtherStructure` = 我们的方块（含补给口）落在保护盒里：别的已加载多方块的 `bounds()`（自己的中枢和当前任务自己的模块除外，20 tick 刷新）+ 当前任务的 keep-out 盒（全高）。`otherNexusArea` = `CampusRegistry.ownerAt`（别的园区中心 Chebyshev ≤ `GRADE_R`）。
-- **区块**：动一个格子前 `checkChunksExist(±1)`，否则这一格算未加载（任务卡住就暂停 UNLOADED）；清场柱要整柱 ±1 都在。**带 TE 的方块只拆两种**：GT 矿（含 Bartworks 的 TE 矿），以及模块任务拆散落的补给口。
+- **我们的方块**：`ours` = 构架、地板、配件；`port` = 补给口和回收箱（有 TE，`ours` 不含它们）。`loose` = 是我们的（`ours` 或 `port`）、不是这一格的目标、而且不在任何已加载的**已成型**中枢或模块的 `covers()` 里（`TileMultiblock.covers`：控制器周围 ±(最大形状的最长边 + 1) 的立方体，档案馆 ±36、中枢 ±12）——比如拆了核心的 0.9.2 大厅留下的构架和书格。`te`（0.10.1）= 有 TE、不是 GT 矿、不是 `port`：机器、箱子、AE（书库核心也算）。
+- **其他探测事实**（0.10.1）：`protectedArea` = `Campus.protectedCell`，不管是什么方块都算——保护盒（20 tick 刷新）：（1）记在模块位上的模块的整块场地（`Campus.siteBox`，§5 keep-out；全高，加载与否；当前模块任务自己的场地除外；0.10.0 只是占地）；（2）别的已加载多方块的 `bounds()`（成型前是当前形状围着控制器的整个盒子；自己的中枢和当前任务自己的模块除外）；（3）当前任务的 keep-out 盒（全高）。`oursInOtherStructure` = (`ours`||`port`) 且 `protectedArea`。`otherNexusArea` = `CampusRegistry.ownerAt`（别的园区中心 Chebyshev ≤ `GRADE_R`）。`listed` = `buildBlocked`。`wood`/`leaves`/`plant` = Forge `isWood`/`isLeaves`、`IPlantable`/`IShearable`。`fluid` = `Terrain.isFluid`（材质是液体、`BlockLiquid` 或 `IFluidBlock`）。
+- **区块**：动一个格子前 `checkChunksExist(±1)`，否则这一格算未加载（任务卡住就暂停 UNLOADED）；清场柱要整柱 ±1 都在。
 - **假玩家**：`FakePlayerFactory.get(ws, new GameProfile(主人 UUID（没有主人用 "[FluxEcho]" 的名字 UUID）, "[FluxEcho]"))`，每次都设 `worldObj`、`dimension`（领地模组按维度查）、位置，手里清空；破坏/放置抛异常 → 当受保护处理，记一次日志。
-- **收获**：27 格（`Campus.SPOILS`），`buildKeepSpoils` 时只收矿（GT/GT++ 的矿、Bartworks 的 TE 矿、矿辞里 `ore*` 的岩石方块，`Terrain.spoils`）和原木的掉落，其余作废；放不下就等，不丢。模块任务拆掉的散落方块不进收获，按部件记账。
+
+**拆除**（`Builder.removeCell`，0.10.1；清场、平整和落地都走它）：设 `QUIET`，`DropCapture.begin(world, x, y, z)`；有假玩家时先发 `BlockEvent.BreakEvent`（被取消 = 受保护，返回 false）；然后按 `Removal.way(流体, 是 REPLACE 且 PartBlocks.code ≥ 0, 有假玩家)`：
+- `CREDIT`（散落的我们的方块）：`setBlock(air)`，账本 `addPart(code, 1)`；
+- `PLAIN`（流体，或不在服务端世界、没有假玩家时的任何方块）：`setBlock(air)`，什么都不给；
+- `HARVEST`（其余一切）：照 `ItemInWorldManager.tryHarvestBlock` 拆（`harvest`）：`onBlockHarvested` → `removedByPlayer(…, true)` → 拆掉了就 `onBlockDestroyedByPlayer` + `harvestBlock`（空手采不了的也采）。**不预先读 `getDrops`**，所以不会算两遍：GT/Bartworks 的 TE 矿按它拆时缓存的 tile 掉落，GT 机器掉自己并洒出物品栏，箱子洒出内容。之后看格子里还剩什么（`Removal.after(removed, 空了, 还是原方块, 是流体)`）：空了 → `DONE`；剩下流体且不是原方块（冰化成了水）或拆掉了但原方块还在（等着采集的）→ `CLEAR`（设成空气，不再掉东西）；其余 → `REFUSED`（拒绝，标红）。
+- finally：`DropCapture.end()` 接到的物品，加上假玩家背包里的（`handedOver`：有的模组把采集物直接塞给拆方块的玩家）→ `Campus.recycle(list)`（`buildKeepSpoils` 关掉就作废）——拆到一半失败也照收；还原 `QUIET`。抛异常 → 记一次日志（`failed`），这一格当拒绝。成功时（`showFx`）发清除特效。
+- **`DropCapture`**：静态、只在服务端线程用；`begin` 记下世界和格子，`EntityJoinWorldEvent`（`HIGHEST`）里同一世界、每轴在格子 ±`REACH`(2) 之内（`[c−2, c+3)`）的 `EntityItem` 被取消、堆叠复制进列表——但已经在区块里的不取（`caught`，看 `addedToChunk`：拆的时候加载的区块会用同一个事件交出它存着的物品实体，取消了也还留在区块里、会被再存一次，所以不能收）；经验球和别的实体不管；`end` 交出列表并关上。由 `CampusModule.init` 注册。
+- **回收**：拆下的东西进园区的 `RecycleStore`（§6），我们自己的散落方块按部件记账、不进回收箱。0.10.0 的 27 格收获（`Campus.SPOILS`、`Terrain.spoils`）删掉了。
+
+**其他**：
 - **天空、高度、间距**（放核心时查，§8）：Y0+30 ≤ 255（`HEADROOM`）、核心处 `canBlockSeeTheSky`（`buildRequireSky`）、底座不压模块、离别的园区中心 Chebyshev ≥ `buildMinSpacing`(144 = 2·64+16)。
-- **`CampusRegistry`**（主世界 mapStorage，`data/fluxecho_campus.dat`：`Campuses[{E:[dim,x,y,z,radius]}]`、`Ports` 平铺的 dim,x,y,z）：establish/铺设广场/加载时登记，拆（放置过的）核心时删；`tooClose`/`dropStale` 在核心可能站的四个格子都已加载、都没有这座中枢时删掉陈旧条目；`portGifted`/`markPortGifted`。
+- **`CampusRegistry`**（主世界 mapStorage，`data/fluxecho_campus.dat`：`Campuses[{E:[dim,x,y,z,radius]}]`、`Ports` 平铺的 dim,x,y,z）：establish/铺设广场/加载时登记，拆（放置过的）核心时删；`tooClose`/`dropStale` 在核心可能站的四个格子都已加载、都没有这座中枢时删掉陈旧条目；`portGifted`/`markPortGifted`（送过免费补给口或回收箱的格子，0.10.1 起两种共用）。
 
 **任务与队列**（`Campus`）：一次一个当前任务。
-- `autoJobs`（每 100 tick；中枢已成型且 `dockKnown()`）：容量 `min(RingSlots.open(PHASE), 7)` 减去已停靠的和在建的模块任务；对每个 `ModuleSpec`：开着（`archiveEnabled`）、中枢的队伍并集有研究、还没有这种模块（停靠的、记在场地上的、在建的）、没在冷却（取消后 `DECLINE_TICKS` 24000）、有空场地（按偏好顺序，没记录模块、没任务、占地外扩 1 不碰 keep-out、没有加载的模块中心在里面）→ 入队，通知 `unlocked`。
-- `admit`：修复排在所有排队任务前面；当前任务没人按过开始、什么都没动、没有飞行中的格子时，修复直接顶替它（它回到队首，轮到时重新勘测）；其他任务排队尾。
-- **keep-out（活的）**：中枢 `GRADE_R+24`(88) 内、不在记录场地上的模块 → `moduleKeepOut`；记录场地上的模块 → `spec.footprint(site, …, 1)`；100 tick 刷新。新 establish/forum 任务创建时把当时的盒子存进任务。
+- `autoJobs`（每 100 tick；中枢已成型且 `dockKnown()`）：先 `offerRefresh`（§7）；容量 `min(RingSlots.open(PHASE), 7)`（`moduleCap`）减去已停靠的和在建的模块任务（`busyModules`，停靠的 0.9.2 大厅也占一个）；对每个 `ModuleSpec`：开着（`archiveEnabled`）、中枢的队伍并集有研究、还没有这种模块（`exists`：记在场地上的、以园区形状 `main` 停靠的、有没结束的非修复任务的；**0.10.1 起以 `hall` 形状停靠的 0.9.2 大厅不算**）、没在冷却（取消后 `DECLINE_TICKS` 24000）、有空场地（按偏好顺序，没记录模块、没任务、占地外扩 1 不碰 keep-out、没有加载的模块中心在里面）→ 入队，通知 `unlocked`。
+- `admit`：修复和整修园区（`BuildJob.priority()`）排在所有排队任务前面（两者之间按先来后到）；当前任务不是这两种、没人按过开始、什么都没动、没有飞行中的格子时，它直接顶替（被顶替的回到队首，轮到时重新勘测）；其他任务排队尾。
+- **keep-out（活的）**：中枢 `GRADE_R+24`(88) 内、已加载、不在记录场地上的模块（0.9.2 大厅）→ `moduleKeepOut`；记录场地上的模块（加载与否）→ `siteBox(site)`：`ModuleSpec.siteBox` = 占地外扩 1 和这个模块在这个场地的计划的 `BuildPlan.extent`（每个步骤和清场柱的 x/z 包围盒）合起来——房子、清理盒、前庭、散水、门口雨棚（0.10.0 只是占地外扩 1，整修园区会铺到档案馆的前庭和雨棚下面）；`Campus.siteBoxes` 按模块、场地、中心、正面缓存（超过 16 个清空）。100 tick 刷新。新 establish/forum 任务和整修园区创建时把当时的盒子存进任务；还没动过一格的园区任务在「开始」和 `build finish` 时再取一次（`freshKeepOut`，§7）。
 - **`ModuleSpec`**：`key, research, width, depth, height, sites, corePart, colour` + 计划工厂、控制器工厂、`enabled`。书库：`library`、研究 `library`、27×35×16、场地 {4, 2, 6}、`LIBRARY_CORE`、`0x8A5CFF`、`BuildPlan::archive`、`BuildPlan::archiveController`、`() -> Config.archiveEnabled`。
 - **停靠**：`TileNexus.refreshDock` 先认（1）记录在场地上的控制器，（2）active 园区里站在模块位上的已成型模块（有 spec、中心在该深度的 `moduleCentre` ±3 内、离底座层上下 ≤ 1、正面朝中枢）→ 收编并 `recordSite`，（3）0.9.2 内环槽。场地上的模块用场地号停靠；`openSlots()` = 有内环研究时 `RingSlots.open(PHASE)`，active 园区再封顶 `MAX_CAMPUS_MODULES` 7。
 
 **加一个中枢自建的模块**（照书库）：形状（`logic/XShape`，字符和已有形状不冲突）→ `BuildPlan` 加计划工厂和控制器工厂（阶段、组、HARD 格 = 结构检查格的测试）→ 新方块要新部件码（`Parts`，只加不改）和 `PartRecipes` 条目 → `ModuleSpecs.register(new ModuleSpec(...))` 放在模块的 `init` → 结构定义里每个字符用 `PartBlocks.block/meta` 映射（同 `TileLibrary.parts()`）→ lang `fluxecho.module.<key>`、`build.stage.m<n>` 如阶段不同要另起键 → 提 `BuildJob.V`（如果改了已有计划）。其余照 nexus.md §3「加一个新模块」。
 
-## 6. 材料与 EU
+## 6. 材料、EU 与回收箱
 
 **`BuildLedger`**（每座中枢一本）：原料余额（spec → 单位，1 件 = 65536）和成品部件（码 → 个数）。
 - `charge(part, scale)`：有成品先用成品，否则 `cost(part)` 每行 × 倍率向上取整；`partOnly` 只能用成品（倍率 0 时什么都免费）；付不起什么都不改。`usedPart()` 告诉调用方该怎么 `refund`，退款精确。
@@ -169,12 +205,33 @@
 - 「补给」：从成员的主背包拿；投入槽（GUI 里 1 格，不对自动化开放，每 tick 记账）：这两条**在按开始之前也收**，所以可以先备料。
 - 补给口（自动化）：只喂成员按过开始的任务；开始之前只收这项模块任务的核心（开始要它）。
 - 拆核心带走的余额（§8）。
-- 「取出」：原料余额的整件（`Campus.stackOf`：部件的方块、`item:` 的物品、`ore:` 的首选矿辞条目，GregTech 的优先）+ 全部收获，给成员，放不下掉脚下；成品部件留在账上。
-- 模块任务按「开始」前账本里要有它的核心（倍率 0 或核心已经站着时不要求），否则 `need_core`。
+- 「取出」（`withdraw`）：原料余额的整件（`Campus.stackOf`：部件的方块、`item:` 的物品、`ore:` 的首选矿辞条目，GregTech 的优先）给成员，放不下掉脚下；然后 `takeRecycled(p)` 从回收箱取主背包装得下的（不掉脚下，剩下的留在回收箱）；成品部件留在账上。
+- 模块任务按「开始」前账本里要有它的核心（倍率 0、核心已经站着、按开始的人在创造模式、任务已经免费时不要求），否则 `need_core`。
+- **免费任务**（`Campus.free(job)`，§7）：`need()` 为空，所以账单、Waila 的「缺」、补给口的 `wants` 都是空的，什么都不收。
 
-**补给口**（`TileSupplyPort`）：1 格 `ISidedInventory`，所有面都开；`isItemValidForSlot` 问 `campus.offer(simulate)`，同一种物品一 tick 内缓存答案；放进来就记账、之后每 tick 再记，所以槽几乎总是空的，剩的能被抽走，管道不堵。establish/forum 放的补给口链接自己的中枢、正面朝园区主轴（`linkAt`）；手放的链接 `RANGE` 128 内最近的、已加载的同队中枢，中枢没了会自己再找。队伍一旦定下不变：只有本队（或链接中枢的成员）能手动链接、取回槽里的东西（`mayUse`）；谁都能往里交材料。右键：拿着东西 → 交（走 `offer`，只喂已开始的任务）；潜行空手 → 把主背包里任务要的都交；空手 → 聊天显示还缺的前三行，并退还槽里卡着的东西（本队）。NBT `Slot/Nexus/Team/Facing`，描述包 `F`。
+**补给口**（`TileSupplyPort`）：1 格 `ISidedInventory`，所有面都开；`isItemValidForSlot` 问 `campus.offer(simulate)`，同一种物品一 tick 内缓存答案；放进来就记账、之后每 tick 再记，所以槽几乎总是空的，剩的能被抽走，管道不堵。establish/forum 放的补给口链接自己的中枢、正面朝园区主轴（`linkAt`）；手放的链接 `RANGE` 128 内最近的、已加载的同队中枢，中枢没了会自己再找（每 100 tick）。链接的中枢每次都按坐标从世界里取（`TileSupplyPort.loadedNexus`：区块没加载就是 null；从不留着旧 tile 的引用——区块卸载时 tile 不会被标成无效，再加载时是一个新 tile），所以不会往没加载的中枢里记账（`CampusTilesTest`）。队伍一旦定下不变：只有本队（或链接中枢的成员）能手动链接、取回槽里的东西（`mayUse`）；谁都能往里交材料。右键：拿着东西 → 交（走 `offer`，只喂已开始的任务）；潜行空手 → 把主背包里任务要的都交；空手 → 聊天显示还缺的前三行，并退还槽里卡着的东西（本队）。NBT `Slot/Nexus/Team/Facing`，描述包 `F`。
 
-**EU**：每放一格 `buildEuPerBlock`(256)，这一格要先拆东西时再加 `buildEuPerClear`(64)（逐格算，`Builder.stepEu`）；每清一格、填一格、每个 AIR 步骤 `buildEuPerClear`；都从主人队伍的无线电网扣，`ServerEvents.addTeamTick` 记进统计。界面的 EU/t 是 10 tick 的平均。
+**回收箱的存储**（`campus/RecycleStore`，0.10.1，纯数据、服务端；取代 0.10.0 的 27 格收获）：
+- 种类 = 物品原型：`ItemStack.writeToNBT` 去掉 `Count` 的 NBT（id、Damage、tag），NBT 相等就是同一种（按物品、meta、NBT 合并；模组没了的物品原样留着 NBT）；数量是 long，加法饱和到 `Long.MAX_VALUE`。`LinkedHashMap` 记着种类第一次进来的顺序。
+- `list()`：数量从大到小，相同的按先来后到（稳定排序），缓存到下一次改动，不能改（里面的 kind 也不能改）；`kinds()`、`total()`、`count(kind)`、`isEmpty()`、`version()`（每次改动 +1，界面和自动化靠它知道变了）。
+- `full()` = 种类 ≥ `MAX_KINDS` 4096，**或**存档估计 `bytes()` ≥ `MAX_BYTES` 256 KB（未压缩；每种 `entryBytes` = 种类 NBT 的二进制大小 + `ENTRY_BYTES` 16，写不出来的按 `MAX_BYTES/16` 算；增删时累计）：存储放在中枢 tile 里，区块 NBT 超过区域文件的上限（约 1 MB）整块就存不下，带大 NBT 的机器、AE 元件多时要远在那之前停。这是软上限——引擎在满时不再做要进回收箱的拆除（`Campus.recycleFull`，通知在线成员一次 `spoils_full`，有空或有人取过后重置），但一次拆除给的东西照收，所以可能超出一点，不丢东西。`moveInto(from, to)`：按 `from` 从大到小整种搬进 `to`，`to` 满了就停（暂存放回时用）。
+- `add(kind, n)`（复制 kind）/`add(stack)`、`extract(kind, max)`（取光的种类删掉）、`clear()`；每次改动跑构造时给的回调（`Campus` 给的是 `dirty`）。
+- `write()` = `[{K: kind, N: long}]`（大的在前）；`read(list)` 跳过没有 `K` 或 `N` < 1 的、合并重复的。`kindOf(stack)`、`stackOf(kind, n)`（物品不在游戏里了 → null）。
+- `Campus` 的入口：`recycle()`；`recycle(List<ItemStack>)`（引擎交来的，`buildKeepSpoils` 关掉就什么都不收）；`recycleFull()`；`takeRecycled(kind, max)`（一组，不超过物品的堆叠上限；物品不在了 → null、留着）；`takeRecycled(EntityPlayer)`（按 `list()` 从大到小，`insert` 先叠到同样的堆叠上、再放空格，只放主背包，返回件数；不掉落，创造模式也一样）。NBT `Recycle`；读档时旧的 `Spoils`（0.10.0 的 `ItemStackHandler`）读一次、并进存储，不再写。
+
+**回收箱方块**（`BlockRecycleBin`、`TileRecycleBin`，0.10.1）：本身不存东西，是所链接中枢的 `RecycleStore` 的窗口；几个回收箱可以链接同一座中枢。
+- **链接**：引擎放下的经 `NexusLink.linkTo(nexus)` 链接，正面 `TileSupplyPort.walkwayFacing`（同补给口：朝园区主轴，站在轴上就朝中枢）；手放的 `onBlockPlacedBy` 正面朝放的人，`linkFor(p)` 连到 `TileSupplyPort.nearestNexus`（`RANGE` 128 内、按中心的三维距离、已加载、`teams()` 含这个队伍），聊天栏说连到了哪座（`recycle_bin.linked`/`unlinked`）。有队伍时每 100 tick（`updateEntity`）检查：链接的位置已加载、却不再是中枢 → 放开链接、再找同队最近的。队伍定下就不变；`mayUse(p)` = 还没有队伍时谁都行，否则本队或链接中枢的成员。NBT `Nexus`(int[3])/`Team`/`Facing`，描述包 `F`。
+- **右键**（服务端）：不是本队 → `recycle_bin.not_yours`；中枢没加载 → `unloaded`；没链接 → 先试 `linkFor`，还是没有 → `unlinked`；否则 `UIInfos.TILE_MODULAR_UI.open`。拆掉方块什么都不丢。
+- **自动化**（`ISidedInventory`，`RecycleSlots.SLOTS` 27 格，所有面、所有格都能抽，`canInsertItem`/`isItemValidForSlot` 恒 false）：纯逻辑的视图 `logic/RecycleSlots<K>`：格 i 是第 i 多的种类，一组 `min(数量, 堆叠上限)`（物品不在了的跳过；`Source.largest` 只取前 54 种）。每 tick 第一次访问、或者别人（界面、另一个回收箱、「取出」、引擎往里放）改过存储时重做视图，所以一格显示的从不超过此刻存储里有的——同一 tick 两个抽取器（或抽取器和玩家）取不到同一批东西；同一 tick 里视图自己的取出只让格子变少。取出有两种走法：`decrStackSize`（`take`）和 `setInventorySlotContents` 放一个更小的同种堆叠（`set`）；放更大的只能还回本 tick 从这一格取走的（漏斗取了又放不下时这样还回来；这一格这个 tick 被取空了也还记得是哪一种，所以取走最后一件再放回也不丢，`CampusTilesTest`），别的一律不进。tile 交出去的是"活"的堆叠：调用方把读到的堆叠改小，下一次访问时差额从存储里扣（`sync`）。
+- **界面**（`RecycleGui`，MUI1，190×240，背包在 y 158）：网格 9 列 × 6 行（`COLS`/`ROWS`，`CELL` 18，左上 (10,24)），右边滚动条 (176,24)，滚轮一次一行、点滚动条按比例跳；下面一行 `recycle_bin.gui.counts`（`N 种 / M 个`，满了 `gui.full`）和「全部取出」(124,136)。点格子：左键一组到鼠标上（鼠标上是同一种且没满就叠上去），右键半组，Shift 一组进背包（装得下多少算多少，一件都装不下 → `inventory_full`）；「全部取出」= `Campus.takeRecycled(p)`（`took_all`/`empty`/`inventory_full`）。客户端不预测：点击发 `ASK_TAKE`（存储索引 + 整个种类的哈希 + 方式），服务端先 `refuse`（tile 不在了、不是本队 `not_yours`、不在同一个世界（维度）或超过 8 格 `too_far`、中枢没加载/没链接），再用 `RecyclePage.find` 找回种类（那个索引处哈希对得上就用它，否则找第一个哈希相同的，没有就作罢），物品不在游戏里 → `unknown_item`。窗口校验器 `standing()`：tile 不在了就关窗。
+- **同步**（`RecyclePage`，经一个 `FakeSyncWidget<NBTTagCompound>`）：服务端只发显示着的那一页（`PAGE` 54 种，从客户端 `ASK_ROW` 要的那一行起）：`Kd` 种类数、`Ti` 件数、`Of` 第一条的索引、`E[{K, N, H, C}]`（`C` = 这个种类的 tag 被去掉了）；整页压缩后要 < `LIMIT` 24000 字节：tag 预算从 `TAG_BUDGET` 128 KB 起对半减，低于 1024 就不带 tag（同 `BookPacket` 的做法，用它的 `compressedSize`/`binarySize`，0.10.1 改成 public）。外层再加 `L` 链接状态（`LINKED/UNLOADED/UNLINKED`）、`Nx` 中枢坐标、`Fu` 满了。行或链接变了、玩家自己操作之后立即重做；存储变了最多每 `STORE_TICKS` 5 tick 重做一次（清场时存储每 tick 都在变）；没变不发。画法在 `client/RecycleScreen`（flux 风格，回收箱的紫色）。
+- 「建造」页页脚是 `build.gui.recycle`（`回收箱：N 种 M 个`，件数用 `Compact.si`）。
+
+**核心带走回收箱**（`ItemBlockNexusCore.carry`/`carriedRecycle`，§8）：`BuildCredit.Recycle[{K, N}]`（大的在前），整个列表压缩后不超过 `RECYCLE_BYTES` 24000 字节（物品的 NBT 要能发包）：超了就二分（`carriedKinds`）出装得下的前几种，其余（数量最少的）**整种**交给 `RecycleOverflow.put(中枢的队伍, 列表)` 暂存，种数记在 `BuildCredit.Ov`；什么都不掉在地上（一个物品实体存档时只存得下一个字节的数量，超过堆叠上限的堆叠不算堆叠，5 分钟还会消失）。没有主世界、暂存不了时核心全部带走。然后清空存储。`restore` 把 `Recycle` 并进新中枢的存储，0.10.0 核心的 `BuildCredit.Spoils[物品]` 也读进存储。提示 `nexus.carries_credit` 的第三个数 = `Recycle` + `Spoils` 的条目数（「回收箱里 N 种东西」），`Ov` > 0 时再一行 `nexus.carries_overflow`（「另有 N 种回收物暂存在团队名下」）。
+
+**暂存**（`campus/RecycleOverflow`，0.10.1，`WorldSavedData` `fluxecho_recycle`，主世界 mapStorage，`data/fluxecho_recycle.dat`：`Teams[{T: 队伍 UUID, L: [{K, N}]}]`）：每个队伍一个 `RecycleStore`（没有主人的中枢用 `NO_TEAM` = `UUID.nameUUIDFromBytes("[FluxEcho] no team")`）；`put` 合并进去；`drainInto(team, store)` 用 `moveInto` 从大到小整种搬进中枢的存储，满了就停。`Campus.takeOverflow`（每 100 tick 的第 50 tick，active 和 legacy 都做；中枢的回收箱满时不做）把自己队伍的暂存搬回来，搬了就告诉成员 `build.overflow_back`（种数、中枢坐标）。
+
+**EU**：每放一格 `buildEuPerBlock`(256)，这一格要先拆东西时再加 `buildEuPerClear`(64)（逐格算，`Builder.stepEu`）；每清一格、平整一格（换草或填土，连拆带放算一次）、每个 AIR 步骤 `buildEuPerClear`；都从主人队伍的无线电网扣，`ServerEvents.addTeamTick` 记进统计；免费任务一概不扣（`payEu`、`launch`）。`buildCostScale` 0 只免材料、不免 EU。界面的 EU/t 是 10 tick 的平均。
 
 **用量示例**（`buildCostScale`=1，示例种子）：establish ≈ 石头 628、钢板 79、不锈钢板 70、石砖 49、不锈钢杆 48、煤粉 43、荧石粉 63、通量结晶 27、碎屑 21、玻璃板 14、荧石块 14、铁栏杆 3、**晶核座 1（成品）**，放置约 36 万 EU + 清场每格 64；档案馆 ≈ 石砖 1619、石头 848、钢板 437、荧石粉 331、钢杆 212、不锈钢板 140、玻璃 129、书架 88、煤粉 61、回响晶 38、通量结晶 12、碎屑 11、玻璃板 9、不锈钢杆 8、**书库核心 1**，放置约 158 万 EU。
 
@@ -193,42 +250,66 @@
 
 - **暂停原因** `Pause`：`MATERIALS`、`POWER`、`UNLOADED`、`BLOCKED`、`PROTECTED`、`PLAYER`、`INCOMPLETE`；`autoResumes` = 除 PLAYER 外都会自己恢复。缺料/缺电要 40 tick 没有进展才暂停（飞行中的格子算在等），暂停后至少 100 tick（`RESUME_AFTER`）才恢复，免得一点点进账就让任务来回翻；恢复尝试每 10 tick（PROTECTED 每 100 tick）跑一遍，有进展就恢复；INCOMPLETE 等结构被人手补好成型。
 - `canStart(state, pause)` 只有两参数版本（光看状态分不出玩家暂停，单参数版被测试禁止）。
-- **按钮**（`Campus` 入口，都要 `member(p)`；GUI 还要求 8 格内、`nexusEnabled && campusEnabled`）：开始（勘测中按 = 记下同意，勘测完自动继续；`started` 标志让重新勘测后回到 WAITING）；暂停（没人开始过的任务返回 `not_now`；勘测中按会保留到勘测结束）；取消（GUI 第一下只在客户端预备 3 秒，第二下才发；建好的留着、飞行中的照样落地、余额留着，模块 24000 tick 内不再提供）；◀ ▶ 换场地（只在还没动过、没有飞行中的格子时；换了要重新按开始）；跳过受阻（园区级开关 `Skip`）；修复（停在 INCOMPLETE 的任务原计划重来、不再清场 `keepClear`；否则中枢或场地上的模块散架超过 `REPAIR_AFTER` 200 tick 时排一个修复任务：不清场不平整，只有中枢修复会清底座上方，不送补给口）；铺设广场（§9）；取出、补给（§6）。
+- **按钮**（`Campus` 入口，都要 `member(p)`；GUI 还要求 8 格内、`nexusEnabled && campusEnabled`）：开始（先 `freshKeepOut`，下面；勘测中按 = 记下同意，勘测完自动继续；`started` 标志让重新勘测后回到 WAITING；按的人在创造模式 → 任务变成免费，`consent`）；暂停（没人开始过的任务返回 `not_now`；勘测中按会保留到勘测结束）；取消（GUI 第一下只在客户端预备 3 秒，第二下才发；建好的留着、飞行中的照样落地、余额留着，模块 24000 tick 内不再提供；`cancelJob`；`declinesRefresh(job)`——establish/forum 计划、又不是修复的任务（establish、forum、整修园区）——取消时把 `Pv` 记到当前版本，不再提供整修园区；取消中枢修复不算）；◀ ▶ 换场地（只在还没动过、没有飞行中的格子时；换了要重新按开始）；跳过受阻（园区级开关 `Skip`）；修复（停在 INCOMPLETE 的任务原计划重来、不再清场 `keepClear`；否则中枢或场地上的模块散架超过 `REPAIR_AFTER` 200 tick 时排一个修复任务：不清场不平整，只有中枢修复会清底座上方，不送补给口）；铺设广场（§9）；取出、补给（§6）。
+
+**免费与立即**（0.10.1，用户：「我如果是创造模式，应该不需要我再放入材料」）：
+- `Campus.free(job)` = 任务自己免费（`BuildJob.free`，NBT `Fe`：创造模式的成员按的开始，或 `/fluxecho build finish`）或整座中枢免费（`Campus.freeBuild`，NBT `Fb`，`setFreeBuild` 返回 `build.free_on`/`free_off`）。免费任务不扣账本、不扣 EU，`need()` 为空（账单、Waila、补给口都不要东西），模块任务开始前不要核心。免费一旦给了任务就一直跟着它（存档、换人都不变）；`freeBuild` 也随带着园区的核心走（`Carried` 的 `Fb`）。
+- **立即**（`Campus.finishNow(p)`，`/fluxecho build finish`，不查成员，命令自己查权限）：园区不是 active → `build.no_job`；当前任务已结束（完成后还在 `DONE_LINGER` 里，或取消后还有格子在飞）而队列里还有任务 → 先 `Builder.forget` 把它还在飞的格子退回账本、`nextJob()`；没有当前任务就 `nextJob()` 取队首；还是没有或已结束 → `no_job`。然后 `freshKeepOut`；勘测中 → 记同意（免费）；能开始 → 开始（免费）；正在建或因别的原因暂停 → 只改成免费（暂停照常自己恢复）。记下 `instantJob`/`instantBy`，返回 `build.instant_started`。引擎对 `instant(job)` 的任务用立即模式（§5 `Builder.tick`），一样走领地保护、`DropCapture`、回收箱、成型和 commission。结束时 `finished` 给发命令的人（在线时，否则给成员）发 `build.instant_done`（任务名、已放、已清理、已填）。`pauseJob` 时 `paused` 发一次 `build.instant_paused`（任务名、暂停原因，「立即建造到此结束，问题解决后按正常速度继续」）；原因是 `endsInstant` 的（BLOCKED、PROTECTED、UNLOADED、INCOMPLETE：都要有人处理，不会很快自己好）就清掉 `instantJob`——立即模式到此结束，任务恢复后按正常速度接着建（仍然免费），否则立即模式会一直开着。立即模式**不存档**：重新加载后任务照常速度接着建，但 `Fe` 还在，所以仍然免费；`nextJob`、取消时也清掉 `instantJob`。
+- **开始时重取 keep-out**（`Campus.freshKeepOut` → `BuildJob.retarget`，`start` 和 `finishNow` 都调）：只对园区任务（establish/forum 计划）、还没动过一格（`touched` 为假）、没有飞行中的格子、没结束的。任务的 keep-out 是创建（提供）时加载着的模块的盒子；按开始时可能加载了更多（玩家走近了），或者建了模块。`keepOut()` 现取（`keepOutAt` 作废），盒子集合不一样（不分顺序，`sameBoxes`）就换上、`restart(keepClear)`：进度清零、重新勘测、`projectedAt` 作废，`started` 保留，所以按了开始的勘测完直接接着建，投影跟着新计划。
+
+**整修园区**（0.10.1，`BuildJob.refresh(keepOut)`，键 `refresh`，计划 `forum`，名字 `build.job.refresh`）：
+- 园区记着上一次完整平整用的计划版本 `gradedVersion`（NBT `Pv`，0.10.0 的存档没有 = 0；核心带着的园区也带 `Pv`）。`graded(job)`：一个 establish/forum 计划的任务（不是修复、不是 `keepClear` 重来、版本 = 当前 `V`）做完清场阶段时记成 `V`。
+- `offerRefresh`（`autoJobs` 开头，所以要中枢成型且 `dockKnown()`）：`Pv < V`、又没有没结束的 establish/forum 计划的任务（包括排着的整修园区）时，用当时的活 keep-out（`keepOut()`，§5：88 格内已加载、不在记录场地上的模块的 `moduleKeepOut`，和记录场地的整块场地 `siteBox`）建一个整修任务 `enqueue`，通知成员 `build.refresh_offered`。**提供时不动 `Pv`**：`Pv` 只在 `graded`（平整做完）和取消 establish/forum/整修园区（`cancelJob` 里的 `declinesRefresh`）时记成 `V`；所以整修园区没平整完就拆了核心（`Carried` 不带它），放回原处后会再提供；取消修复不算拒绝。
+- 它是 `priority()`（同修复，排在排队任务前面，可以顶替没人开始、什么都没动的当前任务），但不是修复：`clears()` 为真，清场、平整、地面、塔柱、补给口、回收箱全做；已经对的格子勘测时直接记 done；补给口和回收箱各在自己的格子上只送一次（`portGifted`）。`campusJob()` 为真、`raisesNexus()` 为假。`Carried` 不带它（靠 `Pv` 再提供）；`queuedPlanKey` 把它当 `forum`。
+
+**`/fluxecho` 命令**（0.10.1，`command/CommandFluxEcho`，`FluxEcho.serverStarting` 注册；权限等级 2；用户：「你需要提供指令，直接一次性全部开完研究」）：参数由纯逻辑 `logic/EchoCommand` 读（不分大小写；缺词、错词、多词 → 抛 `WrongUsageException(fluxecho.cmd.usage)`）。
+
+| 用法 | 做什么 |
+|---|---|
+| `research all [玩家]` | `Research.grantAll(team)`：`ResearchTree.availableNow()`（`phase ≤ PHASE_NOW`(1) 的 8 项：锚定、内环、回响结晶、回响书库、跨维度借阅、算力校准、节流、碎屑富集）记成完成，以后相位的灰星（`phase_2`、`tidal_well`、`dome`）照旧锁着；新增的有几项回几项（`cmd.research_all`「本版本能做的全部研究」）；有新增就 `EchoNet.ledgerChanged(team)`，团队玩家马上收到 |
+| `research reset [玩家]` | `Research.reset(team)` → `ResearchData.revokeAll`：删掉这个队伍的全部研究（压过回响晶的记录时间保留），回 `cmd.research_reset` |
+| `build free [on\|off]` | 最近的中枢 `setFreeBuild`，不写就切换 |
+| `build finish` | 最近的中枢 `finishNow(p)` |
+| `build status` | 最近的中枢：`cmd.status.head`（坐标）；legacy → `cmd.status.legacy`；没任务 → `build.no_job`；有任务 → `status.job`（名字 · 阶段/暂停原因/状态）、`status.progress`（已放/总数、已清理、受阻、跳过、未加载）、`status.ground`（将清理、要填、已填、将拆除）、`status.cost`（免费、全部免费、约几秒）；再 `status.queue`、`build.gui.recycle` |
+
+- 玩家：不写就是发命令的人（控制台不写 → `cmd.not_player`），写了就找在线玩家（找不到 → `cmd.unknown_player`）；研究按 `Owners.team(uuid)` 的队伍。`build` 三条只能玩家发（`not_player`）：中枢 = `NexusRegistry.nexuses(维度)` 里同一世界、中心离玩家三维距离 ≤ `EchoCommand.RANGE` 128 的最近一座（`EchoCommand.nearest`），没有 → `cmd.no_nexus`；回复后面接 `cmd.at_nexus`（坐标）。补全：`research`/`build` → `all`/`reset` 或 `free`/`finish`/`status` → 在线玩家名或 `on`/`off`；`isUsernameIndex` 是 `research` 的第 3 个词。所有回复都是 lang 键（两个文件）。
 
 ## 8. 放核心（`LiftRule`、`ItemBlockNexusCore`）
 
 - **抬升规则**：点的是方块顶面、没潜行、点的不是我们的构架/地板/配件、上方两格可放（可替换且没有生物）、y+2 ≤ 255 → 核心放在点击方块上方 **2 格**（点的那层成为底座层，上一格是控制台座，核心在眼睛高度）；否则照常放（0.9.2 的手动方式，campus 保持 legacy；带着园区放回原处的核心除外，见下面「放回原处」）。点的是草、藤、薄雪这类可替换方块时按它下面的地面算（`ground`）。两端用同一规则；**只有服务端决定抬升放置**，客户端返回 true 等方块，不预测（服务端拒绝时不会留下幽灵方块）。
 - **拒绝**（只在 `nexusEnabled && campusEnabled` 时；顺序）：`too_high`（Y0+`HEADROOM`30 > 255）、`no_sky`（`buildRequireSky` 且核心处看不到天）、`on_module`（相位 I 的盒子压到已加载模块的 `bounds()`）、`too_close`（`CampusRegistry.tooClose` 或已加载但还没园区的中枢，Chebyshev < `buildMinSpacing`，带对方中心坐标）。园区关掉时照样抬升但不建任务。放下时 `placeBlockAt` 里先 `restore`（带来的园区、显化、余额），园区没有因此变 active（不是放回原处）、也不是因为别的园区太近而没能接着用（`Campus.resumeRefused()`）时，才 `campus.establish(p)` → 聊天 `placed_lifted`。
-- **拆核心**（`BlockNexusCore`）：只有放置过的 tile（有主人或有园区）才 `CampusRegistry.remove`；不在 `restoringBlockSnapshots` 时掉落投入槽，并在核心**带着余额或显化**时（余额、部件、收获、扣过账的飞行、正在显化的产物）从 `breakBlock` 掉一个核心物品：先 `refundFlights`，NBT `BuildCredit{Raw, Parts, Spoils}`、`Pending`（产物）、`Manifest{Id, Ticks, Max}`，active 园区再加 `Campus`（下一条），账本和收获随之清空；这种情况 `getDrops` 什么都不给，免得掉两次。不带余额和显化的核心走普通 `getDrops`（只有采集、爆炸、破坏机才掉；传送器换掉核心什么都拿不到）；active 园区的 `Campus` 跟着这个普通掉落走：`getDrops` 先被问（爆炸、破坏机，tile 还在）就从 tile 取（`ItemBlockNexusCore.campusTag`），后被问（采集）就取 `breakBlock` 同一 tick 记下的（`noteCampus`/`takeCampus`，维度、坐标、tick 都对上才给，取一次就忘）。掉的东西不比以前多，所以带园区不是刷物品的路。放这个核心（抬升与否）时 `restore` 加回账本和收获（收获放不下掉在核心旁），显化只恢复到没在显化的中枢。物品闪光、提示 `nexus.carries_credit`/`carries_pending`/`carries_campus`（带核心原来的坐标）。——0.9.x「中枢被破坏时显化中的产物丢失」由此修好。
-- **核心带着的园区**（`Campus.carried`，legacy 园区不带；`Campus.Carried` 读写）：物品 NBT `Campus{Dim, Pos（核心 int[3]）, F（正面）, Sites[{S,P,K}]（记录的场地和模块种类，同园区存档）, Skip, Declined{模块: 到期 tick}, Job}`，`Job` 是没完成的园区任务的计划键（establish 优先，其次 forum，没有为 ""）。不带任务和账本（余额走 `BuildCredit`），模块任务丢掉（`autoJobs` 之后照常再提供）。
-- **放回原处**（`Campus.resume`，`restore` 里第一个做，要 `nexusEnabled`；`campusEnabled` 关着或园区已经 active 时不做）：只在**同一维度、同一方块**才接着用，**怎么放都行**——潜行放、点它的控制台座或底座（这些从不抬升）也一样；潜行只在放到新地方时选 0.9.2 方式，接着用的园区在成员按「开始」之前什么都不动。先把核心转回原来的正面（`nexus.place(owner, name, F)`，底座才对得上），再查 `CampusRegistry.tooClose`（`buildMinSpacing`）：太近 → `build.resume_too_close`（园区留 legacy，余额照样还回）；否则园区 active、恢复场地和种类、跳过受阻、冷却，登记 `CampusRegistry`，聊天 `build.resumed`。`RESUME_CHECK` 40 tick 后（结构已经检查过）`afterResume`：没有未结束的中枢任务、而中枢没成型或原来的 establish 没完成 → 排一个中枢修复 `repair:establish`（同 establish 计划，只清底座上方、不平整，立着的格子勘测时直接记 done）；否则原来的 forum 没完成又没有 forum 任务 → 重排 forum 并 `restart(true)`（`keepClear`，清场已经做过）。两者都等成员按「开始」。等着检查的这一步存在园区 NBT `Rc`（到期 tick）/`Rj`（计划键）里，重新加载也不丢。放到别的地方：是一座新中枢（抬升就勘测，潜行就手搭），只带余额和显化。
+- **拆核心**（`BlockNexusCore`）：只有放置过的 tile（有主人或有园区）才 `CampusRegistry.remove`；不在 `restoringBlockSnapshots` 时掉落投入槽，并在核心**带着余额或显化**时（余额、部件、回收箱不空、扣过账的飞行、正在显化的产物）从 `breakBlock` 掉一个核心物品：先 `refundFlights`，NBT `BuildCredit{Raw, Parts, Recycle, Ov}`（见 §6「核心带走回收箱」：超过 24000 字节的种类暂存给队伍，`Ov` 是暂存的种数；0.10.0 的核心是 `Spoils`，照样读）、`Pending`（产物）、`Manifest{Id, Ticks, Max}`，active 园区再加 `Campus`（下一条），账本和回收箱随之清空；这种情况 `getDrops` 什么都不给，免得掉两次。不带余额和显化的核心走普通 `getDrops`（只有采集、爆炸、破坏机才掉；传送器换掉核心什么都拿不到）；active 园区的 `Campus` 跟着这个普通掉落走：`getDrops` 先被问（爆炸、破坏机，tile 还在）就从 tile 取（`ItemBlockNexusCore.campusTag`），后被问（采集）就取 `breakBlock` 同一 tick 记下的（`noteCampus`/`takeCampus`，维度、坐标、tick 都对上才给，取一次就忘）。掉的东西不比以前多，所以带园区不是刷物品的路。放这个核心（抬升与否）时 `restore` 加回账本和回收箱（并进已有的存储，不会放不下），显化只恢复到没在显化的中枢。物品闪光、提示 `nexus.carries_credit`/`carries_pending`/`carries_campus`（带核心原来的坐标）。——0.9.x「中枢被破坏时显化中的产物丢失」由此修好。
+- **核心带着的园区**（`Campus.carried`，legacy 园区不带；`Campus.Carried` 读写）：物品 NBT `Campus{Dim, Pos（核心 int[3]）, F（正面）, Sites[{S,P,K}]（记录的场地和模块种类，同园区存档）, Skip, Declined{模块: 到期 tick}, Job, Pv, Fb}`，`Job` 是没完成的园区任务的计划键（establish 优先，其次 forum，没有为 ""；整修园区不算，靠 `Pv` 再提供），`Pv` 是园区上一次平整的计划版本（§7 整修园区），`Fb` 是整座中枢免费（0.10.1）。不带任务和账本（余额走 `BuildCredit`），模块任务丢掉（`autoJobs` 之后照常再提供）。
+- **放回原处**（`Campus.resume`，`restore` 里第一个做，要 `nexusEnabled`；`campusEnabled` 关着或园区已经 active 时不做）：只在**同一维度、同一方块**才接着用，**怎么放都行**——潜行放、点它的控制台座或底座（这些从不抬升）也一样；潜行只在放到新地方时选 0.9.2 方式，接着用的园区在成员按「开始」之前什么都不动。先把核心转回原来的正面（`nexus.place(owner, name, F)`，底座才对得上），再查 `CampusRegistry.tooClose`（`buildMinSpacing`）：太近 → `build.resume_too_close`（园区留 legacy，余额照样还回）；否则园区 active、恢复场地和种类、跳过受阻、冷却、`Pv`、`Fb`，登记 `CampusRegistry`，聊天 `build.resumed`。`RESUME_CHECK` 40 tick 后（结构已经检查过）`afterResume`：没有未结束的中枢任务、而中枢没成型或原来的 establish 没完成 → 排一个中枢修复 `repair:establish`（同 establish 计划，只清底座上方、不平整，立着的格子勘测时直接记 done）；否则原来的 forum 没完成又没有 forum 任务 → 重排 forum 并 `restart(true)`（`keepClear`，清场已经做过）。两者都等成员按「开始」。等着检查的这一步存在园区 NBT `Rc`（到期 tick）/`Rj`（计划键）里，重新加载也不丢。放到别的地方：是一座新中枢（抬升就勘测，潜行就手搭），只带余额和显化。
 
 ## 9. 旧中枢与铺设广场
 
-- NBT 里没有 `Campus` 的中枢（0.9.2 存档）和潜行放下的核心（放回原处接着用的除外，§8）是 **legacy**：没有投影，世界里什么都不动；队伍有书库研究时每 200 tick 试着给在线成员发一次 `legacy_hint`（有人听到就记 `Hint`，不再发）。提示说：按「铺设广场」平整地面、铺广场；没有书库停靠时中枢在大厅位上建档案馆，停靠着的 0.9.2 大厅就算有书库；拆下大厅核心，书进队伍书库仓库，档案馆建成后取回。
-- 「建造」页显示「铺设广场」→ `layForum`（成员；离别的园区太近 `forum_too_close`）→ 园区变 active、登记 `CampusRegistry`、建 forum 任务（平整 + 地面 + 塔柱 + 补给口，没有中枢本体），带上当时附近模块的 keep-out：停在内环上的 0.9.2 书库大厅（槽 0 正好压在大门上，每个槽都在平整圆盘里）原样不动，照旧用环槽停靠。
-- 之后研究过的模块照常在空的模块位上出投影（占地碰到 keep-out 的场地跳过）。**停靠着的 0.9.2 书库大厅就算这座园区有书库**（`Campus.exists` 先看停靠的模块），中枢不提供档案馆，大厅照旧工作（167 本，§12）。
-- **大厅 → 档案馆**：拆下大厅核心（书进队伍书库仓库，§12）→ 大厅不再停靠 → 下一次 `autoJobs` 在第一个空的大厅位（按 4、2、6）上投影档案馆。档案馆是模块任务，所以它清场盒里大厅留下的构架、书格（不在任何已成型结构的 `covers()` 里，`loose`）被拆掉、按部件记进账本（`forClear` 的 REPLACE），落在步骤格上的照常当错部件替换（`forBuild`）；档案馆第一次成型时自动从仓库取书（`refillOnce`）。只清档案馆自己的清场盒和步骤格：档案馆选了别的大厅位时，旧大厅的残留留在原地。
+- NBT 里没有 `Campus` 的中枢（0.9.2 存档）和潜行放下的核心（放回原处接着用的除外，§8）是 **legacy**：没有投影，世界里什么都不动；队伍有书库研究时每 200 tick 试着给在线成员发一次 `legacy_hint`（有人听到就记 `Hint`，不再发）。提示说：按「铺设广场」平整地面、铺广场；研究了书库、大厅位有空时中枢在大厅位上建档案馆（0.10.1 起旧大厅照旧停靠、不再算作书库）；拆下大厅核心，书进队伍书库仓库，档案馆建成后取回。
+- 「建造」页显示「铺设广场」→ `layForum`（成员；离别的园区太近 `forum_too_close`）→ 园区变 active、登记 `CampusRegistry`、建 forum 任务（平整 + 地面 + 塔柱 + 补给口 + 回收箱，没有中枢本体），带上当时附近模块的 keep-out：停在内环上的 0.9.2 书库大厅（槽 0 正好压在大门上，每个槽都在平整圆盘里）原样不动，照旧用环槽停靠。
+- 之后研究过的模块照常在空的模块位上出投影（占地碰到 keep-out 的场地跳过）。**0.10.1 起停靠着的 0.9.2 书库大厅不再算这座园区有书库**（`Campus.exists` 只认以 `main` 形状停靠的、记在场地上的和在建的；0.10.0 认任何停靠的书库，用户的大厅因此挡住了档案馆）：研究了书库、内环还有容量（大厅也占一个）、有空的大厅位时照样提供档案馆，大厅照旧停靠、照旧工作（167 本，§12）。
+- **大厅 → 档案馆**：拆下大厅核心（书进队伍书库仓库，§12）→ 档案馆第一次成型时自动从仓库取书（`refillOnce`），已经成型的用 GUI 的「取回」。档案馆是模块任务，所以它清场盒里大厅留下的构架、书格（不在任何已成型结构的 `covers()` 里，`loose`）被拆掉、按部件记进账本（`forClear` 的 REPLACE），落在步骤格上的照常当错部件替换（`forBuild`）。整片清空规则下园区任务（比如整修园区）的清场柱也这样记账；谨慎规则下只清档案馆自己的清场盒和步骤格。还站着的大厅（加载着）整个盒子受保护（`protectedArea`），不会被拆。
 
 ## 10. 同步、界面、Waila
 
-- **描述包** `Cp`（`Campus.writeSync`，只在状态变化时发；红框的受阻格变化时最多每秒一次）：`Ac` active、`Sk` 跳过受阻（园区的开关，有没有任务都发）；有任务时再加 `K/Pk` 任务键和计划键、`S` 场地、`V` 版本、`St/Ps/Sg/Sn` 状态/暂停（ordinal）/阶段/阶段数、`Pl/To` 已放/总数、`Pa/Ft` 投影/完成 tick、`Mi[{物品, N}]` 缺的前三样、`Bl` 受阻格（`FxCodec` 相对中心，≤ 64）、`Ko` keep-out。客户端读成 `TileNexus.clientCampus`（`Campus.View`），`readSync` 时调 `BuildClient.viewChanged` 丢掉矛盾的进度数字。
+- **描述包** `Cp`（`Campus.writeSync`，只在状态变化时发；红框的受阻格变化时最多每秒一次）：`Ac` active、`Sk` 跳过受阻、`Fb` 整座中枢免费（园区的开关，有没有任务都发）、active 时 `Md` 模块列表（`ModuleState.write`：`[{K 模块键, R 研究 id, S 状态 ordinal, P 场地}]`）；有任务时再加 `K/Pk` 任务键和计划键、`S` 场地、`V` 版本、`St/Ps/Sg/Sn` 状态/暂停（ordinal）/阶段/阶段数、`Pl/To` 已放/总数、`Pa/Ft` 投影/完成 tick、`Fe` 这项任务免费、`Mi[{物品, N}]` 缺的前三样、`Bl` 受阻格和 `Te` 要拆的机器（都是 `FxCodec` 相对中心，各 ≤ 64）、`Ko` keep-out。客户端读成 `TileNexus.clientCampus`（`Campus.View`：`freeBuild`、`free`、`modules`、`machines` 是 0.10.1 加的），`readSync` 时调 `BuildClient.viewChanged` 丢掉矛盾的进度数字。受阻格或机器格变了（`blockedShownHash` 两样一起算）时最多每秒重发一次；模块列表变了由 `watchModules`（100 tick）触发。
 - **`NexusNet` S→C**（都带 `Dim/X/Y/Z` 控制器和 `Ce` 中心，发给 `Sight.near(中心, nexusEffectRange + 64)`）：
   - `BUILD_FX = 2`：`T` 基准 tick；发射 `P` int[] 格子、`M` byte[] 部件码、`L` byte[] 飞行 tick、`O` byte[] 发射 tick − T；清除 `C` int[] 格子、`Cb` int[] `blockId<<4|meta`。`FxBatch` 按页存：每页（`Page`）最多 64 个发射和 64 个清除（`MAX`），满了或离这一页第一条超过 127 tick 就开新页，一页一个包（`T` 是这一页的基准）；每 4 tick 发一次，有一页满了（`full()`）就在这一 tick 结尾的 `Campus.flush` 里发；一批最多 `MAX_PAGES` 32 页，远多于建造在一次发送之间能填的（飞行最多 256、清场有预算），只有失控的批次才会丢特效。
   - `BUILD_STATE = 3`：`W` tick、`K/Pk`（没任务时 `K` 为空）、`St/Ps/Sg`、`Pl/To`、`Cl/Bk/Sk/Un` 清除/受阻/跳过/未加载、`Tf/Fd` 要填/已填、`Eu` 上一 tick EU、`Et` 预计剩余 tick、`Fl` 飞行数（short）。每 10 tick 数字变了才发，有任务时每 `STATE_HEARTBEAT` 100 tick 也发一次（后来走近的人也能收到）。
   - 客户端：Netty 线程入队，client tick START 在主线程交给 `CampusNet.receive` → `BuildClient`。
 - **`BuildClient`**：每座中枢（维度 + 控制器）一份 `Site{key, centre, state, launches, clears}`，列表是整体替换的不可变快照，渲染线程随便读；`LAND_LINGER` 10、`CLEAR_LINGER` 20、每座 `MAX_PER_NEXUS` 512、待放粒子 `MAX_PENDING` 512、超前 `MAX_AHEAD` 400 tick 的丢掉、进度 `STATE_TTL` 300 tick 没刷新就丢；`plan(TileNexus)` 用 `clientCampus` 按服务端同样的 `planFor` 算并缓存；第一次收包时自己注册 client tick 清理和世界卸载清空。
-- **「建造」页**（`NexusGui`/`NexusScreen`，248×248，标签 [中枢] (164,4)、[建造] (204,4) 各 38×15，页码只在客户端）：左边任务面板（任务名和场地、状态和暂停原因、阶段 n/N、进度条、EU/t 和预计时间、已清理/受阻/跳过/未加载；没按开始之前「已清理」那格换成勘测数出的「将清理 n」，`Na` = `BuildJob.natural()`，键 `build.gui.to_clear`）、三排按钮（开始/暂停、补给、取消；◀ 场地 ▶、跳过受阻；取出、铺设广场或修复）；右边账单（8 行一页、最多 16 行，`有 / 要` 带图标和提示）、投入槽 (144,137)、余额和收获。数据是一个 `FakeSyncWidget<NBTTagCompound>`，每 10 tick 重建（按钮后立刻），变了才发。中枢未成型且有任务时窗口直接开在「建造」页。按钮回调在服务端跑：`refuse` → `disabled`/`not_member`/`too_far`（8 格），结果作为聊天行回给玩家。
+- **「建造」页**（`NexusGui`/`NexusScreen`，248×248，标签 [中枢] (164,4)、[建造] (204,4) 各 38×15，页码只在客户端）：左边任务面板（任务名和场地、状态和暂停原因、阶段 n/N、进度条、EU/t 和预计时间（免费的任务不耗电，EU/t 那一格换成绿字 `build.gui.free`「创造模式：免费」（`Fe`），整座中枢免费时 `build.gui.free_build`「管理员：全部免费」（`Fb`））、已清理/受阻/跳过/未加载；没按开始之前「已清理」那格换成勘测数出的「将清理 n」，`Na` = `BuildJob.natural()`，键 `build.gui.to_clear`，下面一行「将拆除 N 个机器/箱子」，`Mc`，`build.gui.to_dismantle`，有机器时琥珀色）；**没有任务时**列出 `Md` 的每个模块（`build.gui.modules` 标题；一行名字 `module.<key>` + 场地 `build.gui.site`，下一行状态 `build.module.*`：`needs_research`(研究名)、`queued`、`building`、`built`(场地)、`no_room`；琥珀/青/绿/绿/暗），剩下的地方才画 `no_job_hint`；三排按钮（开始/暂停、补给、取消；◀ 场地 ▶、跳过受阻；取出、铺设广场或修复）；右边账单（8 行一页、最多 16 行，`有 / 要` 带图标和提示）、投入槽 (144,137)、余额和 `build.gui.recycle`「回收箱：N 种 M 个」（`Rk` 种类、`Ri` 件数 long；余额整件 `Bi` 和 `Ri` 都是 0 时「取出」变灰；0.10.0 的 `Sv` 和 `build.gui.spoils` 删掉了）。数据是一个 `FakeSyncWidget<NBTTagCompound>`，每 10 tick 重建（按钮后立刻），变了才发。中枢未成型且有任务时窗口直接开在「建造」页。按钮回调在服务端跑：`refuse` → `disabled`/`not_member`/`too_far`（8 格），结果作为聊天行回给玩家。
 - **Waila**（核心）：`营造：<任务> <百分比>% · <阶段/暂停原因/状态>`，再一行 `缺 <物品> ×n`（`feBuild*` 字段，只在 active 园区有未结束任务时）。**终端**：`TerminalView` 的中枢页带 `build{ac, k, pk, st, ps, sg, done, total}`（没任务时只有 `ac`）；FluxLite 的 `TerminalScreen.build` 在有 `k` 时于模块列表上方画一行：「建造 + 任务名」（`BuildJob.name`），右边暂停原因（暂停时）或状态 + `done / total`，圆点建造中/完成绿、暂停/投影中橙、其余灰。**Directory**：中枢的状态在有任务时报 `building`/`build_paused`（研究、显化优先；成员自己的暂停按空闲级别报）。
+- **模块列表**（`Campus.modules()`，0.10.1，服务端）：`ModuleSpecs.all()` 每一种一个 `ModuleState{key, research, status, site}`。`ModuleStatus`（ordinal 会发，只能在末尾加）：`BUILT`（记在场地上的，或以 `main` 形状停靠的；场地是记录的场地或停靠槽）→ 有没结束的非修复任务：当前任务且按过开始（`started` 或 `BuildState.consented`）→ `BUILDING`，否则 `QUEUED`（场地是任务的）→ 队伍没研究 → `NEEDS_RESEARCH`（场地是现在会挑的空位，没有就 `sites[0]`）→ active、中枢成型、开着、有空位、不在冷却、内环有容量 → `QUEUED`（下一次 `autoJobs` 就提供，5 秒内）→ 否则 `NO_ROOM`（场地是会挑的空位或 −1）。总图用它给空的大厅位写牌子（§11）。
 
 ## 11. 客户端：投影、特效、总图
 
-全部 `@SideOnly(CLIENT)`，只经 `ClientProxy` → `CampusClient.register()` 进来（先注册 `DeckRender`/`FittingRender` 的 render id，再 `BuildScan`、`BuildRender`、`BuildFx`、`Masterplan`，各自登记 Forge/FML 事件和 `FarDraw.add`）。三个世界渲染器都守 [gates.md](gates.md) §5：只在 `RenderWorldLastEvent` 画、阴影 pass 跳过、相对 `RenderManager.renderPos*`、只用 quads、每个顶点有法线、popAttrib 后手动开 `GL_TEXTURE_2D`、不写深度；`onRenderLast` 幂等——动画只按世界时间算，粒子和声音在 client tick 里发；每个部分单独失败（记一次日志、本次运行关掉这部分），GL 状态在 finally 里恢复。
+全部 `@SideOnly(CLIENT)`，只经 `ClientProxy` → `CampusClient.register()` 进来（先注册 `DeckRender`/`FittingRender` 的 render id，再 `BuildScan`、`BuildRender`（顺带 `WellScan` 的 client tick）、`BuildFx`、`Masterplan`，各自登记 Forge/FML 事件和 `FarDraw.add`）。三个世界渲染器都守 [gates.md](gates.md) §5：只在 `RenderWorldLastEvent` 画、阴影 pass 跳过、相对 `RenderManager.renderPos*`、只用 quads、每个顶点有法线、popAttrib 后手动开 `GL_TEXTURE_2D`、不写深度；`onRenderLast` 幂等——动画只按世界时间算，粒子和声音在 client tick 里发；每个部分单独失败（记一次日志、本次运行关掉这部分），GL 状态在 finally 里恢复。
 
 - **`BuildScan`**（client tick，渲染只读它发布的不可变 `Ghost`）：每座有任务、显示投影（PROJECTING/WAITING/BUILDING/PAUSED）的中枢，在 `full` 模式、观察者在 `buildGhostRange`+64 内时扫描客户端世界判断哪些格子已建好——规则和服务端一样（`Terrain.isTarget`，AIR 步骤看空气）：第一遍每 tick 1024 格由近到远，之后每 tick 103 格（约 10 tick 1024 格）；没扫过的格子不显示（中途到场不会看到盖在成品上的幽灵）；客户端区块没加载的格子（`chunkExists` 在客户端恒真，要看 `provideChunk(...).isEmpty()`）先当没建，区块到了每 tick 最多重查 1024 格；刚落地的格子每 tick 查。选格用 `GhostCells`：最近的 `buildGhostCells` 个未建格子、只留外表面（两个幽灵之间、贴着不透明方块的面剔掉）、表面棱线（≤ 16384）、当前阶段最低一层（≤ 512）；每面四角和贴图坐标预先算好；最多每 10 tick 重建一次（阶段变化、有清除、100 tick 刷新、观察者移动 8 格），其间落地的格子只标 `gone`。
-- **`BuildRender`**：幽灵 = 每格用自己方块的图标（`Block.getIcon(side, meta)`）画外表面，先铺一层平涂（青 0.09 / 琥珀 0.08），再叠贴图（0.75 / 0.9），加法混合、深度测试开不写深度、放大 0.002 + `glPolygonOffset(-3,-3)`（之后手动归零）；呼吸只在 57%–100% 亮度间摆（3 秒；缺料/缺电时琥珀色、60%–100%、5 秒）；表面棱线至少 1 像素宽。新投影从 `projectedAt` 起一个扫描面 4 秒（`SCAN_TICKS` 80）升过计划的盒子；建造中当前阶段最低一层更亮、格子描边；受阻格画红框（透过一切，≤ 64）；平整圆盘边缘在 Y0+1.05 画琥珀色边线直到清场完（修复任务不画）；完成后 2 秒（`RING_TICKS` 40）一圈硬光扫过新地面（establish/forum 以中枢为心、半径 19.5，模块以盒子中心）。超出 `buildGhostRange`、`outline` 模式、还在勘测时只描各阶段的包围盒（`OUTLINE_RANGE` 512 内）；`off` 什么都不画。
+- **`BuildRender`**：幽灵 = 每格用自己方块的图标（`Block.getIcon(side, meta)`）画外表面，先铺一层平涂（青 0.09 / 琥珀 0.08），再叠贴图（0.75 / 0.9），加法混合、深度测试开不写深度、放大 0.002 + `glPolygonOffset(-3,-3)`（之后手动归零）；呼吸只在 57%–100% 亮度间摆（3 秒；缺料/缺电时琥珀色、60%–100%、5 秒）；表面棱线至少 1 像素宽。新投影从 `projectedAt` 起一个扫描面 4 秒（`SCAN_TICKS` 80）升过计划的盒子；建造中当前阶段最低一层更亮、格子描边；受阻格画红框、要拆的机器和箱子画黄框（`0xFFD24A`，`Te`；都透过一切、各 ≤ 64、任务结束就不画；`boxes(cells, c, t, rgb)` 一个方法两种颜色，各自单独失败）；平整圆盘边缘在 Y0+1.05 画琥珀色边线直到清场完（修复任务不画）；完成后 2 秒（`RING_TICKS` 40）一圈硬光扫过新地面（establish/forum 以中枢为心、半径 19.5，模块以盒子中心）。超出 `buildGhostRange`、`outline` 模式、还在勘测时只描各阶段的包围盒（`OUTLINE_RANGE` 512 内）；`off` 时投影什么都不画（光井的光照画）。
+- **光井的光**（0.10.1，`BuildRender.wells` + `client/WellScan`）：`WellScan` 在 client tick END 每 `EVERY` 20 tick 扫一次客户端加载着的每座 active 园区（`clientCampus.active`；不按离玩家多远筛：隔着光门看到的园区离玩家远、离摄像机近，远近交给渲染器按 render 位置算；`buildEffects` 关着时不扫、列表清空）：用中枢自己的计划（`campus().plan().wells()`，按控制器坐标和正面缓存，超过 64 座就清空重来）找出每个 3×3 光井的中心格（八个邻格也是光井的格），只要世界里真有 WELL——在 Y0（齐平，光柱从 Y0+1 起）或在 Y0−1 且 Y0 是空气（还没整修的 0.10.0 园区，从 Y0 起）——就记一个 `Well{x, y, z, phase}`（相位 `(x·31 + z·17) & 127`）；客户端区块空着的跳过；列表整体替换，离开世界清空，出错就关到重启。`BuildRender.onRenderLast` 每帧先画光井（`buildEffects` 开着时；和投影模式、有没有任务都无关，`buildProjection=off` 也画；`nexus.effects` 不管它），然后才看 `buildProjection` 画投影。离摄像机（`RenderManager.renderPos*`，光门里的画面也一样）`WELL_RANGE` 160 格内的每口井画一道 `Shapes.beam`（高 `WELL_HEIGHT` 7、半宽 `WELL_HALF` 1.5、颜色 `0x9AF4FF`、亮度 0.2 × 呼吸（120 tick 一周期，0.6–1）× 远处 24 格淡出）和三圈往上升、慢慢缩小变淡的 `Shapes.square`（90 tick 一轮）；只按世界时间算，幂等。
 - **`BuildFx`** + `LaunchPhase`：每个发射是一个带自己贴图的小方块，从晶核（已成型：Y0+5.5 加晃动；未成型：控制器顶）沿二次贝塞尔弧飞向格子（顶点高出较高一端 `APEX_RISE` 3 + 0.35 × 水平距离），前面跑一个亮脉冲；格子最后 `min(PRINT 8, 飞行/2)` tick 从下往上打印；落地后描边闪 `FLASH` 6 tick。客户端晚几 tick 才知道发射，所以每个发射从"发射和第一次看到取较晚者"画到真实落地（`shownStart/shownLand`）：货物飞得快一点但总在方块出现那一 tick 到；落地后超过 `MAX_LATE` 8 tick 才看到的不重播。清除：client tick 里每 tick 最多 32 个清除各放 4–6 个原版破坏粒子（64 格内），破坏声和放置声各最多每 5 tick 一次，最近 128 个清除的格子描边停留一会儿。上限：`buildArcs` 管弧线和货物，打印和闪光取离相机最近的 256 个。`buildEffects` 关掉全不画。
-- **`Masterplan`**：拿着中枢核心、模块核心或终端时（`NexusRender.holdsHint`），256 格内每座 active 园区在地面上（Y0+1.05）描出将来的样子：平整圆盘边、广场、环道、大门、每个模块位的档案馆占地（朝中枢那边标门）、对角预留位（虚线，`|du|+|dv|>15` 切角），96 格内每个场地号立一块朝相机的牌子；有模块的场地用模块色、当前任务的场地青色。**放置预览**：拿着中枢核心对着方块、没潜行时，按物品自己的规则（`ground`/`lift`/`facingFor`）画出抬升放置会立起的底座、广场、环道、大门、圆盘边，加朝向箭头和核心处一道光柱；客户端已经能看出服务端会拒绝时变红并在核心上方写原因（`too_high`、`no_sky`、`on_module`、`too_close`——后两个只看客户端加载了的中枢和模块）。`nexusEnabled` 或 `campusEnabled` 关掉时没有预览。线都画两遍（0.35 透过地形、再深度测试），是朝相机的条带、任何距离至少约 1 像素、每段 ≤ 8 格。
+- **`Masterplan`**：拿着中枢核心、模块核心或终端时（`NexusRender.holdsHint`），256 格内每座 active 园区在地面上（Y0+1.05）描出将来的样子：平整圆盘边、广场、环道、大门、每个模块位的档案馆占地（朝中枢那边标门）、对角预留位（虚线，`|du|+|dv|>15` 切角），96 格内每个场地号立一块朝相机的牌子；有模块的场地用模块色、当前任务的场地青色；空着的大厅位（0.10.1）如果 `View.modules` 里有计划在这里、还没建成的模块，牌子写 `build.masterplan.planned`「模块名（状态）」，状态是 `build.masterplan.status.*`（需研究/待开始/建造中/已建成/暂无空位），需研究琥珀色、待开始青色、其余暗色。**放置预览**：拿着中枢核心对着方块、没潜行时，按物品自己的规则（`ground`/`lift`/`facingFor`）画出抬升放置会立起的底座、广场、环道、大门、圆盘边，加朝向箭头和核心处一道光柱；客户端已经能看出服务端会拒绝时变红并在核心上方写原因（`too_high`、`no_sky`、`on_module`、`too_close`——后两个只看客户端加载了的中枢和模块）。`nexusEnabled` 或 `campusEnabled` 关掉时没有预览。线都画两遍（0.35 透过地形、再深度测试），是朝相机的条带、任何距离至少约 1 像素、每段 ≤ 8 格。
 - **`NexusRender` 的园区部分**：场地上的模块的光桥沿场地轴从半径 5.6 到模块朝中枢的那一面（模块没加载时到 23.5），门口一道横光；内环模块照旧画环桥（`siteDoorSafe` 出错就记一次、退回环桥）；active 园区不再画 0.9.2 的槽位提示（总图代替）；每个多方块单独 try/catch。
 - **区块网格**：`DeckRender`、`FittingRender`、`ShelfUnits` 都走 `PartDraw`：`renderStandardBlock`（原版光照）+ 显露面上关 AO、`0xF000F0` 画发光层；`Neighbours`/`UnitLook` 只读方块和 meta（区块可能在别的线程建），不读 `Formed`、不读 TE。
 
@@ -269,29 +350,32 @@
 
 - 书库的三维预览显示 `main`（档案馆）和用料；`library.structure` 的说明同时介绍档案馆和照样成型的 0.9.2 大厅。
 - 中枢预览 6–10 级：在模块位 4、2、6 上立档案馆（`min(RingSlots.open(相位), 3)` 座：相位 I 两座、II 起三座），控制器在 `archiveController` 的位置、朝向中枢；预览里不铺园区地面（太重）。没有 `ModuleSpec` 的模块种类退回同号内环槽（0.9.2 做法）。
-- 地板、配件、补给口、×32 的回响书格都是普通合成表。
+- 地板、配件、补给口、回收箱（0.10.1）、×32 的回响书格都是普通合成表。
 
-## 14. 配置（`nexus` 类别，0.10.0 只加键，`VERSION="0.10.0"`，`upgrade()` 没有新步骤）
+## 14. 配置（`nexus` 类别；`VERSION="0.10.1"`）
+
+0.10.0 只加键；0.10.1 加 `buildClearAll`，`buildFillDepth` 默认 2 → 4：`upgrade()` 对 0.10.1 之前写的文件，`buildFillDepth` 存的正好是 `"2"`（`Config.bumpsFillDepth`，去掉空格比较）就删掉这一项、按新默认 4 重建，玩家改成别的数的保留（`ConfigTest`）。
 
 | 键 | 默认（范围） | 说明 |
 |---|---|---|
 | `campusEnabled` | true | 关掉：什么都不建、不动，不做放置检查，也不做园区——点在地面上的核心照样抬高两格放下，但它是一座要手搭的 0.9.2 式中枢（园区保持 legacy、没有任务；配置说明也是这么写的）；带着园区的核心放回原处也不接着用。要 `nexusEnabled` 也开着才跑 |
 | `archiveEnabled` | true | 关掉：不再提供/建档案馆，书库只按 0.9.2 大厅成型 |
 | `buildBlocksPerTick` | 2.0（0.25–16） | 每 tick 平均发射数；乘阶段节奏（establish 本体 ×0.25、地面 ×1.5，模块地面 ×1.5，其余 ×1），预算上限 `BuildPace.CAP` 24 |
-| `buildClearPerTick` | 8（1–256） | 每 tick 清/填的格子 |
+| `buildClearPerTick` | 8（1–256） | 每 tick 清、平整（换草/填土）的格子 |
 | `buildEuPerBlock` | 256（0–最大） | 每放一格 EU |
-| `buildEuPerClear` | 64（0–最大） | 每清一格、填一格、要先拆的格子加收 |
-| `buildCostScale` | 1.0（0–10） | 原料倍率，0 = 全免费（晶核座、书库核心也免） |
-| `buildClearHeight` | 24（0–64） | establish/forum 平整时清到地面以上多高；模块自己的盒子总是清满 |
-| `buildFillDepth` | 2（0–16） | 平整时从地面层往下填露天坑和水的深度（地面层放草，上面有实心方块的放泥土；下面泥土）；岩浆和更深的留着 |
+| `buildEuPerClear` | 64（0–最大） | 每清一格、平整一格、每个 AIR 步骤；要先拆的格子加收 |
+| `buildCostScale` | 1.0（0–10） | 原料倍率，0 = 全免费（晶核座、书库核心也免；EU 照付） |
+| `buildClearHeight` | 24（0–64） | establish/forum（和整修园区）平整时清到地面以上多高；模块自己的盒子总是清满 |
+| `buildFillDepth` | 4（0–16） | 平整时从 Y0−1 往下最多填几格（空气、水、花草、原木、树叶 → 泥土；`buildClearAll` 时岩浆也填），碰到第一个 BLOCKED（地壳）就停，下面的留着；Y0 没铺砖的格子换成草（上面压着实心方块的换成泥土）。0.10.0 是 2 |
 | `buildMinSpacing` | 144（0–100000） | 抬升放置离别的园区中心的 Chebyshev 距离，0 关闭 |
 | `buildRequireSky` | true | 抬升放置要露天 |
-| `buildKeepSpoils` | true | 矿和原木的掉落进收获（27 格），其余作废 |
-| `buildClearable` / `buildBlocked` | 空 | `modid:name` 或 `modid:*`：强制可清（别的模组生成的石头要清就写在这里）/ 永不拆 |
+| `buildKeepSpoils` | true | 拆下的东西（掉落和洒出来的）进回收箱；关掉就作废（我们自己的散落方块照样按部件记账），回收箱满了也不再等 |
+| `buildClearAll` | true | 0.10.1：整片清空规则（§5），关掉 = 0.10.0 的谨慎规则 |
+| `buildClearable` / `buildBlocked` | 空 | `modid:name` 或 `modid:*`：强制可清（只在谨慎规则下有用；别的模组生成的石头要清就写在这里）/ 永不拆（两种规则都守，`Probe.listed`） |
 | `buildProjection` | full（full/outline/off） | 客户端：投影画法；别的值当 full |
 | `buildGhostRange` | 96（0–256） | 客户端：画幽灵块的距离，外面只描边 |
 | `buildGhostCells` | 6000（0–100000） | 客户端：最多画多少幽灵块（最近的先） |
-| `buildEffects` | true | 客户端：发射弧线、打印、清除粒子 |
+| `buildEffects` | true | 客户端：发射弧线、打印、清除粒子、完成光环，0.10.1 起还有光井上的光柱 |
 | `buildArcs` | 48（0–512） | 客户端：同时画的弧线（和货物）上限 |
 
 `effectRange`（`nexus` 类别，默认 128）同时决定建造包和书增量包的接收范围（+64）。中枢的其余键见 nexus.md §9。
@@ -301,19 +385,25 @@
 | 测试 | 守住什么 |
 |---|---|
 | `MixTest` | 确定、[0,1)、不同位置不同种子 |
-| `PartRecipesTest` | 每个键能解析、图案成形、表里有每个部件、构架图案同 0.9.2、地砖/地缝钢成本、展开精确、`partOnly`、坏表抛异常 |
+| `PartRecipesTest` | 每个键能解析、图案成形、表里有每个部件（含回收箱：×1、箱子在中间）、构架图案同 0.9.2、地砖/地缝钢成本、展开精确、`partOnly`（晶核座、书库核心、补给口、回收箱）、坏表抛异常 |
 | `GtPatternTest` | 没有配方把小写字母（GT 工具字母）交给 GT；改名后原料和数量不变 |
-| `CampusPlanTest` | 坐标双射且同 `RingSlots.offset`、场地和中心、0.9.2 槽落在同号模块位里、三座档案馆不碰广场/环道/大门和彼此、平整格在圆盘内、establish 铺满广场大门和整圈环道、模块地面只增、确定、种子随位置变 |
+| `CampusPlanTest` | 坐标双射且同 `RingSlots.offset`、场地和中心、补给口和回收箱 (10, 5) 相邻同侧且回收箱站在地砖上（不是光井、不是塔柱，32 个种子）、0.9.2 槽落在同号模块位里、三座档案馆不碰广场/环道/大门和彼此、平整格在圆盘内、establish 铺满广场大门和整圈环道、模块地面只增、确定、种子随位置变 |
 | `PavingTest` | 各比例、全园区比例、光只在允许的线上、光井在广场且离底座 ≥2、侧叶、大厅地面通向门、和生成器一致 |
 | `ArchiveShapeTest`、`StairWalkTest` | 尺寸、对称、控制器和座、精确计数、门和门厅、室内封闭、`inside`、阅读台讲台底座、软地面、雨棚；楼梯每级升 ≤0.5、净空 ≥2、到回廊 |
 | `LibraryUnitsTest`、`UnitLookTest` | 78/702、一楼 48、黄金顺序、索书号唯一、每格只属一个书架、槽号往返、书面前有可走空气、镜像、左右是看书人的左右、立柱按点击侧选；书架外观真值表 |
-| `TerrainRuleTest` | 判定顺序、目标总放行、岩浆/不可破坏/别的结构/别的园区受阻、清场体、自然来自钩子和材质、玩家建的岩石、名单；只有确知生成的岩石算自然（原版石头/地狱岩/末地石/普通砂岩、平顶山陶瓦、GT 原始石头、矿辞的矿；混凝土、石英、黑曜石、平滑砂岩、别的模组的石头不算）、`naturalRock`/`mesaClay`/`rawGtStone`；模块任务拆散落的我们的方块和补给口，中枢自己的任务、已成型结构范围里的不拆 |
-| `BuildPlanTest` | 朝向、establish = 相位 I 去控制器且控制台座先、由内向外、塔柱再补给口、平整和底座柱、forum = 去掉中枢、keep-out 让开停靠的大厅、档案馆朝中枢、HARD 格 = 蓝图检查格（4 朝向）、无重复、阶段、书架是 15 格连续组、镜像相邻、清场盒、确定 |
+| `TerrainRuleTest` | 谨慎规则：判定顺序、目标总放行、岩浆/不可破坏/别的结构/别的园区受阻、清场体、自然来自钩子和材质、玩家建的岩石、名单；只有确知生成的岩石算自然（原版石头/地狱岩/末地石/普通砂岩、平顶山陶瓦、GT 原始石头、矿辞的矿；混凝土、石英、黑曜石、平滑砂岩、别的模组的石头不算）、`naturalRock`/`mesaClay`/`rawGtStone`；模块任务拆散落的我们的方块和补给口，中枢自己的任务、已成型结构范围里的不拆。整片清空（0.10.1）：箱子和机器谨慎规则留着、整片清空拆（`clearAllTakesTheChestTheOldRuleKept`）；不可破坏、别的园区、保护盒、名单、别的结构里我们的方块在每条规则里都 BLOCKED（`clearAllStillKeepsWhatIsGuarded`）；每项任务都把散落的我们的方块记账、成型结构范围里的留着（`clearAllCreditsOurLooseBlocksForEveryJob`）；关掉时和 0.10.0 逐个事实组合一致（`theOldRuleIsUnchangedWhenClearAllIsOff`）；地面一层不管原来是什么都换成草、玩家的方块只在整片清空时换（`theFloorBecomesGrassWhateverStoodThere`）；深坑填到深度、树旁的洼地填到地壳、铺砖格不结束一列、必须留着的地面立刻结束（`gradingFillsADeepHoleDownToTheCrust`）；地壳之后不再探测（`gradingAsksNoCellPastTheCrust`） |
+| `BuildPlanTest` | 朝向、establish = 相位 I 去控制器且控制台座先、由内向外、整个地面在 Y0 一层（光井齐平、下面没有步骤）、塔柱再补给口再回收箱（14 步，回收箱挨着补给口）、平整和底座柱、forum = 去掉中枢、keep-out 让开停靠的大厅（补给口和回收箱留着）、档案馆朝中枢、档案馆的清理柱也 `grade`、HARD 格 = 蓝图检查格（4 朝向）、无重复、阶段、书架是 15 格连续组、镜像相邻、清场盒、确定 |
 | `BuildLedgerTest`、`BuildStateTest`、`BuildPaceTest` | 扣退往返、成品优先、倍率 0 免费、向上取整、回响晶不可取、need/wants 反压、need 空 ⇔ 全额、一组物品依次喂每条接受它的原料行（`share`）；状态表、开始要看暂停、自动恢复；节奏、组、清场预算、飞行时间、ETA |
 | `FxCodecTest`、`LiftRuleTest`、`GhostCellsTest`、`LaunchPhaseTest` | 打包布局；抬升真值表；选格/面/棱/最低层/包围盒/轮廓（三万格够快）；发射时间线和弧线 |
 | `SpineColourTest`、`BlueprintTest` | 书脊不透明、暗色、偏紫；`cell` 是 `world` 的逆、`point` |
-| `campus/CampusEngineTest` | 位置打包、模块键、任务存读、keep-out 随任务、计划重算一致、占地、旧存档的飞行、退款、换场地收回开始、勘测中暂停、修复不平整、修复排前、受阻格封顶计数、特效批次时间、忙的一 tick 特效分页不丢、核心带着的园区（`Carried`）存读、只有要拆的格子付拆的 EU（`stepEu`）、跳过受阻没任务也同步 |
+| `campus/CampusEngineTest` | 位置打包、模块键、任务存读（含 `Fe` 免费、`Mc`/`Te` 机器，`Fr` 仍是成型次数）、keep-out 随任务、计划重算一致、占地、旧存档的飞行、退款、换场地收回开始、勘测中暂停、修复不平整、修复排前、受阻格封顶计数、特效批次时间、忙的一 tick 特效分页不丢、核心带着的园区（`Carried`，含 `Pv`、`Fb`）存读、只有要拆的格子付拆的 EU（`stepEu`）、跳过受阻没任务也同步；0.10.1：整修园区 = forum 计划、会平整、排在没开始的模块任务前、和修复互不让、不顶替开始了的任务；整修园区不平整也不铺建好的档案馆的任何一格（房子、前庭、散水、雨棚，4 个朝向；前庭和雨棚伸出 0.10.0 的占地外扩 1，`theRefreshKeepsOffAStandingArchivesForecourtApronAndCanopy`）；整修园区只提供一次、平整完才记 `Pv`、取消修复不算拒绝、取消整修园区或广场算（`aRefreshIsNotedOnlyOnceItGraded`）；立即建造越过完成后还留着的任务、免费，`endsInstant` 正好是受阻/受保护/未加载/没成型（`finishingAtOnceMovesPastAFinishedJob`）；园区任务开始时换上现在的 keep-out 并重新勘测，同样的盒子（不分顺序）不动，动过工的不换（`aCampusJobTakesTheKeepOutOfNowWhenItStarts`）；给生物留下的平整格只记一次、从低到高补，让路的地板和配件记下再试、按阶段退回，都随任务存读，放弃后清空（`cellsLeftForAnEntityWaitForTheTouchUp`）；回收箱方块注册前这一步跳过不记账、注册后放下读回部件（任何 meta）、补给口和回收箱是一次性的礼物、不进账单；免费是任务的也是整座中枢的、同步、立即只给命令要的任务；`ModuleStatus` 的 ordinal 不变、模块列表存读 |
+| `campus/RecycleStoreTest`、`RecyclePageTest`、`DropCaptureTest` | 按物品/meta/NBT 合并、存的是自己的副本、取出不超过有的、最多的在前再按先来、到种类上限算满但照收、重 NBT 的种类按字节算满（`heavyKindsFillItByTheirBytes`）、暂存整种按空位放回（`aPutAsideStoreDrainsAsFarAsThereIsRoom`）、各队伍的暂存存读后放回（`theTeamsPutAsideStoresSurviveSavingAndDrain`）、long 计数饱和、存读、每次改动都通知；分页给要的行和总数、重 NBT 的页 < 24000 字节、点击按索引和哈希找回种类；捕获只在开着时、只接同一世界、这一格 ±2 内的非空物品（存副本），关上时交出一次、之后不再接，正在加载的区块冒出来的物品不接（`itemsOfAChunkThatLoadsAreNotTaken`） |
+| `campus/CampusTilesTest`（+ 测试用的 `FakeWorld`：不跑 `World` 构造器的服务端世界，只答哪些区块加载着、格子里的 tile、时间；区块能卸载、再加载出一个新 tile，和游戏里一样旧 tile 不作废） | 中枢区块卸载后回收箱和补给口不再用旧的 tile、重新加载后用新的（`loadedNexus`，`aNexusWhoseChunkUnloadedIsNotUsedAnyMore`）；漏斗取走一种的最后一件、放不下又放回，不丢，放回不多于取走的、不收别的种类、下一 tick 不能再放回（`aHopperThatTakesTheLastItemAndPutsItBackLosesNothing`） |
+| `logic/RemovalTest`、`RecycleSlotsTest`、`EchoCommandTest` | 散落的我们的方块记账、流体变空气、其余采集、只有采集要等回收箱有空、拆完的各种剩余（空了、等着采集的、冰化的水、拒绝或换了方块）；最多的种类成堆、取出扣存储、放小堆叠取差额、漏斗放回取了放不下的、同一 tick 两个抽取器不重复、放回只限本格本 tick 取走的；研究和建造各条用法、补全、128 格内最近的中枢（`research all` 只给本版本能做的研究：`logic/ResearchTreeTest.onlyTheNodesOfThisVersionAreAvailable` 守着，不含相位 II、潮汐井、穹顶，和星图上的灰星一致） |
 | `library/ArchiveMapTest`、`LibraryPacketTest`、`LibraryVaultTest`、`TileLibraryUnitsTest`、`HallRefillTest` | 平面图格子在图内不重叠、点哪选哪、方向；满库的书包 < 28000、增量包；仓库存读、坏条目跳过、一次一件；坐标、新核心是档案馆、旧存档是大厅、书面朝屋里、底座顶檐立柱指向书架、讲台是控制台、按中心停靠；大厅和档案馆第一次成型都按自己的容量从仓库取一次、存读后不再取 |
+| `ConfigTest`（根包） | `older()`；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth`（只有存的 "2" 改成 4） |
+
+全仓 88 个测试类、536 个测试（0.10.1；0.10.0 是 81 个类、484 个）。
 
 ## 16. 已知问题、只能进游戏看的
 
@@ -321,23 +411,31 @@
   - active 园区提供模块的上限按 `min(RingSlots.open(PHASE), 7)` 算、不看内环研究，而停靠（`openSlots`）要内环——书库研究本来就要内环，现在没区别。
   - 修复后原计划重来（`keepClear`）的任务，客户端仍画平整边线（`Kc` 没同步）。
   - 放置预览的 `too_close`/`on_module` 只看客户端加载了的中枢和模块（`CampusRegistry` 只在服务端）。
-  - 手放的泥土、沙子、原版石头分不出来，按地形清掉；投影不按种类列出要清的格子（「建造」页只给总数「将清理」）。
-  - 别的模组生成的石头（比如 Et Futurum 的安山岩、闪长岩、花岗岩）不在确知生成的名单里，标红留着；要清得写进 `buildClearable`。
+  - 谨慎规则下：手放的泥土、沙子、原版石头分不出来，按地形清掉；别的模组生成的石头（比如 Et Futurum 的安山岩、闪长岩、花岗岩）不在确知生成的名单里，标红留着，要清得写进 `buildClearable`。
+  - 投影不按种类列出要清的格子（「建造」页只给总数「将清理」，机器和箱子只给数和前 64 个黄框）。
+  - 整片清空（设计如此，要提醒玩家）：园区里玩家搭的东西都拆；地面以下 `buildFillDepth` 格内的空处（地下室、洞穴的顶上那截）也填土。雪地生物群系里草地照样积雪（原版天气）。
+  - 拆一格时只在那一刻开着捕获：拆完以后下一 tick 才冒出来的物品（延迟掉落的模组方块）接不到，掉在地上。
+  - 清掉的流体可能从清理范围外流回来（清场柱只清一次；平整的填土在地面以下）。
+  - 回收箱存储的字节数是估计（未压缩的 NBT 大小，每种加 16），软上限：满了以后一次拆除给的照收，可能超出一点。暂存（`fluxecho_recycle`）本身不设上限，只按团队中枢回收箱的空位每 5 秒整种放回；团队没有中枢加载着时一直留在存档里。
+  - 最后补一遍最多等一分钟（`TOUCH_UP_WAIT`）；生物一直站着的格子就留着不补（地面缺一块砖或一格没填）。
+  - 立即模式（`/fluxecho build finish`）不存档，重新加载后按正常速度接着建（仍然免费）；遇到受阻、受保护、区块未加载、没成型就结束，之后也按正常速度。
+  - 停靠着的 0.9.2 大厅不算书库以后，园区可能同时有大厅和档案馆两座书库（大厅照旧占一个内环位置）。
   - `covers()` 是宽松的立方体（成型档案馆 ±36）：以后在成型的档案馆旁边建别的模块时，落在它范围里的我们的残留方块不算散落，照样受阻。
   - 罕见：抬升放回原处时，放置前的 `too_close` 检查（`refusal`）按玩家朝向算中枢中心，`resume` 按带着的正面算；两者不一致时可能检查通过而 `resume` 报 `resume_too_close`，这时核心只是放下了、园区留 legacy（`resumeRefused()` 挡住了 `establish`）；反过来检查不过时，潜行放回去照样接着用。
   - 缺料/缺电这类暂时的暂停也走描述包（`RESUME_AFTER` 限住了频率）。
   - `BuildClient` 的计划缓存只在离开世界时清（每座中枢一条）。
   - 档案馆：控制器区块卸载而书架区块还在时书架上的书不画；一本书先不带 NBT、后带 NBT 发来时书脊颜色可能变；客户端还没收到描述包就开 GUI，两边窗口可能不一致；GUI 里选择变化后一个往返内点格子，作用在新书架上（看到的是旧内容，不丢东西）。
-- **只能进游戏看**（开着和关着 Complementary 各看一遍）：投影（幽灵块白天和琥珀色是否看得清、多层叠加是否过亮、棱线、扫描面、最低层、红框、平整边线、完成光环）；弧线、货物方块、打印、落地闪光和声音时机；总图和预览线站着在 20–70 格外看不看得见；地板/配件/书架单元的网格和发光；「建造」页和档案馆 GUI 的点击、拖放、Shift 点、热键、点后整窗重发；大厅窗口的「取回」和仓库本数、终端中枢页的营造行；拆下核心再放回原处（抬升、潜行、点控制台座）园区接着用、修复排上；档案馆室内特效和看着的书架标签；约 60 格宽的 NEI 预览；手放核心朝向中枢并成型、区块边缘不散架、成型时帧时间；未成型档案馆的墙裙光线；真实世界里的清场、平整、领地模组的拒绝和假玩家。
+- **只能进游戏看**（开着和关着 Complementary 各看一遍）：投影（幽灵块白天和琥珀色是否看得清、多层叠加是否过亮、棱线、扫描面、最低层、红框、黄框、平整边线、完成光环）；光井齐平后的样子和上面的光柱、光环；回收箱方块的贴图、界面（点、右键、Shift 点、滚轮和滚动条、全部取出、满了的提示）、漏斗/管道/AE 总线从回收箱抽东西；拆箱子、GT 机器、AE 驱动器、门、各模组的方块时内容是不是都进了回收箱、有没有东西掉在地上；整片清空的地面（草、填坑到地壳、雪地积雪）；用户 0.10.0 存档上的「整修园区」（投影、清理、旧光井、送回收箱不重复送补给口）；创造模式开始、`/fluxecho` 各条（研究马上生效、免费、立即建完的速度和聊天报告、立即建造停下时的提示）；拆下回收箱很满的中枢核心（暂存、提示、放回后的聊天行）；有人或动物站在地面格子上时的最后补一遍；「建造」页的模块列表和总图牌子；弧线、货物方块、打印、落地闪光和声音时机；总图和预览线站着在 20–70 格外看不看得见；地板/配件/书架单元的网格和发光；「建造」页和档案馆 GUI 的点击、拖放、Shift 点、热键、点后整窗重发；大厅窗口的「取回」和仓库本数、终端中枢页的营造行；拆下核心再放回原处（抬升、潜行、点控制台座）园区接着用、修复排上；档案馆室内特效和看着的书架标签；约 60 格宽的 NEI 预览；手放核心朝向中枢并成型、区块边缘不散架、成型时帧时间；未成型档案馆的墙裙光线；真实世界里的清场、平整、领地模组的拒绝和假玩家。
 
 ## 17. 安全修改须知
 
-- **计划确定性**：`CampusPlan`、`BuildPlan`、`ArchiveShape`、`LibraryUnits` 不读配置、不用随机数和 `Math` 的三角函数（`Mix` + `StrictMath`）；任务只存计划键和 keep-out，计划每次重算，客户端也照样算。改了它们放什么 → 提 `BuildJob.V`。keep-out 必须随任务存、随描述包同步。
-- **部件码**（`Parts`）、deck/fitting 的 meta 永不改、不复用：码存在账本 `Parts`、飞行 `P`、`BUILD_FX` 的 `M` 里，meta 是世界里的方块。`PartRecipes` 改配方会改成本（账本按单位存，已有余额照旧有效）。
-- **场地常量**（`HALL_FRONT`、`HALL_SITES`、`GRADE_R/K`、广场、环道、大门、塔柱、补给口位置）改了会让已有园区的记录场地、keep-out、已铺地面对不上。
+- **计划确定性**：`CampusPlan`、`BuildPlan`、`ArchiveShape`、`LibraryUnits` 不读配置、不用随机数和 `Math` 的三角函数（`Mix` + `StrictMath`）；任务只存计划键和 keep-out，计划每次重算，客户端也照样算。改了它们放什么 → 提 `BuildJob.V`。keep-out 必须随任务存、随描述包同步；园区任务在开始和立即建造时换成现在的（`freshKeepOut`/`retarget`），动过工以后不能再换（已经建的会对不上计划）。
+- **部件码**（`Parts`）、deck/fitting 的 meta 永不改、不复用：码存在账本 `Parts`、飞行 `P`、`BUILD_FX` 的 `M` 里，meta 是世界里的方块。新码只往后加（0.10.1 的 `RECYCLE_BIN` = 52）。`PartRecipes` 改配方会改成本（账本按单位存，已有余额照旧有效）。
+- **场地常量**（`HALL_FRONT`、`HALL_SITES`、`GRADE_R/K`、广场、环道、大门、塔柱、补给口和回收箱的位置）改了会让已有园区的记录场地、keep-out、已铺地面、送过的礼物（`portGifted` 按格子记）对不上。
 - **档案馆**：`ArchiveShape` 改了已建的档案馆就不成型（还要提 V）；`LibraryUnits` 的顺序就是书的槽号（`unit·9+k`），改顺序 = 把书挪到别的书架；`TileLibrary.SHAPES` 顺序（`main` 再 `hall`）和 `legacyShape()=hall` 决定旧存档怎么读；`SLOTS` 702 不能变小。
-- **NBT 键**：中枢 `Campus{St, Hint, Skip, Sites[{S,P,K}], Job, Queue, Ledger{Raw,Parts}, BuildIn, Spoils, Declined, Rc, Rj}`（`Rc/Rj` 只在放回原处等检查时有）；任务 `K/Pk/S/V/St/Ps/Sg/Go/ByM/ByL/To/Kc/Pa/Ft/Ko/D/Sk/Cc/Cy/Ct/Cl/Na/Un/Tf/Fd/Bc/Bl/Fl[{I,L,U,C,P,Sc,D}]/Fs/Fr`（状态和暂停按枚举名存）；核心物品 `BuildCredit/Pending/Manifest/Campus{Dim, Pos, F, Sites[{S,P,K}], Skip, Declined, Job}`；补给口 `Slot/Nexus/Team/Facing`；书库 `Samples/Desk/Selected/Unit/Refilled/Shape`；`WorldSavedData` 名 `fluxecho_campus`、`fluxecho_vault`。
-- **包**：`NexusNet` 种类 `BUILD_FX=2`、`BUILD_STATE=3`、`LIB_DELTA=4` 不改不复用；描述包和 `BUILD_STATE` 发 `BuildState` 的 ordinal——枚举只能在末尾加值；`FxCodec` 布局两端一致。
+- **NBT 键**：中枢 `Campus{St, Hint, Skip, Fb, Pv, Sites[{S,P,K}], Job, Queue, Ledger{Raw,Parts}, BuildIn, Recycle[{K,N}], Declined, Rc, Rj}`（`Rc/Rj` 只在放回原处等检查时有；0.10.0 的 `Spoils` 只读一次、并进 `Recycle`，不再写）；任务 `K/Pk/S/V/St/Ps/Sg/Go/ByM/ByL/To/Kc/Pa/Ft/Ko/D/Sk/Cc/Cy/Cl/Na/Un/Tf/Fd/Bc/Bl/Fl[{I,L,U,C,P,Sc,D}]/Fs/Fr/Fe/Mc/Te/Tu/Gw/Ts`（状态和暂停按枚举名存；**`Fr` 是 0.10.0 起的成型次数，所以免费是 `Fe`**；`Te` 是机器格、`Tu` 是给生物留下的平整格，都是 x,y,z 平铺；`Gw` 是让路跳过的步骤的位集，`Ts` 是最后补一遍开始等的 tick（-1 没在等）；0.10.0 的 `Ct` 不再写也不再读）；核心物品 `BuildCredit{Raw, Parts, Recycle[{K,N}], Ov}`（`Ov` 是交给暂存的种数；0.10.0 的 `Spoils[物品]` 照样读）/`Pending`/`Manifest`/`Campus{Dim, Pos, F, Sites[{S,P,K}], Skip, Declined, Job, Pv, Fb}`；补给口 `Slot/Nexus/Team/Facing`；回收箱 `Nexus/Team/Facing`（描述包 `F`）；书库 `Samples/Desk/Selected/Unit/Refilled/Shape`；`WorldSavedData` 名 `fluxecho_campus`、`fluxecho_vault`、`fluxecho_recycle`（`Teams[{T, L[{K,N}]}]`；没有主人的中枢的键 `RecycleOverflow.NO_TEAM` 由字符串 `"[FluxEcho] no team"` 算出，也不能改，否则暂存的东西回不来）。回收箱的种类是物品 NBT 原样（`K`），读写时不要改它，模组没了的物品靠它留着。
+- **包**：`NexusNet` 种类 `BUILD_FX=2`、`BUILD_STATE=3`、`LIB_DELTA=4` 不改不复用；描述包和 `BUILD_STATE` 发 `BuildState` 的 ordinal，描述包和「建造」页发 `Campus.ModuleStatus` 的 ordinal（`Md`）——枚举只能在末尾加值；`FxCodec` 布局两端一致（`Bl`、`Te` 都用它）。回收箱界面的页（`RecyclePage`：`Kd/Ti/Of/E[{K,N,H,C}]`）要压到 `LIMIT` 以下，点击靠哈希找回种类，别改成只发索引。
 - **阶段**编号和 lang 键 `fluxecho.build.stage.e<n>`/`m<n>` 一一对应。
 - **`Builder.QUIET`**：引擎改世界时设上、结束清掉；我们的方块在 `onBlockAdded/breakBlock` 里守着它，新方块也要守，否则每放一块附近的多方块都复查一次。
-- 改 `Terrain`/`TerrainRule` 先想"会不会拆掉别人的东西"：拿不准就 BLOCKED。
+- 改 `Terrain`/`TerrainRule` 先想"会不会拆掉别人的东西"。整片清空是用户要的默认，但 `guarded()` 那几样（别的园区、保护盒、别的结构里我们的方块、不可破坏、`buildBlocked`）加上领地保护的拒绝是底线，不能削弱；谨慎规则保持 0.10.0 原样（`theOldRuleIsUnchangedWhenClearAllIsOff` 守着），在它下面拿不准就 BLOCKED。勘测（`surveyGrade`）和引擎（`gradeCell`）必须用同一个 `gradeColumn` 规则，否则「将清理/要填」和实际对不上。
+- **拆除只走 `Builder.removeCell`**：它包着 `DropCapture` 和 `QUIET`、先发破坏事件；不要在拆之前读 `getDrops` 再拆（会算两遍，GT 的 TE 矿按缓存的 tile 掉落）。新增的拆除路径也要把接到的东西交给 `Campus.recycle`。

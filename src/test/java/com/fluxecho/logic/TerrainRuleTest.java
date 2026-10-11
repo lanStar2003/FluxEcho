@@ -1,12 +1,15 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +39,12 @@ class TerrainRuleTest {
                 case "oursInOtherStructure" -> p.oursInOtherStructure = true;
                 case "otherNexusArea" -> p.otherNexusArea = true;
                 case "crafted" -> p.crafted = true;
+                case "te" -> p.te = true;
+                case "protectedArea" -> p.protectedArea = true;
+                case "listed" -> p.listed = true;
+                case "wood" -> p.wood = true;
+                case "leaves" -> p.leaves = true;
+                case "plant" -> p.plant = true;
                 default -> throw new IllegalArgumentException(f);
             }
         }
@@ -366,6 +375,150 @@ class TerrainRuleTest {
         assertFalse(TerrainRule.craftedName("minecraft:log"));
         assertFalse(TerrainRule.craftedName("gregtech:gt.blockstones"));
         assertFalse(TerrainRule.craftedName(null));
+    }
+
+    // ---- the clear-all rule (0.10.1)
+
+    private static Verdict clearAll(String... facts) {
+        return TerrainRule.forClear(probe(facts), false, true);
+    }
+
+    private static Verdict buildAll(String... facts) {
+        return TerrainRule.forBuild(probe(facts), false, true);
+    }
+
+    private static final Verdict A = Verdict.ALREADY, P = Verdict.PLACE, C = Verdict.CLEAR, R = Verdict.REPLACE,
+        B = Verdict.BLOCKED;
+
+    @Test
+    void clearAllTakesTheChestTheOldRuleKept() {
+        // a chest, a machine: 0.10.0 left them standing (red), the clear-all rule takes them down
+        assertEquals(B, TerrainRule.forClear(probe("hasTile", "te"), false, false));
+        assertEquals(C, clearAll("hasTile", "te"));
+        assertEquals(B, TerrainRule.forBuild(probe("hasTile", "te"), true, false));
+        assertEquals(C, buildAll("hasTile", "te"));
+        // a player's cobblestone, a block nobody can tell, the ground, an ore, fluids, tall grass and snow layers
+        String[][] all = { { "crafted" }, {}, { "natural" }, { "gtOre", "hasTile" }, { "fluid", "lava" },
+            { "fluid", "replaceable", "natural" }, { "replaceable", "natural" } };
+        for (String[] f : all) assertEquals(C, clearAll(f), Arrays.toString(f));
+        assertEquals(A, clearAll("air"));
+        assertEquals(A, TerrainRule.forClear(probe("replaceable", "natural"), false, false), "0.10.0 let it stay");
+    }
+
+    @Test
+    void clearAllStillKeepsWhatIsGuarded() {
+        for (String g : new String[] { "unbreakable", "otherNexusArea", "protectedArea", "listed" }) {
+            assertEquals(B, clearAll(g, "natural"), g);
+            assertEquals(B, clearAll(g, "hasTile", "te"), g);
+            assertEquals(B, clearAll(g, "ours", "loose"), g);
+            assertEquals(B, buildAll(g, "crafted"), g);
+            assertEquals(B, TerrainRule.forFloor(probe(g, "natural"), false, true), g);
+            assertEquals(B, TerrainRule.forFill(probe(g, "air"), true), g);
+        }
+        assertEquals(B, clearAll("ours", "oursInOtherStructure", "loose"), "a part of another structure");
+        assertEquals(A, buildAll("target", "protectedArea"), "nothing to do, so nothing done");
+        assertEquals(P, buildAll("air"));
+    }
+
+    @Test
+    void clearAllCreditsOurLooseBlocksForEveryJob() {
+        assertEquals(R, clearAll("ours", "loose"), "credited as its part, by the nexus's own jobs too");
+        assertEquals(B, TerrainRule.forClear(probe("ours", "loose"), false, false), "0.10.0: module jobs only");
+        assertEquals(R, clearAll("port", "hasTile", "loose"), "a supply port or a recycle bin");
+        assertEquals(B, clearAll("ours"), "a part inside a formed structure's reach stays");
+        assertEquals(R, buildAll("ours"), "our wrong part where a step wants another");
+        assertEquals(R, buildAll("port", "hasTile"));
+        assertEquals(P, buildAll("fluid", "lava"), "the block takes the lava's place");
+        assertEquals(B, TerrainRule.forBuild(probe("fluid", "lava"), false, false));
+    }
+
+    @Test
+    void theOldRuleIsUnchangedWhenClearAllIsOff() {
+        String[] facts = { "air", "replaceable", "target", "fluid", "lava", "hasTile", "unbreakable", "natural",
+            "gtOre", "ours", "port", "loose", "oursInOtherStructure", "otherNexusArea", "crafted", "te",
+            "protectedArea", "listed", "wood", "leaves", "plant" };
+        Random r = new Random(101);
+        for (int k = 0; k < 4000; k++) {
+            List<String> on = new ArrayList<>();
+            for (String f : facts) if (r.nextInt(4) == 0) on.add(f);
+            Probe p = probe(on.toArray(new String[0]));
+            for (boolean module : new boolean[] { false, true }) {
+                assertEquals(TerrainRule.forClear(p, module), TerrainRule.forClear(p, module, false), on.toString());
+                assertEquals(TerrainRule.forBuild(p, module), TerrainRule.forBuild(p, module, false), on.toString());
+            }
+        }
+    }
+
+    @Test
+    void theFloorBecomesGrassWhateverStoodThere() {
+        // 0.10.0 only filled an empty floor cell: leaves, logs, snow blocks and flowers stayed in the Y0 layer
+        String[][] natural = { { "leaves", "natural" }, { "wood", "natural" }, { "natural" }, { "plant", "natural" } };
+        for (boolean all : new boolean[] { false, true }) {
+            for (String[] f : natural) assertEquals(C, TerrainRule.forFloor(probe(f), false, all), Arrays.toString(f));
+            assertEquals(A, TerrainRule.forFloor(probe("target", "natural"), false, all), "grass already");
+            assertEquals(P, TerrainRule.forFloor(probe("air"), false, all), "a hole");
+            assertEquals(P, TerrainRule.forFloor(probe("fluid", "replaceable"), false, all), "water");
+            assertEquals(P, TerrainRule.forFloor(probe("replaceable", "natural"), false, all), "tall grass");
+        }
+        // a player's block, a chest, a ladder: kept by the cautious rule, taken by the clear-all rule
+        for (String[] f : new String[][] { { "crafted" }, { "hasTile", "te" }, {} }) {
+            assertEquals(B, TerrainRule.forFloor(probe(f), false, false), Arrays.toString(f));
+            assertEquals(C, TerrainRule.forFloor(probe(f), false, true), Arrays.toString(f));
+        }
+        assertEquals(B, TerrainRule.forFloor(probe("fluid", "lava"), false, false));
+        assertEquals(P, TerrainRule.forFloor(probe("fluid", "lava"), false, true));
+        assertEquals(R, TerrainRule.forFloor(probe("ours", "loose"), false, true), "a stray tile is credited");
+    }
+
+    @Test
+    void gradingFillsADeepHoleDownToTheCrust() {
+        // a hole five deep under the floor (0.10.0 filled two, and only under open sky): filled to the fill depth
+        Verdict[] hole = TerrainRule.gradeColumn(
+            new Probe[] { probe("air"), probe("air"), probe("air"), probe("air"), probe("air") },
+            false,
+            true);
+        assertArrayEquals(new Verdict[] { P, P, P, P, P }, hole);
+        // a hollow by a tree: leaves on the floor, a log under it, air, then the ground; the cave below stays
+        Verdict[] hollow = TerrainRule.gradeColumn(
+            new Probe[] { probe("leaves", "natural"), probe("wood", "natural"), probe("air"), probe("natural"),
+                probe("air") },
+            false,
+            false);
+        assertArrayEquals(new Verdict[] { C, C, P, B, null }, hollow);
+        // a paved floor cell is its step's; the ground under it is still filled
+        assertArrayEquals(
+            new Verdict[] { null, P, B },
+            TerrainRule.gradeColumn(new Probe[] { null, probe("air"), probe("natural") }, false, true));
+        // a floor that must stay ends the run at once
+        assertArrayEquals(
+            new Verdict[] { B, null },
+            TerrainRule.gradeColumn(new Probe[] { probe("protectedArea", "natural"), probe("air") }, false, true));
+        // a log a player built under the floor: the cautious rule stops at it, the clear-all rule takes it
+        Probe[] built = { probe("target"), probe("wood", "crafted") };
+        assertArrayEquals(new Verdict[] { A, B }, TerrainRule.gradeColumn(built, false, false));
+        assertArrayEquals(new Verdict[] { A, C }, TerrainRule.gradeColumn(built, false, true));
+        // the tile a 0.10.0 light well sank under the floor is credited and filled over
+        assertArrayEquals(
+            new Verdict[] { null, R, B },
+            TerrainRule.gradeColumn(new Probe[] { null, probe("ours"), probe("natural") }, false, true));
+        // lava under the floor, and a chest in a cellar (the run ends at it, the chest stays)
+        Probe[] lava = { probe("air"), probe("fluid", "lava") };
+        assertArrayEquals(new Verdict[] { P, B }, TerrainRule.gradeColumn(lava, false, false));
+        assertArrayEquals(new Verdict[] { P, P }, TerrainRule.gradeColumn(lava, false, true));
+        assertArrayEquals(
+            new Verdict[] { P, P, B },
+            TerrainRule.gradeColumn(new Probe[] { probe("air"), probe("air"), probe("hasTile", "te") }, false, true));
+    }
+
+    @Test
+    void gradingAsksNoCellPastTheCrust() {
+        List<Integer> asked = new ArrayList<>();
+        Probe[] col = { probe("target"), probe("air"), probe("natural"), probe("air"), probe("air") };
+        TerrainRule.gradeColumn(i -> {
+            asked.add(i);
+            return col[i];
+        }, col.length, false, true);
+        assertEquals(Arrays.asList(0, 1, 2), asked, "the survey probes the world only down to the crust");
     }
 
     @Test

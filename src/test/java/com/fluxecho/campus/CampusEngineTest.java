@@ -9,10 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.util.ChatComponentTranslation;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +35,7 @@ import com.fluxecho.logic.Mix;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.nexus.TileNexus;
 
 /**
  * The parts of the campus engine that need no world: job keys and positions, the job's saved form, the plan a job
@@ -96,8 +106,11 @@ class CampusEngineTest {
         j.natural = 900;
         j.toFill = 31;
         j.filled = 12;
-        j.fillTo = 61;
         j.keepClear = true;
+        j.formTries = 2;
+        j.free = true;
+        j.machines = 5;
+        j.addMachine(CX - 7, Y0 + 2, CZ + 9);
         j.addBlocked(CX + 3, Y0 + 1, CZ - 4);
         BuildJob.Flight f = new BuildJob.Flight(702, 99_999L, true, true, Parts.deck(Parts.D_LIT), 2.5);
         f.defers = 2;
@@ -124,8 +137,14 @@ class CampusEngineTest {
         assertEquals(400, r.cleared());
         assertEquals(31, r.toFill());
         assertEquals(12, r.filled());
-        assertEquals(61, r.fillTo);
         assertTrue(r.keepClear);
+        assertEquals(2, r.formTries, "the form tries keep their key");
+        assertTrue(r.free(), "a free job stays free");
+        assertEquals(5, r.machines());
+        assertArrayEquals(
+            new int[] { CX - 7, Y0 + 2, CZ + 9 },
+            r.machineCells()
+                .get(0));
         assertEquals(1, r.blockedCount());
         assertArrayEquals(
             new int[] { CX + 3, Y0 + 1, CZ - 4 },
@@ -485,6 +504,8 @@ class CampusEngineTest {
         c.skip = true;
         c.declined.put("library", 123_456L);
         c.unfinished = BuildPlan.ESTABLISH;
+        c.graded = BuildJob.V;
+        c.free = true;
         // the item's tag is copied whenever the stack is
         NBTTagCompound t = (NBTTagCompound) c.write()
             .copy();
@@ -500,6 +521,8 @@ class CampusEngineTest {
         assertTrue(back.skip);
         assertEquals(123_456L, (long) back.declined.get("library"));
         assertEquals(BuildPlan.ESTABLISH, back.unfinished);
+        assertEquals(BuildJob.V, back.graded, "a campus graded by this plan is not offered a refresh again");
+        assertTrue(back.free, "free building goes with the core");
         assertTrue(back.at(-1, CX, Y0 + 2, CZ), "put back where it stood");
         assertFalse(back.at(0, CX, Y0 + 2, CZ), "another dimension");
         assertFalse(back.at(-1, CX, Y0 + 1, CZ), "a block lower, on the console stand's cell");
@@ -532,6 +555,433 @@ class CampusEngineTest {
         assertEquals(16, Builder.stepEu(BuildPlan.AIR, Parts.AIR, true, 256, 16), "a cell only cleared");
         assertEquals(16, Builder.stepEu(BuildPlan.HARD, Parts.GRASS, true, 256, 16), "grass costs the clearing EU");
         assertEquals(16, Builder.stepEu(BuildPlan.HARD, Parts.DIRT, false, 256, 16));
+    }
+
+    @Test
+    void theRefreshIsTheForumOnceMoreAndGoesFirst() {
+        List<int[]> boxes = new ArrayList<>();
+        boxes.add(new int[] { 1, 2, 3, 4 });
+        BuildJob r = BuildJob.read(
+            BuildJob.refresh(boxes)
+                .write());
+        assertEquals(BuildJob.REFRESH, r.key());
+        assertEquals(BuildPlan.FORUM, r.planKey(), "grading, floor, pylons, port and bin; no nexus");
+        assertTrue(r.refresh());
+        assertTrue(r.campusJob());
+        assertTrue(r.priority());
+        assertFalse(r.repair(), "a repair never grades; the refresh must");
+        assertFalse(r.raisesNexus());
+        assertNull(r.module());
+        assertEquals(1, r.keepOut.size());
+        assertTrue(r.clears(new BuildPlan.Column(0, 0, Y0 + 1, Y0 + 24, true)), "it grades like a first build");
+        assertEquals("fluxecho.build.job.refresh", ((ChatComponentTranslation) r.name()).getKey());
+        assertEquals(
+            "fluxecho.build.job.refresh",
+            ((ChatComponentTranslation) BuildJob.name(BuildJob.REFRESH, BuildPlan.FORUM)).getKey());
+        int[] f = FACINGS[1];
+        int[] ctrl = { CX + 5 * f[0], Y0 + 2, CZ + 5 * f[1] };
+        CampusPlan cp = new CampusPlan(Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
+        BuildPlan.Plan a = BuildJob.planFor(r.planKey(), cp, CX, Y0, CZ, f[0], f[1], ctrl[0], ctrl[1], ctrl[2], boxes);
+        BuildPlan.Plan b = BuildPlan.forum(cp, CX, Y0, CZ, f[0], f[1], boxes);
+        assertEquals(b.steps, a.steps);
+
+        // it goes ahead of a module job nobody started, behind a repair, and a started job keeps its place
+        List<BuildJob> queue = new ArrayList<>();
+        BuildJob lib = BuildJob.module(spec(), 4);
+        lib.state = BuildState.State.PROJECTING;
+        BuildJob refresh = BuildJob.refresh(Collections.emptyList());
+        assertSame(refresh, Campus.admit(lib, queue, refresh));
+        assertSame(lib, queue.get(0));
+        BuildJob rep = BuildJob.repairNexus(Collections.emptyList());
+        assertSame(refresh, Campus.admit(refresh, queue, rep), "neither gives way to the other");
+        assertSame(rep, queue.get(0));
+        assertSame(lib, queue.get(1));
+        List<BuildJob> q2 = new ArrayList<>();
+        BuildJob running = BuildJob.module(spec(), 2);
+        running.state = BuildState.State.BUILDING;
+        running.started = true;
+        assertSame(running, Campus.admit(running, q2, BuildJob.refresh(Collections.emptyList())));
+        assertEquals(1, q2.size());
+    }
+
+    @Test
+    void theRecycleBinStepWaitsForItsBlock() {
+        assertNull(PartBlocks.block(Parts.RECYCLE_BIN), "its block is registered with the bin, not by the engine");
+        BuildPlan.Step bin = new BuildPlan.Step(
+            CX,
+            Y0 + 1,
+            CZ,
+            Parts.RECYCLE_BIN,
+            BuildPlan.E_FIXTURE,
+            BuildPlan.NO_GROUP,
+            BuildPlan.SOFT);
+        assertFalse(Builder.placeable(bin), "skipped, never paid for, until the block exists");
+        assertTrue(Builder.placeable(new BuildPlan.Step(CX, Y0, CZ, Parts.AIR, 0, BuildPlan.NO_GROUP, BuildPlan.AIR)));
+        assertTrue(Builder.gift(Parts.RECYCLE_BIN), "given once per spot, like the supply port");
+        assertTrue(Builder.gift(Parts.SUPPLY_PORT));
+        assertFalse(Builder.gift(Parts.deck(Parts.D_DECK)));
+        assertFalse(Builder.gift(Parts.LIBRARY_CORE));
+
+        // nobody is billed for the bin or the port of a campus job
+        int[] f = FACINGS[0];
+        int[] ctrl = { CX + 5 * f[0], Y0 + 2, CZ + 5 * f[1] };
+        CampusPlan cp = new CampusPlan(Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
+        BuildPlan.Plan est = BuildPlan
+            .establish(cp, CX, Y0, CZ, f[0], f[1], NexusShape.PHASE_1, ctrl[0], ctrl[1], ctrl[2]);
+        int binSteps = 0;
+        for (BuildPlan.Step s : est.steps) if (s.part == Parts.RECYCLE_BIN) binSteps++;
+        assertEquals(1, binSteps, "the establish plan stands one bin");
+        BuildJob j = BuildJob.establish(Collections.emptyList());
+        Map<Integer, Integer> due = Campus.unbuilt(est, j);
+        assertFalse(due.containsKey(Parts.RECYCLE_BIN));
+        assertFalse(due.containsKey(Parts.SUPPLY_PORT));
+
+        // once the bin's block is registered, the step is placed and the block read back as the part (any meta)
+        Block block = new Block(Material.iron) {};
+        CampusModule.recycleBin = block;
+        try {
+            assertTrue(Builder.placeable(bin));
+            assertSame(block, PartBlocks.block(Parts.RECYCLE_BIN));
+            assertEquals(Parts.RECYCLE_BIN, PartBlocks.code(block, 3));
+            assertFalse(
+                Campus.unbuilt(est, j)
+                    .containsKey(Parts.RECYCLE_BIN),
+                "still a gift to the campus job");
+        } finally {
+            CampusModule.recycleBin = null;
+        }
+    }
+
+    @Test
+    void freeBuildingIsTheCampusesSwitchAndTheJobs() {
+        Campus c = new Campus(null);
+        BuildJob j = BuildJob.forum(Collections.emptyList());
+        assertFalse(c.free(j));
+        assertFalse(c.free(null));
+        j.free = true;
+        assertTrue(c.free(j), "started in creative mode");
+        j.free = false;
+        assertEquals("fluxecho.build.free_on", c.setFreeBuild(true));
+        assertTrue(c.freeBuild());
+        assertTrue(c.free(j), "every job of the nexus");
+        NBTTagCompound t = new NBTTagCompound();
+        c.writeSync(t);
+        Campus.View v = new Campus.View();
+        v.read(t);
+        assertTrue(v.freeBuild);
+        assertEquals("fluxecho.build.free_off", c.setFreeBuild(false));
+        assertFalse(c.free(j));
+        assertFalse(c.instant(j), "an instant build is only what an operator asked for");
+    }
+
+    @Test
+    void theModuleListTravels() {
+        // the ordinals are sent: they never change
+        assertEquals(0, Campus.ModuleStatus.NEEDS_RESEARCH.ordinal());
+        assertEquals(1, Campus.ModuleStatus.QUEUED.ordinal());
+        assertEquals(2, Campus.ModuleStatus.BUILDING.ordinal());
+        assertEquals(3, Campus.ModuleStatus.BUILT.ordinal());
+        assertEquals(4, Campus.ModuleStatus.NO_ROOM.ordinal());
+        List<Campus.ModuleState> l = Arrays.asList(
+            new Campus.ModuleState("library", "library", Campus.ModuleStatus.NEEDS_RESEARCH, 4),
+            new Campus.ModuleState("dome", "dome", Campus.ModuleStatus.BUILT, 2),
+            new Campus.ModuleState("tide", null, Campus.ModuleStatus.NO_ROOM, -1));
+        net.minecraft.nbt.NBTTagList t = Campus.ModuleState.write(l);
+        t.getCompoundTagAt(2)
+            .setByte("S", (byte) 99);
+        List<Campus.ModuleState> back = Campus.ModuleState.read(t);
+        assertEquals(3, back.size());
+        assertEquals("library", back.get(0).key);
+        assertEquals("library", back.get(0).research);
+        assertEquals(Campus.ModuleStatus.NEEDS_RESEARCH, back.get(0).status);
+        assertEquals(4, back.get(0).site);
+        assertEquals(Campus.ModuleStatus.BUILT, back.get(1).status);
+        assertEquals(2, back.get(1).site);
+        assertEquals("", back.get(2).research);
+        assertEquals(-1, back.get(2).site);
+        assertEquals(Campus.ModuleStatus.NO_ROOM, back.get(2).status, "an unknown status reads as no room");
+        assertTrue(
+            Campus.ModuleState.read(null)
+                .isEmpty());
+    }
+
+    // ---- campuses with a nexus tile (no world: the tile answers its position and front, the server is not running)
+
+    /** A nexus controller at (CX, Y0 + 2, CZ) facing the given way, in no world. */
+    private static TileNexus nexus(int facing) {
+        TileNexus n = new TileNexus();
+        n.xCoord = CX;
+        n.yCoord = Y0 + 2;
+        n.zCoord = CZ;
+        n.place((UUID) null, null, facing);
+        return n;
+    }
+
+    /** Loads an active campus into the nexus: graded under {@code pv}, the job and queue given, sites as {S, P, K}. */
+    private static Campus active(TileNexus n, int pv, BuildJob job, List<BuildJob> queue, NBTTagList sites) {
+        NBTTagCompound t = new NBTTagCompound();
+        t.setString("St", "active");
+        t.setInteger("Pv", pv);
+        if (job != null) t.setTag("Job", job.write());
+        NBTTagList q = new NBTTagList();
+        if (queue != null) for (BuildJob j : queue) q.appendTag(j.write());
+        t.setTag("Queue", q);
+        if (sites != null) t.setTag("Sites", sites);
+        NBTTagCompound tile = new NBTTagCompound();
+        tile.setTag("Campus", t);
+        Campus c = n.campus();
+        c.readNBT(tile);
+        return c;
+    }
+
+    /** The recorded site of the test module (an Archive) on hall site 4 of the nexus. */
+    private static NBTTagList archiveSite(TileNexus n) {
+        int[] c = n.centre();
+        int[] at = spec().controller(4, c[0], c[1], c[2], n.front().offsetX, n.front().offsetZ);
+        NBTTagCompound s = new NBTTagCompound();
+        s.setInteger("S", 4);
+        s.setIntArray("P", new int[] { at[0], at[1], at[2] });
+        s.setString("K", TEST_MODULE);
+        NBTTagList l = new NBTTagList();
+        l.appendTag(s);
+        return l;
+    }
+
+    @Test
+    void theRefreshKeepsOffAStandingArchivesForecourtApronAndCanopy() {
+        for (int facing = 2; facing <= 5; facing++) {
+            TileNexus n = nexus(facing);
+            Campus c = active(n, 0, null, null, archiveSite(n));
+            int[] ce = n.centre();
+            int fx = n.front().offsetX, fz = n.front().offsetZ;
+            BuildPlan.Plan arch = spec().plan(c.plan(), 4, ce[0], ce[1], ce[2], fx, fz);
+            // every column the Archive's job laid something in or cleared: the building, the forecourt, the apron, the
+            // canopy over its door
+            Set<Long> site = new HashSet<>();
+            for (BuildPlan.Step s : arch.steps) site.add(BuildJob.pos(s.x, 0, s.z));
+            for (BuildPlan.Column col : arch.clear) site.add(BuildJob.pos(col.x, 0, col.z));
+            // the canopy and the forecourt lie outside the footprint and its margin (0.10.0's keep-out box)
+            int[] old = spec().footprint(4, ce[0], ce[2], fx, fz, 1);
+            int outside = 0;
+            for (long p : site) {
+                int[] q = BuildJob.unpack(p);
+                if (q[0] < Math.min(old[0], old[2]) || q[0] > Math.max(old[0], old[2])
+                    || q[2] < Math.min(old[1], old[3])
+                    || q[2] > Math.max(old[1], old[3])) outside++;
+            }
+            assertTrue(outside > 0, "the forecourt and canopy reach past the footprint");
+
+            // the refresh (the forum plan) with the campus's keep-out never grades nor paves any of it
+            List<int[]> keepOut = c.keepOut();
+            assertEquals(1, keepOut.size());
+            BuildPlan.Plan refresh = BuildJob
+                .planFor(BuildPlan.FORUM, c.plan(), ce[0], ce[1], ce[2], fx, fz, n.xCoord, n.yCoord, n.zCoord, keepOut);
+            for (BuildPlan.Column col : refresh.clear)
+                assertFalse(site.contains(BuildJob.pos(col.x, 0, col.z)), "graded inside the Archive's site: " + col);
+            for (BuildPlan.Step s : refresh.steps)
+                assertFalse(site.contains(BuildJob.pos(s.x, 0, s.z)), "paved inside the Archive's site: " + s);
+            assertFalse(refresh.clear.isEmpty(), "the rest of the disc is graded");
+        }
+    }
+
+    @Test
+    void aRefreshIsNotedOnlyOnceItGraded() {
+        TileNexus n = nexus(3);
+        Campus c = active(n, 0, null, null, null);
+        c.offerRefresh();
+        assertTrue(
+            c.job()
+                .refresh());
+        assertEquals(
+            0,
+            c.carried()
+                .getInteger("Pv"),
+            "a core broken while the refresh waits carries the old version: put back, it is offered again");
+        c.offerRefresh();
+        assertTrue(
+            c.queue()
+                .isEmpty(),
+            "never offered twice");
+        c.graded(c.job());
+        assertEquals(
+            BuildJob.V,
+            c.carried()
+                .getInteger("Pv"));
+
+        // a cancelled repair of the nexus says nothing about the floor; a cancelled refresh declines it
+        assertFalse(Campus.declinesRefresh(BuildJob.repairNexus(Collections.emptyList())));
+        assertTrue(Campus.declinesRefresh(BuildJob.refresh(Collections.emptyList())));
+        assertTrue(Campus.declinesRefresh(BuildJob.forum(Collections.emptyList())));
+        assertFalse(Campus.declinesRefresh(BuildJob.module(spec(), 4)));
+        BuildJob repair = BuildJob.repairNexus(Collections.emptyList());
+        repair.state = BuildState.State.PROJECTING;
+        Campus r = active(nexus(3), 0, repair, null, null);
+        r.cancelJob();
+        assertEquals(
+            0,
+            r.carried()
+                .getInteger("Pv"),
+            "the refresh is still offered");
+        BuildJob refresh = BuildJob.refresh(Collections.emptyList());
+        refresh.state = BuildState.State.PROJECTING;
+        Campus d = active(nexus(3), 0, refresh, null, null);
+        d.cancelJob();
+        assertEquals(
+            BuildJob.V,
+            d.carried()
+                .getInteger("Pv"),
+            "declined for good");
+    }
+
+    @Test
+    void finishingAtOnceMovesPastAFinishedJob() {
+        BuildJob done = BuildJob.establish(Collections.emptyList());
+        done.state = BuildState.State.DONE;
+        done.finishedAt = 5;
+        BuildJob next = BuildJob.module(spec(), 4);
+        next.state = BuildState.State.PROJECTING;
+        TileNexus n = nexus(2);
+        Campus c = active(n, BuildJob.V, done, Collections.singletonList(next), null);
+        assertEquals("fluxecho.build.instant_started", c.finishNow(null));
+        assertEquals(
+            next.key(),
+            c.job()
+                .key(),
+            "the queued job, not the finished one that lingers");
+        assertTrue(c.instant(c.job()));
+        assertTrue(c.free(c.job()));
+
+        // the instant mode ends at a pause someone must put right, and goes on at the normal pace afterwards
+        c.paused(c.job(), BuildState.Pause.BLOCKED);
+        assertFalse(c.instant(c.job()));
+        for (BuildState.Pause p : BuildState.Pause.values()) {
+            boolean ends = p == BuildState.Pause.BLOCKED || p == BuildState.Pause.PROTECTED
+                || p == BuildState.Pause.UNLOADED
+                || p == BuildState.Pause.INCOMPLETE;
+            assertEquals(ends, Campus.endsInstant(p), p.name());
+        }
+        assertEquals("fluxecho.build.no_job", active(nexus(2), 0, done, null, null).finishNow(null));
+    }
+
+    @Test
+    void aCampusJobTakesTheKeepOutOfNowWhenItStarts() {
+        TileNexus n = nexus(4);
+        BuildJob forum = BuildJob.forum(Collections.emptyList());
+        forum.state = BuildState.State.PROJECTING;
+        Campus c = active(n, BuildJob.V, forum, null, archiveSite(n));
+        // made with nothing kept out (the Archive's chunk was not loaded, say); started: it keeps off the Archive
+        c.finishNow(null);
+        assertEquals(
+            1,
+            c.job()
+                .keepOut()
+                .size());
+        assertTrue(
+            Arrays.equals(
+                c.keepOut()
+                    .get(0),
+                c.job()
+                    .keepOut()
+                    .get(0)));
+        assertEquals(
+            BuildState.State.SURVEY,
+            c.job()
+                .state(),
+            "surveyed again for the new plan");
+
+        BuildJob j = BuildJob.forum(Collections.singletonList(new int[] { 1, 2, 3, 4 }));
+        j.state = BuildState.State.PROJECTING;
+        j.projectedAt = 7;
+        assertFalse(j.retarget(Collections.singletonList(new int[] { 1, 2, 3, 4 })), "the same boxes: nothing to do");
+        assertEquals(7, j.projectedAt);
+        BuildJob two = BuildJob.forum(Arrays.asList(new int[] { 1, 2, 3, 4 }, new int[] { 5, 6, 7, 8 }));
+        two.state = BuildState.State.PROJECTING;
+        assertFalse(
+            two.retarget(Arrays.asList(new int[] { 5, 6, 7, 8 }, new int[] { 1, 2, 3, 4 })),
+            "boxes in another order are the same");
+        assertTrue(j.retarget(Arrays.asList(new int[] { 1, 2, 3, 4 }, new int[] { 9, 9, 9, 9 })));
+        assertEquals(
+            2,
+            j.keepOut()
+                .size());
+        assertEquals(BuildState.State.SURVEY, j.state(), "a new plan: surveyed and projected again");
+        assertEquals(-1, j.projectedAt);
+        BuildJob touched = BuildJob.forum(Collections.emptyList());
+        touched.state = BuildState.State.BUILDING;
+        touched.touched = true;
+        assertFalse(touched.retarget(Collections.singletonList(new int[] { 1, 2, 3, 4 })), "what it built stays");
+        assertTrue(
+            touched.keepOut()
+                .isEmpty());
+    }
+
+    @Test
+    void cellsLeftForAnEntityWaitForTheTouchUp() {
+        int[] f = FACINGS[2];
+        int[] ctrl = { CX + 5 * f[0], Y0 + 2, CZ + 5 * f[1] };
+        CampusPlan cp = new CampusPlan(Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
+        BuildPlan.Plan plan = BuildPlan.forum(cp, CX, Y0, CZ, f[0], f[1]);
+        BuildJob j = BuildJob.forum(Collections.emptyList());
+        assertFalse(j.needsTouchUp());
+
+        // grading cells an animal stood in: kept once each, given back lowest first (a hole fills from the bottom)
+        j.leftOpen(CX + 30, Y0, CZ);
+        j.leftOpen(CX + 30, Y0 - 2, CZ);
+        j.leftOpen(CX + 30, Y0 - 1, CZ);
+        j.leftOpen(CX + 30, Y0, CZ);
+        List<int[]> open = j.openCells();
+        assertEquals(3, open.size());
+        assertEquals(Y0 - 2, open.get(0)[1]);
+        assertEquals(Y0 - 1, open.get(1)[1]);
+        assertEquals(Y0, open.get(2)[1]);
+
+        // a floor tile and a pylon that gave way to a player: skipped, and marked for another try
+        int tile = plan.start(BuildPlan.E_FLOOR), pylon = plan.start(BuildPlan.E_FIXTURE);
+        assertEquals(BuildPlan.SOFT, plan.steps.get(tile).kind);
+        for (int i : new int[] { tile, pylon }) {
+            j.skipped.set(i);
+            j.gaveWay(i);
+        }
+        assertTrue(j.needsTouchUp());
+        assertEquals(-1, j.retryGaveWay(plan, i -> false), "nobody moved yet");
+        assertTrue(j.skipped(tile));
+
+        // saved with the job
+        j.touchUpSince = 1234;
+        BuildJob back = BuildJob.read(j.write());
+        assertEquals(
+            3,
+            back.openCells()
+                .size());
+        assertEquals(
+            Y0 - 2,
+            back.openCells()
+                .get(0)[1]);
+        assertTrue(back.gaveWay.get(tile));
+        assertTrue(back.gaveWay.get(pylon));
+        assertEquals(1234, back.touchUpSince);
+
+        // the pylon's cell is free: it alone goes back, to its stage; then the tile, to the earlier stage
+        assertEquals(BuildPlan.E_FIXTURE, back.retryGaveWay(plan, i -> i == pylon));
+        assertFalse(back.skipped(pylon));
+        assertTrue(back.skipped(tile));
+        assertEquals(BuildPlan.E_FLOOR, back.retryGaveWay(plan, i -> true));
+        assertFalse(back.skipped(tile));
+        assertFalse(back.gaveWay.get(tile));
+        back.touchUp.clear();
+        assertFalse(back.needsTouchUp());
+
+        // a step the plan no longer has is forgotten; a new plan forgets everything
+        BuildJob stray = BuildJob.forum(Collections.emptyList());
+        stray.gaveWay(plan.steps.size() + 5);
+        assertEquals(-1, stray.retryGaveWay(plan, i -> true));
+        assertFalse(stray.needsTouchUp());
+        j.restart(false);
+        assertFalse(j.needsTouchUp());
+        assertEquals(-1, j.touchUpSince);
+        j.leftOpen(1, 2, 3);
+        j.endTouchUp();
+        assertFalse(j.needsTouchUp(), "given up: left as it is");
     }
 
     @Test

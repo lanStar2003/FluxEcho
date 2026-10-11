@@ -44,7 +44,6 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
     private int facing = 3;
 
     // live, server
-    private TileNexus cached;
     private int idle;
     private long validAt = Long.MIN_VALUE;
     private Item validItem;
@@ -68,14 +67,12 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
     public void link(TileNexus nexus) {
         link = new int[] { nexus.xCoord, nexus.yCoord, nexus.zCoord };
         team = nexus.team();
-        cached = nexus;
         markDirty();
     }
 
     /** Forgets the link (the team stays, so a new nexus of the team is found by itself). */
     public void unlink() {
         link = null;
-        cached = null;
         markDirty();
     }
 
@@ -88,18 +85,25 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
         return link == null ? null : link.clone();
     }
 
-    /** The linked nexus while it is loaded, else null. Server side. */
+    /**
+     * The linked nexus while it is loaded, else null. Server side. Looked up in the world every time
+     * ({@link #loadedNexus}): items fed to a nexus whose chunk unloaded would be credited to a ledger nobody saves.
+     */
     public TileNexus nexus() {
-        if (link == null || worldObj == null || worldObj.isRemote) return null;
-        if (cached != null && !cached.isInvalid()
-            && cached.getWorldObj() == worldObj
-            && cached.xCoord == link[0]
-            && cached.yCoord == link[1]
-            && cached.zCoord == link[2]) return cached;
-        cached = null;
-        if (!worldObj.blockExists(link[0], link[1], link[2])) return null;
-        if (worldObj.getTileEntity(link[0], link[1], link[2]) instanceof TileNexus n && !n.isInvalid()) cached = n;
-        return cached;
+        if (worldObj == null || worldObj.isRemote) return null;
+        return loadedNexus(worldObj, link);
+    }
+
+    /**
+     * The nexus controller standing at the link {x, y, z} while its chunk is loaded, or null (also for a null link).
+     * Never from a kept reference: a tile whose chunk unloads is only told so ({@code onChunkUnload}), never
+     * invalidated, and the chunk loads again with a new tile, so only the world knows which one is live. The supply
+     * port and the recycle bin find their nexus this way.
+     */
+    public static TileNexus loadedNexus(World w, int[] link) {
+        if (w == null || link == null || link.length != 3) return null;
+        if (!w.blockExists(link[0], link[1], link[2])) return null;
+        return w.getTileEntity(link[0], link[1], link[2]) instanceof TileNexus n && !n.isInvalid() ? n : null;
     }
 
     /**
@@ -134,16 +138,25 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
 
     /** The nearest loaded nexus within range whose teams include the team, or null. */
     private TileNexus nearest(UUID t) {
-        if (t == null) return null;
+        return nearestNexus(worldObj, xCoord, yCoord, zCoord, t);
+    }
+
+    /**
+     * The nearest loaded nexus (by its centre) within {@link #RANGE} blocks of the cell whose teams include the team,
+     * or null (also for a null team or world). Server side; the supply port and the recycle bin (0.10.1) link this way
+     * when placed by hand.
+     */
+    public static TileNexus nearestNexus(World w, int x, int y, int z, UUID t) {
+        if (t == null || w == null || w.isRemote) return null;
         TileNexus best = null;
         double bestD = (double) RANGE * RANGE;
-        for (TileNexus n : NexusRegistry.nexuses(worldObj.provider.dimensionId)) {
-            if (n.isInvalid() || n.getWorldObj() != worldObj
+        for (TileNexus n : NexusRegistry.nexuses(w.provider.dimensionId)) {
+            if (n.isInvalid() || n.getWorldObj() != w
                 || !n.teams()
                     .contains(t))
                 continue;
             int[] c = n.centre();
-            double dx = c[0] - xCoord, dy = c[1] - yCoord, dz = c[2] - zCoord;
+            double dx = c[0] - x, dy = c[1] - y, dz = c[2] - z;
             double d = dx * dx + dy * dy + dz * dz;
             if (d <= bestD) {
                 bestD = d;
@@ -158,15 +171,24 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
      * beside the axis faces the people walking along it; a port on the axis itself faces the nexus.
      */
     void faceWalkway(TileNexus nexus) {
+        setFacing(walkwayFacing(nexus, xCoord, zCoord));
+    }
+
+    /**
+     * The horizontal ForgeDirection ordinal a fixture at the column {@code (x, z)} of the nexus's campus faces: towards
+     * the campus's main axis (the walkway from the gate to the nexus), or towards the nexus for one standing on the
+     * axis. The supply port and the recycle bin (0.10.1) face this way.
+     */
+    public static int walkwayFacing(TileNexus nexus, int x, int z) {
         int[] c = nexus.centre();
         int fx = nexus.front().offsetX, fz = nexus.front().offsetZ;
-        int a = (xCoord - c[0]) * fx + (zCoord - c[2]) * fz;
-        int tx = c[0] + a * fx - xCoord, tz = c[2] + a * fz - zCoord;
+        int a = (x - c[0]) * fx + (z - c[2]) * fz;
+        int tx = c[0] + a * fx - x, tz = c[2] + a * fz - z;
         if (tx == 0 && tz == 0) {
-            tx = c[0] - xCoord;
-            tz = c[2] - zCoord;
+            tx = c[0] - x;
+            tz = c[2] - z;
         }
-        setFacing(Math.abs(tx) >= Math.abs(tz) ? (tx >= 0 ? 5 : 4) : (tz >= 0 ? 3 : 2));
+        return Math.abs(tx) >= Math.abs(tz) ? (tx >= 0 ? 5 : 4) : (tz >= 0 ? 3 : 2);
     }
 
     public int facing() {
@@ -345,7 +367,6 @@ public class TileSupplyPort extends TileEntity implements ISidedInventory {
         }
         int f = t.getByte("Facing");
         facing = f >= 2 && f <= 5 ? f : 3;
-        cached = null;
     }
 
     @Override

@@ -46,4 +46,30 @@ public final class Research {
         if (added) EchoNet.ledgerChanged(team);
         return added;
     }
+
+    /**
+     * Marks every node that can be researched in this version done for the team (an operator's
+     * {@code /fluxecho research all}; {@link ResearchTree#availableNow}: the greyed placeholders of later phases stay
+     * open) and tells its players, as a finished research does; returns how many were new.
+     */
+    public static int grantAll(UUID team) {
+        if (team == null) return 0;
+        ResearchData d = ResearchData.get();
+        int added = 0;
+        for (ResearchTree.Node n : ResearchTree.availableNow()) if (d.grant(team, n.id)) added++;
+        if (added > 0) EchoNet.ledgerChanged(team);
+        return added;
+    }
+
+    /**
+     * Clears every research of the team (an operator's {@code /fluxecho research reset}) and tells its players;
+     * returns how many there were.
+     */
+    public static int reset(UUID team) {
+        if (team == null) return 0;
+        int n = ResearchData.get()
+            .revokeAll(team);
+        if (n > 0) EchoNet.ledgerChanged(team);
+        return n;
+    }
 }

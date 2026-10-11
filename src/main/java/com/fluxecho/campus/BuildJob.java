@@ -1,6 +1,7 @@
 package com.fluxecho.campus;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntPredicate;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -23,7 +25,8 @@ import com.fluxecho.logic.NexusShape;
 
 /**
  * One construction job of a nexus campus and how far it has got: which plan it builds (the establish job, the forum of
- * a 0.9.2 nexus, a module on a hall site, or a repair of one of those), where it is in its life
+ * a 0.9.2 nexus, a module on a hall site, a repair of one of those, or the 0.10.1 refresh of a campus laid out by an
+ * older plan), where it is in its life
  * ({@link BuildState}), which stage it is in, which steps are done or skipped, how far the clearing has dug, which
  * cells are in flight, and the counts the GUI shows.
  * <p>
@@ -38,14 +41,21 @@ public final class BuildJob {
     /**
      * The version of the plans: raise it whenever {@link BuildPlan} or the module shapes change what a job builds, so a
      * job saved with older plans starts its bookkeeping over (its built cells come free) instead of misreading it.
+     * 2 (0.10.1): the light wells lie flush in the floor layer, the recycle bin stands beside the supply port, and a
+     * module's clear box grades its floor.
      */
-    public static final int V = 1;
+    public static final int V = 2;
     /** The most cells in flight at once, and the most blocked cells reported (the GUI, the red boxes, the save). */
     public static final int MAX_FLIGHTS = 256, MAX_BLOCKED = 64;
     /** The most blocked cells kept by position; beyond that they are only counted. */
     static final int MAX_TRACKED = 8192;
     /** The prefix of a repair job's key: {@code repair:establish} or {@code repair:<site>}. */
     public static final String REPAIR = "repair:";
+    /**
+     * The key of the refresh job (0.10.1, 整修园区): the forum plan once more over a campus whose establish or forum job
+     * finished under an older plan version, so its floor, wells and fixtures are brought up to the current plan.
+     */
+    public static final String REFRESH = "refresh";
 
     /**
      * A launched cell on its way: it was paid for and lands at {@link #land}. It remembers what it paid for (the part
@@ -104,22 +114,28 @@ public final class BuildJob {
      */
     boolean keepClear;
     long projectedAt = -1, finishedAt = -1;
+    /**
+     * Whether it is free (0.10.1): started by a player in creative mode, or made free by an operator. A free job takes
+     * no materials and no EU, and a module job needs no core in the ledger before 开始.
+     */
+    boolean free;
 
     // ---- progress
     final BitSet done = new BitSet(), skipped = new BitSet(), flying = new BitSet();
     final List<Flight> flights = new ArrayList<>();
     /** The clear column being dug and the next cell in it (Integer.MIN_VALUE: the column has not started). */
     int clearColumn, clearY = Integer.MIN_VALUE;
-    /**
-     * The lowest cell the current grading column fills (Integer.MIN_VALUE: not worked out yet; Integer.MAX_VALUE: the
-     * column has no hole to fill).
-     */
-    int fillTo = Integer.MIN_VALUE;
     /** The first step of the current stage that is not done or skipped (a hint; never past an unfinished step). */
     int cursor;
     int cleared, natural, unloaded;
     /** Cells the last survey found to fill under the floor level, and cells filled so far. */
     int toFill, filled;
+    /**
+     * Tile entities that are not ores (machines, chests) the last survey found the job will take down, and up to
+     * {@link #MAX_BLOCKED} of their cells (the projection's yellow boxes); a cell is forgotten once taken down.
+     */
+    int machines;
+    final Set<Long> machineCells = new LinkedHashSet<>();
     /**
      * Blocked cells by position (at most {@link #MAX_TRACKED}), how many more were only counted, and their number when
      * not all are known (after a load).
@@ -129,6 +145,16 @@ public final class BuildJob {
     /** Waiting for the structure to form: since when (-1: not waiting), and how often it failed. */
     long formSince = -1;
     int formTries;
+    /**
+     * Grading cells (packed, {@link #pos}) left open because an entity stood in them, and the floor tiles and fixtures
+     * (SOFT steps) that gave way to one and were skipped (0.10.1). The builder gives both another try in a last
+     * touch-up pass before the job ends, so no floor cell stays open because a player or an animal stood there; it
+     * waits for them since {@link #touchUpSince} (-1: not waiting) and gives up after a while. Saved ({@code Tu},
+     * {@code Gw}, {@code Ts}).
+     */
+    final Set<Long> touchUp = new LinkedHashSet<>();
+    final BitSet gaveWay = new BitSet();
+    long touchUpSince = -1;
 
     // ---- transient
     private BuildPlan.Plan plan;
@@ -177,9 +203,47 @@ public final class BuildJob {
         return new BuildJob(REPAIR + site, spec.jobKey(site), site);
     }
 
+    /**
+     * The refresh of a campus laid out by an older plan ({@link #REFRESH}, 0.10.1): the forum plan (grading, floor,
+     * pylons, the supply port and the recycle bin, no nexus), keeping out the boxes of the modules standing round it.
+     * It clears and grades like a first build; what already stands right comes free.
+     */
+    public static BuildJob refresh(List<int[]> keepOut) {
+        BuildJob j = new BuildJob(REFRESH, BuildPlan.FORUM, -1);
+        j.setKeepOut(keepOut);
+        return j;
+    }
+
     private void setKeepOut(List<int[]> boxes) {
         keepOut.clear();
         if (boxes != null) for (int[] b : boxes) if (b != null && b.length == 4) keepOut.add(b.clone());
+    }
+
+    /**
+     * Makes the plan again with the keep-out boxes of now (0.10.1): a campus job is made with the boxes of the modules
+     * loaded when it was offered, and 开始 may come much later, when more of them are loaded (or a module was built
+     * meanwhile). Only for a job that has touched nothing and has nothing in flight; returns whether the boxes changed,
+     * and then the job starts its survey over (keeping whether it was started).
+     */
+    boolean retarget(List<int[]> boxes) {
+        if (touched || !flights.isEmpty() || BuildState.ended(state)) return false;
+        List<int[]> next = new ArrayList<>();
+        if (boxes != null) for (int[] b : boxes) if (b != null && b.length == 4) next.add(b);
+        if (sameBoxes(next, keepOut)) return false;
+        setKeepOut(next);
+        restart(keepClear);
+        return true;
+    }
+
+    /** Whether two lists hold the same boxes, in any order. */
+    static boolean sameBoxes(List<int[]> a, List<int[]> b) {
+        if (a.size() != b.size()) return false;
+        List<String> x = new ArrayList<>(), y = new ArrayList<>();
+        for (int[] k : a) x.add(Arrays.toString(k));
+        for (int[] k : b) y.add(Arrays.toString(k));
+        Collections.sort(x);
+        Collections.sort(y);
+        return x.equals(y);
     }
 
     // ---- identity
@@ -260,6 +324,36 @@ public final class BuildJob {
         return key.startsWith(REPAIR);
     }
 
+    /** Whether it is the refresh of a campus laid out by an older plan ({@link #REFRESH}). */
+    public boolean refresh() {
+        return REFRESH.equals(key);
+    }
+
+    /** Whether it goes ahead of the queued jobs ({@link Campus#admit}): a repair, or the refresh of the campus. */
+    public boolean priority() {
+        return repair() || refresh();
+    }
+
+    /** Whether the job itself is free ({@link #free}); the campus may make every job free ({@link Campus#free}). */
+    public boolean free() {
+        return free;
+    }
+
+    /** Machines and chests (tile entities that are not ores) the last survey found the job will take down. */
+    public int machines() {
+        return machines;
+    }
+
+    /** Up to {@link #MAX_BLOCKED} cells {x, y, z} of the machines it will take down (the yellow boxes). */
+    public List<int[]> machineCells() {
+        List<int[]> out = new ArrayList<>();
+        for (long p : machineCells) {
+            if (out.size() >= MAX_BLOCKED) break;
+            out.add(unpack(p));
+        }
+        return out;
+    }
+
     /**
      * Whether it works a clear column of its plan. A first build clears and grades them all. A repair (and a job
      * started over by 修复) puts the structure's cells right and nothing else: what grew on the campus or what the
@@ -284,6 +378,7 @@ public final class BuildJob {
     /** The name of a job from its key and plan key (the client has both in {@link Campus.View}). */
     public static IChatComponent name(String key, String planKey) {
         if (key == null || key.isEmpty()) return new ChatComponentTranslation("fluxecho.build.gui.none");
+        if (REFRESH.equals(key)) return new ChatComponentTranslation("fluxecho.build.job.refresh");
         String module = ModuleSpecs.moduleOf(planKey);
         if (key.startsWith(REPAIR)) {
             IChatComponent what = module != null ? new ChatComponentTranslation("fluxecho.module." + module)
@@ -372,10 +467,13 @@ public final class BuildJob {
         cursor = 0;
         clearColumn = 0;
         clearY = Integer.MIN_VALUE;
-        fillTo = Integer.MIN_VALUE;
         this.keepClear = keepClear;
-        cleared = natural = unloaded = toFill = filled = 0;
+        cleared = natural = unloaded = toFill = filled = machines = 0;
+        machineCells.clear();
         clearBlocked();
+        touchUp.clear();
+        gaveWay.clear();
+        touchUpSince = -1;
         formSince = -1;
         formTries = 0;
         projectedAt = -1;
@@ -492,7 +590,79 @@ public final class BuildJob {
         blockedSaved = 0;
     }
 
-    /** A hash of the blocked cells the client is shown ({@link #blockedCells}), to send them again when they change. */
+    /** Notes a machine the job will take down (the first {@link #MAX_BLOCKED} cells are kept for the yellow boxes). */
+    void addMachine(int x, int y, int z) {
+        if (machineCells.size() < MAX_BLOCKED) machineCells.add(pos(x, y, z));
+    }
+
+    /** A machine's cell was taken down (or found otherwise): its yellow box goes. */
+    void machineGone(int x, int y, int z) {
+        machineCells.remove(pos(x, y, z));
+    }
+
+    // ---- the touch-up
+
+    /** A grading cell was left open because an entity stood in it: it is graded again in the touch-up. */
+    void leftOpen(int x, int y, int z) {
+        if (touchUp.size() < MAX_TRACKED) touchUp.add(pos(x, y, z));
+    }
+
+    /**
+     * A floor tile or fixture (a SOFT step) gave way to an entity and was skipped: it is tried again in the touch-up.
+     */
+    void gaveWay(int step) {
+        if (step >= 0) gaveWay.set(step);
+    }
+
+    /** Whether the touch-up has anything left to do. */
+    boolean needsTouchUp() {
+        return !touchUp.isEmpty() || !gaveWay.isEmpty();
+    }
+
+    /**
+     * The grading cells left open {x, y, z}, the lowest first: a hole is filled from the bottom up, so the floor cell
+     * over it is not closed over an empty pocket.
+     */
+    List<int[]> openCells() {
+        List<int[]> out = new ArrayList<>();
+        for (long p : touchUp) out.add(unpack(p));
+        out.sort((a, b) -> Integer.compare(a[1], b[1]));
+        return out;
+    }
+
+    /**
+     * Gives the steps that gave way to an entity another try where {@code free} says their cell is free now: they are
+     * neither skipped nor marked any more. Returns the first stage that holds such a step, or -1 when none could go
+     * yet. Steps the plan does not have (it shrank) are forgotten.
+     */
+    int retryGaveWay(BuildPlan.Plan plan, IntPredicate free) {
+        int first = -1;
+        for (int i = gaveWay.nextSetBit(0); i >= 0; i = gaveWay.nextSetBit(i + 1)) {
+            if (i >= plan.steps.size()) {
+                gaveWay.clear(i);
+                continue;
+            }
+            if (!free.test(i)) continue;
+            gaveWay.clear(i);
+            if (!skipped.get(i)) continue;
+            skipped.clear(i);
+            int stage = plan.steps.get(i).stage;
+            if (first < 0 || stage < first) first = stage;
+        }
+        return first;
+    }
+
+    /** The touch-up gave up waiting: what is left of it is left as it is. */
+    void endTouchUp() {
+        touchUp.clear();
+        gaveWay.clear();
+        touchUpSince = -1;
+    }
+
+    /**
+     * A hash of the blocked cells and the machine cells the client is shown ({@link #blockedCells},
+     * {@link #machineCells}), to send them again when they change.
+     */
     long blockedShownHash() {
         long h = 17;
         int n = 0;
@@ -500,7 +670,9 @@ public final class BuildJob {
             if (n++ >= MAX_BLOCKED) break;
             h = h * 31 + p;
         }
-        return h * 31 + n;
+        h = h * 31 + n;
+        for (long p : machineCells) h = h * 37 + p;
+        return h * 31 + machineCells.size();
     }
 
     // ---- positions
@@ -541,7 +713,6 @@ public final class BuildJob {
         t.setIntArray("Sk", bits(skipped));
         t.setInteger("Cc", clearColumn);
         t.setInteger("Cy", clearY);
-        t.setInteger("Ct", fillTo);
         t.setInteger("Cl", cleared);
         t.setInteger("Na", natural);
         t.setInteger("Un", unloaded);
@@ -573,6 +744,29 @@ public final class BuildJob {
         t.setTag("Fl", fl);
         t.setLong("Fs", formSince);
         t.setInteger("Fr", formTries);
+        // 0.10.1; "Fr" holds the form tries since 0.10.0, so the free flag is "Fe"
+        t.setBoolean("Fe", free);
+        t.setInteger("Mc", machines);
+        int[] te = new int[3 * machineCells.size()];
+        int k = 0;
+        for (long p : machineCells) {
+            int[] c = unpack(p);
+            te[k++] = c[0];
+            te[k++] = c[1];
+            te[k++] = c[2];
+        }
+        t.setIntArray("Te", te);
+        int[] tu = new int[3 * touchUp.size()];
+        k = 0;
+        for (long p : touchUp) {
+            int[] c = unpack(p);
+            tu[k++] = c[0];
+            tu[k++] = c[1];
+            tu[k++] = c[2];
+        }
+        t.setIntArray("Tu", tu);
+        t.setIntArray("Gw", bits(gaveWay));
+        t.setLong("Ts", touchUpSince);
         return t;
     }
 
@@ -597,7 +791,6 @@ public final class BuildJob {
         unbits(t.getIntArray("Sk"), j.skipped);
         j.clearColumn = t.getInteger("Cc");
         j.clearY = t.hasKey("Cy") ? t.getInteger("Cy") : Integer.MIN_VALUE;
-        j.fillTo = t.hasKey("Ct") ? t.getInteger("Ct") : Integer.MIN_VALUE;
         j.cleared = t.getInteger("Cl");
         j.natural = t.getInteger("Na");
         j.unloaded = t.getInteger("Un");
@@ -623,6 +816,14 @@ public final class BuildJob {
         }
         j.formSince = t.hasKey("Fs") ? t.getLong("Fs") : -1;
         j.formTries = t.getInteger("Fr");
+        j.free = t.getBoolean("Fe");
+        j.machines = t.getInteger("Mc");
+        int[] te = t.getIntArray("Te");
+        for (int i = 0; i + 2 < te.length; i += 3) j.addMachine(te[i], te[i + 1], te[i + 2]);
+        int[] tu = t.getIntArray("Tu");
+        for (int i = 0; i + 2 < tu.length; i += 3) j.leftOpen(tu[i], tu[i + 1], tu[i + 2]);
+        unbits(t.getIntArray("Gw"), j.gaveWay);
+        j.touchUpSince = t.hasKey("Ts") ? t.getLong("Ts") : -1;
         return j;
     }
 

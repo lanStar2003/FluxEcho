@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -59,11 +60,16 @@ import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
  * Materials come from members (补给, the intake slot) and, for a started job, from automation (the supply port,
  * {@link #offer}); the ledger only takes what the job still needs. Every entry point returns a lang key under
  * {@code fluxecho.build.} saying what happened.
+ * <p>
+ * 0.10.1: what the builder takes down goes to the campus's {@link RecycleStore} ({@link #recycle()}, taken out at the
+ * recycle bin or with 取出), which replaced the 27 slots of spoils. A job started by a player in creative mode is free
+ * (no materials, no EU), and an operator can make every job of the nexus free ({@link #setFreeBuild}) or finish the
+ * current one at once ({@link #finishNow}). A campus whose floor was laid by an older plan is offered one 整修园区 job
+ * ({@link BuildJob#refresh}). The 建造 page and the masterplan show every module the nexus can build and where it
+ * stands ({@link #modules()}).
  */
 public final class Campus {
 
-    /** Spoils slots. */
-    public static final int SPOILS = 27;
     /** Ticks a module whose job was cancelled is not offered again. */
     static final long DECLINE_TICKS = 24000;
     /** Ticks the nexus or a sited module must stand unformed before a repair is offered. */
@@ -95,15 +101,18 @@ public final class Campus {
             dirty();
         }
     };
-    private final ItemStackHandler spoils = new ItemStackHandler(SPOILS) {
-
-        @Override
-        protected void onContentsChanged(int slot) {
-            dirty();
-        }
-    };
+    /** What the builder took down (0.10.1); every change marks the campus to be saved. */
+    private final RecycleStore recycle = new RecycleStore(this::dirty);
 
     private boolean active, hinted, skipBlocked;
+    /** Every job of this nexus is free (an operator's switch, NBT {@code Fb}). */
+    private boolean freeBuild;
+    /**
+     * The plan version ({@link BuildJob#V}) under which the campus's grading last ran in full, or a campus job was
+     * declined (NBT {@code Pv}; 0 for a campus saved before 0.10.1). Below the current version the campus is offered a
+     * refresh ({@link BuildJob#refresh}) once.
+     */
+    private int gradedVersion;
     private BuildJob job;
     private final List<BuildJob> queue = new ArrayList<>();
     /** Recorded module controllers by hall site, and the module key standing there ("" when not known). */
@@ -129,8 +138,14 @@ public final class Campus {
     private long keepOutAt = Long.MIN_VALUE, protectedAt = Long.MIN_VALUE, etaAt = Long.MIN_VALUE;
     private long eta;
     private long lastStateKey = Long.MIN_VALUE, lastStateSent = Long.MIN_VALUE, lastBlockedHash, hintAt;
-    /** Whether the members were told that the spoils are full (until they fit again). */
-    private boolean spoilsTold;
+    /** Whether the members were told that the recycle store is full (until it has room again). */
+    private boolean recycleTold;
+    /** An operator's instant build ({@link #finishNow}): the job, who asked (null: nobody to tell), whether told. */
+    private BuildJob instantJob;
+    private UUID instantBy;
+    private boolean instantPauseTold;
+    /** A hash of the module list last sent ({@link #modules()}), to send the description again when it changes. */
+    private long modulesHash;
 
     public Campus(TileNexus nexus) {
         this.nexus = nexus;
@@ -164,9 +179,43 @@ public final class Campus {
         return intake;
     }
 
-    /** What the builder kept of the ores and logs it cleared. */
-    public ItemStackHandler spoils() {
-        return spoils;
+    /**
+     * What the builder took down (0.10.1): the drops of what it cleared and the contents of what it dismantled. Read it
+     * freely; take from it through {@link #takeRecycled} (any change marks the campus to be saved either way).
+     */
+    public RecycleStore recycle() {
+        return recycle;
+    }
+
+    /** Whether every job of this nexus is free (an operator's switch, {@code /fluxecho build free}). */
+    public boolean freeBuild() {
+        return freeBuild;
+    }
+
+    /**
+     * Turns free building for every job of this nexus on or off ({@code /fluxecho build free}); returns the lang key
+     * {@code fluxecho.build.free_on} or {@code free_off} for the reply.
+     */
+    public String setFreeBuild(boolean on) {
+        if (freeBuild != on) {
+            freeBuild = on;
+            needDirty = true;
+            stateChanged();
+        }
+        return P + (on ? "free_on" : "free_off");
+    }
+
+    /**
+     * Whether a job is free: it was started by a player in creative mode ({@link BuildJob#free()}), or the nexus builds
+     * everything free ({@link #freeBuild}). A free job takes no materials and no EU, and needs no core before 开始.
+     */
+    public boolean free(BuildJob j) {
+        return j != null && (j.free || freeBuild);
+    }
+
+    /** Whether the job runs as an operator's instant build ({@link #finishNow}). */
+    public boolean instant(BuildJob j) {
+        return j != null && j == instantJob;
     }
 
     /** The campus layout, seeded with the nexus controller's position. */
@@ -247,6 +296,7 @@ public final class Campus {
             loaded = true;
             afterLoad();
         }
+        if (now % 100 == 50) takeOverflow();
         if (!active) {
             legacyHint(now);
             flush(now);
@@ -255,7 +305,10 @@ public final class Campus {
         creditIntake();
         if (resumeCheckAt >= 0 && now >= resumeCheckAt) afterResume();
         if (now % 20 == 0) watchStructures(now);
-        if (now % 100 == 0) autoJobs(now);
+        if (now % 100 == 0) {
+            autoJobs(now);
+            watchModules();
+        }
         if (job == null && !queue.isEmpty()) nextJob();
         if (job != null) {
             builder.tick(job, now);
@@ -346,6 +399,20 @@ public final class Campus {
         }
     }
 
+    /**
+     * Takes back into the recycle store what a broken core of the team could not carry ({@link RecycleOverflow}), as
+     * far as the store has room, and tells the members.
+     */
+    private void takeOverflow() {
+        if (recycle.full()) return;
+        int n = RecycleOverflow.drainInto(team(), recycle);
+        if (n > 0) tell(
+            new ChatComponentTranslation(
+                P + "overflow_back",
+                String.valueOf(n),
+                nexus.xCoord + ", " + nexus.yCoord + ", " + nexus.zCoord));
+    }
+
     private void creditIntake() {
         ItemStack s = intake.getStackInSlot(0);
         if (s == null) return;
@@ -389,16 +456,13 @@ public final class Campus {
     private void autoJobs(long now) {
         // the docked modules are known only once the nexus has looked for them since it loaded or formed
         if (!nexus.formed() || !nexus.dockKnown()) return;
-        // the ring's room: the slots the phase opens, at most seven modules on a campus
-        int cap = Math.min(RingSlots.open(TileNexus.PHASE), 7);
-        int busy = nexus.docked()
-            .size();
-        for (BuildJob j : jobs()) if (j.module() != null && !j.repair()) busy++;
+        offerRefresh();
+        int busy = busyModules();
+        int cap = moduleCap();
         for (ModuleSpec spec : ModuleSpecs.all()) {
             if (busy >= cap) return;
             if (!spec.enabled() || !nexus.has(spec.research) || exists(spec)) continue;
-            Long until = declined.get(spec.key);
-            if (until != null && now < until) continue;
+            if (declined(spec, now)) continue;
             int site = freeSite(spec, -1, 1);
             if (site < 0) continue;
             enqueue(BuildJob.module(spec, site));
@@ -411,15 +475,213 @@ public final class Campus {
         }
     }
 
-    /** Whether a module of the kind already stands (docked, on a recorded site) or is being built. */
+    /** The ring's room: the slots the phase opens, at most seven modules on a campus. */
+    private static int moduleCap() {
+        return Math.min(RingSlots.open(TileNexus.PHASE), 7);
+    }
+
+    /** Modules docked, and module jobs (not repairs) queued or running: what takes the ring's room. */
+    private int busyModules() {
+        int busy = nexus.docked()
+            .size();
+        for (BuildJob j : jobs()) if (j.module() != null && !j.repair()) busy++;
+        return busy;
+    }
+
+    private boolean declined(ModuleSpec spec, long now) {
+        Long until = declined.get(spec.key);
+        return until != null && now < until;
+    }
+
+    /**
+     * Whether a module of the kind already stands or is being built: one on a recorded hall site, one docked in the
+     * shape the campus builds ({@link #campusShape}), or a job for it. Since 0.10.1 a docked 0.9.2 library hall does
+     * not count, so the Echo Archive is offered next to it once the library is researched and a hall site is free.
+     */
     private boolean exists(ModuleSpec spec) {
-        for (TileModule m : nexus.docked()) if (spec.key.equals(m.moduleKey())) return true;
+        for (TileModule m : nexus.docked()) if (spec.key.equals(m.moduleKey()) && campusShape(m)) return true;
+        return builtSite(spec) >= 0 || jobFor(spec) != null;
+    }
+
+    /** Whether a module stands in the shape the campus builds ({@code main}; a 0.9.2 library hall is {@code hall}). */
+    private static boolean campusShape(TileModule m) {
+        return TileMultiblock.MAIN.equals(m.shapeName());
+    }
+
+    /** The recorded hall site a module of the kind stands on, or -1. */
+    private int builtSite(ModuleSpec spec) {
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
             String kind = siteKinds.get(e.getKey());
-            if (spec.key.equals(kind) || ("".equals(kind) || kind == null) && spec.hasSite(e.getKey())) return true;
+            if (spec.key.equals(kind) || ("".equals(kind) || kind == null) && spec.hasSite(e.getKey()))
+                return e.getKey();
         }
-        for (BuildJob j : jobs()) if (spec.key.equals(j.module())) return true;
-        return false;
+        return -1;
+    }
+
+    /** The job (current or queued, not a repair, not over) that builds a module of the kind, or null. */
+    private BuildJob jobFor(ModuleSpec spec) {
+        for (BuildJob j : jobs()) {
+            if (spec.key.equals(j.module()) && !j.repair() && !BuildState.ended(j.state)) return j;
+        }
+        return null;
+    }
+
+    // ---- the modules the nexus can build (the 建造 page's list, the masterplan's signs)
+
+    /** Where a module the nexus can build stands. The ordinal is sent ({@code Md}): values are only ever appended. */
+    public enum ModuleStatus {
+        /** Its research is not done yet. */
+        NEEDS_RESEARCH,
+        /** Its job waits (projected, not started yet), or it will be offered at the next look (within 5 s). */
+        QUEUED,
+        /** Its job was started. */
+        BUILDING,
+        /** It stands on a hall site (or docked in its campus shape). */
+        BUILT,
+        /**
+         * Researched but not offered now: the ring is full, no hall site is free, it was cancelled a while ago, or
+         * the config turned it off.
+         */
+        NO_ROOM
+    }
+
+    /**
+     * One module kind and where it stands: its module key ({@code fluxecho.module.<key>}), its research id
+     * ({@code fluxecho.research.node.<research>}), its status, and the hall site it stands on, is built on, or would
+     * be built on next (-1 when none is free).
+     */
+    public static final class ModuleState {
+
+        public final String key, research;
+        public final ModuleStatus status;
+        public final int site;
+
+        public ModuleState(String key, String research, ModuleStatus status, int site) {
+            this.key = key;
+            this.research = research;
+            this.status = status;
+            this.site = site;
+        }
+
+        /** The list as the description packet and the build page carry it: {@code [{K, R, S, P}]}. */
+        public static NBTTagList write(List<ModuleState> l) {
+            NBTTagList out = new NBTTagList();
+            for (ModuleState m : l) {
+                NBTTagCompound c = new NBTTagCompound();
+                c.setString("K", m.key);
+                c.setString("R", m.research == null ? "" : m.research);
+                c.setByte("S", (byte) m.status.ordinal());
+                c.setByte("P", (byte) m.site);
+                out.appendTag(c);
+            }
+            return out;
+        }
+
+        /** The list from {@link #write}; an unknown status reads as NO_ROOM. */
+        public static List<ModuleState> read(NBTTagList l) {
+            List<ModuleState> out = new ArrayList<>();
+            if (l == null) return out;
+            ModuleStatus[] all = ModuleStatus.values();
+            for (int i = 0; i < l.tagCount(); i++) {
+                NBTTagCompound c = l.getCompoundTagAt(i);
+                int s = c.getByte("S");
+                out.add(
+                    new ModuleState(
+                        c.getString("K"),
+                        c.getString("R"),
+                        s >= 0 && s < all.length ? all[s] : ModuleStatus.NO_ROOM,
+                        c.getByte("P")));
+            }
+            return out;
+        }
+    }
+
+    /**
+     * Every module kind the nexus can build ({@link ModuleSpecs}) and where it stands: built (on its site), being
+     * built, waiting, needing its research, or researched with no room now; with the site it is on or would go to.
+     * Server side (it asks the research of the nexus's teams).
+     */
+    public List<ModuleState> modules() {
+        List<ModuleState> out = new ArrayList<>();
+        World w = world();
+        if (w == null || w.isRemote) return out;
+        for (ModuleSpec spec : ModuleSpecs.all()) out.add(moduleState(spec, w.getTotalWorldTime()));
+        return out;
+    }
+
+    private ModuleState moduleState(ModuleSpec spec, long now) {
+        int site = builtSite(spec);
+        if (site >= 0) return new ModuleState(spec.key, spec.research, ModuleStatus.BUILT, site);
+        for (TileModule m : nexus.docked()) {
+            if (spec.key.equals(m.moduleKey()) && campusShape(m))
+                return new ModuleState(spec.key, spec.research, ModuleStatus.BUILT, m.slot());
+        }
+        BuildJob j = jobFor(spec);
+        if (j != null) {
+            boolean started = j == job && (j.started || BuildState.consented(j.state));
+            return new ModuleState(
+                spec.key,
+                spec.research,
+                started ? ModuleStatus.BUILDING : ModuleStatus.QUEUED,
+                j.site);
+        }
+        int planned = active ? freeSite(spec, -1, 1) : -1;
+        if (!nexus.has(spec.research)) {
+            return new ModuleState(
+                spec.key,
+                spec.research,
+                ModuleStatus.NEEDS_RESEARCH,
+                planned >= 0 ? planned : spec.sites.length > 0 ? spec.sites[0] : -1);
+        }
+        boolean offered = active && nexus.formed()
+            && spec.enabled()
+            && planned >= 0
+            && !declined(spec, now)
+            && busyModules() < moduleCap();
+        return new ModuleState(spec.key, spec.research, offered ? ModuleStatus.QUEUED : ModuleStatus.NO_ROOM, planned);
+    }
+
+    /** Sends the description again when the module list changed (a research done, a site taken). */
+    private void watchModules() {
+        long h = 17;
+        for (ModuleState m : modules()) {
+            h = h * 31 + m.key.hashCode();
+            h = h * 31 + m.status.ordinal();
+            h = h * 31 + m.site;
+        }
+        if (h != modulesHash) {
+            modulesHash = h;
+            stateChanged();
+        }
+    }
+
+    // ---- the refresh of an older campus
+
+    /**
+     * Offers the 整修园区 job (0.10.1) to a campus whose grading last ran under an older plan version (a 0.10.0 campus:
+     * its floor kept leaves and logs, its wells were sunk): the forum plan again, with the boxes of the modules round
+     * it kept out. Not while a campus job is still to run (so never twice); the job waits for 开始 like any other. The
+     * version is noted only once the grading ran ({@link #graded}) or a member cancelled the job ({@link #cancel}): a
+     * core broken while the refresh waits or runs carries the old version, and the campus put back is offered it again.
+     */
+    void offerRefresh() {
+        if (gradedVersion >= BuildJob.V) return;
+        for (BuildJob j : jobs()) if (j.campusJob() && !BuildState.ended(j.state)) return;
+        keepOutAt = Long.MIN_VALUE;
+        enqueue(BuildJob.refresh(keepOut()));
+        tell(new ChatComponentTranslation(P + "refresh_offered"));
+        dirty();
+    }
+
+    /**
+     * The builder finished the clearing of a job: the grading of a campus job that clears in full (not a repair, not
+     * started over without clearing) ran under the current plan version.
+     */
+    void graded(BuildJob j) {
+        if (!j.campusJob() || j.repair() || j.keepClear || j.version != BuildJob.V) return;
+        if (gradedVersion >= BuildJob.V) return;
+        gradedVersion = BuildJob.V;
+        dirty();
     }
 
     /**
@@ -489,24 +751,25 @@ public final class Campus {
 
     /**
      * Where a new job goes; returns the current job afterwards. Without a current job it becomes the current one. A
-     * repair goes ahead of every queued job (none of those was started: 开始 acts on the current job only), and takes
-     * the current job's place when no member has started that one and it has touched nothing (a module job waiting
-     * for its core must not hold a repair up for good); the job that gives way goes back to the head of the queue and
-     * is surveyed again when its turn comes. Any other job waits at the end of the queue.
+     * repair or a refresh ({@link BuildJob#priority}) goes ahead of every queued job (none of those was started: 开始
+     * acts on the current job only), and takes the current job's place when that one is neither and no member has
+     * started it and it has touched nothing (a module job waiting for its core must not hold a repair up for good);
+     * the job that gives way goes back to the head of the queue and is surveyed again when its turn comes. Any other
+     * job waits at the end of the queue.
      */
     static BuildJob admit(BuildJob current, List<BuildJob> queue, BuildJob j) {
         if (current == null) return j;
-        if (!j.repair()) {
+        if (!j.priority()) {
             queue.add(j);
             return current;
         }
-        if (!current.repair() && yields(current)) {
+        if (!current.priority() && yields(current)) {
             queue.add(0, current);
             return j;
         }
         int at = 0;
         while (at < queue.size() && queue.get(at)
-            .repair()) at++;
+            .priority()) at++;
         queue.add(at, j);
         return current;
     }
@@ -520,6 +783,7 @@ public final class Campus {
     }
 
     private void nextJob() {
+        if (instantJob != null && instantJob == job) instantJob = null;
         job = queue.isEmpty() ? null : queue.remove(0);
         // a job that gave way to a repair looks at the world again: the repair changed it
         if (job != null && !job.started && !BuildState.ended(job.state)) job.resurvey();
@@ -531,26 +795,47 @@ public final class Campus {
 
     private void refreshKeepOut() {
         World w = world();
-        if (w == null) return;
-        long now = w.getTotalWorldTime();
+        long now = w == null ? 0 : w.getTotalWorldTime();
         if (now - keepOutAt < 100 && keepOutAt != Long.MIN_VALUE) return;
         keepOutAt = now;
         List<int[]> out = new ArrayList<>();
         int[] c = centre();
-        int[] f = front();
         int reach = CampusPlan.GRADE_R + 24;
-        for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
+        // the loaded modules that are not on a recorded site (0.9.2 halls), then the recorded sites, loaded or not
+        if (w != null) for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
             if (m.isInvalid() || m.getWorldObj() != w || onRecordedSite(m)) continue;
             int[] mc = m.centre();
             if (Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) > reach) continue;
             out.add(BuildPlan.moduleKeepOut(mc));
         }
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
-            ModuleSpec spec = ModuleSpecs.get(siteKinds.get(e.getKey()));
-            if (spec != null && spec.hasSite(e.getKey()))
-                out.add(spec.footprint(e.getKey(), c[0], c[2], f[0], f[1], 1));
+            int[] box = siteBox(e.getKey());
+            if (box != null) out.add(box);
         }
         liveKeepOut = out;
+    }
+
+    /** The site boxes worked out so far ({@link #siteBox}), by module key, site, centre and front. */
+    private final Map<String, int[]> siteBoxes = new HashMap<>();
+
+    /**
+     * The world box {x0, z0, x1, z1} of everything the module recorded on a hall site laid there
+     * ({@link ModuleSpec#siteBox}: the building and its clear box, its forecourt and apron, its canopy), or null when
+     * the site's module is not known. The campus jobs keep out of it, and nothing else of the nexus touches it.
+     */
+    int[] siteBox(int site) {
+        ModuleSpec spec = ModuleSpecs.get(siteKinds.get(site));
+        if (spec == null || !spec.hasSite(site)) return null;
+        int[] c = centre();
+        int[] f = front();
+        String key = spec.key + "@" + site + ":" + c[0] + "," + c[1] + "," + c[2] + ":" + f[0] + "," + f[1];
+        int[] box = siteBoxes.get(key);
+        if (box == null) {
+            box = spec.siteBox(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+            if (siteBoxes.size() > 16) siteBoxes.clear();
+            siteBoxes.put(key, box);
+        }
+        return box.clone();
     }
 
     private boolean onRecordedSite(TileMultiblock m) {
@@ -619,37 +904,98 @@ public final class Campus {
     }
 
     /**
-     * Keeps drops in the spoils. The builder asks {@link #spoilsFit} first and waits while they would not fit, so
-     * nothing it breaks is lost.
+     * Keeps what the builder took down in the recycle store (nothing when {@code buildKeepSpoils} is off: then it is
+     * voided). The builder asks {@link #recycleFull} before it harvests anything; the store takes whatever a removal
+     * gives even past its soft limit, so nothing is lost.
      */
-    void spoil(List<ItemStack> drops) {
-        for (ItemStack d : drops) {
-            ItemStack left = d == null ? null : d.copy();
-            for (int i = 0; i < spoils.getSlots() && left != null; i++) left = spoils.insertItem(i, left, false);
-        }
+    void recycle(List<ItemStack> drops) {
+        if (drops == null || !Config.buildKeepSpoils) return;
+        for (ItemStack d : drops) recycle.add(d);
     }
 
-    /** Whether all of the drops would fit into the spoils as they are now. */
-    boolean spoilsFit(List<ItemStack> drops) {
-        ItemStackHandler room = new ItemStackHandler(SPOILS);
-        for (int i = 0; i < SPOILS; i++) {
-            ItemStack s = spoils.getStackInSlot(i);
-            room.setStackInSlot(i, s == null ? null : s.copy());
+    /**
+     * Whether the builder must wait before it takes anything more down: the recycle store is full (and kept). Tells
+     * the online members once, until it has room again.
+     */
+    boolean recycleFull() {
+        if (!Config.buildKeepSpoils || !recycle.full()) {
+            recycleTold = false;
+            return false;
         }
-        for (ItemStack d : drops) {
-            ItemStack left = d == null ? null : d.copy();
-            for (int i = 0; i < SPOILS && left != null; i++) left = room.insertItem(i, left, false);
-            if (left != null && left.stackSize > 0) return false;
+        if (!recycleTold) {
+            recycleTold = true;
+            tell(
+                new ChatComponentTranslation(
+                    P + "spoils_full",
+                    nexus.xCoord + ", " + nexus.yCoord + ", " + nexus.zCoord));
         }
-        spoilsTold = false;
         return true;
     }
 
-    /** The builder waits for room in the spoils: tells the online members once (until the drops fit again). */
-    void spoilsFull() {
-        if (spoilsTold) return;
-        spoilsTold = true;
-        tell(new ChatComponentTranslation(P + "spoils_full", nexus.xCoord + ", " + nexus.yCoord + ", " + nexus.zCoord));
+    /**
+     * Takes up to {@code max} of a kind out of the recycle store as one stack (at most the item's stack size); null
+     * when the store holds none, or the item is no longer in the game (it stays stored). For the recycle bin's slots
+     * and screen.
+     */
+    public ItemStack takeRecycled(NBTTagCompound kind, int max) {
+        if (kind == null || max <= 0) return null;
+        ItemStack probe = RecycleStore.stackOf(kind, 1);
+        if (probe == null) return null;
+        int n = (int) recycle.extract(kind, Math.min(max, Math.max(1, probe.getMaxStackSize())));
+        return n <= 0 ? null : RecycleStore.stackOf(kind, n);
+    }
+
+    /**
+     * Fills the player's main inventory from the recycle store, the largest kinds first, as far as it has room (nothing
+     * is dropped at their feet, nothing is voided, in creative mode either); returns how many items moved. 取出 and
+     * the recycle bin's 全部取出.
+     */
+    public int takeRecycled(EntityPlayer p) {
+        if (p == null || recycle.isEmpty()) return 0;
+        int moved = 0;
+        for (RecycleStore.Entry e : new ArrayList<>(recycle.list())) {
+            ItemStack one = RecycleStore.stackOf(e.kind, 1);
+            if (one == null) continue;
+            int limit = Math.max(1, Math.min(one.getMaxStackSize(), p.inventory.getInventoryStackLimit()));
+            long most = (long) limit * p.inventory.mainInventory.length;
+            ItemStack s = RecycleStore.stackOf(e.kind, (int) Math.min(e.count, most));
+            int took = insert(p, s);
+            if (took <= 0) continue;
+            recycle.extract(e.kind, took);
+            moved += took;
+        }
+        if (moved > 0) {
+            recycleTold = false;
+            p.inventory.markDirty();
+        }
+        return moved;
+    }
+
+    /**
+     * Puts as much of the stack into the player's main inventory as fits, onto stacks of the same item first, then
+     * into empty slots; returns how many went in. The stack itself is not changed.
+     */
+    static int insert(EntityPlayer p, ItemStack s) {
+        ItemStack[] inv = p.inventory.mainInventory;
+        int cap = p.inventory.getInventoryStackLimit();
+        int limit = Math.max(1, Math.min(s.getMaxStackSize(), cap));
+        int left = s.stackSize;
+        for (int i = 0; i < inv.length && left > 0; i++) {
+            ItemStack t = inv[i];
+            if (t == null || !t.isStackable() || !t.isItemEqual(s) || !ItemStack.areItemStackTagsEqual(t, s)) continue;
+            int n = Math.min(Math.min(t.getMaxStackSize(), cap) - t.stackSize, left);
+            if (n <= 0) continue;
+            t.stackSize += n;
+            left -= n;
+        }
+        for (int i = 0; i < inv.length && left > 0; i++) {
+            if (inv[i] != null) continue;
+            ItemStack put = s.copy();
+            put.stackSize = Math.min(limit, left);
+            inv[i] = put;
+            left -= put.stackSize;
+        }
+        return s.stackSize - left;
     }
 
     /** Whether a cell of ours belongs to another structure: another multiblock's box, or a keep-out box of the job. */
@@ -670,6 +1016,13 @@ public final class Campus {
         List<int[]> out = new ArrayList<>();
         World w = world();
         int[] own = job == null ? null : moduleController(job);
+        // the modules on the campus's recorded hall sites, loaded or not, but the one the job builds or repairs
+        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
+            if (job != null && job.module() != null && job.site == e.getKey()) continue;
+            // the whole site: the building, its forecourt, apron and canopy (0.10.1; the footprint alone before)
+            int[] b = siteBox(e.getKey());
+            if (b != null) out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+        }
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (m == nexus) continue;
             if (own != null && m.xCoord == own[0] && m.yCoord == own[1] && m.zCoord == own[2]) continue;
@@ -692,9 +1045,62 @@ public final class Campus {
         return CampusRegistry.ownerAt(world(), x, z, centre()) != null;
     }
 
-    /** A job came to its end: tell the members. */
+    /** A job came to its end: tell the members (and an operator who finished it at once, how it went). */
     void finished(BuildJob j) {
         tell(new ChatComponentTranslation(P + "done", j.name()));
+        if (j != instantJob) return;
+        instantJob = null;
+        report(
+            new ChatComponentTranslation(
+                P + "instant_done",
+                j.name(),
+                String.valueOf(j.placed()),
+                String.valueOf(j.cleared),
+                String.valueOf(j.filled)));
+    }
+
+    /**
+     * The builder paused a job: an operator's instant build tells who asked, once, why it stopped, and ends there when
+     * the cause needs someone to act ({@link #endsInstant}); the job goes on at the normal pace once it is put right.
+     */
+    void paused(BuildJob j, BuildState.Pause why) {
+        if (j != instantJob || why == null) return;
+        if (endsInstant(why)) instantJob = null;
+        if (instantPauseTold) return;
+        instantPauseTold = true;
+        report(
+            new ChatComponentTranslation(
+                P + "instant_paused",
+                j.name(),
+                new ChatComponentTranslation(
+                    P + "pause."
+                        + why.name()
+                            .toLowerCase(Locale.ROOT))));
+    }
+
+    /**
+     * Whether a pause ends an operator's instant build: a blocked cell, a protection mod's refusal, an unloaded chunk,
+     * a structure that will not form. None of those lifts by itself soon, and the instant mode would otherwise stay on
+     * for good. (A free job never waits for materials or power.)
+     */
+    static boolean endsInstant(BuildState.Pause why) {
+        return why == BuildState.Pause.BLOCKED || why == BuildState.Pause.PROTECTED
+            || why == BuildState.Pause.UNLOADED
+            || why == BuildState.Pause.INCOMPLETE;
+    }
+
+    /** Tells the operator who started the instant build, when online; the members otherwise. */
+    private void report(IChatComponent msg) {
+        MinecraftServer server = MinecraftServer.getServer();
+        if (instantBy != null && server != null && server.getConfigurationManager() != null) {
+            for (Object o : server.getConfigurationManager().playerEntityList) {
+                if (o instanceof EntityPlayerMP p && instantBy.equals(p.getUniqueID())) {
+                    p.addChatMessage(msg);
+                    return;
+                }
+            }
+        }
+        tell(msg);
     }
 
     /** Tells the online members of the nexus's teams; returns how many heard it. */
@@ -714,8 +1120,8 @@ public final class Campus {
 
     /**
      * Tells the members of a legacy nexus whose teams have the library, once, that the forum can be laid now and how
-     * the Echo Archive comes after it (only once no library is docked: a 0.9.2 hall counts as the library,
-     * {@link #exists}): on the first tick after a load, then every ten seconds until someone was online to hear it.
+     * the Echo Archive comes after it (since 0.10.1 a docked 0.9.2 hall no longer stands in for it, {@link #exists}):
+     * on the first tick after a load, then every ten seconds until someone was online to hear it.
      */
     private void legacyHint(long now) {
         if (hinted || now < hintAt) return;
@@ -763,20 +1169,27 @@ public final class Campus {
         return P + "forum_laid";
     }
 
-    /** 开始: a member's consent (or lifting the player's pause). A module job first needs its core in the ledger. */
+    /**
+     * 开始: a member's consent (or lifting the player's pause). A module job first needs its core in the ledger, unless
+     * it is free: a player in creative mode starts the job free (0.10.1; no materials, no EU, no core), and it stays
+     * so.
+     */
     public String start(EntityPlayer p) {
         if (job == null || BuildState.ended(job.state)) return NO_JOB;
         if (!nexus.member(p)) return NOT_MEMBER;
+        boolean creative = p.capabilities != null && p.capabilities.isCreativeMode;
+        freshKeepOut();
         ModuleSpec spec = ModuleSpecs.get(job.module());
         if (spec != null && !job.repair()
+            && !creative
+            && !free(job)
             && BuildLedger.clamp(Config.buildCostScale) > 0
             && ledger.part(spec.corePart) < 1
             && !coreBuilt(job)) return P + "need_core";
         if (job.state == BuildState.State.SURVEY) {
             // consent given while the survey runs: it goes on by itself when the survey ends (and a pause asked
             // for during the survey is taken back)
-            job.started = true;
-            job.startedBy = p.getUniqueID();
+            consent(p.getUniqueID(), creative);
             if (job.pause == BuildState.Pause.PLAYER) job.pause = BuildState.Pause.NONE;
             stateChanged();
             return P + "started";
@@ -784,10 +1197,70 @@ public final class Campus {
         if (!BuildState.canStart(job.state, job.pause)) return P + "already_running";
         job.state = BuildState.start(job.state, job.pause);
         job.pause = BuildState.Pause.NONE;
-        job.started = true;
-        job.startedBy = p.getUniqueID();
+        consent(p.getUniqueID(), creative);
         stateChanged();
         return P + "started";
+    }
+
+    /**
+     * Before a campus job that has touched nothing starts: its plan is made again with the keep-out boxes of now
+     * ({@link BuildJob#retarget}). It was made with the modules loaded when it was offered; by 开始 more of them may be
+     * loaded round the player, or a module may have been built meanwhile.
+     */
+    private void freshKeepOut() {
+        if (job == null || !job.campusJob()) return;
+        keepOutAt = Long.MIN_VALUE;
+        if (job.retarget(keepOut())) {
+            builder.reset();
+            needDirty = true;
+            etaAt = Long.MIN_VALUE;
+            stateChanged();
+        }
+    }
+
+    /** The current job was started by the player; a start in creative mode makes it free. */
+    private void consent(UUID by, boolean free) {
+        job.started = true;
+        job.startedBy = by;
+        if (free && !job.free) {
+            job.free = true;
+            needDirty = true;
+        }
+    }
+
+    /**
+     * An operator's {@code /fluxecho build finish}: the current job (the next queued one when there is none) is
+     * started if it was not, made free, and run as an instant build until it is done: {@link Builder#INSTANT_CELLS}
+     * cells a tick, flights of one tick, few effects, through the same code paths as ever (protection, the capture,
+     * recycling, forming and commissioning). The player ({@code null} for the console) is told when it is done, or why
+     * it stopped; the members when the player is gone. No member check: the command checks its permission. Returns a
+     * lang key: {@code build.instant_started}, or {@code build.no_job}.
+     */
+    public String finishNow(EntityPlayer p) {
+        if (!active) return NO_JOB;
+        if (job != null && BuildState.ended(job.state) && !queue.isEmpty()) {
+            // a finished job lingering (for its completion effect) or a cancelled one landing its last cells: the
+            // next one is meant; what is still in flight goes back to the ledger
+            Builder.forget(job, ledger, job.plan(this));
+            nextJob();
+        }
+        if (job == null && !queue.isEmpty()) nextJob();
+        if (job == null || BuildState.ended(job.state)) return NO_JOB;
+        freshKeepOut();
+        UUID by = p == null ? null : p.getUniqueID();
+        if (job.state == BuildState.State.SURVEY) {
+            consent(by, true);
+            if (job.pause == BuildState.Pause.PLAYER) job.pause = BuildState.Pause.NONE;
+        } else if (BuildState.canStart(job.state, job.pause)) {
+            job.state = BuildState.start(job.state, job.pause);
+            job.pause = BuildState.Pause.NONE;
+            consent(by, true);
+        } else consent(job.startedBy != null ? job.startedBy : by, true);
+        instantJob = job;
+        instantBy = by;
+        instantPauseTold = false;
+        stateChanged();
+        return P + "instant_started";
     }
 
     /** Whether the job's module controller already stands (its last step is done). */
@@ -815,11 +1288,27 @@ public final class Campus {
     public String cancel(EntityPlayer p) {
         if (job == null || BuildState.ended(job.state)) return NO_JOB;
         if (!nexus.member(p)) return NOT_MEMBER;
+        cancelJob();
+        return P + "cancelled";
+    }
+
+    /** Ends the current job as a member's 取消 does ({@link #cancel}, after its checks). */
+    void cancelJob() {
         job.state = BuildState.cancel(job.state);
         if (job.module() != null && !job.repair())
             declined.put(job.module(), world().getTotalWorldTime() + DECLINE_TICKS);
+        if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.V);
+        if (job == instantJob) instantJob = null;
         stateChanged();
-        return P + "cancelled";
+    }
+
+    /**
+     * Whether cancelling the job declines the refresh for good: a campus job that grades (establish, forum, the
+     * refresh itself). A repair of the nexus is a campus job too, but it never grades: cancelling it says nothing
+     * about the floor.
+     */
+    static boolean declinesRefresh(BuildJob j) {
+        return j.campusJob() && !j.repair();
     }
 
     /** ◀ ▶: moves a module job's projection to the next free site of its module, until it touched anything. */
@@ -857,7 +1346,10 @@ public final class Campus {
         return P + "supplied";
     }
 
-    /** 取出: whole items of the raw credit (not echo crystals) and the spoils, to the member (overflow at their feet). */
+    /**
+     * 取出: whole items of the raw credit (not echo crystals) to the member (overflow at their feet), then from the
+     * recycle store as much as their inventory takes ({@link #takeRecycled(EntityPlayer)}; the rest stays stored).
+     */
     public String withdraw(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
         boolean gave = false;
@@ -875,15 +1367,8 @@ public final class Campus {
                 gave = true;
             }
         }
-        for (int i = 0; i < spoils.getSlots(); i++) {
-            ItemStack s = spoils.getStackInSlot(i);
-            if (s == null) continue;
-            spoils.setStackInSlot(i, null);
-            give(p, s);
-            gave = true;
-        }
+        if (takeRecycled(p) > 0) gave = true;
         if (!gave) return P + "nothing_to_withdraw";
-        spoilsTold = false;
         dirty();
         p.inventory.markDirty();
         return P + "withdrawn";
@@ -968,10 +1453,13 @@ public final class Campus {
         c.skip = skipBlocked;
         c.declined.putAll(declined);
         for (BuildJob j : jobs()) {
-            if (!j.campusJob() || BuildState.ended(j.state)) continue;
+            // a refresh is offered again by the version below, not carried
+            if (!j.campusJob() || j.refresh() || BuildState.ended(j.state)) continue;
             if (j.raisesNexus()) c.unfinished = BuildPlan.ESTABLISH;
             else if (c.unfinished.isEmpty()) c.unfinished = BuildPlan.FORUM;
         }
+        c.graded = gradedVersion;
+        c.free = freeBuild;
         return c.write();
     }
 
@@ -1020,6 +1508,8 @@ public final class Campus {
             siteKinds.put(e.getKey(), c.kinds.containsKey(e.getKey()) ? c.kinds.get(e.getKey()) : "");
         }
         declined.putAll(c.declined);
+        gradedVersion = c.graded;
+        freeBuild = c.free;
         resumeJob = c.unfinished;
         resumeCheckAt = w.getTotalWorldTime() + RESUME_CHECK;
         CampusRegistry.add(w, ce[0], ce[1], ce[2], CampusPlan.GRADE_R);
@@ -1055,7 +1545,7 @@ public final class Campus {
      * A campus as a broken core carries it ({@link #carried}), read and written without a world. Item NBT:
      * {@code Dim}, {@code Pos} (the core, int[3]), {@code F} (its front), {@code Sites} [{S, P, K}] as the campus saves
      * them, {@code Skip}, {@code Declined} {module: until}, {@code Job} (the plan key of the campus job not finished,
-     * "" for none).
+     * "" for none), {@code Pv} (the plan version its grading last ran under, 0.10.1) and {@code Fb} (free building).
      */
     static final class Carried {
 
@@ -1063,9 +1553,10 @@ public final class Campus {
         int[] core = new int[3];
         final Map<Integer, int[]> sites = new TreeMap<>();
         final Map<Integer, String> kinds = new HashMap<>();
-        boolean skip;
+        boolean skip, free;
         final Map<String, Long> declined = new HashMap<>();
         String unfinished = "";
+        int graded;
 
         NBTTagCompound write() {
             NBTTagCompound t = new NBTTagCompound();
@@ -1087,6 +1578,8 @@ public final class Campus {
             for (Map.Entry<String, Long> e : declined.entrySet()) d.setLong(e.getKey(), e.getValue());
             t.setTag("Declined", d);
             t.setString("Job", unfinished);
+            t.setInteger("Pv", graded);
+            t.setBoolean("Fb", free);
             return t;
         }
 
@@ -1113,6 +1606,8 @@ public final class Campus {
             for (Object k : d.func_150296_c()) c.declined.put((String) k, d.getLong((String) k));
             String job = t.getString("Job");
             c.unfinished = BuildPlan.ESTABLISH.equals(job) || BuildPlan.FORUM.equals(job) ? job : "";
+            c.graded = t.getInteger("Pv");
+            c.free = t.getBoolean("Fb");
             return c;
         }
 
@@ -1226,9 +1721,12 @@ public final class Campus {
         return out;
     }
 
-    /** What the current job still needs, in units (empty when none); see {@link BuildLedger#need}. */
+    /**
+     * What the current job still needs, in units (empty when none, or when the job is free); see
+     * {@link BuildLedger#need}.
+     */
     private Map<String, Long> need() {
-        if (job == null) return Collections.emptyMap();
+        if (job == null || free(job)) return Collections.emptyMap();
         if (needDirty || needJob != job) {
             needJob = job;
             needDirty = false;
@@ -1237,15 +1735,26 @@ public final class Campus {
         return need;
     }
 
-    /** Part counts of the job's steps that are not done, skipped or in flight (the free supply port left out). */
+    /**
+     * Part counts of the job's steps that are not done, skipped or in flight; see
+     * {@link #unbuilt(BuildPlan.Plan, BuildJob)}.
+     */
     private Map<Integer, Integer> unbuilt(BuildJob j) {
+        return unbuilt(j.plan(this), j);
+    }
+
+    /**
+     * Part counts of the plan's steps the job has not done, skipped or launched: what it still has to be paid for. The
+     * campus jobs' supply port and recycle bin are left out (given free once, {@link Builder#gift}), and so is any
+     * step this game cannot place ({@link Builder#placeable}: the bin before its block is registered).
+     */
+    static Map<Integer, Integer> unbuilt(BuildPlan.Plan pl, BuildJob j) {
         Map<Integer, Integer> out = new TreeMap<>();
-        BuildPlan.Plan pl = j.plan(this);
         if (pl == null) return out;
         for (int i = 0; i < pl.steps.size(); i++) {
             if (j.done(i) || j.skipped(i) || j.flying(i)) continue;
             BuildPlan.Step s = pl.steps.get(i);
-            if (s.kind == BuildPlan.AIR || s.part == Parts.SUPPLY_PORT && j.campusJob()) continue;
+            if (s.kind == BuildPlan.AIR || Builder.gift(s.part) && j.campusJob() || !Builder.placeable(s)) continue;
             out.merge(s.part, 1, Integer::sum);
         }
         return out;
@@ -1356,7 +1865,10 @@ public final class Campus {
         l.setTag("Parts", parts);
         t.setTag("Ledger", l);
         t.setTag("BuildIn", intake.serializeNBT());
-        t.setTag("Spoils", spoils.serializeNBT());
+        // 0.10.1: the recycle store replaced the spoils ("Spoils" is still read, once, and moved in)
+        t.setTag("Recycle", recycle.write());
+        t.setBoolean("Fb", freeBuild);
+        t.setInteger("Pv", gradedVersion);
         NBTTagCompound d = new NBTTagCompound();
         for (Map.Entry<String, Long> e : declined.entrySet()) d.setLong(e.getKey(), e.getValue());
         t.setTag("Declined", d);
@@ -1380,11 +1892,14 @@ public final class Campus {
         resumeCheckAt = -1;
         resumeJob = "";
         intake.setStackInSlot(0, null);
-        for (int i = 0; i < SPOILS; i++) spoils.setStackInSlot(i, null);
+        instantJob = null;
+        recycle.read(null);
         if (tile == null || !tile.hasKey("Campus")) {
             active = false;
             hinted = false;
             skipBlocked = false;
+            freeBuild = false;
+            gradedVersion = 0;
             ledger.load(null, null);
             return;
         }
@@ -1392,6 +1907,8 @@ public final class Campus {
         active = "active".equals(t.getString("St"));
         hinted = t.getBoolean("Hint");
         skipBlocked = t.getBoolean("Skip");
+        freeBuild = t.getBoolean("Fb");
+        gradedVersion = t.getInteger("Pv");
         NBTTagList s = t.getTagList("Sites", 10);
         for (int i = 0; i < s.tagCount(); i++) {
             NBTTagCompound c = s.getCompoundTagAt(i);
@@ -1421,12 +1938,12 @@ public final class Campus {
             saved.deserializeNBT(t.getCompoundTag("BuildIn"));
             intake.setStackInSlot(0, saved.getSlots() > 0 ? saved.getStackInSlot(0) : null);
         }
+        recycle.read(t.getTagList("Recycle", 10));
         if (t.hasKey("Spoils")) {
-            // through a handler of the saved size, so a changed size keeps what fits
+            // the 27 slots of 0.10.0's spoils move into the recycle store (and are not written again)
             ItemStackHandler saved = new ItemStackHandler(0);
             saved.deserializeNBT(t.getCompoundTag("Spoils"));
-            for (int i = 0; i < SPOILS; i++)
-                spoils.setStackInSlot(i, i < saved.getSlots() ? saved.getStackInSlot(i) : null);
+            for (int i = 0; i < saved.getSlots(); i++) recycle.add(saved.getStackInSlot(i));
         }
         NBTTagCompound d = t.getCompoundTag("Declined");
         for (Object k : d.func_150296_c()) declined.put((String) k, d.getLong((String) k));
@@ -1439,16 +1956,19 @@ public final class Campus {
     // ---- the client copy
 
     /**
-     * The small client copy for the nexus's description packet: the mode and 跳过受阻, then with a job its key, plan
-     * key, site, plan version, state, pause, stage and progress, when it was projected and finished, its top three
-     * missing items, its blocked cells ({@link FxCodec}, relative to the centre) and the keep-out boxes its plan was
-     * made with. Sent on state changes only; the progress numbers between them go over the network
-     * ({@link CampusNet#sendState}).
+     * The small client copy for the nexus's description packet: the mode, 跳过受阻 and free building, the module list
+     * of an active campus ({@code Md}, {@link ModuleState#write}), then with a job its key, plan key, site, plan
+     * version, state, pause, stage and progress, when it was projected and finished, whether it is free, its top three
+     * missing items, its blocked cells and the machines it will take down ({@code Bl}, {@code Te}: {@link FxCodec},
+     * relative to the centre, at most 64 each) and the keep-out boxes its plan was made with. Sent on state changes
+     * only; the progress numbers between them go over the network ({@link CampusNet#sendState}).
      */
     public void writeSync(NBTTagCompound t) {
         t.setBoolean("Ac", active);
-        // the switch is the campus's, not the job's: it reaches the client with or without a job
+        // the switches are the campus's, not the job's: they reach the client with or without a job
         t.setBoolean("Sk", skipBlocked);
+        t.setBoolean("Fb", freeBuild);
+        if (active) t.setTag("Md", ModuleState.write(modules()));
         if (job == null) return;
         lastBlockedHash = job.blockedShownHash();
         t.setString("K", job.key);
@@ -1464,6 +1984,7 @@ public final class Campus {
         t.setInteger("To", pl == null ? 0 : pl.steps.size());
         t.setLong("Pa", job.projectedAt);
         t.setLong("Ft", job.finishedAt);
+        t.setBoolean("Fe", free(job));
         NBTTagList mi = new NBTTagList();
         for (Map.Entry<String, Long> e : bill().entrySet()) {
             if (mi.tagCount() >= 3) break;
@@ -1484,13 +2005,34 @@ public final class Campus {
         int[] blocked = new int[bl.size()];
         for (int i = 0; i < blocked.length; i++) blocked[i] = bl.get(i);
         t.setIntArray("Bl", blocked);
+        t.setIntArray("Te", packed(job.machineCells(), c));
         t.setIntArray("Ko", BuildJob.boxes(job.keepOut));
+    }
+
+    /** World cells {x, y, z} packed relative to the centre ({@link FxCodec}); cells too far out are left out. */
+    private static int[] packed(List<int[]> cells, int[] c) {
+        List<Integer> l = new ArrayList<>();
+        for (int[] b : cells) {
+            int dx = b[0] - c[0], dy = b[1] - c[1], dz = b[2] - c[2];
+            if (FxCodec.fits(dx, dy, dz)) l.add(FxCodec.pack(dx, dy, dz));
+        }
+        int[] out = new int[l.size()];
+        for (int i = 0; i < out.length; i++) out[i] = l.get(i);
+        return out;
     }
 
     /** The client's copy of {@link #writeSync}. */
     public static final class View {
 
         public boolean active, skipBlocked;
+        /** Free building for every job of the nexus ({@code Fb}), and whether the current job is free ({@code Fe}). */
+        public boolean freeBuild, free;
+        /** The modules the nexus can build and where they stand ({@code Md}); empty for a legacy campus. */
+        public List<ModuleState> modules = new ArrayList<>();
+        /**
+         * The machines and chests the job will take down, packed like {@link #blocked} ({@code Te}, the yellow boxes).
+         */
+        public int[] machines = new int[0];
         /** The job key ("" for none) and the key of the plan it builds. */
         public String job = "", planKey = "";
         public int site = -1, version, state, pause, stage, stages, placed, total;
@@ -1506,6 +2048,10 @@ public final class Campus {
         public void read(NBTTagCompound t) {
             active = t.getBoolean("Ac");
             skipBlocked = t.getBoolean("Sk");
+            freeBuild = t.getBoolean("Fb");
+            free = t.getBoolean("Fe");
+            modules = ModuleState.read(t.getTagList("Md", 10));
+            machines = t.getIntArray("Te");
             job = t.getString("K");
             planKey = t.hasKey("Pk") ? t.getString("Pk") : job;
             site = t.hasKey("S") ? t.getByte("S") : -1;

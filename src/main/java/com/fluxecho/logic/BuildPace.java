@@ -67,6 +67,16 @@ public final class BuildPace {
         clearBudget = Math.min(Math.max(CAP, clearPerTick), clearBudget + clearPerTick);
     }
 
+    /**
+     * Fills both budgets to at least {@code n} for this tick, past {@link #CAP}: an operator's instant build (0.10.1)
+     * runs many cells a tick. A budget already above {@code n} is left as it is.
+     */
+    public void flood(double n) {
+        if (!(n > 0) || Double.isInfinite(n)) return;
+        budget = Math.max(budget, n);
+        clearBudget = Math.max(clearBudget, n);
+    }
+
     /** Whether one step can launch now. */
     public boolean canStep() {
         return budget + EPS >= STEP;

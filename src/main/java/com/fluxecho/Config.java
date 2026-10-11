@@ -68,8 +68,10 @@ public final class Config {
     public static boolean campusEnabled = true, archiveEnabled = true;
     public static double buildBlocksPerTick = 2.0, buildCostScale = 1.0;
     public static int buildClearPerTick = 8, buildEuPerBlock = 256, buildEuPerClear = 64, buildClearHeight = 24,
-        buildFillDepth = 2, buildMinSpacing = 144;
+        buildFillDepth = 4, buildMinSpacing = 144;
     public static boolean buildRequireSky = true, buildKeepSpoils = true;
+    /** 0.10.1: the campus builder empties every cell it clears (machines and chests too, into the recycle store). */
+    public static boolean buildClearAll = true;
     public static String[] buildClearable = {}, buildBlocked = {};
     /** Client: how the projection of a job is drawn, {@code full}, {@code outline} or {@code off}. */
     public static String buildProjection = "full";
@@ -85,7 +87,7 @@ public final class Config {
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.10.0";
+    private static final String VERSION = "0.10.1";
 
     private Config() {}
 
@@ -481,7 +483,7 @@ public final class Config {
             buildClearPerTick,
             1,
             256,
-            "Natural blocks (stone, dirt, logs, leaves, ores) the campus builder clears per tick where it grades the ground and makes room for a building.");
+            "Blocks the campus builder clears or fills per tick where it grades the ground and makes room for a building (what it may clear: see buildClearAll).");
         buildEuPerBlock = c.getInt(
             "buildEuPerBlock",
             NEXUS,
@@ -510,14 +512,14 @@ public final class Config {
             buildClearHeight,
             0,
             64,
-            "How high above the campus floor the builder clears natural blocks (hills, trees) when it grades the campus. A building's own box is always cleared to its full height.");
+            "How high above the campus floor the builder clears (hills, trees, and with buildClearAll everything else in the way) when it grades the campus. A building's own box is always cleared to its full height.");
         buildFillDepth = c.getInt(
             "buildFillDepth",
             NEXUS,
             buildFillDepth,
             0,
             16,
-            "How deep below the campus floor the builder fills holes and water when it grades (dirt, with grass at the floor level where nothing solid stands on it): only holes open to the sky, from the floor level down this far; lava and the cells below that depth are left.");
+            "How deep below the campus floor the builder fills when it grades: from just under the floor down this far, air, water, plants, logs and leaves become dirt (lava too when buildClearAll is on), stopping at the first solid block; whatever lies deeper stays under that crust. The floor itself becomes grass wherever the campus is not paved.");
         buildMinSpacing = c.getInt(
             "buildMinSpacing",
             NEXUS,
@@ -534,7 +536,12 @@ public final class Config {
             "buildKeepSpoils",
             NEXUS,
             buildKeepSpoils,
-            "Keep the ores and logs the campus builder clears (their drops go to the nexus's spoils, 27 slots, taken out with Withdraw); everything else it clears is voided.");
+            "Keep what the campus builder takes down: the drops of every block it clears and the contents of the chests and machines it dismantles go to the nexus's recycle store (taken out at the recycle bin or with Withdraw). Off: they are voided; our own campus blocks are still credited to the build.");
+        buildClearAll = c.getBoolean(
+            "buildClearAll",
+            NEXUS,
+            buildClearAll,
+            "The campus builder empties every cell it clears or builds in, natural or not, machines, chests and other tile entities included (their contents go to the recycle store, see buildKeepSpoils). It still never touches another campus, a module or another structure, unbreakable blocks, the buildBlocked list, or what a protection mod refuses. Off: the cautious rule of 0.10.0, which only clears natural terrain and ores and leaves anything a player may have built (marked red).");
         buildClearable = c.getStringList(
             "buildClearable",
             NEXUS,
@@ -570,7 +577,7 @@ public final class Config {
             "buildEffects",
             NEXUS,
             buildEffects,
-            "Client: draw the builder at work (the arcs from the core to each block it places, the blocks printing in, the ground it clears breaking up).");
+            "Client: draw the builder at work (the arcs from the core to each block it places, the blocks printing in, the ground it clears breaking up) and the light rising over the campus's light wells.");
         buildArcs = c.getInt("buildArcs", NEXUS, buildArcs, 0, 512, "Client: the most launch arcs drawn at once.");
 
         c.setCategoryComment(
@@ -670,6 +677,19 @@ public final class Config {
         // 0.9.2: a library keeps one sample on each shelf of its hall
         if (older(was, "0.9.2") && c.hasCategory(NEXUS)) c.getCategory(NEXUS)
             .remove("librarySamples");
+        // 0.10.1: grading fills four deep (it was two); a file that kept the old default gets the new one
+        if (older(was, "0.10.1") && c.hasCategory(NEXUS)) {
+            ConfigCategory n = c.getCategory(NEXUS);
+            if (n.containsKey("buildFillDepth") && bumpsFillDepth(
+                n.get("buildFillDepth")
+                    .getString()))
+                n.remove("buildFillDepth");
+        }
+    }
+
+    /** Whether a saved {@code buildFillDepth} is the 0.10.0 default, 2, which 0.10.1 raises to 4. */
+    static boolean bumpsFillDepth(String saved) {
+        return saved != null && "2".equals(saved.trim());
     }
 
     /** Whether a file written by version {@code was} (null: before versions were written) predates {@code v}. */

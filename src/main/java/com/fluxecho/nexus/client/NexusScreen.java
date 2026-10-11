@@ -18,6 +18,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 import com.fluxecho.campus.BuildJob;
+import com.fluxecho.campus.Campus;
 import com.fluxecho.client.Motifs;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.BuildState;
@@ -358,7 +359,9 @@ public final class NexusScreen {
 
     /**
      * The job panel: the job and its site, its state (and why it waits), its stage, the progress bar, EU/t and the
-     * time left, the counts and the queue; or what to do when there is no job, or no campus yet.
+     * time left, the counts (before 开始 also the machines and chests it will dismantle), whether it is free, and the
+     * queue; without a job, every module the nexus can build and where it stands; or what to do when there is no
+     * campus yet.
      */
     public static void buildJob(NexusGui.View v, float x, float y, float w, float h) {
         GL11.glPushMatrix();
@@ -384,7 +387,9 @@ public final class NexusScreen {
         }
         if (!b.hasJob()) {
             text(fit(EchoText.t("build.gui.no_job"), lw), 2, 2, DIM, 1f);
-            paragraph(EchoText.t("build.gui.no_job_hint"), 14, sw, 5, DIM);
+            int y = modules(b, 13, w, h);
+            int lines = (int) ((h - 10 - y) / 8);
+            if (lines > 0) paragraph(EchoText.t("build.gui.no_job_hint"), y, sw, lines, DIM);
             queue(b, w, h);
             return;
         }
@@ -420,15 +425,82 @@ public final class NexusScreen {
             WHITE,
             1f);
 
-        small(EchoText.t("build.gui.eu", Compact.si(b.eu)), 2, 43, 0.75f, b.eu > 0 ? WHITE : DIM, 1f);
-        smallRight(EchoText.t("build.gui.eta", eta(b.eta)), w - 2, 43, 0.75f, DIM, 1f);
+        // a free job draws no EU: its line says it is free instead (the admin's switch or a start in creative mode)
+        String free = b.freeBuild ? EchoText.t("build.gui.free_build") : b.free ? EchoText.t("build.gui.free") : "";
+        String left = EchoText.t("build.gui.eta", eta(b.eta));
+        smallRight(left, w - 2, 43, 0.75f, DIM, 1f);
+        if (free.isEmpty())
+            small(EchoText.t("build.gui.eu", Compact.si(b.eu)), 2, 43, 0.75f, b.eu > 0 ? WHITE : DIM, 1f);
+        else small(fit(free, (int) ((w - 8 - font().getStringWidth(left) * 0.75f) / 0.75f)), 2, 43, 0.75f, GREEN, 1f);
         // before Start: how much the survey found to clear; after, how much was cleared
         if (b.started) small(EchoText.t("build.gui.cleared", b.cleared), 2, 52, 0.75f, DIM, 1f);
         else small(EchoText.t("build.gui.to_clear", b.natural), 2, 52, 0.75f, b.natural > 0 ? WHITE : DIM, 1f);
         smallRight(EchoText.t("build.gui.blocked", b.blocked), w - 2, 52, 0.75f, b.blocked > 0 ? AMBER : DIM, 1f);
         small(EchoText.t("build.gui.skipped", b.skipped), 2, 60, 0.75f, b.skipped > 0 ? AMBER : DIM, 1f);
         smallRight(EchoText.t("build.gui.unloaded", b.unloaded), w - 2, 60, 0.75f, b.unloaded > 0 ? AMBER : DIM, 1f);
+        // before Start: the machines and chests the job will take down (into the recycle bin), on a line of its own
+        if (!b.started && b.live()) small(
+            fit(EchoText.t("build.gui.to_dismantle", b.machines), sw),
+            2,
+            68,
+            0.75f,
+            b.machines > 0 ? AMBER : DIM,
+            1f);
         queue(b, w, h);
+    }
+
+    /**
+     * Without a job: every module the nexus can build, a line each with its name and site and a line with where it
+     * stands (needs its research, queued, building, built, no room); returns the height under the list.
+     */
+    private static int modules(NexusGui.Build b, int y, float w, float h) {
+        if (b.modules.isEmpty()) return y + 1;
+        int sw = (int) ((w - 4) / 0.75f);
+        small(EchoText.t("build.gui.modules"), 2, y, 0.75f, VIOLET, 1f);
+        y += 9;
+        for (Campus.ModuleState m : b.modules) {
+            if (y + 16 > h - 10) break;
+            // a built module names its site in its status line
+            String site = m.site >= 0 && m.status != Campus.ModuleStatus.BUILT ? EchoText.t("build.gui.site", m.site)
+                : "";
+            float siteW = font().getStringWidth(site) * 0.75f;
+            small(fit(EchoText.t("module." + m.key), (int) ((w - 8 - siteW) / 0.75f)), 2, y, 0.75f, WHITE, 1f);
+            if (!site.isEmpty()) smallRight(site, w - 2, y, 0.75f, DIM, 1f);
+            small(fit("  " + moduleStatus(m), sw), 2, y + 8, 0.75f, moduleColor(m.status), 1f);
+            y += 18;
+        }
+        return y + 1;
+    }
+
+    /** Where a module stands, in words: {@code fluxecho.build.module.*}. */
+    public static String moduleStatus(Campus.ModuleState m) {
+        switch (m.status) {
+            case NEEDS_RESEARCH:
+                return EchoText.t("build.module.needs_research", EchoText.t("research.node." + m.research));
+            case QUEUED:
+                return EchoText.t("build.module.queued");
+            case BUILDING:
+                return EchoText.t("build.module.building");
+            case BUILT:
+                return EchoText.t("build.module.built", m.site);
+            default:
+                return EchoText.t("build.module.no_room");
+        }
+    }
+
+    /** Amber while it waits on the player, cyan while queued, green while building or built, dim with no room. */
+    static int moduleColor(Campus.ModuleStatus s) {
+        switch (s) {
+            case NEEDS_RESEARCH:
+                return AMBER;
+            case QUEUED:
+                return CYAN;
+            case BUILDING:
+            case BUILT:
+                return GREEN;
+            default:
+                return DIM;
+        }
     }
 
     /** The queued jobs, on the panel's last line. */
@@ -552,7 +624,7 @@ public final class NexusScreen {
         }
     }
 
-    /** Next to the intake slot: its name, the balance and the spoils. */
+    /** Next to the intake slot: its name, the balance and the recycle store ({@code N 种 M 个}). */
     public static void buildFoot(NexusGui.View v, float x, float y, float w, float h) {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
@@ -567,11 +639,11 @@ public final class NexusScreen {
                 b.balanceItems + b.balanceParts > 0 ? WHITE : DIM,
                 1f);
             small(
-                fit(EchoText.t("build.gui.spoils", b.spoils), (int) (w / 0.6f)),
+                fit(EchoText.t("build.gui.recycle", b.recycleKinds, Compact.si(b.recycleItems)), (int) (w / 0.6f)),
                 0,
                 15,
                 0.6f,
-                b.spoils > 0 ? AMBER : DIM,
+                b.recycleItems > 0 ? AMBER : DIM,
                 1f);
         } finally {
             GL11.glPopMatrix();

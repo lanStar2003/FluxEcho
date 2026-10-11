@@ -62,6 +62,8 @@ public final class CampusPlan {
         GATE_END = 34;
     private static final int[][] PYLONS = { { 27, 5 }, { 27, -5 }, { 35, 5 }, { 35, -5 } };
     private static final int[] SUPPLY_PORT = { 9, 5 };
+    /** The recycle bin stands beside the supply port, one cell further out along the axis, facing the walkway too. */
+    private static final int[] RECYCLE_BIN = { 10, 5 };
     /** The forecourt runs from this radial distance to the threshold with these half-widths. */
     private static final int FORE_FROM = 20;
     private static final int[] FORE_HALF = { 8, 8, 7, 6 };
@@ -141,7 +143,7 @@ public final class CampusPlan {
             seedR[i] = points.get(i)[1];
         }
 
-        // The forum light wells: a 3x3 recess at each kept candidate, shifted -1, 0 or +1 along its diagonal.
+        // The forum light wells: a 3x3 patch at each kept candidate, shifted -1, 0 or +1 along its diagonal.
         Set<Long> w = new LinkedHashSet<>();
         for (int sa = 1; sa >= -1; sa -= 2) for (int sr = 1; sr >= -1; sr -= 2) {
             if (Mix.unit(seed, sa, sr, S_WELL_KEEP) >= WELL_KEEP) continue;
@@ -317,8 +319,9 @@ public final class CampusPlan {
     }
 
     /**
-     * The light wells: 3x3 recesses, cell keys, a subset of {@link #establishFloor()}'s keys. The builder puts air at
-     * Y0 and a deck WELL at Y0 - 1 on these cells.
+     * The light wells: 3x3 patches of glowing tiles, cell keys, a subset of {@link #establishFloor()}'s keys. Since
+     * 0.10.1 the builder lays their deck WELL flush in the Y0 layer like every other tile (0.10.0 sank it to Y0 - 1
+     * with air above, and players took the recesses for pits).
      */
     public Set<Long> wells() {
         return wells;
@@ -365,6 +368,14 @@ public final class CampusPlan {
     /** The cell {a, r} of the supply port, (9, 5); it stands at Y0 + 1 on a deck tile. */
     public int[] supplyPort() {
         return new int[] { SUPPLY_PORT[0], SUPPLY_PORT[1] };
+    }
+
+    /**
+     * The cell {a, r} of the recycle bin (0.10.1), (10, 5): beside the supply port, one cell further from the nexus;
+     * it stands at Y0 + 1 on a deck tile.
+     */
+    public int[] recycleBin() {
+        return new int[] { RECYCLE_BIN[0], RECYCLE_BIN[1] };
     }
 
     // ---- paving ----

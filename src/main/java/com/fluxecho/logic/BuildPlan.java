@@ -30,8 +30,8 @@ import java.util.Set;
  * contiguous, and launch and land together. Every other step has {@link #NO_GROUP}.
  * <p>
  * Kinds: a {@link #HARD} step is a cell the structure check looks at (the nexus or the Archive blueprint); a
- * {@link #SOFT} step is a cell it does not (paving, light wells, gate pylons, the supply port, the canopy); an
- * {@link #AIR} step is a cell that must become air (door openings and the top of a light well). Clear columns overlap
+ * {@link #SOFT} step is a cell it does not (paving, light wells, gate pylons, the supply port, the recycle bin, the
+ * canopy); an {@link #AIR} step is a cell that must become air (the Archive's door openings). Clear columns overlap
  * step cells on purpose (an Archive's box holds the whole building): the builder decides a step's own cell with
  * {@link TerrainRule#forBuild} and only clears the other cells of a column.
  */
@@ -151,8 +151,9 @@ public final class BuildPlan {
     }
 
     /**
-     * A column to clear before the job places anything: natural blocks from {@code yTo} down to {@code yFrom}. A
-     * grading column ({@code grade}) also fills the ground under the paving level.
+     * A column to clear before the job places anything: from {@code yTo} down to {@code yFrom}. A grading column
+     * ({@code grade}) also turns its floor-level cell (Y0, just under {@code yFrom}) into grass where the plan does
+     * not pave it, and fills the ground under the paving level.
      */
     public static final class Column {
 
@@ -233,6 +234,29 @@ public final class BuildPlan {
         }
     }
 
+    /**
+     * The world columns a plan works, as a box {x0, z0, x1, z1} (inclusive): every step and every clear column. For a
+     * module this is everything its job lays on its site: the building, its clear box, the floor round it (forecourt
+     * and apron) and the canopy over its door. Null for a plan with neither.
+     */
+    public static int[] extent(Plan p) {
+        if (p == null) return null;
+        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+        for (Step s : p.steps) {
+            x0 = Math.min(x0, s.x);
+            z0 = Math.min(z0, s.z);
+            x1 = Math.max(x1, s.x);
+            z1 = Math.max(z1, s.z);
+        }
+        for (Column c : p.clear) {
+            x0 = Math.min(x0, c.x);
+            z0 = Math.min(z0, c.z);
+            x1 = Math.max(x1, c.x);
+            z1 = Math.max(z1, c.z);
+        }
+        return x0 > x1 ? null : new int[] { x0, z0, x1, z1 };
+    }
+
     // ---- keys and fronts ----
 
     /** The job key of a module job: {@code module:<module>@<site>}, such as {@code module:library@4}. */
@@ -298,12 +322,13 @@ public final class BuildPlan {
      * controller at {@code ctrl}: the console stand first, then the lit spokes from the middle outward, the base by
      * octagon distance, then the ribs, conduit, seat and ring bottom-up, each layer clockwise from the front.</li>
      * <li>FORM: no steps.</li>
-     * <li>FLOOR: {@link CampusPlan#establishFloor()} at Y0 outward from the centre; a light well is air at Y0 over a
-     * deck WELL at Y0 - 1.</li>
+     * <li>FLOOR: {@link CampusPlan#establishFloor()} at Y0 outward from the centre, the light wells' deck WELL flush
+     * with the rest.</li>
      * <li>FIXTURE: the four gate pylons (two frame pillars and a conduit each, Y0 + 1 to Y0 + 3), then the supply
-     * port at Y0 + 1.</li>
+     * port and the recycle bin beside it at Y0 + 1.</li>
      * </ul>
-     * The grading columns, the floor cells, the pylons and the supply port that fall inside a {@code keepOut} box are
+     * The grading columns, the floor cells, the pylons, the supply port and the recycle bin that fall inside a
+     * {@code keepOut} box are
      * left out, so the job never touches a module that already stands round the nexus (a 0.9.2 hall docked on the
      * inner ring: slot 0 lies on the gate, and every slot lies in the graded disc). The dais columns and the nexus
      * itself are never left out; the core placement has to refuse a spot whose dais overlaps a module.
@@ -402,6 +427,11 @@ public final class BuildPlan {
         if (!out.holds(pw[0], pw[1])) {
             pylons.add(new Draft(f, pw[0], f.y0 + 1, pw[1], Parts.SUPPLY_PORT, SOFT, NO_GROUP));
         }
+        int[] bin = plan.recycleBin();
+        int[] bw = f.world(bin[0], bin[1]);
+        if (!out.holds(bw[0], bw[1])) {
+            pylons.add(new Draft(f, bw[0], f.y0 + 1, bw[1], Parts.RECYCLE_BIN, SOFT, NO_GROUP));
+        }
 
         List<List<Step>> stages = empty(E_STAGES);
         stages.set(E_FLOOR, steps(floor, E_FLOOR));
@@ -497,7 +527,8 @@ public final class BuildPlan {
      * The module job of an Echo Archive on a hall site.
      * <ul>
      * <li>CLEAR: the footprint and {@link #ARCHIVE_MARGIN} round it, from Y0 + 1 to Y0 + {@link ArchiveShape#HEIGHT}
-     * + {@link #ARCHIVE_HEADROOM}, outward from the nexus.</li>
+     * + {@link #ARCHIVE_HEADROOM}, outward from the nexus. Since 0.10.1 these columns grade too: the Y0 cell of a
+     * column the plan does not pave becomes grass and the ground under it is filled, as on the campus disc.</li>
      * <li>FLOOR: {@link CampusPlan#siteFloor} and the interior soft floor (deck, a dashed lit spine on the axis from
      * z1 to z28), outward from the nexus.</li>
      * <li>SHELL: the foundations of the floor layer y0 first (they carry everything above them), then the outer walls
@@ -528,7 +559,7 @@ public final class BuildPlan {
         for (int z = -ARCHIVE_MARGIN; z < d + ARCHIVE_MARGIN; z++) {
             for (int x = -ARCHIVE_MARGIN; x < w + ARCHIVE_MARGIN; x++) {
                 int[] p = at.world(x, 0, z);
-                clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + h + ARCHIVE_HEADROOM, false));
+                clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + h + ARCHIVE_HEADROOM, true));
             }
         }
         clear.sort(RIPPLE);
@@ -641,15 +672,13 @@ public final class BuildPlan {
 
     // ---- shared helpers ----
 
-    /** A paved campus cell: a deck at Y0, or for a light well air at Y0 over a deck WELL at Y0 - 1. */
+    /**
+     * A paved campus cell: its deck at Y0. A light well's deck WELL lies flush in the Y0 layer like every other tile
+     * (0.10.1; 0.10.0 sank it one cell with air above, which players took for pits).
+     */
     private static void paving(List<Draft> out, Frame f, int a, int r, int code, boolean well) {
         int[] w = f.world(a, r);
-        if (well || code == WELL) {
-            out.add(new Draft(f, w[0], f.y0 - 1, w[1], WELL, SOFT, NO_GROUP));
-            out.add(new Draft(f, w[0], f.y0, w[1], Parts.AIR, AIR, NO_GROUP));
-        } else {
-            out.add(new Draft(f, w[0], f.y0, w[1], code, SOFT, NO_GROUP));
-        }
+        out.add(new Draft(f, w[0], f.y0, w[1], well ? WELL : code, SOFT, NO_GROUP));
     }
 
     private static List<List<Step>> empty(int stages) {

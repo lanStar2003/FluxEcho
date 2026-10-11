@@ -73,13 +73,19 @@ class PartRecipesTest {
             assertEquals(yields[i], PartRecipes.get(Parts.frame(frames[i])).yield, "frame " + frames[i]);
         assertNotNull(PartRecipes.get(Parts.SUPPLY_PORT));
         assertEquals(1, PartRecipes.get(Parts.SUPPLY_PORT).yield);
+        assertNotNull(PartRecipes.get(Parts.RECYCLE_BIN), "the recycle bin (0.10.1)");
+        assertEquals(1, PartRecipes.get(Parts.RECYCLE_BIN).yield);
+        assertEquals(
+            "item:minecraft:chest",
+            PartRecipes.get(Parts.RECYCLE_BIN).keys.get('B'),
+            "steel plates round a chest under a flux crystal");
         assertNull(PartRecipes.get(SEAT), "the HV hull has no spec");
         assertNull(PartRecipes.get(Parts.LIBRARY_CORE));
         assertNull(PartRecipes.get(Parts.GRASS));
         assertNull(PartRecipes.get(Parts.DIRT));
         assertNull(PartRecipes.get(Parts.AIR));
         assertEquals(
-            8 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 1,
+            8 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 2,
             PartRecipes.all()
                 .size());
         int last = -1;
@@ -171,9 +177,11 @@ class PartRecipesTest {
         assertTrue(PartRecipes.partOnly(SEAT));
         assertTrue(PartRecipes.partOnly(Parts.LIBRARY_CORE));
         assertTrue(PartRecipes.partOnly(Parts.SUPPLY_PORT));
-        for (PartRecipes.Recipe r : PartRecipes.all())
-            if (r.part != Parts.SUPPLY_PORT) assertFalse(PartRecipes.partOnly(r.part), r.name);
-        for (int code : new int[] { SEAT, Parts.LIBRARY_CORE, Parts.SUPPLY_PORT, Parts.GRASS, Parts.DIRT, Parts.AIR })
+        assertTrue(PartRecipes.partOnly(Parts.RECYCLE_BIN), "the bin is taken finished, like the port");
+        for (PartRecipes.Recipe r : PartRecipes.all()) if (r.part != Parts.SUPPLY_PORT && r.part != Parts.RECYCLE_BIN)
+            assertFalse(PartRecipes.partOnly(r.part), r.name);
+        for (int code : new int[] { SEAT, Parts.LIBRARY_CORE, Parts.SUPPLY_PORT, Parts.RECYCLE_BIN, Parts.GRASS,
+            Parts.DIRT, Parts.AIR })
             assertTrue(
                 PartRecipes.cost(code)
                     .isEmpty(),

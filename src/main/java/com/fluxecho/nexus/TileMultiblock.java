@@ -50,7 +50,7 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
  */
 public abstract class TileMultiblock extends TileEntity implements ISurvivalConstructable, FrameEvents.Watcher {
 
-    protected static final String MAIN = "main";
+    public static final String MAIN = "main";
 
     /** One shape a multiblock can stand as: its name in the structure definitions and its blueprint. */
     public static final class Shape {

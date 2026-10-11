@@ -127,7 +127,7 @@ public final class BookPacket {
     /**
      * How many bytes the compound takes compressed, as a packet writes it; past every limit if it cannot be written.
      */
-    static int compressedSize(NBTTagCompound t) {
+    public static int compressedSize(NBTTagCompound t) {
         try {
             return CompressedStreamTools.compress(t).length;
         } catch (IOException | RuntimeException e) {
@@ -136,7 +136,7 @@ public final class BookPacket {
     }
 
     /** How many bytes the compound takes uncompressed (its binary NBT form). */
-    static int binarySize(NBTTagCompound t) {
+    public static int binarySize(NBTTagCompound t) {
         Counter c = new Counter();
         try {
             CompressedStreamTools.write(t, new DataOutputStream(c));

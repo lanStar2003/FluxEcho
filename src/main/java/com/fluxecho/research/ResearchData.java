@@ -69,6 +69,17 @@ public class ResearchData extends WorldSavedData {
         return added;
     }
 
+    /**
+     * Forgets every research the team has done (an operator's {@code /fluxecho research reset}); returns how many
+     * there were. When its entries were last pressed into crystals is kept.
+     */
+    public int revokeAll(UUID team) {
+        Set<String> s = team == null ? null : done.remove(team);
+        if (s == null || s.isEmpty()) return 0;
+        markDirty();
+        return s.size();
+    }
+
     /** World time the team last pressed the entry into a crystal; {@link Long#MIN_VALUE} for never. */
     public long lastPressed(UUID team, String entry) {
         Map<String, Long> m = team == null ? null : pressed.get(team);

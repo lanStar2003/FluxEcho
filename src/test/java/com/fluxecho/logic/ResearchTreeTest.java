@@ -32,6 +32,33 @@ class ResearchTreeTest {
                 .root());
     }
 
+    /**
+     * What an operator's {@code /fluxecho research all} grants: every node the star map lets a team research in this
+     * version, never the greyed placeholders of later phases (phase II, the tidal well, the dome).
+     */
+    @Test
+    void onlyTheNodesOfThisVersionAreAvailable() {
+        Set<String> now = new HashSet<>();
+        for (ResearchTree.Node n : ResearchTree.availableNow()) now.add(n.id);
+        assertFalse(now.contains(ResearchTree.PHASE_2));
+        assertFalse(now.contains(ResearchTree.TIDAL_WELL));
+        assertFalse(now.contains(ResearchTree.DOME));
+        assertTrue(now.contains(ResearchTree.ANCHOR));
+        assertTrue(now.contains(ResearchTree.LIBRARY), "the library's research opens the Echo Archive");
+        for (ResearchTree.Node n : ResearchTree.all()) {
+            // the star map greys a node out exactly when it is not available, however far the nexus has grown
+            boolean greyed = ResearchTree.check(n, Collections.emptySet(), 99, 999) == ResearchTree.Block.LATER_PHASE;
+            assertEquals(!greyed, ResearchTree.availableNow(n), n.id);
+            assertEquals(n.phase <= ResearchTree.PHASE_NOW, now.contains(n.id), n.id);
+        }
+        // granting them all leaves nothing the star map could still start in this version
+        for (ResearchTree.Node n : ResearchTree.all()) {
+            ResearchTree.Block b = ResearchTree.check(n, now, ResearchTree.PHASE_NOW, 999);
+            assertTrue(b == ResearchTree.Block.DONE || b == ResearchTree.Block.LATER_PHASE, n.id + ": " + b);
+        }
+        assertFalse(ResearchTree.availableNow((ResearchTree.Node) null));
+    }
+
     @Test
     void positionsAreOnTheMapAndApart() {
         for (ResearchTree.Node a : ResearchTree.all()) {

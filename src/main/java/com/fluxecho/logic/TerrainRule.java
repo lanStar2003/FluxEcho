@@ -1,6 +1,7 @@
 package com.fluxecho.logic;
 
 import java.util.Locale;
+import java.util.function.IntFunction;
 
 /**
  * What the campus builder may do with the block it finds in a cell. The server fills a {@link Probe} with plain facts
@@ -18,6 +19,14 @@ import java.util.Locale;
  * supply port blocks that no formed structure could use ({@link Probe#loose}), such as what is left of a 0.9.2 hall
  * whose core was broken, crediting each to the ledger as its part ({@link Verdict#REPLACE}); the nexus's own jobs
  * never do.
+ * <p>
+ * That is the conservative rule of 0.10.0. Since 0.10.1 the default is the <i>clear-all</i> rule ({@code all}, the
+ * {@code buildClearAll} config): the player asked that the volume a job clears be emptied completely, machines and
+ * chests included, everything going into the campus's recycle store. Under it only these stay: another nexus's campus,
+ * anything inside another structure's box or a keep-out box ({@link Probe#protectedArea}), our own blocks inside a
+ * formed structure's reach, unbreakable blocks, the {@code buildBlocked} list ({@link Probe#listed}), and what a
+ * protection mod refuses (the builder learns that when it tries). The grading rules ({@link #forFloor} for the floor
+ * cell of a graded column, {@link #forFill} for the ground under it) follow the chosen rule.
  */
 public final class TerrainRule {
 
@@ -64,7 +73,9 @@ public final class TerrainRule {
         public boolean gtOre;
         /** The block is one of our deck, fitting or frame blocks. */
         public boolean ours;
-        /** The block is our supply port (it has a tile entity, so {@link #ours} leaves it out). */
+        /**
+         * The block is our supply port or recycle bin (they have a tile entity, so {@link #ours} leaves them out).
+         */
         public boolean port;
         /**
          * The block is ours ({@link #ours} or {@link #port}) and lies inside no formed structure's reach (no formed
@@ -77,12 +88,34 @@ public final class TerrainRule {
         public boolean otherNexusArea;
         /** The block was built by a player: cobblestone, mossy cobblestone, stone bricks, planks, bricks, smooth. */
         public boolean crafted;
+        /**
+         * A tile entity that is not an ore: a machine, a chest, an AE part. The clear-all rule takes it down (its
+         * contents go to the recycle store); the survey counts these and the projection marks them in yellow.
+         */
+        public boolean te;
+        /**
+         * The cell lies inside another structure's box (a loaded multiblock other than the job's own, a module on a
+         * recorded hall site other than the job's) or a keep-out box of the job, whatever the block is.
+         */
+        public boolean protectedArea;
+        /** The block matches the {@code buildBlocked} config list: never broken. */
+        public boolean listed;
+        /**
+         * Forge {@code isWood}, {@code isLeaves}; {@code IPlantable} or {@code IShearable}: what grading fills over.
+         */
+        public boolean wood, leaves, plant;
 
         /** Resets every fact to false. */
         public Probe clear() {
             air = replaceable = target = fluid = lava = hasTile = unbreakable = false;
             natural = gtOre = ours = port = loose = oursInOtherStructure = otherNexusArea = crafted = false;
+            te = protectedArea = listed = wood = leaves = plant = false;
             return this;
+        }
+
+        /** Whether something forbids touching the cell under the clear-all rule, whatever the block is. */
+        boolean guarded() {
+            return unbreakable || otherNexusArea || oursInOtherStructure || protectedArea || listed;
         }
     }
 
@@ -187,6 +220,101 @@ public final class TerrainRule {
         if (p.hasTile || p.ours || p.crafted || p.lava) return Verdict.BLOCKED;
         if (p.natural) return Verdict.CLEAR;
         return Verdict.BLOCKED;
+    }
+
+    /**
+     * The verdict for a step's own cell under the chosen rule: {@link #forBuild(Probe, boolean)} when {@code all} is
+     * false. Under the clear-all rule: the target block already → ALREADY; air, replaceable or any fluid (lava too:
+     * the block simply takes its place) → PLACE; guarded (unbreakable, another nexus's area, another structure's or a
+     * keep-out box, ours inside another structure, the blocked list) → BLOCKED; our own frame, deck, fitting, port or
+     * bin → REPLACE (credited as its part); anything else, natural or not, tile entities included → CLEAR.
+     */
+    public static Verdict forBuild(Probe p, boolean module, boolean all) {
+        if (!all) return forBuild(p, module);
+        if (p.target) return Verdict.ALREADY;
+        if (p.air || p.replaceable || p.fluid) return Verdict.PLACE;
+        if (p.guarded()) return Verdict.BLOCKED;
+        if (p.ours || p.port) return Verdict.REPLACE;
+        return Verdict.CLEAR;
+    }
+
+    /**
+     * The verdict for a cell of a clear column under the chosen rule: {@link #forClear(Probe, boolean)} when
+     * {@code all} is false. Under the clear-all rule the cell must end up empty, so everything but air goes: guarded →
+     * BLOCKED; our own frame, deck, fitting, port or bin → REPLACE when it is loose (no formed structure could use
+     * it), else BLOCKED (a formed structure's part); anything else → CLEAR: tall grass, snow layers and fluids (lava
+     * too, it becomes air) included, tile entities included.
+     */
+    public static Verdict forClear(Probe p, boolean module, boolean all) {
+        if (!all) return forClear(p, module);
+        if (p.air) return Verdict.ALREADY;
+        if (p.guarded()) return Verdict.BLOCKED;
+        if (p.ours || p.port) return p.loose ? Verdict.REPLACE : Verdict.BLOCKED;
+        return Verdict.CLEAR;
+    }
+
+    /**
+     * The verdict for the floor-level cell (Y0) of a graded column that the plan does not pave: it becomes grass
+     * whatever was there (0.10.1, a unified floor). The grass already → ALREADY; guarded → BLOCKED; air, a replaceable
+     * block or a fluid → PLACE (lava only under the clear-all rule; the conservative rule leaves it); anything else as
+     * {@link #forClear(Probe, boolean, boolean)} would clear it: CLEAR or REPLACE (taken away, then grass), or BLOCKED.
+     * Under the conservative rule only natural ground is turned (dirt, stone, logs, leaves, snow), never a player's
+     * block.
+     */
+    public static Verdict forFloor(Probe p, boolean module, boolean all) {
+        if (p.target) return Verdict.ALREADY;
+        if (p.guarded()) return Verdict.BLOCKED;
+        if (p.air || (p.replaceable || p.fluid) && (all || !p.lava)) return Verdict.PLACE;
+        Verdict v = forClear(p, module, all);
+        return v == Verdict.ALREADY ? Verdict.PLACE : v;
+    }
+
+    /**
+     * The verdict for a cell under the floor of a graded column, from Y0 - 1 down to {@code buildFillDepth}: the run
+     * of such cells from the top is filled with dirt and stops at the first BLOCKED one (the solid crust; whatever lies
+     * below it, a cave or a cellar, stays). Guarded → BLOCKED; air, a replaceable block or a fluid → PLACE (lava only
+     * under the clear-all rule); logs, leaves and plants → CLEAR (taken away, then dirt; under the conservative rule
+     * only natural ones); under the clear-all rule a block of ours (a tile an older campus buried) → REPLACE, credited
+     * as its part; anything else (ground, stone, a chest) → BLOCKED.
+     */
+    public static Verdict forFill(Probe p, boolean all) {
+        if (p.guarded()) return Verdict.BLOCKED;
+        if (p.air) return Verdict.PLACE;
+        if (p.fluid) return p.lava && !all ? Verdict.BLOCKED : Verdict.PLACE;
+        if (p.replaceable) return Verdict.PLACE;
+        if (all && (p.ours || p.port)) return Verdict.REPLACE;
+        if (p.wood || p.leaves || p.plant) {
+            if (all) return p.te ? Verdict.BLOCKED : Verdict.CLEAR;
+            return p.natural && !p.crafted ? Verdict.CLEAR : Verdict.BLOCKED;
+        }
+        return Verdict.BLOCKED;
+    }
+
+    /**
+     * What grading does down one column, as the builder works it: {@code cells[0]} is the floor cell (Y0), the next
+     * ones the cells under it, down to the fill depth. A null cell is the plan's own (a paved tile, left to its step:
+     * null in the answer too). The floor cell is judged by {@link #forFloor}, the others by {@link #forFill}; the
+     * first BLOCKED cell ends the run (a floor cell that must stay ends it at once), and every cell after it is left
+     * alone (null). PLACE fills the cell (grass on the floor, dirt under it); CLEAR and REPLACE take its block away
+     * first; ALREADY leaves a floor that is right.
+     */
+    public static Verdict[] gradeColumn(Probe[] cells, boolean module, boolean all) {
+        return gradeColumn(i -> cells[i], cells.length, module, all);
+    }
+
+    /**
+     * {@link #gradeColumn(Probe[], boolean, boolean)} with the cells probed on demand, from the floor down: a cell
+     * after the end of the run is never asked for (the survey probes the world through this).
+     */
+    public static Verdict[] gradeColumn(IntFunction<Probe> cell, int cells, boolean module, boolean all) {
+        Verdict[] out = new Verdict[cells];
+        for (int i = 0; i < cells; i++) {
+            Probe p = cell.apply(i);
+            if (p == null) continue;
+            out[i] = i == 0 ? forFloor(p, module, all) : forFill(p, all);
+            if (out[i] == Verdict.BLOCKED) break;
+        }
+        return out;
     }
 
     /**

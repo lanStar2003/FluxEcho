@@ -68,9 +68,10 @@ public final class TerminalView {
             "done",
             Research.done(team)
                 .size());
-        int total = 0;
-        for (ResearchTree.Node n : ResearchTree.all()) if (n.phase <= ResearchTree.PHASE_NOW) total++;
-        t.setInteger("nodes", total);
+        t.setInteger(
+            "nodes",
+            ResearchTree.availableNow()
+                .size());
         int[] at = NexusBinding.bound(p);
         if (at == null) return;
         t.setIntArray("bound", at);

@@ -216,6 +216,23 @@ class CampusPlanTest {
         assertFalse(
             PLAN.wells()
                 .contains(pk));
+        int[] bin = PLAN.recycleBin();
+        assertArrayEquals(new int[] { 10, 5 }, bin);
+        assertEquals(1, Math.abs(bin[0] - port[0]) + Math.abs(bin[1] - port[1]), "the recycle bin beside the port");
+        assertEquals(port[1], bin[1], "both on the same side of the walkway, facing it");
+        for (long seed : seeds(32)) {
+            CampusPlan p = new CampusPlan(seed);
+            long bk = CampusPlan.key(bin[0], bin[1]);
+            assertTrue(
+                p.establishFloor()
+                    .containsKey(bk),
+                "the bin stands on a deck tile");
+            assertFalse(
+                p.wells()
+                    .contains(bk),
+                "not on a light well");
+            for (int[] py : p.pylons()) assertFalse(py[0] == bin[0] && py[1] == bin[1]);
+        }
     }
 
     @Test

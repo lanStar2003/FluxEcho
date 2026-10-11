@@ -1,5 +1,7 @@
 package com.fluxecho.campus.client;
 
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -38,9 +40,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * walls and floors, corners, the sides of openings) are drawn as lines at least a pixel wide: it reads in daylight and
  * from across the campus, and the breathing only moves it between a little dimmer and full. A new projection is
  * revealed by a scan plane rising through the plan's box; while building, the lowest layer still to build is brighter
- * and its cells are edged with light. Blocked cells are red boxes seen through everything, the ground a new campus
- * will grade is edged in amber until the clearing is done (not for a repair, which grades nothing), and a finished job
- * sends a ring of hard light out over its floor.
+ * and its cells are edged with light. Blocked cells are red boxes seen through everything, and so are, in yellow, the
+ * machines and chests the job will dismantle into the recycle bin (0.10.1); the ground a new campus will grade is
+ * edged in amber until the clearing is done (not for a repair, which grades nothing), and a finished job sends a ring
+ * of hard light out over its floor. Apart from the projection (in every mode, with or without a job) it lights the
+ * campus's flush wells with a soft column of rising light ({@link WellScan} finds them in the client tick).
  * Further than {@code buildGhostRange}, in {@code outline} mode, or while the job is still surveying, only the stages'
  * bounding boxes are outlined; {@code off} draws nothing.
  * <p>
@@ -50,13 +54,18 @@ import cpw.mods.fml.relauncher.SideOnly;
  * world, skipped in the shadow pass, relative to {@code RenderManager.renderPos*}, quads only, a normal on every vertex
  * (a ghost face's own axis turned to the viewer; effect geometry facing the viewer as {@link Shapes} does), the block
  * atlas bound for the ghost as {@code LibraryRender} does, no depth writes, lighting, fog and alpha test off. Each part
- * (ghost, its creases, scan plane, lowest layer, blocked boxes, outlines, grading edge, completion ring) fails on its
- * own: an error is logged once and turns that part off for the session, and the GL state is restored whatever happens.
+ * (ghost, its creases, scan plane, lowest layer, blocked boxes, machine boxes, outlines, grading edge, completion
+ * ring, well light) fails on its own: an error is logged once and turns that part off for the session, and the GL state
+ * is restored whatever happens.
  */
 @SideOnly(Side.CLIENT)
 public final class BuildRender {
 
     private static final int CYAN = 0x4FE3FF, AMBER = 0xFFB347, RED = 0xFF4A4A, LIGHT = 0xE8FBFF;
+    /** The machines and chests a job will dismantle (0.10.1), and the light over the campus's wells. */
+    private static final int YELLOW = 0xFFD24A, WELL_LIGHT = 0x9AF4FF;
+    /** How far (blocks) a well's light is drawn, how tall its column stands, the half-width of its 3x3 tiles. */
+    private static final double WELL_RANGE = 160, WELL_HEIGHT = 7, WELL_HALF = 1.5;
     /** Ticks the scan plane takes to rise through a new projection, and the completion ring to spread. */
     static final int SCAN_TICKS = 80, RING_TICKS = 40;
     /** The most blocked cells boxed per nexus. */
@@ -75,9 +84,9 @@ public final class BuildRender {
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
     private static final int GHOST = 0, PLANE = 1, LAYER = 2, BLOCKED = 3, OUTLINES = 4, EDGE = 5, RING = 6,
-        CREASES = 7, ALL = 8;
+        CREASES = 7, MACHINES = 8, WELLS = 9, ALL = 10;
     private static final String[] NAMES = { "ghost", "scan plane", "lowest layer", "blocked boxes", "outlines",
-        "grading edge", "completion ring", "creases", "drawing" };
+        "grading edge", "completion ring", "creases", "machine boxes", "well light", "drawing" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     /** Whether the ghost's GL state is pushed (and must be popped). */
@@ -88,16 +97,20 @@ public final class BuildRender {
 
     private BuildRender() {}
 
-    /** Draws after the world and behind light gates; called once by {@code CampusClient.register()}. */
+    /**
+     * Draws after the world and behind light gates; called once by {@code CampusClient.register()}, with the client
+     * tick that finds the wells it lights ({@link WellScan}).
+     */
     public static void register() {
         BuildRender h = new BuildRender();
         MinecraftForge.EVENT_BUS.register(h);
         FarDraw.add(h::onRenderLast);
+        WellScan.register();
     }
 
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
-        if (ShaderCompat.shadowPass() || OFF[ALL] || "off".equals(Config.buildProjection)) return;
+        if (ShaderCompat.shadowPass() || OFF[ALL]) return;
         try {
             World w = Minecraft.getMinecraft().theWorld;
             if (w == null) return;
@@ -106,6 +119,17 @@ public final class BuildRender {
             camY = RenderManager.renderPosY;
             camZ = RenderManager.renderPosZ;
             viewNormal();
+            // the wells' light belongs to the campus, not to the projection: drawn in every projection mode, and off
+            // with the builder's other effects (buildEffects)
+            if (Config.buildEffects && !OFF[WELLS]) try {
+                wells(t);
+            } catch (Throwable x) {
+                recover();
+                fail(WELLS, x);
+            } finally {
+                close();
+            }
+            if ("off".equals(Config.buildProjection)) return;
             boolean full = "full".equals(Config.buildProjection);
             for (TileMultiblock m : ClientTiles.all()) {
                 if (!(m instanceof TileNexus n) || m.getWorldObj() != w || m.isInvalid()) continue;
@@ -207,10 +231,19 @@ public final class BuildRender {
             close();
         }
         if (!ended && v.blocked.length > 0 && !OFF[BLOCKED]) try {
-            blocked(v.blocked, c, t);
+            boxes(v.blocked, c, t, RED);
         } catch (Throwable x) {
             recover();
             fail(BLOCKED, x);
+        } finally {
+            close();
+        }
+        // the machines and chests the job will take down into the recycle bin
+        if (!ended && v.machines.length > 0 && !OFF[MACHINES]) try {
+            boxes(v.machines, c, t, YELLOW);
+        } catch (Throwable x) {
+            recover();
+            fail(MACHINES, x);
         } finally {
             close();
         }
@@ -499,14 +532,17 @@ public final class BuildRender {
         finish(tes);
     }
 
-    /** Red boxes round the blocked cells (packed relative to the centre {@code c}), seen through everything. */
-    private static void blocked(int[] cells, int[] c, double t) {
+    /**
+     * Boxes round cells (packed relative to the centre {@code c}), seen through everything: red round the blocked
+     * cells, yellow round the machines and chests the job will dismantle.
+     */
+    private static void boxes(int[] cells, int[] c, double t, int rgb) {
         int n = Math.min(MAX_BLOCKED, cells.length);
         float pulse = 0.85f + 0.15f * (float) Math.sin(t * 0.2);
         Shapes.begin(false);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         Tessellator tes = start();
-        tes.setColorRGBA_I(RED, alpha255(0.35f * pulse));
+        tes.setColorRGBA_I(rgb, alpha255(0.35f * pulse));
         for (int k = 0; k < n; k++) {
             double x0 = c[0] + FxCodec.dx(cells[k]) - camX - 0.02, y0 = c[1] + FxCodec.dy(cells[k]) - camY - 0.02,
                 z0 = c[2] + FxCodec.dz(cells[k]) - camZ - 0.02;
@@ -519,7 +555,7 @@ public final class BuildRender {
         for (int k = 0; k < n; k++) {
             double x0 = c[0] + FxCodec.dx(cells[k]) - camX - 0.02, y0 = c[1] + FxCodec.dy(cells[k]) - camY - 0.02,
                 z0 = c[2] + FxCodec.dz(cells[k]) - camZ - 0.02;
-            tes.setColorRGBA_I(RED, alpha255(0.8f * pulse));
+            tes.setColorRGBA_I(rgb, alpha255(0.8f * pulse));
             quads += boxEdges(tes, x0, y0, z0, x0 + 1.04, y0 + 1.04, z0 + 1.04, LINE * 1.3);
             if (quads >= FLUSH) {
                 tes = restart(tes);
@@ -543,6 +579,35 @@ public final class BuildRender {
         Shapes.ring(cx, y, cz, Math.max(0, r - 3), r, 0, Math.PI * 2, CYAN, 0f, CYAN, 0.5f * a);
         Shapes.ring(cx, y + 0.01, cz, Math.max(0, r - 0.3), r, 0, Math.PI * 2, LIGHT, 0.9f * a, LIGHT, 0.9f * a);
         Shapes.end();
+    }
+
+    /**
+     * The light of the campus's wells ({@link WellScan}): over each 3x3 well a soft column, brightest at the floor and
+     * gone at its top, breathing slowly, and square rings of the well's size that rise through it and fade, so the
+     * flush well reads as a source of light. Animated by the world time alone; each well is shifted by its own phase.
+     */
+    private static void wells(double t) {
+        List<WellScan.Well> list = WellScan.wells();
+        if (list.isEmpty()) return;
+        boolean begun = false;
+        for (WellScan.Well wl : list) {
+            double x = wl.x - camX, y = wl.y - camY, z = wl.z - camZ;
+            double d = Math.sqrt(x * x + y * y + z * z);
+            if (d > WELL_RANGE) continue;
+            float fade = (float) Math.min(1, (WELL_RANGE - d) / 24);
+            if (!begun) {
+                Shapes.begin(true);
+                begun = true;
+            }
+            double at = t + wl.phase;
+            float breath = 0.8f + 0.2f * (float) Math.sin(at * 2 * Math.PI / 120);
+            Shapes.beam(x, y, z, y + WELL_HEIGHT, WELL_HALF, WELL_LIGHT, 0.2f * breath * fade, 0f);
+            for (int k = 0; k < 3; k++) {
+                double f = (at / 90.0 + k / 3.0) % 1.0;
+                float a = (float) ((1 - f) * Math.min(1, f * 6)) * 0.4f * fade;
+                Shapes.square(x, y + 0.05 + f * WELL_HEIGHT * 0.8, z, WELL_HALF - 0.4 * f, 0.07, WELL_LIGHT, a);
+            }
+        }
     }
 
     // ---- geometry

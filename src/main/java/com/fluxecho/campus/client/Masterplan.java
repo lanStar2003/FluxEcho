@@ -5,6 +5,7 @@ import static com.fluxecho.client.FluxDraw.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -55,7 +56,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * will hold, so a player sees where things go before anything is built there: the graded disc's edge, the forum and
  * the promenade ring, the gate (site 0), each hall site's envelope (the Echo Archive's footprint, its door marked on
  * the side facing the nexus) and the reserved diagonal sites (dashed), with each site's number on a sign turned to the
- * camera. A site with a module on it is brighter, in the module's colour; the site of the current job is cyan.
+ * camera. A site with a module on it is brighter, in the module's colour; the site of the current job is cyan; an empty
+ * hall site names the module the campus plans there and where it stands (0.10.1: 「回响书库（需研究）」), so a player
+ * sees what comes next and how to unlock it.
  * <p>
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
@@ -294,10 +297,31 @@ public final class Masterplan {
                 st.rgb = DIM;
                 st.alpha = s % 2 == 0 ? 0.2f : 0.15f;
                 st.caption = EchoText.t(s % 2 == 0 ? "build.masterplan.hall" : "build.masterplan.reserved");
+                Campus.ModuleState planned = s % 2 == 0 ? planned(v, s) : null;
+                if (planned != null) {
+                    // the module planned here and where it stands: 「回响书库（需研究）」
+                    st.caption = EchoText.t(
+                        "build.masterplan.planned",
+                        EchoText.t("module." + planned.key),
+                        EchoText.t(
+                            "build.masterplan.status." + planned.status.name()
+                                .toLowerCase(Locale.ROOT)));
+                    st.rgb = planned.status == Campus.ModuleStatus.NEEDS_RESEARCH ? AMBER
+                        : planned.status == Campus.ModuleStatus.QUEUED ? CYAN : DIM;
+                    st.alpha = 0.24f;
+                }
             }
             out[s] = st;
         }
         return out;
+    }
+
+    /**
+     * The first module the campus plans on a site and has not built there yet ({@link Campus.View#modules}), or null.
+     */
+    private static Campus.ModuleState planned(Campus.View v, int site) {
+        for (Campus.ModuleState m : v.modules) if (m.site == site && m.status != Campus.ModuleStatus.BUILT) return m;
+        return null;
     }
 
     /** The site whose envelope holds the campus cell (a, r): a hall site's Archive footprint or a diagonal's. */

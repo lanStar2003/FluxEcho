@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -180,27 +181,24 @@ class BuildPlanTest {
             assertEquals(floor.size(), byPos.size());
             assertEquals(
                 cp.establishFloor()
-                    .size()
-                    + cp.wells()
-                        .size(),
+                    .size(),
                 floor.size(),
-                "one step per paved cell, two per light well");
+                "one step per paved cell, a light well's too");
+            for (Step s : floor) assertEquals(Y0, s.y, "the whole floor lies in the Y0 layer, nothing sunk: " + s);
             for (Map.Entry<Long, Integer> e : cp.establishFloor()
                 .entrySet()) {
                 int a = CampusPlan.keyA(e.getKey()), r = CampusPlan.keyR(e.getKey());
                 int[] d = CampusPlan.toWorld(a, r, f[0], f[1]);
                 int x = CX + d[0], z = CZ + d[1];
+                Step s = byPos.get(pos(x, Y0, z));
+                assertEquals(BuildPlan.SOFT, s.kind);
                 if (cp.wells()
                     .contains(e.getKey())) {
-                    Step top = byPos.get(pos(x, Y0, z)), bottom = byPos.get(pos(x, Y0 - 1, z));
-                    assertEquals(Parts.AIR, top.part);
-                    assertEquals(BuildPlan.AIR, top.kind);
-                    assertEquals(Parts.deck(Parts.D_WELL), bottom.part);
-                    assertEquals(BuildPlan.SOFT, bottom.kind);
+                    // 0.10.1: a light well lies flush with the floor, no air over a sunk tile (players saw pits)
+                    assertEquals(Parts.deck(Parts.D_WELL), s.part);
+                    assertNull(byPos.get(pos(x, Y0 - 1, z)), "nothing under a well");
                 } else {
-                    Step s = byPos.get(pos(x, Y0, z));
                     assertEquals((int) e.getValue(), s.part);
-                    assertEquals(BuildPlan.SOFT, s.kind);
                 }
             }
             long last = -1;
@@ -217,12 +215,19 @@ class BuildPlanTest {
         for (int[] f : FACINGS) {
             CampusPlan cp = campus(f);
             List<Step> fix = stage(establish(f), BuildPlan.E_FIXTURE);
-            assertEquals(13, fix.size(), "four pylons of three, and the port");
+            assertEquals(14, fix.size(), "four pylons of three, the port and the recycle bin");
             Step port = fix.get(12);
             int[] pl = cp.supplyPort();
             int[] pd = CampusPlan.toWorld(pl[0], pl[1], f[0], f[1]);
             assertTrue(port.at(CX + pd[0], Y0 + 1, CZ + pd[1]));
             assertEquals(Parts.SUPPLY_PORT, port.part);
+            Step bin = fix.get(13);
+            int[] bl = cp.recycleBin();
+            int[] bd = CampusPlan.toWorld(bl[0], bl[1], f[0], f[1]);
+            assertTrue(bin.at(CX + bd[0], Y0 + 1, CZ + bd[1]));
+            assertEquals(Parts.RECYCLE_BIN, bin.part);
+            assertEquals(BuildPlan.SOFT, bin.kind);
+            assertEquals(1, Math.abs(bin.x - port.x) + Math.abs(bin.z - port.z), "the bin stands beside the port");
             Set<Long> want = new HashSet<>();
             for (int[] py : cp.pylons()) {
                 int[] d = CampusPlan.toWorld(py[0], py[1], f[0], f[1]);
@@ -386,7 +391,10 @@ class BuildPlanTest {
                 int[] d = CampusPlan.toWorld(a, 0, f[0], f[1]);
                 assertTrue(paved.contains(pos(CX + d[0], 0, CZ + d[1])), "the gate at A " + a);
             }
-            assertEquals(1, stage(forum, BuildPlan.E_FIXTURE).size(), "the pylons stand in the hall; the port stays");
+            assertEquals(
+                2,
+                stage(forum, BuildPlan.E_FIXTURE).size(),
+                "the pylons stand in the hall; the port and the bin stay");
         }
         assertThrows(IllegalArgumentException.class, () -> BuildPlan.moduleKeepOut(new int[] { 1, 2 }));
         assertThrows(
@@ -706,7 +714,7 @@ class BuildPlanTest {
             Set<Long> cols = new HashSet<>();
             long last = -1;
             for (Column c : p.clear) {
-                assertFalse(c.grade);
+                assertTrue(c.grade, "0.10.1: a module's clear box grades its floor like the campus disc");
                 assertEquals(Y0 + 1, c.yFrom);
                 assertEquals(Y0 + H + BuildPlan.ARCHIVE_HEADROOM, c.yTo, "Y0 + HEIGHT + 2, cleared from the top down");
                 assertEquals(top + 3, c.yTo, "three above the ridge");

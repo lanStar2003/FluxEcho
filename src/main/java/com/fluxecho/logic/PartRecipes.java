@@ -24,8 +24,8 @@ import java.util.TreeMap;
  *
  * <p>
  * The Crystal Seat's recipe needs a GregTech HV hull, which has no spec, so it is not in this table (the frame module
- * keeps registering it); the seat, the library core and the supply port are part-only: the builder takes a finished
- * item for them and never expands them into raw credit.
+ * keeps registering it); the seat, the library core, the supply port and the recycle bin are part-only: the builder
+ * takes a finished item for them and never expands them into raw credit.
  */
 public final class PartRecipes {
 
@@ -330,10 +330,25 @@ public final class PartRecipes {
                 'C',
                 crystal));
 
+        // the recycle bin (0.10.1): crafted by hand like the port, taken as a finished item by the builder
+        list.add(
+            recipe(
+                Parts.RECYCLE_BIN,
+                1,
+                "Recycle Bin",
+                rows("PCP", "PBP", "PPP"),
+                'P',
+                steelPlate,
+                'B',
+                "item:minecraft:chest",
+                'C',
+                crystal));
+
         Set<Integer> partOnly = new HashSet<>();
         partOnly.add(Parts.frame(Parts.FR_SEAT));
         partOnly.add(Parts.LIBRARY_CORE);
         partOnly.add(Parts.SUPPLY_PORT);
+        partOnly.add(Parts.RECYCLE_BIN);
 
         Map<Integer, Recipe> byPart = new TreeMap<>();
         for (Recipe r : list) {
@@ -357,7 +372,10 @@ public final class PartRecipes {
         return ALL;
     }
 
-    /** Whether the builder needs a finished item of this part (the seat, the library core and the supply port). */
+    /**
+     * Whether the builder needs a finished item of this part (the seat, the library core, the supply port and the
+     * recycle bin).
+     */
     public static boolean partOnly(int part) {
         return PART_ONLY.contains(part);
     }

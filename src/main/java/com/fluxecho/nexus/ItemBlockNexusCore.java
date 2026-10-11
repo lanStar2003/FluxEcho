@@ -1,15 +1,16 @@
 package com.fluxecho.nexus;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.AxisAlignedBB;
@@ -25,13 +26,14 @@ import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.CampusRegistry;
+import com.fluxecho.campus.RecycleOverflow;
+import com.fluxecho.campus.RecycleStore;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.LiftRule;
 import com.fluxecho.logic.NexusShape;
-import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -50,7 +52,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * a refused or moved placement never leaves a ghost block or a wrong stack count behind.
  * <p>
  * A core broken off a nexus ({@link BlockNexusCore}) carries the campus's credit ({@link #CREDIT}: the ledger's raw
- * credit and parts, the spoils) and the manifestation that was still running ({@link #PENDING}, {@link #MANIFEST});
+ * credit and parts, the recycle store) and the manifestation that was still running ({@link #PENDING},
+ * {@link #MANIFEST});
  * placing that core puts both back into the new nexus, lifted or not. The core of an active campus also carries the
  * campus itself ({@link #CAMPUS}, {@link Campus#carried}): put back where it stood, by any placement (sneaking too,
  * and clicking its console stand or the dais, which never lifts), it resumes its campus ({@link Campus#resume}) instead
@@ -61,8 +64,17 @@ import cpw.mods.fml.relauncher.SideOnly;
  */
 public class ItemBlockNexusCore extends ItemBlockNexus {
 
-    /** Item NBT: the campus credit {Raw{key: units}, Parts{code: n}, Spoils[item...]}. */
+    /**
+     * Item NBT: the campus credit {Raw{key: units}, Parts{code: n}, Recycle[{K, N}], Ov: kinds put aside} (0.10.0 cores
+     * carried {@code Spoils[item...]} instead, still read).
+     */
     public static final String CREDIT = "BuildCredit";
+    /**
+     * The most bytes the recycle store may take in a core item's NBT, compressed: an item's NBT travels in packets
+     * behind a short length. The kinds beyond it (the smallest counts) are put aside for the team
+     * ({@link RecycleOverflow}) and come back into the store of a nexus of the team; the core's tooltip says how many.
+     */
+    static final int RECYCLE_BYTES = 24000;
     /** Item NBT: the unfinished manifestation's product (an item stack). */
     public static final String PENDING = "Pending";
     /** Item NBT: how far that manifestation was {Id, Ticks, Max}. */
@@ -248,8 +260,8 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     // ---- what a broken core carries
 
     /**
-     * Whether a nexus has anything for its core to carry ({@link #carry}): credit in the ledger, spoils, launches in
-     * flight that were paid for, or a manifestation running. Takes nothing.
+     * Whether a nexus has anything for its core to carry ({@link #carry}): credit in the ledger, a recycle store that
+     * is not empty, launches in flight that were paid for, or a manifestation running. Takes nothing.
      */
     public static boolean carries(TileNexus n) {
         Campus c = n.campus();
@@ -259,17 +271,18 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         for (int v : c.ledger()
             .partView()
             .values()) if (v > 0) return true;
-        ItemStackHandler h = c.spoils();
-        for (int i = 0; i < h.getSlots(); i++) if (h.getStackInSlot(i) != null) return true;
+        if (!c.recycle()
+            .isEmpty()) return true;
         BuildJob j = c.job();
         if (j != null) for (BuildJob.Flight f : j.flights()) if (f.charged) return true;
         return n.making() != null;
     }
 
     /**
-     * What a nexus being broken hands to its core item: the campus credit (in-flight launches refunded first) and the
-     * running manifestation, and with them the campus itself when it is active ({@link #CAMPUS}). Empties the ledger
-     * and the spoils it took, so nothing can be had twice. An empty tag when there is no credit or manifestation to
+     * What a nexus being broken hands to its core item: the campus credit (in-flight launches refunded first; the
+     * recycle store as far as it fits an item, {@link #RECYCLE_BYTES}, the rest put aside for the team) and the running
+     * manifestation, and with them the campus itself when it is active ({@link #CAMPUS}). Empties the ledger and the
+     * store, so nothing can be had twice. An empty tag when there is no credit or manifestation to
      * carry: a core that carries only its campus drops the ordinary way ({@link BlockNexusCore#getDrops}, with
      * {@link #campusTag}), so a block mover that merely removes the core gets nothing out of it.
      */
@@ -284,21 +297,17 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         for (Map.Entry<Integer, Integer> e : c.ledger()
             .partView()
             .entrySet()) if (e.getValue() > 0) parts.setInteger(String.valueOf(e.getKey()), e.getValue());
-        NBTTagList spoils = new NBTTagList();
-        ItemStackHandler h = c.spoils();
-        for (int i = 0; i < h.getSlots(); i++) {
-            ItemStack s = h.getStackInSlot(i);
-            if (s != null) spoils.appendTag(s.writeToNBT(new NBTTagCompound()));
-        }
-        if (!raw.hasNoTags() || !parts.hasNoTags() || spoils.tagCount() > 0) {
+        NBTTagList recycled = new NBTTagList();
+        int aside = carriedRecycle(n, recycled);
+        if (!raw.hasNoTags() || !parts.hasNoTags() || recycled.tagCount() > 0 || aside > 0) {
             NBTTagCompound credit = new NBTTagCompound();
             credit.setTag("Raw", raw);
             credit.setTag("Parts", parts);
-            credit.setTag("Spoils", spoils);
+            credit.setTag("Recycle", recycled);
+            if (aside > 0) credit.setInteger("Ov", aside);
             out.setTag(CREDIT, credit);
             c.ledger()
                 .load(null, null);
-            for (int i = 0; i < h.getSlots(); i++) if (h.getStackInSlot(i) != null) h.setStackInSlot(i, null);
         }
         ItemStack made = n.making();
         if (made != null) {
@@ -318,6 +327,66 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         return out;
     }
 
+    /**
+     * Empties the nexus's recycle store into the list its core carries ({@code {K, N}}, the largest counts first, into
+     * {@code carried}): as many kinds as fit {@link #RECYCLE_BYTES} compressed, so a core's NBT never grows too large
+     * to
+     * send. The others are put aside for the nexus's team ({@link RecycleOverflow}), whole, and move back into the
+     * store
+     * of a nexus of the team as it has room; nothing is dropped. Returns how many kinds were put aside. Should the save
+     * have nowhere to put them (no overworld), the core carries them too rather than lose them.
+     */
+    private static int carriedRecycle(TileNexus n, NBTTagList carried) {
+        RecycleStore store = n.campus()
+            .recycle();
+        NBTTagList all = store.write();
+        int keep = carriedKinds(all);
+        int aside = 0;
+        if (keep < all.tagCount()) {
+            NBTTagList rest = slice(all, keep, all.tagCount());
+            if (RecycleOverflow.put(n.team(), rest)) aside = rest.tagCount();
+            else keep = all.tagCount();
+        }
+        NBTTagList head = slice(all, 0, keep);
+        for (int i = 0; i < head.tagCount(); i++) carried.appendTag(head.getCompoundTagAt(i));
+        store.clear();
+        return aside;
+    }
+
+    /** How many entries from the head of the list fit {@link #RECYCLE_BYTES} compressed (all when the whole does). */
+    static int carriedKinds(NBTTagList all) {
+        int keep = all.tagCount();
+        if (keep > 0 && size(all) > RECYCLE_BYTES) {
+            // the most kinds that fit, by halving
+            int lo = 0, hi = keep;
+            while (lo < hi) {
+                int mid = (lo + hi + 1) / 2;
+                if (size(slice(all, 0, mid)) <= RECYCLE_BYTES) lo = mid;
+                else hi = mid - 1;
+            }
+            keep = lo;
+        }
+        return keep;
+    }
+
+    /** The entries {@code from} (inclusive) to {@code to} (exclusive) of a list. */
+    private static NBTTagList slice(NBTTagList l, int from, int to) {
+        NBTTagList out = new NBTTagList();
+        for (int i = Math.max(0, from); i < to && i < l.tagCount(); i++) out.appendTag(l.getCompoundTagAt(i));
+        return out;
+    }
+
+    /** The compressed size of a list in bytes, as it travels in a packet. */
+    private static int size(NBTTagList l) {
+        NBTTagCompound t = new NBTTagCompound();
+        t.setTag("L", l);
+        try {
+            return CompressedStreamTools.compress(t).length;
+        } catch (IOException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
     /** The item NBT of a core that carries only its active campus ({@link #CAMPUS}); null for a legacy campus. */
     public static NBTTagCompound campusTag(TileNexus n) {
         NBTTagCompound campus = n.campus()
@@ -331,7 +400,8 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     /**
      * Puts back what the core item carries into a freshly placed nexus: its campus, when the core went back where it
      * stood ({@link Campus#resume}), the running manifestation (only into a nexus that is not manifesting) and the
-     * credit, added to what the ledger and spoils hold. Server side. Returns a lang key to tell the placer, or null.
+     * credit, added to what the ledger and the recycle store hold (a 0.10.0 core's spoils go into the store too).
+     * Server side. Returns a lang key to tell the placer, or null.
      */
     static String restore(ItemStack stack, TileNexus n) {
         NBTTagCompound t = stack.getTagCompound();
@@ -375,16 +445,15 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             }
             c.ledger()
                 .load(raw, parts);
-            NBTTagList spoils = credit.getTagList("Spoils", 10);
-            ItemStackHandler h = c.spoils();
-            World w = n.getWorldObj();
-            for (int i = 0; i < spoils.tagCount(); i++) {
-                ItemStack s = ItemStack.loadItemStackFromNBT(spoils.getCompoundTagAt(i));
-                for (int j = 0; j < h.getSlots() && s != null; j++) s = h.insertItem(j, s, false);
-                // more spoils than slots (a nexus that already had some): the rest falls at the core
-                if (s != null && w != null)
-                    w.spawnEntityInWorld(new EntityItem(w, n.xCoord + 0.5, n.yCoord + 1.5, n.zCoord + 0.5, s));
+            RecycleStore store = c.recycle();
+            NBTTagList recycled = credit.getTagList("Recycle", 10);
+            for (int i = 0; i < recycled.tagCount(); i++) {
+                NBTTagCompound e = recycled.getCompoundTagAt(i);
+                if (e.hasKey("K", 10)) store.add(e.getCompoundTag("K"), e.getLong("N"));
             }
+            NBTTagList spoils = credit.getTagList("Spoils", 10);
+            for (int i = 0; i < spoils.tagCount(); i++)
+                store.add(ItemStack.loadItemStackFromNBT(spoils.getCompoundTagAt(i)));
         }
         n.markDirty();
         return said;
@@ -408,9 +477,13 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
             NBTTagCompound pt = c.getCompoundTag("Parts");
             int parts = 0;
             for (Object k : pt.func_150296_c()) parts += pt.getInteger((String) k);
-            int spoils = c.getTagList("Spoils", 10)
-                .tagCount();
-            tip.add(EchoText.t("nexus.carries_credit", kinds, parts, spoils));
+            int recycled = c.getTagList("Recycle", 10)
+                .tagCount()
+                + c.getTagList("Spoils", 10)
+                    .tagCount();
+            tip.add(EchoText.t("nexus.carries_credit", kinds, parts, recycled));
+            int aside = c.getInteger("Ov");
+            if (aside > 0) tip.add(EchoText.t("nexus.carries_overflow", aside));
         }
         if (t.hasKey(PENDING, 10)) {
             ItemStack made = ItemStack.loadItemStackFromNBT(t.getCompoundTag(PENDING));

@@ -46,8 +46,9 @@ import com.gtnewhorizons.modularui.common.widget.SlotWidget;
  * table on the left (six inputs, the making drawn in the middle, two outputs, what it can make below), the nexus's
  * state on the right (power, compute, research, ring, bound teams), a button to the research star map and the
  * hologram switch. 建造: what its campus builds (job and site, state and pause, stage, progress, EU/t and time left, the
- * counts), the buttons that drive it, the bill of what it still needs with the intake slot, the balance and the
- * spoils. The player's inventory is below both.
+ * counts, before 开始 the machines and chests it will dismantle, whether it is free), or without a job every module the
+ * nexus can build and where it stands; the buttons that drive it, the bill of what it still needs with the intake
+ * slot, the balance and the recycle store (0.10.1). The player's inventory is below both.
  * <p>
  * The page is the client's own: switching it turns the nexus's slots and the intake slot on and off (the slots tell
  * the server themselves) and every other widget follows the page through a dynamic enabled test. The build page's
@@ -135,8 +136,19 @@ public final class NexusGui {
         public int natural;
         /** EU per tick the builder drew lately, and the estimated ticks left (-1: cannot progress). */
         public long eu, eta;
-        /** Whole items in the balance that can be taken out, finished parts held, items among the spoils. */
-        public int balanceItems, balanceParts, spoils;
+        /** Whole items in the balance that can be taken out, and finished parts held. */
+        public int balanceItems, balanceParts;
+        /** The recycle store (0.10.1): how many kinds and how many items it holds ({@code Rk}, {@code Ri}). */
+        public int recycleKinds;
+        public long recycleItems;
+        /** Machines and chests the job will take down (the survey's count, {@code Mc}; 「将拆除 N 个机器/箱子」). */
+        public int machines;
+        /**
+         * Whether the job is free ({@code Fe}, 「创造模式：免费」) and whether the nexus builds everything free ({@code Fb}).
+         */
+        public boolean free, freeBuild;
+        /** The modules the nexus can build and where they stand ({@code Md}), for the list shown without a job. */
+        public List<Campus.ModuleState> modules = Collections.emptyList();
         /** The bill (at most {@link #BILL_MAX} lines, the module's core first) and the queued jobs {key, plan key}. */
         public List<Row> bill = Collections.emptyList();
         public List<String[]> queue = Collections.emptyList();
@@ -168,7 +180,12 @@ public final class NexusGui {
             eta = t.getLong("Et");
             balanceItems = t.getInteger("Bi");
             balanceParts = t.getInteger("Bp");
-            spoils = t.getInteger("Sv");
+            recycleKinds = t.getInteger("Rk");
+            recycleItems = t.getLong("Ri");
+            machines = t.getInteger("Mc");
+            free = t.getBoolean("Fe");
+            freeBuild = t.getBoolean("Fb");
+            modules = Campus.ModuleState.read(t.getTagList("Md", 10));
             List<Row> rows = new ArrayList<>();
             NBTTagList b = t.getTagList("B", 10);
             for (int i = 0; i < b.tagCount(); i++) {
@@ -457,7 +474,7 @@ public final class NexusGui {
             button(
                 () -> EchoText.t("build.gui.withdraw"),
                 () -> false,
-                () -> bd.balanceItems <= 0 && bd.spoils <= 0,
+                () -> bd.balanceItems <= 0 && bd.recycleItems <= 0,
                 () -> EchoText.lines("build.gui.withdraw.tip"),
                 (widget) -> act(
                     n,
@@ -643,20 +660,22 @@ public final class NexusGui {
         t.setBoolean("Sk", c.skipBlocked());
         t.setBoolean("Rp", c.active() && c.canRepair());
         BuildLedger ledger = c.ledger();
-        int items = 0, parts = 0, spoils = 0;
+        int items = 0, parts = 0;
         for (int v : ledger.withdrawable()
             .values()) items += v;
         for (int v : ledger.partView()
             .values()) parts += v;
-        for (int i = 0; i < c.spoils()
-            .getSlots(); i++) {
-            ItemStack s = c.spoils()
-                .getStackInSlot(i);
-            if (s != null) spoils += s.stackSize;
-        }
+        long recycled = c.recycle()
+            .total();
         t.setInteger("Bi", items);
         t.setInteger("Bp", parts);
-        t.setInteger("Sv", spoils);
+        t.setInteger(
+            "Rk",
+            c.recycle()
+                .kinds());
+        t.setLong("Ri", recycled);
+        t.setBoolean("Fb", c.freeBuild());
+        if (c.active()) t.setTag("Md", Campus.ModuleState.write(c.modules()));
         NBTTagList q = new NBTTagList();
         for (String k : c.queue()) {
             NBTTagCompound e = new NBTTagCompound();
@@ -689,6 +708,8 @@ public final class NexusGui {
         t.setInteger("Sp", c.skipped());
         t.setInteger("Un", c.unloaded());
         t.setInteger("Na", j.natural());
+        t.setInteger("Mc", j.machines());
+        t.setBoolean("Fe", c.free(j));
         t.setLong("Eu", eu);
         t.setLong("Et", ended ? 0 : c.etaTicks());
         t.setBoolean("Go", j.started());
@@ -728,6 +749,7 @@ public final class NexusGui {
      * standing on its site; the others build their own key (a nexus repair builds the establish plan).
      */
     static String queuedPlanKey(TileNexus n, String key) {
+        if (BuildJob.REFRESH.equals(key)) return BuildPlan.FORUM;
         if (key == null || !key.startsWith(BuildJob.REPAIR)) return key;
         String rest = key.substring(BuildJob.REPAIR.length());
         if (BuildPlan.ESTABLISH.equals(rest)) return rest;

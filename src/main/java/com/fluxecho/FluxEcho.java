@@ -14,6 +14,7 @@ import com.fluxecho.campus.CampusModule;
 import com.fluxecho.campus.Terrain;
 import com.fluxecho.codex.CodexModule;
 import com.fluxecho.codex.EchoLedger;
+import com.fluxecho.command.CommandFluxEcho;
 import com.fluxecho.core.RecipeCheck;
 import com.fluxecho.crops.CropModule;
 import com.fluxecho.frame.Formed;
@@ -37,6 +38,7 @@ import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 
 /**
@@ -137,6 +139,12 @@ public class FluxEcho {
         if (Mods.thaumcraft) TCModule.loadComplete();
         if (Mods.mobsInfo) MobModule.loadComplete();
         RecipeCheck.run();
+    }
+
+    /** The operators' command {@code /fluxecho} (0.10.1): research all/reset, free and instant building. */
+    @Mod.EventHandler
+    public void serverStarting(FMLServerStartingEvent e) {
+        e.registerServerCommand(new CommandFluxEcho());
     }
 
     @Mod.EventHandler

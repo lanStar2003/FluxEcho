@@ -3,13 +3,18 @@ package com.fluxecho.logic;
 /**
  * The part codes of the campus builder: one small number for every block it can place, so plans, costs and packets
  * never need a {@code Block}. Frame metas are codes 0 to 15, deck metas 16 to 31, fitting metas 32 to 47; then the
- * library core, the supply port, grass and dirt for grading, and air. Only {@code campus.PartBlocks} turns a code into
- * a block.
+ * library core, the supply port, grass and dirt for grading, the recycle bin (0.10.1), and air. Only
+ * {@code campus.PartBlocks} turns a code into a block.
+ * <p>
+ * The codes are saved (the ledger's parts, flights in the air) and sent ({@code BUILD_FX}): a code is only ever
+ * appended, never renumbered or reused.
  */
 public final class Parts {
 
     public static final int FRAME = 0, DECK = 16, FITTING = 32, LIBRARY_CORE = 48, SUPPLY_PORT = 49, GRASS = 50,
         DIRT = 51, AIR = 63;
+    /** The recycle bin (0.10.1): where the campus's recycle store is taken out by hand and by automation. */
+    public static final int RECYCLE_BIN = 52;
 
     // frame metas (as in BlockFrame)
     public static final int FR_BASE = 0, FR_BASE_LIT = 1, FR_PILLAR = 2, FR_CONDUIT = 3, FR_RING = 4, FR_SEAT = 5,

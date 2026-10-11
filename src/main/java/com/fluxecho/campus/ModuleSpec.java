@@ -97,6 +97,21 @@ public final class ModuleSpec {
     }
 
     /**
+     * The world box {x0, z0, x1, z1} (inclusive) of everything its job lays on the site (0.10.1): the footprint with
+     * one
+     * cell round it, and whatever its plan reaches beyond ({@link BuildPlan#extent}: the Archive's forecourt, apron and
+     * entrance canopy). A campus job keeps out of this box once a module stands on the site, so its grading never takes
+     * up the module's floor or canopy.
+     */
+    public int[] siteBox(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
+        int[] box = footprint(site, cx, cz, fx, fz, 1);
+        int[] e = BuildPlan.extent(plan(plan, site, cx, y0, cz, fx, fz));
+        if (e == null) return box;
+        return new int[] { Math.min(box[0], e[0]), Math.min(box[1], e[1]), Math.max(box[2], e[2]),
+            Math.max(box[3], e[3]) };
+    }
+
+    /**
      * The world box {x0, z0, x1, z1} (inclusive) its footprint takes on the site, with {@code margin} cells round it,
      * for a nexus centred at {@code (cx, cz)} facing {@code (fx, fz)}.
      */

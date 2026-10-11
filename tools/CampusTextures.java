@@ -5,8 +5,8 @@ import javax.imageio.ImageIO;
 /**
  * Draws the textures of the campus builder (0.10.0): the deck tiles the nexus paves its campus and builds its facades
  * with, the fittings a shelf unit and a library interior are assembled from, three extras for the shelf-unit look of
- * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), and the supply
- * port's faces. Run from the repository root:
+ * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), the supply
+ * port's faces, and (0.10.1) the recycle bin's. Run from the repository root:
  * {@code java tools/CampusTextures.java}.
  * <p>
  * The palette is the dark tech of the nexus: navy steel, blue-grey tiles, and light only in thin cyan lines. Every tile
@@ -70,6 +70,7 @@ public class CampusTextures {
         still("blocks/frame/book_spine", CampusTextures::bookSpine);
 
         supplyPort();
+        recycleBin();
     }
 
     // ---- helpers (as in NexusTextures)
@@ -610,6 +611,57 @@ public class CampusTextures {
         if (arm >= 0 && arm <= 2 && (x == 7 - arm || x == 8 + arm)) return mix(CYAN, LIT, 0.4);
         if (arm >= 0 && arm <= 2 && (x == 6 - arm || x == 9 + arm)) return CYAN_DARK;
         return portShell(x, y, 47);
+    }
+
+    // ---- the recycle bin (0.10.1)
+
+    /**
+     * The recycle bin ({@code blocks/recycle_bin/}): the supply port's navy steel crate, read as its twin that gives
+     * back: a grated hatch on top ringed in violet, vents on the sides, and on its front the intake, a recessed mouth
+     * whose slats glow from the library violet at the top to the flux cyan at the bottom over a lit sill.
+     */
+    static void recycleBin() throws Exception {
+        still("blocks/recycle_bin/top", CampusTextures::binTop);
+        still("blocks/recycle_bin/side", CampusTextures::binSide);
+        still("blocks/recycle_bin/front", CampusTextures::binFront);
+    }
+
+    /** Violet to cyan across {@code t} (0 to 1), the bin's light. */
+    static int binLight(double t) {
+        return mix(mix(VIOLET, VIOLET_HI, 0.25), mix(CYAN, LIT, 0.2), t);
+    }
+
+    /** The side: the shell with two short vents glowing violet to cyan. */
+    static int binSide(int x, int y, int f) {
+        if ((y == 6 || y == 9) && x >= 4 && x <= 11) return mix(CHANNEL, binLight((x - 4) / 7.0), 0.55);
+        if ((y == 5 || y == 8) && x >= 4 && x <= 11) return SHADOW;
+        if ((y == 7 || y == 10) && x >= 4 && x <= 11) return STEEL_HI;
+        return portShell(x, y, 53);
+    }
+
+    /** The top: a grated hatch in a violet ring. */
+    static int binTop(int x, int y, int f) {
+        double d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+        if (d > 7) return x == 0 || y == 0 ? STEEL_HI : 0x10202E;
+        if (d > 6) return STEEL;
+        if (d > 5) return mix(VIOLET, VIOLET_HI, 0.3);
+        if (d > 4.5) return STEEL_LO;
+        if ((x - 3) % 3 == 0 || (y - 3) % 3 == 0) return mix(STEEL_LO, STEEL, 0.4);
+        return mix(SHADOW, binLight((y - 3) / 9.0), 0.18);
+    }
+
+    /** The front: the intake, a recessed mouth of glowing slats (violet above, cyan below) over a lit sill. */
+    static int binFront(int x, int y, int f) {
+        if (x >= 3 && x <= 12 && y >= 3 && y <= 11) {
+            if (y == 3 || x == 3) return SHADOW;
+            if (y == 11 || x == 12) return STEEL_HI;
+            // slats: a lit line under a dark one, the light shading down the mouth
+            if (y % 2 == 0) return mix(CHANNEL, binLight((y - 4) / 6.0), 0.7);
+            return mix(SHADOW, CHANNEL, 0.5);
+        }
+        if (y == 13 && x >= 4 && x <= 11) return binLight((x - 4) / 7.0);
+        if (y == 12 && x >= 4 && x <= 11) return 0x132A3A;
+        return portShell(x, y, 59);
     }
 
     // ---- writing (as in NexusTextures)
