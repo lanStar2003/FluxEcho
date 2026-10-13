@@ -4,6 +4,7 @@ import java.util.List;
 
 import net.minecraft.item.ItemStack;
 
+import com.fluxecho.campus.BlockDeck;
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
@@ -11,11 +12,13 @@ import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.logic.ArcaneCourtShape;
 import com.fluxecho.logic.BloodCovenantShape;
 import com.fluxecho.logic.DomeGeneratorShape;
+import com.fluxecho.logic.DualFoilVaultShape;
 import com.fluxecho.logic.EcoDomeShape;
 import com.fluxecho.logic.HuntingGroundShape;
 import com.fluxecho.logic.ManaFountainShape;
 import com.fluxecho.logic.ModuleCores;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.ResonanceGateShape;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.ShapeKit;
 import com.fluxecho.logic.SiteFamily;
@@ -32,7 +35,9 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * block {@code fluxecho:module_core}, the units used by hand, the module window) and the modules built on it: the Eco
  * Dome (0.11.0), the zenith's Echo Dome Generator and the root's Tidal Well (0.12.0), the four pavilions on the
  * diagonals (0.13.0: the Arcane Court, the Blood Covenant Altar, the Echo Hunting Ground and the Mana Fountain Array,
- * each a {@link #pavilion}). Its specs are registered after the library's, so a nexus offers the Archive first.
+ * each a {@link #pavilion}), the gate's Resonance Gate (0.14.0, the gate family's {@link #resonanceGate}) and the
+ * Dual-foil Vault (0.14.0, the third hall, {@link #dualFoilVault}). Its specs are registered after the library's, so a
+ * nexus offers the Archive first.
  */
 public final class CityModule {
 
@@ -53,6 +58,8 @@ public final class CityModule {
         GameRegistry.registerTileEntity(TileBloodCovenant.class, "fluxecho:" + BloodCovenantShape.KEY);
         GameRegistry.registerTileEntity(TileHuntingGround.class, "fluxecho:" + HuntingGroundShape.KEY);
         GameRegistry.registerTileEntity(TileManaFountain.class, "fluxecho:" + ManaFountainShape.KEY);
+        GameRegistry.registerTileEntity(TileResonanceGate.class, "fluxecho:" + ResonanceGateShape.KEY);
+        GameRegistry.registerTileEntity(TileDualFoilVault.class, "fluxecho:" + DualFoilVaultShape.KEY);
     }
 
     public static void init() {
@@ -81,8 +88,20 @@ public final class CityModule {
         IMultiblockInfoContainer
             .registerTileClass(TileManaFountain.class, NexusModule.infoContainer(ManaFountainShape.KEY + ".structure"));
         NexusModule.previewModule(core, ModuleCores.MANA_FOUNTAIN, TileManaFountain::new);
+        // the gate's Resonance Gate (0.14.0)
+        IMultiblockInfoContainer.registerTileClass(
+            TileResonanceGate.class,
+            NexusModule.infoContainer(ResonanceGateShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.RESONANCE_GATE, TileResonanceGate::new);
+        // the Dual-foil Vault (0.14.0), the third hall
+        IMultiblockInfoContainer.registerTileClass(
+            TileDualFoilVault.class,
+            NexusModule.infoContainer(DualFoilVaultShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.DUAL_FOIL_VAULT, TileDualFoilVault::new);
         BlockFrame.onUse(UnitUse::use);
         BlockFitting.onUse(UnitUse::use);
+        // a unit may be made of canvas panels (0.14.0)
+        BlockDeck.onUse(UnitUse::use);
         ModuleSpecs.register(ecoDome());
         ModuleSpecs.register(domeGenerator());
         ModuleSpecs.register(root());
@@ -90,6 +109,8 @@ public final class CityModule {
         ModuleSpecs.register(bloodCovenant());
         ModuleSpecs.register(huntingGround());
         ModuleSpecs.register(manaFountain());
+        ModuleSpecs.register(resonanceGate());
+        ModuleSpecs.register(dualFoilVault());
     }
 
     /**
@@ -264,6 +285,49 @@ public final class CityModule {
     }
 
     /**
+     * The Resonance Gate as the campus builder raises it (0.14.0): the gatehouse (31 x 17, 18 high) on site 0, the
+     * gate, across the gate road (CITY.md §2.1), opened by the {@code resonance_gate} research at phase II,
+     * commissioned with its module core on the kiosk in the road. It takes room on the inner ring like any module
+     * there; what it takes of the campus is the ground it works, the passage under its bridge from the bridge's height
+     * up only ({@link ModuleSpec#keepOut}).
+     */
+    public static ModuleSpec resonanceGate() {
+        return new ModuleSpec(
+            SiteFamily.GATE,
+            ResonanceGateShape.KEY,
+            Research.RESONANCE_GATE,
+            ResonanceGateShape.WIDTH,
+            ResonanceGateShape.DEPTH,
+            ResonanceGateShape.HEIGHT,
+            ResonanceGateShape.SITES,
+            Parts.moduleCore(ModuleCores.RESONANCE_GATE),
+            TileResonanceGate.COLOR,
+            ResonanceGateShape::plan,
+            ResonanceGateShape::controller,
+            () -> true);
+    }
+
+    /**
+     * The Dual-foil Vault as the campus builder raises it (0.14.0): a hall (27 x 35, 27 high) on site 6, else 2, else 4
+     * (CITY.md §2.2), opened by the {@code dual_foil_vault} research at phase II, commissioned with its module core.
+     */
+    public static ModuleSpec dualFoilVault() {
+        return new ModuleSpec(
+            SiteFamily.HALL,
+            DualFoilVaultShape.KEY,
+            Research.DUAL_FOIL_VAULT,
+            DualFoilVaultShape.WIDTH,
+            DualFoilVaultShape.DEPTH,
+            DualFoilVaultShape.HEIGHT,
+            DualFoilVaultShape.SITES,
+            Parts.moduleCore(ModuleCores.DUAL_FOIL_VAULT),
+            TileDualFoilVault.COLOR,
+            DualFoilVaultShape::plan,
+            DualFoilVaultShape::controller,
+            () -> true);
+    }
+
+    /**
      * A pavilion's spec (0.13.0, the PAVILION family, CITY.md §2.1): 25 x 25 on its diagonal sites in the order it
      * prefers them, its controller on the central console, what it takes of the campus its apron and allee
      * ({@link ModuleSpec#keepOut}). Every pavilion is this and its shape.
@@ -289,7 +353,7 @@ public final class CityModule {
      * Manifested at the nexus once the Eco Dome is researched: its core from echo crystals, saplings and seeds (the
      * garden it will keep), HV circuits and glass; at phase II (0.12.0) the Echo Dome Generator's and the Tidal Well's
      * cores from phase alloy and resonant glass, the materials of the phase, and (0.13.0) the four pavilions' cores
-     * from the same with one themed vanilla item each.
+     * and (0.14.0) the Resonance Gate's and the Dual-foil Vault's from the same with one themed vanilla item each.
      */
     public static void postInit() {
         Manifests.register(
@@ -363,6 +427,28 @@ public final class CityModule {
                 new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.PHASE_ALLOY + "*8",
                     "ore:" + MatterModule.RESONANT_GLASS + "*4", "ore:circuitEV*2", "item:minecraft:red_flower*8" },
                 () -> new ItemStack(core, 1, ModuleCores.MANA_FOUNTAIN),
+                1600,
+                false));
+        // the Resonance Gate's core (0.14.0): the same phase II materials, and note blocks, the tuned resonators its
+        // chamber holds
+        Manifests.register(
+            new Manifests.Recipe(
+                "resonance_gate_core",
+                Research.RESONANCE_GATE,
+                new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.PHASE_ALLOY + "*8",
+                    "ore:" + MatterModule.RESONANT_GLASS + "*4", "ore:circuitEV*2", "item:minecraft:noteblock*4" },
+                () -> new ItemStack(core, 1, ModuleCores.RESONANCE_GATE),
+                1600,
+                false));
+        // the Dual-foil Vault's core (0.14.0): the same phase II materials, and paintings, the pictures its canvases
+        // will hang
+        Manifests.register(
+            new Manifests.Recipe(
+                "dual_foil_vault_core",
+                Research.DUAL_FOIL_VAULT,
+                new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.PHASE_ALLOY + "*8",
+                    "ore:" + MatterModule.RESONANT_GLASS + "*4", "ore:circuitEV*2", "item:minecraft:painting*4" },
+                () -> new ItemStack(core, 1, ModuleCores.DUAL_FOIL_VAULT),
                 1600,
                 false));
     }

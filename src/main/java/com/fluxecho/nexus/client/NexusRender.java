@@ -21,6 +21,8 @@ import org.lwjgl.opengl.GL11;
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
+import com.fluxecho.campus.ModuleSpec;
+import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
@@ -514,8 +516,10 @@ public final class NexusRender {
      * loaded tiles (docked to this nexus under number {@code k}): its door is the face of its structure nearest the
      * nexus (a pavilion's, 0.13.0: its inner chamfer portal). When it is not loaded here ({@link CampusPlan#siteDoor}),
      * a hall site's module is taken to have its front row where the campus puts it ({@link CampusPlan#HALL_FRONT}), a
-     * diagonal's its pavilion's portal only when the client's campus records a pavilion built there; a module docked
-     * on a diagonal without one is a 0.9.2 module on the old inner ring, and like the gate's it keeps the ring bridge.
+     * diagonal's its pavilion's portal only when the client's campus records a pavilion built there, the gate's its
+     * gatehouse's passage mouth ({@link CampusPlan#GATE_DOOR}, 0.14.0) only when it records the gatehouse built there;
+     * a module docked on a diagonal or the gate without one is a 0.9.2 module on the old inner ring, and keeps the ring
+     * bridge. A gatehouse loaded here is known by its family, since its kiosk stands within the old ring's slot 0.
      */
     private static double siteDoor(TileNexus n, int k, int fx, int fz, List<TileMultiblock> tiles) {
         int[] c = n.centre();
@@ -525,6 +529,8 @@ public final class NexusRender {
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
             if (!mod.clientDocked || mod.clientSlot != k || !Arrays.equals(mod.clientNexus, c)) continue;
+            // the gatehouse's kiosk lies within the 0.9.2 ring's slot 0: its family, not its place, tells it (0.14.0)
+            if (SiteFamily.of(k) == SiteFamily.GATE && gatehouse(mod)) return CampusPlan.GATE_DOOR;
             int[] mc = mod.centre();
             if (RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz) == k) return -1;
             // a pavilion's door is its inner chamfer portal on the diagonal, not the corner of its box (0.13.0)
@@ -541,7 +547,13 @@ public final class NexusRender {
             break;
         }
         Campus.View v = n.clientCampus;
-        return CampusPlan.siteDoor(k, v != null && v.pavilionBuilt(k));
+        return CampusPlan.siteDoor(k, v != null && (v.pavilionBuilt(k) || v.gateBuilt(k)));
+    }
+
+    /** Whether a module is a gatehouse (0.14.0): its campus spec stands on the gate. */
+    private static boolean gatehouse(TileModule mod) {
+        ModuleSpec spec = ModuleSpecs.get(mod.moduleKey());
+        return spec != null && spec.family == SiteFamily.GATE;
     }
 
     /**

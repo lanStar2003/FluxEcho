@@ -30,6 +30,10 @@ public class NexusTextures {
     static final int HUNT_AMBER = 0xFF9A3C;
     /** The Mana Fountain Array's accent (0.13.0), as {@code TileManaFountain.COLOR}. */
     static final int MANA_BLUE = 0x6AA8FF;
+    /** The Resonance Gate's accent (0.14.0), as {@code TileResonanceGate.COLOR}. */
+    static final int GATE_TEAL = 0x5CF2C2;
+    /** The Dual-foil Vault's accent (0.14.0), as {@code TileDualFoilVault.COLOR}: parchment. */
+    static final int VAULT_PARCHMENT = 0xF2EBDD;
     static final int FRAMES = 8;
 
     interface Px {
@@ -122,6 +126,18 @@ public class NexusTextures {
         anim(mana + "front_on", (x, y, f) -> coreFront(x, y, f, true, MANA_BLUE, NexusTextures::fountainEmblem));
         still(mana + "side", (x, y, f) -> coreSide(x, y, MANA_BLUE));
         still(mana + "top", (x, y, f) -> coreTop(x, y, MANA_BLUE));
+        // the Resonance Gate's (0.14.0): teal, two wing towers and the bridge between them, the crystal floating over it
+        String gate = "blocks/module_core/resonance_gate/";
+        still(gate + "front", (x, y, f) -> coreFront(x, y, f, false, GATE_TEAL, NexusTextures::gateEmblem));
+        anim(gate + "front_on", (x, y, f) -> coreFront(x, y, f, true, GATE_TEAL, NexusTextures::gateEmblem));
+        still(gate + "side", (x, y, f) -> coreSide(x, y, GATE_TEAL));
+        still(gate + "top", (x, y, f) -> coreTop(x, y, GATE_TEAL));
+        // the Dual-foil Vault's (0.14.0): parchment, the monolith under its sawtooth crown, the facade canvas lit
+        String vault = "blocks/module_core/dual_foil_vault/";
+        still(vault + "front", (x, y, f) -> coreFront(x, y, f, false, VAULT_PARCHMENT, NexusTextures::vaultEmblem));
+        anim(vault + "front_on", (x, y, f) -> coreFront(x, y, f, true, VAULT_PARCHMENT, NexusTextures::vaultEmblem));
+        still(vault + "side", (x, y, f) -> coreSide(x, y, VAULT_PARCHMENT));
+        still(vault + "top", (x, y, f) -> coreTop(x, y, VAULT_PARCHMENT));
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
@@ -533,6 +549,35 @@ public class NexusTextures {
         double dx = Math.abs(x - 7.5);
         if (dx >= 1.5 && dx <= 5.5 && Math.abs(y - (3.5 + dx * dx * 0.3)) < 0.6) return 2;
         return 0;
+    }
+
+    /**
+     * The Resonance Gate's emblem (0.14.0): two wing towers with lit windows either side of the open passage, the bridge
+     * across between them, and the crystal spire floating over the bridge, lit.
+     */
+    static int gateEmblem(int x, int y) {
+        double dx = Math.abs(x - 7.5), dy = Math.abs(y - 3.5);
+        if (y <= 5 && dx / 2.6 + dy / 2.4 <= 1) return 2;
+        boolean tower = (x >= 2 && x <= 4 || x >= 11 && x <= 13) && y >= 5 && y <= 12;
+        if (tower && (x == 3 || x == 12) && (y == 7 || y == 10)) return 2;
+        if (tower) return 1;
+        if (x >= 5 && x <= 10 && (y == 7 || y == 8)) return 1;
+        return 0;
+    }
+
+    /**
+     * The Dual-foil Vault's emblem (0.14.0): the windowless monolith's outline under its sawtooth crown of three teeth,
+     * the facade canvas on its front in a lit frame, the doors a gap in its foot.
+     */
+    static int vaultEmblem(int x, int y) {
+        if (x < 3 || x > 12 || y < 2 || y > 13) return 0;
+        if (y <= 3) {
+            int t = (x - 3) % 3;
+            return x >= 4 && x <= 11 && (y == 3 ? t != 0 : t == 2) ? 1 : 0;
+        }
+        if (x >= 5 && x <= 10 && y >= 5 && y <= 10) return x == 5 || x == 10 || y == 5 || y == 10 ? 2 : 1;
+        if (y == 13 && x >= 6 && x <= 9) return 0;
+        return x == 3 || x == 12 || y == 4 || y == 13 ? 1 : 0;
     }
 
     static int coreFront(int x, int y, int f, boolean on, int accent, Emblem e) {

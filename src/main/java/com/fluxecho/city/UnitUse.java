@@ -13,8 +13,10 @@ import com.fluxecho.nexus.TileMultiblock;
  * The units of a city module, used by hand (0.11.0; the Echo Archive's {@code Units.use} made general): a unit is used
  * as a whole, so clicking any of its cells means that unit. An empty hand opens the module's window at the unit (on
  * its Units page, {@code CityGui}); an item in hand goes into the unit's first empty slot (one item); sneaking with an
- * empty hand on a socket takes the item that socket shows. Registered for the frame blocks and the campus fittings (the
- * parts units are made of); the Archive's bookcases keep their own use.
+ * empty hand on a socket takes the item that socket shows, and (0.14.0) anywhere on a unit without sockets (a canvas,
+ * whose one item shows over its whole field) its last item ({@link TileCityModule#takeSlot}). Registered for the frame
+ * blocks, the campus fittings and (0.14.0) the campus deck, whose canvas panels a unit may be made of: the parts units
+ * are made of; the Archive's bookcases keep their own use.
  * <p>
  * Both sides answer alike, so the client swings the arm and does not place the held block: the client finds the same
  * formed module among its loaded multiblocks. Only the server acts. Messages: {@code fluxecho.city.unit.<key>}.
@@ -23,7 +25,10 @@ public final class UnitUse {
 
     private UnitUse() {}
 
-    /** {@code BlockFrame.Use} and {@code BlockFitting.Use}: true for a cell of a unit of a formed city module. */
+    /**
+     * {@code BlockFrame.Use}, {@code BlockFitting.Use} and {@code BlockDeck.Use}: true for a cell of a unit of a formed
+     * city module.
+     */
     public static boolean use(World w, int x, int y, int z, EntityPlayer p, int side, int meta) {
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (!(m instanceof TileCityModule c) || !c.formed() || !c.covers(w, x, y, z)) continue;
@@ -45,7 +50,7 @@ public final class UnitUse {
         String name = c.unitName(unit);
         int[] slots = c.unitSlots(unit);
         if (held == null) {
-            int slot = c.slotAt(x, y, z);
+            int slot = c.takeSlot(unit, x, y, z);
             ItemStack s = slot >= 0 ? c.samples.getStackInSlot(slot) : null;
             if (p.isSneaking() && s != null) {
                 c.samples.setStackInSlot(slot, null);

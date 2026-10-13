@@ -58,9 +58,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * The masterplan: round every active campus within 256 blocks, faint outlines lying on its floor of what the campus
  * will hold, so a player sees where things go before anything is built there: the graded disc's edge, the forum and
- * the promenade ring, the gate (site 0), each hall site's envelope (the Echo Archive's footprint, its door marked on
- * the side facing the nexus) and the diagonal sites' pavilion octagons (dashed while empty), with each site's number on
- * a sign turned to the camera. A site with a module on it is brighter, in the module's colour, and named by it; the
+ * the promenade ring, the gate (site 0) with the gatehouse's two wings over it (0.14.0, dashed while empty, its sign on
+ * the road in front of it), each hall site's envelope (the Echo Archive's footprint, its door marked on the side facing
+ * the nexus) and the diagonal sites' pavilion octagons (dashed while empty), with each site's number on a sign turned
+ * to the camera. A site with a module on it is brighter, in the module's colour, and named by it; the
  * site of the current job is cyan; an empty hall site (0.13.0: a diagonal too) names the module the campus plans there
  * and where it stands (0.10.1: 「回响书库（需研究）」), so a player sees what comes next and how to unlock it.
  * <p>
@@ -102,6 +103,11 @@ public final class Masterplan {
     private static final double[][] DAIS = octagon(NexusShape.RADIUS, 7);
     /** The gate strip ({@link CampusPlan#inGate}) from the promenade ring's outer edge, open at the ring. */
     private static final double[][] GATE = gate(CampusPlan.RING_R + 0.5);
+    /**
+     * The gatehouse's two wings either side of its open passage (0.14.0, {@link CampusPlan#inGatehouse}): R -15..-7
+     * and 7..15 from A 23 to 39, dashed while no gatehouse stands.
+     */
+    private static final double[][] WING_LEFT = wing(-1), WING_RIGHT = wing(1);
     /**
      * The chamfer of a diagonal site's envelope (0.11.0: the pavilion's {@code oct(12, 16)}): its corners cut where
      * {@code |du| + |dv|} passes this.
@@ -226,7 +232,11 @@ public final class Masterplan {
                     outline(tes, f, DISC_EDGE, 0, 0, true, 0.2, DISC, 0.16f * k, false);
                     outline(tes, f, FORUM, 0, 0, true, 0.12, CYAN, 0.18f * k, false);
                     outline(tes, f, RING, 0, 0, true, 0.12, CYAN, 0.18f * k, false);
-                    outline(tes, f, GATE, 0, 0, false, 0.12, sites[0].rgb, sites[0].alpha * k, false);
+                    Site gate = sites[0];
+                    float ga = gate.alpha * k * (gate.job ? breath : 1f);
+                    outline(tes, f, GATE, 0, 0, false, 0.12, gate.rgb, ga, false);
+                    outline(tes, f, WING_LEFT, 0, 0, true, 0.12, gate.rgb, ga, !gate.occupied);
+                    outline(tes, f, WING_RIGHT, 0, 0, true, 0.12, gate.rgb, ga, !gate.occupied);
                     for (int s = 1; s < RingSlots.SLOTS; s++) {
                         Site st = sites[s];
                         float a = st.alpha * k * (st.job ? breath : 1f);
@@ -293,10 +303,12 @@ public final class Masterplan {
         String[] names = new String[SITES];
         int[] colours = new int[SITES];
         boolean[] standing = new boolean[SITES], pavilion = new boolean[SITES], ringStanding = new boolean[SITES];
+        boolean gatehouse = false;
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
             ModuleSpec spec = ModuleSpecs.get(mod.moduleKey());
             boolean isPavilion = spec != null && spec.family == SiteFamily.PAVILION;
+            boolean isGate = spec != null && spec.family == SiteFamily.GATE;
             // A formed module that is no pavilion on a diagonal's old inner-ring slot (a 0.9.2 module, docked or
             // turned away) keeps that diagonal's sign in the octagon's middle, clear of its walls, as in 0.12.0. It
             // is kept apart from standing, so the site's caption and colour stay as they were.
@@ -314,6 +326,10 @@ public final class Masterplan {
                 s = mod.clientSlot;
             }
             if (s >= SITES) continue;
+            // the gate's site counts a gatehouse alone (0.14.0): a 0.9.2 module on the old ring's slot 0 stands on the
+            // gate road, which keeps its sign
+            if (s == 0 && !isGate) continue;
+            gatehouse |= isGate;
             standing[s] = true;
             pavilion[s] |= isPavilion;
             if (names[s] == null) {
@@ -325,7 +341,8 @@ public final class Masterplan {
             Site st = new Site();
             boolean axis = SiteFamily.axisSite(s);
             boolean docked = !axis && (n.clientDockedMask & 1 << s) != 0;
-            st.occupied = s != 0 && (docked || standing[s]);
+            // the gate is occupied by a gatehouse alone (0.14.0): one standing, or docked there by the campus's record
+            st.occupied = s != 0 ? docked || standing[s] : gatehouse || docked && v.gateBuilt(s);
             st.job = s == jobSite;
             st.ring = s % 2 == 1 && !axis
                 && !st.job
@@ -333,16 +350,17 @@ public final class Masterplan {
                 && !v.pavilionBuilt(s)
                 && (st.occupied || ringStanding[s]);
             st.title = EchoText.t(SiteFamily.labelKey(s), s);
-            if (s == 0) {
+            if (s == 0 && !st.job && !st.occupied && planned(v, s) == null) {
+                // the gate road, nothing planned over it
                 st.rgb = CYAN;
                 st.alpha = 0.22f;
-                st.caption = EchoText.t("build.masterplan.gate");
+                st.caption = EchoText.t("build.masterplan.reserved");
             } else if (st.job) {
                 st.rgb = CYAN;
                 st.alpha = 0.3f;
                 st.caption = EchoText.t("build.masterplan.building", EchoText.t("module." + jobModule));
             } else if (st.occupied) {
-                int col = docked ? n.clientModuleColor[s] : axis ? colours[s] : 0;
+                int col = docked ? n.clientModuleColor[s] : axis || s == 0 ? colours[s] : 0;
                 st.rgb = col == 0 ? WHITE : col;
                 st.alpha = 0.28f;
                 st.caption = names[s] != null ? EchoText.t("module." + names[s]) : EchoText.t("build.masterplan.taken");
@@ -379,8 +397,12 @@ public final class Masterplan {
         return null;
     }
 
-    /** The site whose envelope holds the campus cell (a, r): a hall site's Archive footprint or a diagonal's. */
+    /**
+     * The site whose envelope holds the campus cell (a, r): a hall site's Archive footprint, a diagonal's, or the
+     * gatehouse's on the gate (0.14.0).
+     */
     private static int siteOf(int a, int r) {
+        if (CampusPlan.inGatehouse(a, r)) return 0;
         for (int s : CampusPlan.HALL_SITES) {
             if (CampusPlan.inHall(s, ArchiveShape.WIDTH, ArchiveShape.DEPTH, a, r)) return s;
         }
@@ -413,7 +435,9 @@ public final class Masterplan {
      * its old inner-ring slot ({@code ring}, that module over the allee) keeps it in the octagon's middle.
      */
     private static double[] signAt(int site, boolean ring) {
-        if (site == 0) return new double[] { 31, 0, 4.2 };
+        // the gate's on the road in front of the gatehouse (0.14.0), as a hall's before its door, never under the
+        // bridge
+        if (site == 0) return new double[] { CampusPlan.GATE_SIGN, 0, 3.2 };
         // the zenith's under the pod (off the lift's shaft, below its own plate), seen from the forum; the root's
         // behind the nexus
         if (site == SiteFamily.ZENITH_SITE) return new double[] { 3, 0, DomeGeneratorShape.FLOOR_UP - 7.5 };
@@ -470,6 +494,13 @@ public final class Masterplan {
         double h = rmax + 0.5, s = k + 1, c = Math.min(h, s - h);
         return new double[][] { { h, -c }, { h, c }, { c, h }, { -c, h }, { -h, c }, { -h, -c }, { -c, -h },
             { c, -h } };
+    }
+
+    /** One wing of the gatehouse ({@code side} -1 left, 1 right of the road): its envelope's outer cells' edges. */
+    private static double[][] wing(int side) {
+        double a0 = CampusPlan.GATEHOUSE_FROM - 0.5, a1 = CampusPlan.GATEHOUSE_TO + 0.5;
+        double r0 = side * (CampusPlan.GATE_PASSAGE + 0.5), r1 = side * (CampusPlan.GATEHOUSE_HALF + 0.5);
+        return new double[][] { { a0, r0 }, { a1, r0 }, { a1, r1 }, { a0, r1 } };
     }
 
     /** The gate strip's outline from {@code from} out, open on the inner side. */

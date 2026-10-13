@@ -1,5 +1,6 @@
 package com.fluxecho.campus;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -7,6 +8,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.EnumCreatureType;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
@@ -25,8 +27,26 @@ import cpw.mods.fml.relauncher.SideOnly;
  * of. One meta per look ({@link Parts} deck metas, names and light), all of them plain opaque stone cubes that only
  * differ in their texture and in how much light they give. Drawn into the chunk mesh by {@code client.DeckRender}, so
  * the bright lines work with shader packs; nothing spawns on it, so a paved campus stays quiet at night.
+ * <p>
+ * 0.14.0 adds the canvas (meta 12, CITY.md §1.4), the wall a module's unit paints its item on: units can be made of
+ * deck cells now, so a use of a deck block is offered to the formed modules first ({@link #onUse}), as a frame's and a
+ * fitting's is.
  */
 public class BlockDeck extends Block {
+
+    /** What a formed module does when one of its deck blocks is used (a canvas of a city module's unit, 0.14.0). */
+    public interface Use {
+
+        /** Whether it handled the click; called on both sides. */
+        boolean use(World w, int x, int y, int z, EntityPlayer p, int side, int meta);
+    }
+
+    private static final List<Use> USES = new ArrayList<>();
+
+    /** Registers a use (the city's units, {@code city.UnitUse}). */
+    public static void onUse(Use u) {
+        USES.add(u);
+    }
 
     /** Set by the client proxy. */
     public static int renderId = -1;
@@ -80,6 +100,14 @@ public class BlockDeck extends Block {
 
     @Override
     public boolean canCreatureSpawn(EnumCreatureType type, IBlockAccess w, int x, int y, int z) {
+        return false;
+    }
+
+    @Override
+    public boolean onBlockActivated(World w, int x, int y, int z, EntityPlayer p, int side, float hx, float hy,
+        float hz) {
+        int meta = w.getBlockMetadata(x, y, z);
+        for (Use u : USES) if (u.use(w, x, y, z, p, side, meta)) return true;
         return false;
     }
 

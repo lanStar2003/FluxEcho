@@ -112,7 +112,9 @@ class AxisModulesLookTest {
     @Test
     void theAxisSitesAreNamed() {
         assertEquals("build.gui.site", SiteFamily.labelKey(4));
-        assertEquals("build.gui.site", SiteFamily.labelKey(0));
+        assertEquals("build.gui.site", SiteFamily.labelKey(1));
+        // the gate by its name since 0.14.0: 大门, where the gatehouse stands
+        assertEquals("build.gui.site_gate", SiteFamily.labelKey(0));
         assertEquals("build.gui.site_zenith", SiteFamily.labelKey(SiteFamily.ZENITH_SITE));
         assertEquals("build.gui.site_root", SiteFamily.labelKey(SiteFamily.ROOT_SITE));
     }

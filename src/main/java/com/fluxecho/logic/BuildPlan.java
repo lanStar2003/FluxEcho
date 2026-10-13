@@ -416,6 +416,66 @@ public final class BuildPlan {
         return x0 > x1 ? null : new int[] { x0, z0, x1, z1 };
     }
 
+    /**
+     * The keep-out boxes of a gatehouse's job (0.14.0, CITY.md §2.2) for the nexus centre {@code (cx, y0, cz)} facing
+     * {@code (fx, fz)}: every world column its plan works, from the lowest height it works there. A column it works at
+     * Y0 or below (the wings, their clear margin, the floor it lays: the apron and the passage cells the road leaves
+     * unpaved) is a whole column {x0, z0, x1, z1}; a column of the open passage it works only above Y0 (the bridge
+     * from its headroom up, the kiosk from Y0 + 1) is a height-ranged box {x0, z0, x1, z1, yFrom, 255}, so the campus
+     * jobs (establish, forum, refresh) still lay the gate road's tiles under it, and the establish pylons, which the
+     * gatehouse never works, stay theirs. The boxes run along R row by row, one per run of columns with the same
+     * lowest height, in a fixed order.
+     */
+    public static List<int[]> gateKeepOut(Plan p, int cx, int y0, int cz, int fx, int fz) {
+        facingOrdinal(fx, fz);
+        // the lowest height the plan works in each campus cell; a grading column works its floor and under it
+        Map<Long, Integer> low = new java.util.TreeMap<>();
+        for (Step s : p.steps) {
+            int[] l = CampusPlan.toLocal(s.x - cx, s.z - cz, fx, fz);
+            low.merge(CampusPlan.key(l[0], l[1]), s.y, Math::min);
+        }
+        for (Column c : p.clear) {
+            int[] l = CampusPlan.toLocal(c.x - cx, c.z - cz, fx, fz);
+            low.merge(CampusPlan.key(l[0], l[1]), c.grade ? Integer.MIN_VALUE : c.yFrom, Math::min);
+        }
+        java.util.TreeMap<Integer, Set<Long>> byLow = new java.util.TreeMap<>();
+        for (Map.Entry<Long, Integer> e : low.entrySet()) {
+            long k = e.getKey();
+            boolean ranged = CampusPlan.inGatePassage(CampusPlan.keyA(k), CampusPlan.keyR(k)) && e.getValue() > y0;
+            byLow.computeIfAbsent(ranged ? e.getValue() : Integer.MIN_VALUE, x -> new java.util.LinkedHashSet<>())
+                .add(k);
+        }
+        List<int[]> out = new ArrayList<>();
+        for (Map.Entry<Integer, Set<Long>> e : byLow.entrySet()) {
+            for (int[] b : CampusPlan.rowBoxes(e.getValue())) {
+                int[] q = CampusPlan.toWorld(b[0], b[1], fx, fz), r = CampusPlan.toWorld(b[2], b[3], fx, fz);
+                int x0 = cx + Math.min(q[0], r[0]), z0 = cz + Math.min(q[1], r[1]), x1 = cx + Math.max(q[0], r[0]),
+                    z1 = cz + Math.max(q[1], r[1]);
+                out.add(
+                    e.getKey() == Integer.MIN_VALUE ? new int[] { x0, z0, x1, z1 }
+                        : new int[] { x0, z0, x1, z1, e.getKey(), WORLD_TOP });
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The gatehouse's keep-out boxes ({@link #gateKeepOut}) as the boxes {x0, y0, z0, x1, y1, z1} in which nothing but
+     * its own jobs takes a block down (0.14.0): a whole column from bedrock to the sky, a height-ranged box over its
+     * heights, so the gate road's tiles and the establish pylons under the bridge stay the nexus's own.
+     */
+    public static List<int[]> gateProtect(List<int[]> keepOut) {
+        List<int[]> out = new ArrayList<>(keepOut.size());
+        for (int[] b : keepOut) {
+            int lo = b.length == 6 ? b[4] : 0, hi = b.length == 6 ? b[5] : WORLD_TOP;
+            out.add(new int[] { b[0], lo, b[1], b[2], hi, b[3] });
+        }
+        return out;
+    }
+
+    /** The highest y a block can stand at. */
+    private static final int WORLD_TOP = 255;
+
     // ---- keys and fronts ----
 
     /** The job key of a module job: {@code module:<module>@<site>}, such as {@code module:library@4}. */
@@ -878,11 +938,33 @@ public final class BuildPlan {
     }
 
     /**
+     * Where the controller of a gatehouse stands on the gate site (0.14.0, CITY.md §2.1), and which way it faces:
+     * {x, y, z, facing ordinal}. The module's box straddles the gate road with its middle column on the road's axis
+     * ({@code x = MID + R}) and its front row at {@link CampusPlan#GATEHOUSE_FROM} ({@code z = A - 23}), its front
+     * facing the nexus (-A); the controller lies where its shape's cell falls in that frame (the Resonance Gate's
+     * kiosk {@code (15, 2, 7)}: {@code (A 30, R 0, Y0 + 2)}).
+     *
+     * @throws IllegalArgumentException if the site is not the gate site or the front not a horizontal unit vector
+     */
+    public static int[] gateController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
+        facingOrdinal(fx, fz);
+        if (SiteFamily.of(site) != SiteFamily.GATE || !SiteFamily.ringSite(site))
+            throw new IllegalArgumentException("not the gate site: " + site);
+        int[] c = m.controller();
+        int a = CampusPlan.GATEHOUSE_FROM + c[2], r = c[0] - (m.width() - 1) / 2;
+        int[] w = CampusPlan.toWorld(a, r, fx, fz);
+        return new int[] { cx + w[0], y0 + c[1], cz + w[1], facingOrdinal(-fx, -fz) };
+    }
+
+    /**
      * Where a module's controller stands on a ground site of its family: {@link #pavilionController} on a pavilion
-     * site, {@link #hallController} anywhere else (which takes hall sites only).
+     * site, {@link #gateController} on the gate site (0.14.0), {@link #hallController} anywhere else (which takes hall
+     * sites only).
      */
     public static int[] moduleController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
-        if (SiteFamily.of(site) == SiteFamily.PAVILION) return pavilionController(m, site, cx, y0, cz, fx, fz);
+        SiteFamily family = SiteFamily.of(site);
+        if (family == SiteFamily.PAVILION) return pavilionController(m, site, cx, y0, cz, fx, fz);
+        if (family == SiteFamily.GATE) return gateController(m, site, cx, y0, cz, fx, fz);
         return hallController(m, site, cx, y0, cz, fx, fz);
     }
 
@@ -927,15 +1009,17 @@ public final class BuildPlan {
     }
 
     /**
-     * The module job of a hall module (0.11.0) or a pavilion (0.13.0): the generic plan the Archive and every city
-     * module on a ground site share.
+     * The module job of a hall module (0.11.0), a pavilion (0.13.0) or the gatehouse (0.14.0): the generic plan the
+     * Archive and every city module on a ground site share.
      * <ul>
      * <li>CLEAR: the footprint and {@link #MODULE_MARGIN} round it (a hall's whole box, a pavilion's octagon), from Y0
      * + 1 to {@link #MODULE_HEADROOM} above the shape's top layer that holds anything, outward from the nexus, grading
-     * their Y0 cells.</li>
+     * their Y0 cells. The gatehouse's box less its open passage ({@link CampusPlan#inGatePassage}): over the passage
+     * only the columns its bridge stands in, from Y0 + {@link CampusPlan#GATE_HEADROOM} up and never graded, so the
+     * gate road, its widenings and the establish pylons under the bridge stay as they are.</li>
      * <li>FLOOR: the site's floor ({@link CampusPlan#siteFloor} for a hall, {@link CampusPlan#pavilionFloor} for a
-     * pavilion: its apron and its diagonal allee) and the soft cells the module puts in FLOOR, outward from the
-     * nexus.</li>
+     * pavilion: its apron and its diagonal allee, {@link CampusPlan#gatehouseFloor} for the gatehouse: its apron) and
+     * the soft cells the module puts in FLOOR, outward from the nexus.</li>
      * <li>SHELL, DECK, UPPER, ROOF: the cells the module puts there, bottom-up by layer (by the module's own order
      * first where it gives one, {@link ModuleBuild#order}, 0.13.0: the Echo Hunting Ground's terraces ring by
      * ring).</li>
@@ -949,12 +1033,13 @@ public final class BuildPlan {
      * {@link Blueprint#world} puts it for the module's controller ({@link #moduleController}), so the HARD steps are
      * exactly the cells the structure check looks at.
      *
-     * @throws IllegalArgumentException if the site is neither a hall site nor a pavilion site, or the front not a
-     *                                  horizontal unit vector
+     * @throws IllegalArgumentException if the site is neither a hall site, a pavilion site nor the gate site, or the
+     *                                  front not a horizontal unit vector
      * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the shape's unit cells
      */
     public static Plan module(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, ModuleBuild m) {
-        boolean pavilion = SiteFamily.of(site) == SiteFamily.PAVILION;
+        SiteFamily family = SiteFamily.of(site);
+        boolean pavilion = family == SiteFamily.PAVILION, gate = family == SiteFamily.GATE;
         int[] ctrl = moduleController(m, site, cx, y0, cz, fx, fz);
         int[] ax = CampusPlan.siteAxis(site);
         Frame f = new Frame(cx, y0, cz, fx, fz, ax[0], ax[1]);
@@ -967,13 +1052,31 @@ public final class BuildPlan {
             if (m.cell(x, y, z) != ShapeKit.NONE) top = Math.max(top, y);
         }
         // a hall clears its whole box and MODULE_MARGIN round it; a pavilion its footprint (the columns its base layer
-        // holds) and MODULE_MARGIN round that, its octagon oct(12, 16) grown to oct(13, 18), inside its apron
+        // holds) and MODULE_MARGIN round that, its octagon oct(12, 16) grown to oct(13, 18), inside its apron; the
+        // gatehouse its box and MODULE_MARGIN round it but over its open passage, where only the bridge's columns
+        // clear, from the passage's headroom up
         Set<Long> footprint = pavilion ? footprint(m) : null;
         List<Clearing> clear = new ArrayList<>();
         for (int z = -MODULE_MARGIN; z < d + MODULE_MARGIN; z++) {
             for (int x = -MODULE_MARGIN; x < w + MODULE_MARGIN; x++) {
                 if (pavilion && !near(footprint, x, z, MODULE_MARGIN)) continue;
                 int[] p = at.world(x, 0, z);
+                if (gate) {
+                    int[] l = CampusPlan.toLocal(p[0] - cx, p[2] - cz, fx, fz);
+                    if (Math.abs(l[1]) <= CampusPlan.GATE_PASSAGE) {
+                        // the passage stays open: only the bridge's volume over it, from its headroom up, ungraded
+                        if (!overPassage(m, x, z, h)) continue;
+                        clear.add(
+                            new Clearing(
+                                f,
+                                p[0],
+                                y0 + CampusPlan.GATE_HEADROOM,
+                                p[2],
+                                y0 + top + 1 + MODULE_HEADROOM,
+                                false));
+                        continue;
+                    }
+                }
                 clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + top + 1 + MODULE_HEADROOM, true));
             }
         }
@@ -982,7 +1085,8 @@ public final class BuildPlan {
         List<List<Draft>> stages = new ArrayList<>();
         for (int i = 0; i < M_STAGES; i++) stages.add(new ArrayList<>());
         List<Draft> floor = stages.get(M_FLOOR);
-        Map<Long, Integer> siteFloor = pavilion ? plan.pavilionFloor(site) : plan.siteFloor(site, w, d);
+        Map<Long, Integer> siteFloor = pavilion ? plan.pavilionFloor(site)
+            : gate ? plan.gatehouseFloor() : plan.siteFloor(site, w, d);
         for (Map.Entry<Long, Integer> e : siteFloor.entrySet()) {
             long k = e.getKey();
             paving(
@@ -1330,6 +1434,16 @@ public final class BuildPlan {
             if (m.cell(x, 0, z) != ShapeKit.NONE) out.add(ShapeKit.key(x, z));
         }
         return out;
+    }
+
+    /**
+     * Whether the gatehouse's column (x, z) holds a cell at its passage headroom ({@link CampusPlan#GATE_HEADROOM}) or
+     * above: the bridge over the open passage, whose volume alone the gatehouse's job clears there.
+     */
+    private static boolean overPassage(ModuleBuild m, int x, int z, int h) {
+        if (x < 0 || x >= m.width() || z < 0 || z >= m.depth()) return false;
+        for (int y = CampusPlan.GATE_HEADROOM; y < h; y++) if (m.cell(x, y, z) != ShapeKit.NONE) return true;
+        return false;
     }
 
     /** Whether a column lies within {@code margin} (either way, diagonals too) of a column of the set. */

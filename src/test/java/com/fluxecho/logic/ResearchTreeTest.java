@@ -429,6 +429,91 @@ class ResearchTreeTest {
         assertTrue(now.contains(ResearchTree.ARCANE_COURT) && now.containsAll(java.util.Arrays.asList(ids)));
     }
 
+    /**
+     * The Resonance Gate's research (0.14.0, CITY.md Appendix B): a phase II node on the echo branch after phase II
+     * alone, researched on a nexus of phase II, with the phase's EV costs and note blocks (vanilla, so no optional
+     * mod's item stands in a cost); its node is its module's key, and it stands on the echo branch's side of the map.
+     */
+    @Test
+    void theResonanceGate() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.RESONANCE_GATE);
+        assertNotNull(n);
+        assertEquals("resonance_gate", n.id);
+        assertEquals(ResearchTree.Branch.ECHO, n.branch);
+        assertEquals(2, n.phase);
+        assertEquals(2, n.nexusPhase());
+        assertTrue(ResearchTree.availableNow(n));
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2), n.requires);
+        assertEquals(30_000, n.compute);
+        assertEquals(0, ResearchTree.phaseOf(ResearchTree.RESONANCE_GATE), "it opens no phase");
+        Set<String> names = new HashSet<>();
+        for (ResearchTree.Cost c : n.costs) {
+            names.add(c.name);
+            if (!c.ore) assertTrue(c.name.startsWith("minecraft:"), "a vanilla item: " + c.name);
+        }
+        assertTrue(names.contains("plateTitanium") && names.contains("circuitEV") && names.contains("ingotPhaseAlloy"));
+        assertTrue(names.contains("minecraft:noteblock"), "note blocks, the tuned resonators");
+        Set<String> done = new HashSet<>();
+        done.add(ResearchTree.ANCHOR);
+        done.add(ResearchTree.INNER_RING);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 2, 999), "phase II first");
+        done.add(ResearchTree.PHASE_2);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 1, 999), "a nexus of phase II");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 2, 999));
+        assertEquals(ResearchTree.RESONANCE_GATE, ResonanceGateShape.KEY, "the module is its node");
+        assertTrue(n.x > ResearchTree.WIDTH / 2, "on the right, the echo branch's side");
+    }
+
+    /**
+     * Every star of a constellation named left or right of the frame's spine stands on its name's side of the map, so
+     * the drawn constellations (their nebulae lie at their stars' middle) never reach across the spine (0.14.0: the
+     * Resonance Gate, an echo node, had first been put on the depths branch's side, up and left of phase II).
+     */
+    @Test
+    void everyStarStandsOnItsConstellationsSide() {
+        int spine = ResearchTree.WIDTH / 2;
+        for (ResearchTree.Node n : ResearchTree.all()) {
+            int side = Integer.signum(n.branch.labelX - spine);
+            if (side == 0) assertEquals(spine, n.x, n.id + " on the spine with its " + n.branch.key + " name");
+            else assertEquals(side, Integer.signum(n.x - spine), n.id + " on the side of " + n.branch.key);
+        }
+    }
+
+    /**
+     * The Dual-foil Vault's research (0.14.0, CITY.md Appendix B): a phase II node on the depths branch after phase II
+     * alone, researched on a nexus of phase II, with the phase's EV costs and paper (vanilla, so no optional mod's item
+     * stands in a cost); its node is its module's key, and it stands on the depths branch's side of the map.
+     */
+    @Test
+    void theDualFoilVault() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.DUAL_FOIL_VAULT);
+        assertNotNull(n);
+        assertEquals("dual_foil_vault", n.id);
+        assertEquals(ResearchTree.Branch.DEPTHS, n.branch);
+        assertEquals(2, n.phase);
+        assertEquals(2, n.nexusPhase());
+        assertTrue(ResearchTree.availableNow(n), "research all grants it");
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2), n.requires);
+        assertEquals(30_000, n.compute);
+        assertEquals(0, ResearchTree.phaseOf(ResearchTree.DUAL_FOIL_VAULT), "it opens no phase");
+        Set<String> names = new HashSet<>();
+        for (ResearchTree.Cost c : n.costs) {
+            names.add(c.name);
+            if (!c.ore) assertTrue(c.name.startsWith("minecraft:"), "a vanilla item: " + c.name);
+        }
+        assertTrue(names.contains("plateTitanium") && names.contains("circuitEV") && names.contains("ingotPhaseAlloy"));
+        assertTrue(names.contains("minecraft:paper"), "paper, the canvases' ground");
+        Set<String> done = new HashSet<>();
+        done.add(ResearchTree.ANCHOR);
+        done.add(ResearchTree.INNER_RING);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 2, 999), "phase II first");
+        done.add(ResearchTree.PHASE_2);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 1, 999), "a nexus of phase II");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 2, 999));
+        assertEquals(ResearchTree.DUAL_FOIL_VAULT, DualFoilVaultShape.KEY, "the module is its node");
+        assertTrue(n.x < ResearchTree.WIDTH / 2, "on the left, the depths branch's side");
+    }
+
     @Test
     void costs() {
         ResearchTree.Cost c = ResearchTree.Cost.parse("ore:gemFluxCrystal*16");

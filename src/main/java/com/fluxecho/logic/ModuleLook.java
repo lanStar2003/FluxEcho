@@ -115,21 +115,23 @@ public final class ModuleLook {
 
     /**
      * The plinth course's faces on the outside of the walls: {x, z, outX, outZ, s} for every course cell (at
-     * {@link #COURSE_Y}) and every side of it that looks out of the building (where the base layer has nothing),
-     * {@code s} its place round the building (0 to n-1, in order of the angle round the box's middle, starting at the
-     * front middle and running to the right of someone walking in). A doorway has no course, so the line stops there;
-     * a gate niche's soft course ({@code [}, CITY.md §4.15) is the same block and keeps it.
+     * {@link #COURSE_Y}) and every side of it that looks out of the building (where the base layer has nothing, or,
+     * 0.14.0, onto a way open to the outside, {@link #outside}), {@code s} its place round the building (0 to n-1, in
+     * order of the angle round the box's middle, starting at the front middle and running to the right of someone
+     * walking in). A doorway has no course, so the line stops there; a gate niche's soft course ({@code [}, CITY.md
+     * §4.15) is the same block and keeps it.
      */
     public static List<int[]> course(CityBuild b) {
         int w = b.width(), d = b.depth();
         double mx = (w - 1) / 2.0, mz = (d - 1) / 2.0;
+        boolean[][] open = outside(b);
         List<int[]> out = new ArrayList<>();
         List<Double> angle = new ArrayList<>();
         for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) {
             if (ShapeKit.checkedTwin(b.cell(x, COURSE_Y, z)) != COURSE) continue;
             for (int[] o : OUT) {
                 int nx = x + o[0], nz = z + o[1];
-                if (inside(b, nx, nz)) continue;
+                if (inside(b, nx, nz) && !open[nx + 1][nz + 1]) continue;
                 out.add(new int[] { x, z, o[0], o[1], 0 });
                 // from the front middle (pointing at -z) round to the right (+x)
                 double fx = x + 0.5 + o[0] * 0.5 - (mx + 0.5), fz = z + 0.5 + o[1] * 0.5 - (mz + 0.5);
@@ -150,6 +152,36 @@ public final class ModuleLook {
     static boolean inside(CityBuild b, int x, int z) {
         if (x < 0 || x >= b.width() || z < 0 || z >= b.depth()) return false;
         return b.cell(x, 0, z) != ShapeKit.NONE;
+    }
+
+    /**
+     * The columns open to the outside at the plinth course's height (0.14.0), {@code [x + 1][z + 1]} for x from -1 to
+     * the width and z from -1 to the depth: those beyond the box, and those reached from them through cells holding
+     * nothing at that height, never through a doorway (must-be-air) or across anything standing there. A way through a
+     * building open to the sky and the road, such as the Resonance Gate's passage under its bridge, is outside, though
+     * the gate's floor runs under it; a hall's inside, which only its doors open onto, is not. Every module before the
+     * gate has no such way, so their course is what it was.
+     */
+    static boolean[][] outside(CityBuild b) {
+        int w = b.width(), d = b.depth();
+        boolean[][] seen = new boolean[w + 2][d + 2];
+        java.util.ArrayDeque<int[]> queue = new java.util.ArrayDeque<>();
+        for (int x = -1; x <= w; x++) for (int z = -1; z <= d; z++) {
+            if (x >= 0 && x < w && z >= 0 && z < d) continue;
+            seen[x + 1][z + 1] = true;
+            queue.add(new int[] { x, z });
+        }
+        while (!queue.isEmpty()) {
+            int[] c = queue.poll();
+            for (int[] o : OUT) {
+                int nx = c[0] + o[0], nz = c[1] + o[1];
+                if (nx < 0 || nx >= w || nz < 0 || nz >= d || seen[nx + 1][nz + 1]) continue;
+                if (b.cell(nx, COURSE_Y, nz) != ShapeKit.NONE) continue;
+                seen[nx + 1][nz + 1] = true;
+                queue.add(new int[] { nx, nz });
+            }
+        }
+        return seen;
     }
 
     /**

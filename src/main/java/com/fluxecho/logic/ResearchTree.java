@@ -131,7 +131,8 @@ public final class ResearchTree {
         ECHO_CRYSTAL = "echo_crystal", LIBRARY = "library", LIBRARY_REACH = "library_reach", COMPUTE_1 = "compute_1",
         UPKEEP_1 = "upkeep_1", TIDAL_WELL = "tidal_well", GRIT_YIELD = "grit_yield", DOME = "dome",
         ECO_DOME = "eco_dome", ARCANE_COURT = "arcane_court", BLOOD_COVENANT = "blood_covenant",
-        HUNTING_GROUND = "hunting_ground", MANA_FOUNTAIN = "mana_fountain";
+        HUNTING_GROUND = "hunting_ground", MANA_FOUNTAIN = "mana_fountain", RESONANCE_GATE = "resonance_gate",
+        DUAL_FOIL_VAULT = "dual_foil_vault";
 
     private static final Map<String, Node> NODES = new LinkedHashMap<>();
 
@@ -265,7 +266,8 @@ public final class ResearchTree {
         // right-hand side each on a row of its own (the Arcane Court under the library's reach, the Echo Hunting
         // Ground below it, the Mana Fountain Array by the compute branch's name). No line from phase II or the echo
         // crystal runs through another star, and no name, English or Chinese, runs into another name, a star or a
-        // constellation's name at any GUI size down to the smallest (ResearchTreeTest).
+        // constellation's name at any GUI size down to the smallest (ResearchTreeTest). The Echo Hunting Ground stood
+        // at (316, 146) until 0.14.0 moved it down and right to make room for the Resonance Gate above it.
         add(
             ARCANE_COURT,
             Branch.ECHO,
@@ -291,8 +293,8 @@ public final class ResearchTree {
         add(
             HUNTING_GROUND,
             Branch.ECHO,
-            316,
-            146,
+            322,
+            152,
             new String[] { PHASE_2, ECHO_CRYSTAL },
             30_000,
             new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "item:minecraft:bow*4" },
@@ -307,6 +309,39 @@ public final class ResearchTree {
             30_000,
             new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
                 "item:minecraft:red_flower*16" },
+            0,
+            2);
+        // 0.14.0: the gate's Resonance Gate (CITY.md §4.7, Appendix B), a phase II node on the echo branch after phase
+        // II, with the phase's EV costs and note blocks, the tuned resonators its chamber holds. It stands among the
+        // echo branch's stars on the right, at the map's right edge between the Arcane Court and the Echo Hunting
+        // Ground, which moved a little down and right for it: the one slot on the echo branch's side where its name,
+        // English or Chinese, keeps off every other name and star at the smallest GUI and its line from phase II
+        // passes no star (ResearchTreeTest).
+        add(
+            RESONANCE_GATE,
+            Branch.ECHO,
+            340,
+            120,
+            new String[] { PHASE_2 },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
+                "item:minecraft:noteblock*16" },
+            0,
+            2);
+        // 0.14.0: the Dual-foil Vault, the third hall (CITY.md §4.2, Appendix B), a phase II node on the depths branch
+        // after phase II, with the phase's EV costs and paper, the ground of the canvases it paints its items into. It
+        // stands on the left, down and left of the depths branch's grit enrichment and over the energy branch, where
+        // its line from phase II keeps well off the stars it passes (the grit enrichment's) and its names keep off
+        // every other at the smallest GUI (ResearchTreeTest).
+        add(
+            DUAL_FOIL_VAULT,
+            Branch.DEPTHS,
+            84,
+            104,
+            new String[] { PHASE_2 },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
+                "item:minecraft:paper*32" },
             0,
             2);
     }

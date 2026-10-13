@@ -179,6 +179,26 @@ class PartRecipesTest {
         assertEquals(8, PartRecipes.get(Parts.fitting(Parts.F_BASIN)).yield);
     }
 
+    /**
+     * The canvas of 0.14.0 (CITY.md §1.4): eight wall panels round a sheet of paper make eight, so a canvas costs a
+     * panel and an eighth of a sheet of paper.
+     */
+    @Test
+    void theCanvasCosts() {
+        PartRecipes.Recipe r = PartRecipes.get(Parts.deck(Parts.D_CANVAS));
+        assertNotNull(r);
+        assertArrayEquals(new String[] { "PPP", "PaP", "PPP" }, r.pattern);
+        assertEquals(8, r.yield);
+        assertEquals(PartRecipes.part(Parts.deck(Parts.D_PANEL)), r.keys.get('P'));
+        assertEquals("item:minecraft:paper", r.keys.get('a'));
+        Map<String, Long> want = new TreeMap<>(PartRecipes.cost(Parts.deck(Parts.D_PANEL)));
+        want.merge("item:minecraft:paper", U / 8, Long::sum);
+        assertEquals(want, PartRecipes.cost(Parts.deck(Parts.D_CANVAS)));
+        assertEquals(
+            map("item:minecraft:stonebrick@32767", 32768, "ore:plateSteel", 4096, "item:minecraft:paper", 8192),
+            PartRecipes.cost(Parts.deck(Parts.D_CANVAS)));
+    }
+
     /** The light-lift pad of 0.12.0: four lit panels, four flux crystals and an ender eye make one. */
     @Test
     void theLiftPadCosts() {

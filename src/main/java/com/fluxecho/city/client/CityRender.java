@@ -32,9 +32,11 @@ import com.fluxecho.city.TileArcaneCourt;
 import com.fluxecho.city.TileBloodCovenant;
 import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileDomeGenerator;
+import com.fluxecho.city.TileDualFoilVault;
 import com.fluxecho.city.TileEcoDome;
 import com.fluxecho.city.TileHuntingGround;
 import com.fluxecho.city.TileManaFountain;
+import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.city.TileRoot;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
@@ -53,7 +55,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link TileCityModule}; a module kind's own visuals come on top ({@link EcoDomeRender}; 0.12.0
  * {@link DomeGeneratorRender}, whose dome is a landmark drawn past the effects' range too, {@link #landmark}, and
  * {@link RootRender}; 0.13.0 the pavilions' {@link ArcaneCourtRender}, {@link BloodCovenantRender},
- * {@link HuntingGroundRender} and {@link ManaFountainRender}).
+ * {@link HuntingGroundRender} and {@link ManaFountainRender}; 0.14.0 the Dual-foil Vault's {@link VaultRender} and
+ * the Resonance Gate's {@link ResonanceGateRender}, whose floating spire is a landmark too).
  * <ul>
  * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
  * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
@@ -66,7 +69,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link #PLATE_RANGE} blocks: its name in its colour and, under it, its state.</li>
  * <li>Near it (the camera inside or within {@link #NEAR} blocks of its box): the sample each socket keeps, floating in
  * the socket's lit recess on every side that is open, with a soft glow behind it; the nearest {@link #ITEMS} within
- * {@link #NEAR} blocks of the camera.</li>
+ * {@link #NEAR} blocks of the camera. And (0.14.0) the item each unit made of canvas holds, painted large on its
+ * canvas, or a faint grid on an empty one ({@link CanvasRender}), under the same rule.</li>
  * </ul>
  * Budgets (CITY.md §1.3, quads a frame for one module): the course line one core quad a face beyond {@link #NEAR}
  * (125 faces for the Eco Dome) and a halo of two more near; the plate about 15 and one a letter; socket items one
@@ -101,9 +105,9 @@ public final class CityRender {
         RECESS_MID = ModuleLook.PICTURE_MID;
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
-    static final int COURSE = 0, SWEEP = 1, PLATE = 2, SOCKETS = 3, OWN = 4, ALL = 5;
+    static final int COURSE = 0, SWEEP = 1, PLATE = 2, SOCKETS = 3, OWN = 4, CANVAS = 5, ALL = 6;
     private static final String[] NAMES = { "plinth light", "forming sweep", "name plate", "socket items",
-        "module visuals", "drawing" };
+        "module visuals", "canvas paintings", "drawing" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     /** Whether a part opened the world state itself (and it must be ended). */
@@ -160,6 +164,8 @@ public final class CityRender {
                 // the Dome Generator's sweep runs up its legs and through its pod rather than through its whole box
                 if (m instanceof TileDomeGenerator g) DomeGeneratorRender.sweep(g, sweep, (1 - appear) * fade);
                 else sweep(m, sweep, (1 - appear) * fade);
+                // the Dual-foil Vault's facade is washed parchment-white as the sweep rises past it (0.14.0)
+                if (m instanceof TileDualFoilVault v) VaultRender.sweep(v, sweep, (1 - appear) * fade);
             } catch (Throwable x) {
                 recover();
                 fail(SWEEP, x);
@@ -185,6 +191,9 @@ public final class CityRender {
                     BloodCovenantRender.draw(bc, f, t, fade * appear, cam, tier);
                 else if (m instanceof TileHuntingGround hg) HuntingGroundRender.draw(hg, f, t, fade * appear, tier);
                 else if (m instanceof TileManaFountain mf) ManaFountainRender.draw(mf, f, t, fade * appear, tier);
+                else if (m instanceof TileDualFoilVault v) VaultRender.draw(v, f, t, fade * appear, tier);
+                else if (m instanceof TileResonanceGate rg)
+                    ResonanceGateRender.draw(rg, f, t, fade * appear, cam, tier, appear);
             } catch (Throwable x) {
                 recover();
                 fail(OWN, x);
@@ -199,6 +208,14 @@ public final class CityRender {
             } finally {
                 close();
             }
+            if (nearby && !OFF[CANVAS]) try {
+                CanvasRender.draw(m, f, fade * appear, cam);
+            } catch (Throwable x) {
+                recover();
+                fail(CANVAS, x);
+            } finally {
+                close();
+            }
         } catch (Throwable x) {
             recover();
             close();
@@ -208,13 +225,14 @@ public final class CityRender {
 
     /**
      * What a city module shows past the range the rest of it is drawn in (0.12.0): its landmark, if it has one (the
-     * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"); nothing for the others. Called by the nexus's
-     * renderer for a module beyond its effects' range.
+     * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"; 0.14.0 the Resonance Gate's floating spire);
+     * nothing for the others. Called by the nexus's renderer for a module beyond its effects' range.
      */
     public static void landmark(TileCityModule m, double t) {
         if (OFF[ALL] || OFF[OWN]) return;
         try {
             if (m instanceof TileDomeGenerator g) DomeGeneratorRender.landmark(g, t);
+            else if (m instanceof TileResonanceGate rg) ResonanceGateRender.landmark(rg, t);
         } catch (Throwable x) {
             recover();
             fail(OWN, x);

@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -161,8 +162,8 @@ class PreviewSitesTest {
     /**
      * The preview's heaviest tier at each phase stays within its budget with the modules of this version standing: the
      * nexus's phase, the Archive, the Eco Dome, the dome generator (moored, or floating from phase IV), the Tidal Well
-     * and, from phase II, all four pavilions (more than phase II's room lets stand, so the bound holds from phase III
-     * on, when all four do).
+     * and, from phase II, all four pavilions and (0.14.0) the gatehouse and the Dual-foil Vault (more than phase II's
+     * room lets stand, so the bound holds from phase III on, when all of them do).
      */
     @Test
     void thePreviewStaysWithinItsBudget() {
@@ -185,9 +186,26 @@ class PreviewSitesTest {
                 + HuntingGroundShape.BLUEPRINT.cells()
                     .size()
                 + ManaFountainShape.BLUEPRINT.cells()
+                    .size()
+                // 0.14.0: the gatehouse on the gate and the Dual-foil Vault on a hall
+                + ResonanceGateShape.BLUEPRINT.cells()
+                    .size()
+                + DualFoilVaultShape.BLUEPRINT.cells()
                     .size();
             assertTrue(cells <= PREVIEW_BUDGET, "phase " + phase + ": " + cells + " cells");
         }
+        assertEquals(
+            2370 + 136,
+            ResonanceGateShape.BLUEPRINT.cells()
+                .size(),
+            "the gate's checked cells and its door air");
+        assertArrayEquals(new int[] { 0 }, ResonanceGateShape.SITES, "the gate stands on site 0 alone");
+        assertEquals(
+            4644 + 48,
+            DualFoilVaultShape.BLUEPRINT.cells()
+                .size(),
+            "the vault's checked cells and its door air");
+        assertArrayEquals(VAULT, DualFoilVaultShape.SITES, "the vault prefers 6, then 2, then 4");
         assertEquals(
             2058 + 160,
             ArcaneCourtShape.BLUEPRINT.cells()

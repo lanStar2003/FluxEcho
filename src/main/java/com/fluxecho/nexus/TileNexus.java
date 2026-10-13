@@ -697,10 +697,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
      * module is found, in this order of precedence, (1) on the site the campus recorded for it, (2) standing on a site
      * of an active campus (a hall: its centre within 3 blocks of where the site puts a module of its kind, at most one
      * block up or down, its front towards the nexus; a pavilion, 0.13.0: the same round its diagonal's octagon centre,
-     * its front along A toward the nexus; an axis module, 0.12.0: its controller exactly where its site puts it, facing
-     * that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2 inner ring. A module on
-     * a site docks under the site's number, which points the same way as the ring slot of that number; the axis sites
-     * (8 the zenith, 9 the root) take no room on the ring. Docked and rejected modules get a lease of 220 ticks.
+     * its front along A toward the nexus; an axis module, 0.12.0, and the gatehouse, 0.14.0: its controller exactly
+     * where its site puts it, facing that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2
+     * inner ring. A module on a site docks under the site's number, which points the same way as the ring slot of that
+     * number; the axis sites (8 the zenith, 9 the root) take no room on the ring, the gate (site 0) does. Docked and
+     * rejected modules get a lease of 220 ticks.
      */
     void refreshDock(long now) {
         int[] c = centre();
@@ -774,14 +775,15 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     /**
      * The site of an active campus a module stands on, or -1: a hall site ({@link #hallSite}), a pavilion site
-     * ({@link #pavilionSite}, 0.13.0), or for a module on the nexus's axis (0.12.0) a site of its spec whose controller
-     * cell and front are exactly the module's.
+     * ({@link #pavilionSite}, 0.13.0), or for a module on the nexus's axis (0.12.0) or the gatehouse on the gate
+     * (0.14.0: its kiosk lies within the 0.9.2 ring's slot 0, so only its exact controller tells it from a module on
+     * that slot) a site of its spec whose controller cell and front are exactly the module's.
      */
     private static int campusSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
         ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
         if (spec == null) return -1;
         if (spec.family == SiteFamily.PAVILION) return pavilionSite(m, mc, c, fx, fz);
-        if (!spec.axis()) return hallSite(m, mc, c, fx, fz);
+        if (!spec.axis() && spec.family != SiteFamily.GATE) return hallSite(m, mc, c, fx, fz);
         for (int site : spec.sites) {
             int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
             if (at != null && at.length > 3

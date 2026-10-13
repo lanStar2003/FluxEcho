@@ -308,12 +308,19 @@ public class TerminalScreen extends ControlCenterScreen {
             card(c, x, ry, w, ROW - 2);
             c.circle(x + 8, ry + 8, 3, 0xFF000000 | m.getInteger("c"));
             int slot = m.getInteger("slot");
-            // a ring module by its slot, an axis module by its site's name (天顶, 根位)
-            String where = SiteFamily.axisSite(slot) ? tr("fluxecho." + SiteFamily.labelKey(slot))
+            // a ring module by its slot, an axis module and the gatehouse (0.14.0) by its site's name (天顶, 根位, 大门)
+            String where = SiteFamily.axisSite(slot) || gatehouse(m.getString("k"))
+                ? tr("fluxecho." + SiteFamily.labelKey(slot))
                 : tr("fluxlite.gui.term.slot", slot + 1);
             text(c, where + "  " + tr("fluxecho.module." + m.getString("k")), x + 16, ry + 4, Theme.LABEL);
             textRight(c, tr("fluxecho.dock." + m.getString("dock")), x + w - 8, ry + 4, Theme.LABEL2);
         }
+    }
+
+    /** Whether a module kind is a gatehouse (0.14.0): its campus spec stands on the gate. */
+    private static boolean gatehouse(String module) {
+        com.fluxecho.campus.ModuleSpec spec = com.fluxecho.campus.ModuleSpecs.get(module);
+        return spec != null && spec.family == SiteFamily.GATE;
     }
 
     /**

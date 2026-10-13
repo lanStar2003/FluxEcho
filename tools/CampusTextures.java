@@ -6,8 +6,8 @@ import javax.imageio.ImageIO;
  * Draws the textures of the campus builder (0.10.0): the deck tiles the nexus paves its campus and builds its facades
  * with, the fittings a shelf unit and a library interior are assembled from, three extras for the shelf-unit look of
  * the frame's echo shelf (the recessed compartment's back panel, its boards and a book spine to tint), the supply
- * port's faces, (0.10.1) the recycle bin's, (0.11.0) the city's sample socket and basin rim, and (0.12.0) the
- * light-lift pad. Run from the repository root: {@code java tools/CampusTextures.java}.
+ * port's faces, (0.10.1) the recycle bin's, (0.11.0) the city's sample socket and basin rim, (0.12.0) the light-lift
+ * pad, and (0.14.0) the canvas. Run from the repository root: {@code java tools/CampusTextures.java}.
  * <p>
  * The palette is the dark tech of the nexus: navy steel, blue-grey tiles, and light only in thin cyan lines. Every tile
  * that is laid side by side (floor, wall panels, bands, unit plinths and crowns) tiles seamlessly, and its light lines
@@ -29,7 +29,7 @@ public class CampusTextures {
     static final int FRAMES = 8;
 
     static final String[] DECK_NAMES = { "deck", "trim", "lit", "grate", "dark", "skirt", "chevron", "well", "panel",
-        "panel_lit", "panel_dark", "cornice" };
+        "panel_lit", "panel_dark", "cornice", "canvas" };
     static final String[] FITTING_NAMES = { "post", "plinth", "crown", "rail", "tread", "glaze", "pedestal", "socket",
         "basin", "lift" };
 
@@ -42,10 +42,11 @@ public class CampusTextures {
     public static void main(String[] args) throws Exception {
         Px[] deck = { CampusTextures::deck, CampusTextures::trim, CampusTextures::lit, CampusTextures::grate,
             CampusTextures::dark, CampusTextures::skirt, CampusTextures::chevron, CampusTextures::well,
-            CampusTextures::panel, CampusTextures::panelLit, CampusTextures::panelDark, CampusTextures::cornice };
+            CampusTextures::panel, CampusTextures::panelLit, CampusTextures::panelDark, CampusTextures::cornice,
+            CampusTextures::canvas };
         Px[] deckGlow = { null, null, CampusTextures::litGlow, null, null, CampusTextures::skirtGlow,
             CampusTextures::chevronGlow, CampusTextures::wellGlow, null, CampusTextures::panelLitGlow,
-            CampusTextures::panelDarkGlow, CampusTextures::corniceGlow };
+            CampusTextures::panelDarkGlow, CampusTextures::corniceGlow, null };
         for (int i = 0; i < DECK_NAMES.length; i++) {
             still("blocks/deck/" + DECK_NAMES[i], deck[i]);
             if (deckGlow[i] != null) anim("blocks/deck/" + DECK_NAMES[i] + "_glow", deckGlow[i]);
@@ -313,6 +314,21 @@ public class CampusTextures {
     static int corniceGlow(int x, int y, int f) {
         if (y != 9 && y != 10) return 0;
         return line(y == 9 ? LIT : mix(LIT, CYAN, 0.35), swell(x / 16.0, f), 0.5);
+    }
+
+    /**
+     * The canvas (0.14.0): dark woven navy, two-pixel threads of warp and weft taking turns over each other, under a
+     * faint cyan grid every half block, the painter's squaring. It gives no light, and the weave and the grid run on
+     * unbroken from block to block, so a wall of canvas reads as one cloth a unit's painting is drawn on.
+     */
+    static int canvas(int x, int y, int f) {
+        boolean warp = ((x >> 1) + (y >> 1)) % 2 == 0;
+        int c = warp ? 0x1B2A3E : 0x16223A;
+        // a thread's far edge a shade darker, so the weave reads at a glance
+        if (warp ? (x & 1) == 1 : (y & 1) == 1) c = mix(c, 0x000000, 0.18);
+        c = grain(c, x, y, 29, 0.03);
+        if (x % 8 == 0 || y % 8 == 0) c = mix(c, CYAN, 0.16);
+        return c;
     }
 
     // ---- fittings

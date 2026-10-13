@@ -17,7 +17,8 @@ import java.util.TreeSet;
  * A unit's sockets (fitting SOCKET, {@code o}) are the cells its slots are shown in, one slot a socket in the order the
  * generator lists its cells; a unit with fewer sockets than slots shows the rest nowhere in particular (a canvas
  * shows its one slot over its whole field). The storeys are the distinct floors the units stand on (the y of each
- * unit's lowest cell), which the module window's plan draws one at a time.
+ * unit's lowest cell, or for a unit hung on a wall over the floor it is used from, that floor: 0.14.0, the Dual-foil
+ * Vault's foil), which the module window's plan draws one at a time.
  * <p>
  * Pure data in the module's local frame ({@link ShapeKit}): x across, y up, z from the front.
  */
@@ -38,10 +39,15 @@ public final class UnitLayout {
         public final int slots, firstSlot;
         /** The direction {fx, fz} its face looks (local frame), or null for a unit used from any side. */
         public final int[] face;
-        /** The y of its lowest cell: the floor it stands on. */
+        /**
+         * The floor it stands on, the storey of the window's plan it shows on: the y of its lowest cell, {@link #base},
+         * or (0.14.0) for a unit hung on a wall over the floor it is used from, that floor.
+         */
         public final int floor;
+        /** The y of its lowest cell (0.14.0; its {@link #floor} but for a unit hung over the floor it is used from). */
+        public final int base;
 
-        Unit(int index, ShapeKit.Unit u, List<int[]> sockets, int firstSlot) {
+        Unit(int index, ShapeKit.Unit u, List<int[]> sockets, int firstSlot, Integer usedFrom) {
             this.index = index;
             name = u.name;
             kind = u.kind;
@@ -52,7 +58,8 @@ public final class UnitLayout {
             face = u.face;
             int lo = Integer.MAX_VALUE;
             for (int[] c : cells) lo = Math.min(lo, c[1]);
-            floor = lo;
+            base = lo;
+            floor = usedFrom == null ? lo : usedFrom;
         }
 
         /** The local footprint {x0, z0, x1, z1} (inclusive) of its cells. */
@@ -80,6 +87,18 @@ public final class UnitLayout {
      * @throws IllegalStateException when a cell belongs to two units or a unit has more sockets than slots
      */
     public UnitLayout(ShapeKit.Shape shape) {
+        this(shape, Collections.<String, Integer>emptyMap());
+    }
+
+    /**
+     * The units of a shape whose units named in {@code usedFrom} hang on a wall over the floor they are used from
+     * (0.14.0: the Dual-foil Vault's foil, its lowest cells over its frame two above the nave's floor): each of those
+     * stands on that floor's storey, not on a storey of its own at its lowest cell.
+     *
+     * @throws IllegalStateException    when a cell belongs to two units or a unit has more sockets than slots
+     * @throws IllegalArgumentException when a named unit is not the shape's or its floor lies above its lowest cell
+     */
+    public UnitLayout(ShapeKit.Shape shape, Map<String, Integer> usedFrom) {
         List<Unit> out = new ArrayList<>();
         int slot = 0;
         TreeSet<Integer> floors = new TreeSet<>();
@@ -98,10 +117,17 @@ public final class UnitLayout {
                 int[] c = sockets.get(i);
                 socketSlot.put(ShapeKit.Shape.pos(c[0], c[1], c[2]), slot + i);
             }
-            Unit unit = new Unit(index, u, sockets, slot);
+            Unit unit = new Unit(index, u, sockets, slot, usedFrom.get(u.name));
+            if (unit.floor > unit.base) throw new IllegalArgumentException(
+                shape.name + " unit " + u.name + ": used from " + unit.floor + ", over its lowest cell");
             out.add(unit);
             floors.add(unit.floor);
             slot += u.slots;
+        }
+        for (String name : usedFrom.keySet()) {
+            boolean known = false;
+            for (Unit u : out) known |= u.name.equals(name);
+            if (!known) throw new IllegalArgumentException(shape.name + " has no unit " + name);
         }
         units = Collections.unmodifiableList(out);
         slots = slot;
@@ -158,7 +184,7 @@ public final class UnitLayout {
             .clone() : null;
     }
 
-    /** The floors the units stand on (the y of each unit's lowest cell), lowest first: the plan's storeys. */
+    /** The floors the units stand on ({@link Unit#floor}), lowest first: the plan's storeys. */
     public int[] storeys() {
         return storeys.clone();
     }

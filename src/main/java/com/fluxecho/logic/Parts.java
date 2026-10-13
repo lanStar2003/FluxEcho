@@ -9,7 +9,7 @@ package com.fluxecho.logic;
  * The codes are saved (the ledger's parts, flights in the air) and sent ({@code BUILD_FX}, one byte a code): a code
  * is only ever appended, never renumbered or reused. 0.11.0 appends the frame's cladding anchor (9), the fittings'
  * socket (39) and basin rim (40), water (53) and the module cores of {@code fluxecho:module_core} (64 + meta); 0.12.0
- * the fittings' light-lift pad (41).
+ * the fittings' light-lift pad (41); 0.14.0 the deck's canvas (28), the wall a module's units paint their items on.
  */
 public final class Parts {
 
@@ -31,12 +31,13 @@ public final class Parts {
     public static final int FR_BASE = 0, FR_BASE_LIT = 1, FR_PILLAR = 2, FR_CONDUIT = 3, FR_RING = 4, FR_SEAT = 5,
         FR_FOUNDATION = 6, FR_SHELF = 7, FR_CONSOLE = 8, FR_ANCHOR = 9;
 
-    // deck metas
+    // deck metas (0.14.0 appends the canvas, CITY.md §1.4: a panel whose faces are dark woven navy with a faint cyan
+    // grid, giving no light; a unit's painting is drawn on its field)
     public static final int D_DECK = 0, D_TRIM = 1, D_LIT = 2, D_GRATE = 3, D_DARK = 4, D_SKIRT = 5, D_CHEVRON = 6,
-        D_WELL = 7, D_PANEL = 8, D_PANEL_LIT = 9, D_PANEL_DARK = 10, D_CORNICE = 11, DECK_TYPES = 12;
+        D_WELL = 7, D_PANEL = 8, D_PANEL_LIT = 9, D_PANEL_DARK = 10, D_CORNICE = 11, D_CANVAS = 12, DECK_TYPES = 13;
     public static final String[] DECK_NAMES = { "deck", "trim", "lit", "grate", "dark", "skirt", "chevron", "well",
-        "panel", "panel_lit", "panel_dark", "cornice" };
-    public static final int[] DECK_LIGHT = { 0, 0, 9, 0, 0, 6, 7, 12, 0, 8, 4, 10 };
+        "panel", "panel_lit", "panel_dark", "cornice", "canvas" };
+    public static final int[] DECK_LIGHT = { 0, 0, 9, 0, 0, 6, 7, 12, 0, 8, 4, 10, 0 };
 
     // fitting metas
     public static final int F_POST = 0, F_PLINTH = 1, F_CROWN = 2, F_RAIL = 3, F_TREAD = 4, F_GLAZE = 5, F_PEDESTAL = 6,

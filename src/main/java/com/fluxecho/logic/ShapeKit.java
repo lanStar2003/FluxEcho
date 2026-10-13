@@ -38,11 +38,14 @@ public final class ShapeKit {
 
     /**
      * Soft cells: built, never checked. Deck, grass, water, dirt, lit and trim tiles, ramp blocks, treads, rails, and
-     * a gate niche's dark course, lit panel and glass ({@code [ ! /}).
+     * a gate niche's dark course, lit panel, glass and (0.14.0) canvas ({@code [ ! / $}).
      */
-    public static final String SOFT = ".,=;+_{}|[!/";
-    /** The wall characters a gate niche keeps, and their soft twins (the same parts), in the same order. */
-    static final String NICHE_WALL = "wLGW", NICHE_TWIN = "[!/{";
+    public static final String SOFT = ".,=;+_{}|[!/$";
+    /**
+     * The wall characters a gate niche keeps, and their soft twins (the same parts), in the same order. 0.14.0 adds the
+     * canvas ({@code Q} → {@code $}): the Dual-foil Vault's niche lies in its foil (CITY.md §4.15).
+     */
+    static final String NICHE_WALL = "wLGWQ", NICHE_TWIN = "[!/{$";
     /** A body can stand inside these: nothing, must-be-air, water. */
     static final String PASSABLE = " -=";
     /** Lower half slabs: one stands on them at {@code y + 0.5}. */
@@ -73,11 +76,13 @@ public final class ShapeKit {
 
     /**
      * The checked character that places the same part as a soft one ({@code .} deck, {@code +} lit and {@code _} trim
-     * tiles, the ramp's {@code { } |}, a gate niche's {@code [ ! /}); any other character itself (grass, dirt and water
-     * have no checked twin). What a block looks like, whether the structure checks it or not.
+     * tiles, the ramp's {@code { } |}, a gate niche's {@code [ ! / $}); any other character itself (grass, dirt and
+     * water have no checked twin). What a block looks like, whether the structure checks it or not.
      */
     public static char checkedTwin(char ch) {
         switch (ch) {
+            case '$':
+                return 'Q';
             case '.':
                 return 'd';
             case '+':
@@ -102,10 +107,10 @@ public final class ShapeKit {
     }
 
     /**
-     * The {@link Parts} code a legend character stands for (CITY.md Appendix A): frame, deck and fitting parts, the
-     * soft floor parts (deck, lit and trim tiles, grass, dirt, water, a panel as a ramp block, a tread, a rail), a
-     * gate niche's soft dark course, lit panel and glass, {@link Parts#AIR} for {@code -}; -1 for the controller (whose
-     * part is the module's core) and for a space.
+     * The {@link Parts} code a legend character stands for (CITY.md Appendix A): frame, deck and fitting parts (0.14.0:
+     * the canvas {@code Q}), the soft floor parts (deck, lit and trim tiles, grass, dirt, water, a panel as a ramp
+     * block, a tread, a rail), a gate niche's soft dark course, lit panel, glass and canvas, {@link Parts#AIR} for
+     * {@code -}; -1 for the controller (whose part is the module's core) and for a space.
      *
      * @throws IllegalArgumentException for a character the legend does not have
      */
@@ -157,6 +162,9 @@ public final class ShapeKit {
                 return Parts.deck(Parts.D_PANEL_DARK);
             case 'n':
                 return Parts.deck(Parts.D_CORNICE);
+            case 'Q':
+            case '$':
+                return Parts.deck(Parts.D_CANVAS);
             case 'q':
                 return Parts.fitting(Parts.F_POST);
             case 'p':
@@ -674,8 +682,9 @@ public final class ShapeKit {
 
         /**
          * Reserves the gate niche (内境门位, CITY.md §4.15) {@code x0..x1} by {@code y0..y1} in the wall at {@code z}:
-         * every cell keeps its block as the soft twin of its wall character ({@code w L G W} become {@code [ ! / {}),
-         * so it is built but never checked, and a later release can open the niche without changing the checked shape.
+         * every cell keeps its block as the soft twin of its wall character ({@code w L G W Q} become
+         * {@code [ ! / { $}), so it is built but never checked, and a later release can open the niche without
+         * changing the checked shape.
          *
          * @throws IllegalArgumentException when a cell is not one of those wall characters
          */

@@ -12,7 +12,7 @@ import com.fluxecho.logic.SiteFamily;
 /**
  * A kind of module the campus builder can raise for a nexus: what research opens it, which family of sites it stands on
  * ({@link SiteFamily}: the halls for the Echo Archive and the Eco Dome, the zenith for the Echo Dome Generator, the
- * diagonals for the pavilions since 0.13.0), how
+ * diagonals for the pavilions since 0.13.0, the gate for the gatehouse since 0.14.0), how
  * large it is, which of the family's sites it prefers, the part its controller is placed as, its colour, and how its
  * build plan and controller position follow from a site. The builder creates a module job for a spec once a nexus's
  * teams have its research (see {@link Campus#tick}); everything else about the module (its tile, its shape) belongs to
@@ -162,10 +162,10 @@ public final class ModuleSpec {
     /**
      * Why a campus whose base layer is {@code y0} has no room for it (a lang key under {@code fluxecho.}), or null when
      * it fits. An axis module asks its {@link Envelope}. A module on the ground (a hall, a pavilion) stands on the
-     * campus's base layer, so it fits while its shape's top cell, {@code y0 + height - 1}, stays inside the world
-     * ({@code build.module.why.height} above y 255): every hall, and every pavilion but the Arcane Court (33 high, so
-     * a base at y 223 at most, 0.13.0), fits every base a nexus core may be placed at; the clear box over the shape
-     * needs no room, as the builder leaves the cells above the world alone.
+     * campus's base layer (a gatehouse too, 0.14.0: 18 high), so it fits while its shape's top cell,
+     * {@code y0 + height - 1}, stays inside the world ({@code build.module.why.height} above y 255): every hall, and
+     * every pavilion but the Arcane Court (33 high, so a base at y 223 at most, 0.13.0), fits every base a nexus core
+     * may be placed at; the clear box over the shape needs no room, as the builder never touches cells over the world.
      */
     public String noRoom(int y0) {
         if (envelope != null) return envelope.noRoom(y0);
@@ -177,12 +177,16 @@ public final class ModuleSpec {
 
     /**
      * The keep-out boxes the campus jobs leave alone once the module stands on the site: a hall's whole
-     * {@link #siteBox} as whole columns {x0, z0, x1, z1}, a pavilion's apron and allee row by row (0.13.0), an axis
-     * module's own boxes ({@link Envelope#keepOut}, which may be height-ranged {x0, z0, x1, z1, yFrom, yTo}).
+     * {@link #siteBox} as whole columns {x0, z0, x1, z1}, a pavilion's apron and allee row by row (0.13.0), the
+     * gatehouse's worked columns from the lowest height it works them (0.14.0, {@link BuildPlan#gateKeepOut}: the
+     * passage under its bridge height-ranged, so the gate road and its pylons stay the nexus's), an axis module's own
+     * boxes ({@link Envelope#keepOut}, which may be height-ranged {x0, z0, x1, z1, yFrom, yTo}).
      */
     public List<int[]> keepOut(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.keepOut(site, cx, y0, cz, fx, fz);
         if (family == SiteFamily.PAVILION) return pavilionBoxes(site, cx, cz, fx, fz);
+        if (family == SiteFamily.GATE)
+            return BuildPlan.gateKeepOut(plan(plan, site, cx, y0, cz, fx, fz), cx, y0, cz, fx, fz);
         return Collections.singletonList(siteBox(plan, site, cx, y0, cz, fx, fz));
     }
 
@@ -206,7 +210,8 @@ public final class ModuleSpec {
     /**
      * The boxes {x0, y0, z0, x1, y1, z1} in which nothing but the module's own jobs takes a block down once it stands
      * on the site: a hall's {@link #siteBox} from bedrock to the sky, a pavilion's keep-out boxes from bedrock to the
-     * sky (0.13.0), an axis module's own space ({@link Envelope#protect}).
+     * sky (0.13.0), the gatehouse's keep-out boxes over their heights (0.14.0, {@link BuildPlan#gateProtect}), an axis
+     * module's own space ({@link Envelope#protect}).
      */
     public List<int[]> protect(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.protect(site, cx, y0, cz, fx, fz);
@@ -215,6 +220,7 @@ public final class ModuleSpec {
             for (int[] b : pavilionBoxes(site, cx, cz, fx, fz)) out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
             return out;
         }
+        if (family == SiteFamily.GATE) return BuildPlan.gateProtect(keepOut(plan, site, cx, y0, cz, fx, fz));
         int[] b = siteBox(plan, site, cx, y0, cz, fx, fz);
         return Collections.singletonList(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
     }
@@ -262,7 +268,7 @@ public final class ModuleSpec {
     /**
      * The world box {x0, z0, x1, z1} (inclusive) its footprint takes on the site, with {@code margin} cells round it,
      * for a nexus centred at {@code (cx, cz)} facing {@code (fx, fz)}: a hall's {@code width x depth} from its front
-     * row, a pavilion's octagon round its centre.
+     * row, a pavilion's octagon round its centre, the gatehouse's envelope across the gate road (0.14.0).
      *
      * @throws UnsupportedOperationException for a family this version does not build on
      */
@@ -273,6 +279,13 @@ public final class ModuleSpec {
             int half = CampusPlan.DIAGONAL_SIZE / 2 + margin;
             int[] a = CampusPlan.toWorld(c[0] - half, c[1] - half, fx, fz),
                 b = CampusPlan.toWorld(c[0] + half, c[1] + half, fx, fz);
+            return new int[] { cx + Math.min(a[0], b[0]), cz + Math.min(a[1], b[1]), cx + Math.max(a[0], b[0]),
+                cz + Math.max(a[1], b[1]) };
+        }
+        if (family == SiteFamily.GATE) {
+            int a0 = CampusPlan.GATEHOUSE_FROM - margin, a1 = CampusPlan.GATEHOUSE_TO + margin;
+            int r = CampusPlan.GATEHOUSE_HALF + margin;
+            int[] a = CampusPlan.toWorld(a0, -r, fx, fz), b = CampusPlan.toWorld(a1, r, fx, fz);
             return new int[] { cx + Math.min(a[0], b[0]), cz + Math.min(a[1], b[1]), cx + Math.max(a[0], b[0]),
                 cz + Math.max(a[1], b[1]) };
         }

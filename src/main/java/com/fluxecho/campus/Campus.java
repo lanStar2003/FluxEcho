@@ -476,11 +476,12 @@ public final class Campus {
             if (site < 0) continue;
             enqueue(BuildJob.module(spec, site));
             if (!spec.axis()) busy++;
+            // the site as every window names it (0.14.0): "4 号位" by number, but 大门, 天顶, 根位 by name
             tell(
                 new ChatComponentTranslation(
                     P + "unlocked",
                     new ChatComponentTranslation("fluxecho.module." + spec.key),
-                    String.valueOf(site)));
+                    new ChatComponentTranslation("fluxecho." + SiteFamily.labelKey(site), String.valueOf(site))));
         }
     }
 
@@ -665,11 +666,24 @@ public final class Campus {
          * has not loaded is then the pavilion, not a 0.9.2 module on the old inner ring.
          */
         public static boolean pavilionBuilt(List<ModuleState> modules, int site) {
-            if (modules == null || SiteFamily.of(site) != SiteFamily.PAVILION) return false;
+            return builtOf(modules, site, SiteFamily.PAVILION);
+        }
+
+        /**
+         * Whether the list records the gatehouse built on the gate (0.14.0): a {@link ModuleStatus#BUILT} state on
+         * site 0 whose module is of the gate family ({@link SiteFamily#GATE}). A module docked on site 0 that the
+         * client has not loaded is then the gatehouse, not a 0.9.2 module on the old inner ring's slot 0.
+         */
+        public static boolean gateBuilt(List<ModuleState> modules, int site) {
+            return builtOf(modules, site, SiteFamily.GATE);
+        }
+
+        private static boolean builtOf(List<ModuleState> modules, int site, SiteFamily family) {
+            if (modules == null || SiteFamily.of(site) != family) return false;
             for (ModuleState m : modules) {
                 if (m.status != ModuleStatus.BUILT || m.site != site) continue;
                 ModuleSpec spec = ModuleSpecs.get(m.key);
-                if (spec != null && spec.family == SiteFamily.PAVILION) return true;
+                if (spec != null && spec.family == family) return true;
             }
             return false;
         }
@@ -955,12 +969,31 @@ public final class Campus {
         return out;
     }
 
-    /** Whether the multiblock is the module recorded on an axis site (0.12.0). */
-    private boolean onAxisSite(TileMultiblock m) {
+    /**
+     * Whether the multiblock is the module recorded on an axis site (0.12.0) or on the gate (0.14.0): a module whose
+     * box takes in what stays the nexus's (the zenith's the nexus's whole column, the gatehouse's the gate road and the
+     * establish pylons in its open passage), so its site's own boxes say what it takes instead.
+     */
+    private boolean onBoxedSite(TileMultiblock m) {
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
             int[] s = e.getValue();
-            if (SiteFamily.axisSite(e.getKey()) && s[0] == m.xCoord && s[1] == m.yCoord && s[2] == m.zCoord)
-                return true;
+            if (boxedSite(e.getKey()) && s[0] == m.xCoord && s[1] == m.yCoord && s[2] == m.zCoord) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether the module on a site is kept off by its site's own boxes alone, not by its multiblock's whole bounds: the
+     * axis sites (0.12.0) and the gate (0.14.0), whose bounds take in what stays the nexus's.
+     */
+    static boolean boxedSite(int site) {
+        return SiteFamily.axisSite(site) || SiteFamily.of(site) == SiteFamily.GATE;
+    }
+
+    /** Whether the cell lies in one of the boxes {x0, y0, z0, x1, y1, z1}. */
+    static boolean inBoxes(List<int[]> boxes, int x, int y, int z) {
+        for (int[] b : boxes) {
+            if (x >= b[0] && x <= b[3] && y >= b[1] && y <= b[4] && z >= b[2] && z <= b[5]) return true;
         }
         return false;
     }
@@ -1133,10 +1166,7 @@ public final class Campus {
             protectedAt = now;
             protectedBoxes = protectedBoxes();
         }
-        for (int[] b : protectedBoxes) {
-            if (x >= b[0] && x <= b[3] && y >= b[1] && y <= b[4] && z >= b[2] && z <= b[5]) return true;
-        }
-        return false;
+        return inBoxes(protectedBoxes, x, y, z);
     }
 
     private List<int[]> protectedBoxes() {
@@ -1154,8 +1184,9 @@ public final class Campus {
             if (m == nexus) continue;
             if (own != null && m.xCoord == own[0] && m.yCoord == own[1] && m.zCoord == own[2]) continue;
             // the zenith's bounds take in the nexus's whole column from its legs to its pod: its own boxes above say
-            // what it takes, so the nexus can still grow and be repaired under it (0.12.0)
-            if (onAxisSite(m)) continue;
+            // what it takes, so the nexus can still grow and be repaired under it (0.12.0); the gatehouse's take in
+            // the gate road and the pylons under its bridge, which its boxes leave to the nexus's jobs (0.14.0)
+            if (onBoxedSite(m)) continue;
             int[] b = m.bounds();
             if (b != null) out.add(b.clone());
             else if (m instanceof TileModule tm) {
@@ -2296,6 +2327,11 @@ public final class Campus {
         /** Whether the campus records a pavilion built on the site (0.13.0, {@link ModuleState#pavilionBuilt}). */
         public boolean pavilionBuilt(int site) {
             return ModuleState.pavilionBuilt(modules, site);
+        }
+
+        /** Whether the campus records the gatehouse built on the gate (0.14.0, {@link ModuleState#gateBuilt}). */
+        public boolean gateBuilt(int site) {
+            return ModuleState.gateBuilt(modules, site);
         }
 
         public BuildState.State stateEnum() {

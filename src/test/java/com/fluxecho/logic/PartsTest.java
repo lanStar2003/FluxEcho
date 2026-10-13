@@ -60,6 +60,28 @@ class PartsTest {
         assertFalse(Parts.euOnly(41));
     }
 
+    /**
+     * 0.14.0 appends the canvas: deck meta 12, code 28, no light (CITY.md §1.4), the wall a module's unit paints its
+     * item on; the deck family still ends before the fittings' codes.
+     */
+    @Test
+    void theCodesOf014() {
+        assertEquals(12, Parts.D_CANVAS);
+        assertEquals(28, Parts.deck(Parts.D_CANVAS));
+        assertEquals(13, Parts.DECK_TYPES);
+        assertEquals(Parts.DECK_TYPES, Parts.DECK_NAMES.length);
+        assertEquals(Parts.DECK_TYPES, Parts.DECK_LIGHT.length);
+        assertEquals("canvas", Parts.DECK_NAMES[Parts.D_CANVAS]);
+        assertEquals(0, Parts.DECK_LIGHT[Parts.D_CANVAS]);
+        assertTrue(Parts.isDeck(28));
+        assertEquals(Parts.D_CANVAS, Parts.meta(28));
+        assertFalse(Parts.euOnly(28));
+        assertTrue(Parts.deck(Parts.DECK_TYPES - 1) < Parts.fitting(0), "the deck's codes end before the fittings'");
+        // the eleven deck metas before it keep their codes
+        assertEquals(27, Parts.deck(Parts.D_CORNICE));
+        assertEquals("cornice", Parts.DECK_NAMES[Parts.D_CORNICE]);
+    }
+
     @Test
     void familiesAndMetas() {
         Set<Integer> seen = new HashSet<>();
@@ -125,11 +147,23 @@ class PartsTest {
         assertEquals(67, Parts.moduleCore(ModuleCores.BLOOD_COVENANT));
         assertEquals(68, Parts.moduleCore(ModuleCores.HUNTING_GROUND));
         assertEquals(69, Parts.moduleCore(ModuleCores.MANA_FOUNTAIN));
+        // 0.14.0: the gate's Resonance Gate, meta 6, code 70
+        assertEquals(6, ModuleCores.RESONANCE_GATE);
+        assertEquals("resonance_gate", ModuleCores.key(ModuleCores.RESONANCE_GATE));
+        assertEquals(ModuleCores.RESONANCE_GATE, ModuleCores.meta(ResonanceGateShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.RESONANCE_GATE));
+        assertEquals(70, Parts.moduleCore(ModuleCores.RESONANCE_GATE));
+        // and the Dual-foil Vault, meta 1, code 65
+        assertEquals(1, ModuleCores.DUAL_FOIL_VAULT);
+        assertEquals("dual_foil_vault", ModuleCores.key(ModuleCores.DUAL_FOIL_VAULT));
+        assertEquals(ModuleCores.DUAL_FOIL_VAULT, ModuleCores.meta(DualFoilVaultShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.DUAL_FOIL_VAULT));
+        assertEquals(65, Parts.moduleCore(ModuleCores.DUAL_FOIL_VAULT));
         assertArrayEquals(
-            new int[] { ModuleCores.ECO_DOME, ModuleCores.ARCANE_COURT, ModuleCores.BLOOD_COVENANT,
-                ModuleCores.HUNTING_GROUND, ModuleCores.MANA_FOUNTAIN, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
+            new int[] { ModuleCores.ECO_DOME, ModuleCores.DUAL_FOIL_VAULT, ModuleCores.ARCANE_COURT,
+                ModuleCores.BLOOD_COVENANT, ModuleCores.HUNTING_GROUND, ModuleCores.MANA_FOUNTAIN,
+                ModuleCores.RESONANCE_GATE, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
             ModuleCores.built());
-        assertFalse(ModuleCores.built(ModuleCores.DUAL_FOIL_VAULT), "the vault comes in 0.14.0");
         int last = -1;
         for (int m : ModuleCores.built()) {
             assertTrue(m > last, "in meta order");

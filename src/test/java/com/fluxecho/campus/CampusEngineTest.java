@@ -25,7 +25,9 @@ import net.minecraft.util.ChatComponentTranslation;
 
 import org.junit.jupiter.api.Test;
 
+import com.fluxecho.city.CityModule;
 import com.fluxecho.city.TileDomeGenerator;
+import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.city.TileRoot;
 import com.fluxecho.logic.ArchiveShape;
 import com.fluxecho.logic.BuildLedger;
@@ -1188,6 +1190,65 @@ class CampusEngineTest {
             assertTrue(
                 Terrain.inFormedReach(Collections.singletonList(root), null, CX + wall[0], Y0 - 10, CZ + wall[1]),
                 "the well");
+        }
+    }
+
+    /**
+     * The builder's protected boxes round a standing gatehouse (0.14.0, CITY.md §2.2): the gate is a boxed site like
+     * the axis sites, so the gatehouse's multiblock bounds (31 x 17 x 18, which take in the gate road and the four
+     * establish pylons in its open passage) are left out and its site's own boxes ({@link ModuleSpec#protect}) are
+     * what the campus protects. Every road tile and pylon block a forum (the refresh, a repair of the campus) lays
+     * there lies inside those bounds yet outside every protected box, so the builder lays them under a standing gate;
+     * every block of the gatehouse's own plan (its wings, the bridge from Y0 + 7, the kiosk) stays protected.
+     */
+    @Test
+    void theGatehouseLeavesItsRoadAndPylonsToTheNexussJobs() {
+        for (int site = 0; site <= SiteFamily.ROOT_SITE; site++) assertEquals(
+            site == 0 || site == SiteFamily.ZENITH_SITE || site == SiteFamily.ROOT_SITE,
+            Campus.boxedSite(site),
+            "site " + site);
+        ModuleSpec spec = CityModule.resonanceGate();
+        CampusPlan campus = new CampusPlan(29L);
+        for (int[] f : FACINGS) {
+            int[] c = spec.controller(0, CX, Y0, CZ, f[0], f[1]);
+            TileResonanceGate gate = new TileResonanceGate();
+            gate.xCoord = c[0];
+            gate.yCoord = c[1];
+            gate.zCoord = c[2];
+            gate.place((UUID) null, null, c[3]);
+            List<int[]> bounds = Collections.singletonList(gate.bounds());
+            List<int[]> keep = spec.keepOut(campus, 0, CX, Y0, CZ, f[0], f[1]);
+            List<int[]> protect = spec.protect(campus, 0, CX, Y0, CZ, f[0], f[1]);
+            String at = " facing " + f[0] + "," + f[1];
+            int road = 0, pylons = 0;
+            for (BuildPlan.Step s : BuildPlan.forum(campus, CX, Y0, CZ, f[0], f[1], keep).steps) {
+                int[] l = CampusPlan.toLocal(s.x - CX, s.z - CZ, f[0], f[1]);
+                boolean tile = s.stage == BuildPlan.E_FLOOR && CampusPlan.inGatePassage(l[0], l[1]);
+                boolean pylon = s.stage == BuildPlan.E_FIXTURE && Math.abs(l[1]) == 5 && (l[0] == 27 || l[0] == 35);
+                if (!tile && !pylon) continue;
+                String what = (tile ? "road tile " : "pylon block ") + l[0] + "," + l[1] + " y" + (s.y - Y0) + at;
+                assertTrue(Campus.inBoxes(bounds, s.x, s.y, s.z), "inside the gatehouse's bounds: " + what);
+                assertFalse(Campus.inBoxes(protect, s.x, s.y, s.z), "protected: " + what);
+                if (tile) road++;
+                else pylons++;
+            }
+            assertTrue(road > 100, "the road through the passage: " + road + at);
+            assertEquals(4 * (BuildPlan.PYLON_PILLARS + 1), pylons, "the four pylons" + at);
+            int held = 0;
+            for (BuildPlan.Step s : spec.plan(campus, 0, CX, Y0, CZ, f[0], f[1]).steps) {
+                assertTrue(Campus.inBoxes(protect, s.x, s.y, s.z), "the gatehouse's own block " + s + at);
+                held++;
+            }
+            assertTrue(held > 2774, "its shape's steps and the floor round it: " + held);
+            // a cell of the left wing's wall, the bridge's cornice at Y0 + 7 and the kiosk's console at Y0 + 1
+            for (int[] g : new int[][] { { 0, 3, 0 }, { 9, 7, 5 }, { 15, 1, 7 } }) {
+                int[] w = CampusPlan.toWorld(g[2] + 23, g[0] - 15, f[0], f[1]);
+                assertTrue(Campus.inBoxes(protect, CX + w[0], Y0 + g[1], CZ + w[1]), g[0] + "," + g[1] + "," + g[2]);
+            }
+            int[] under = CampusPlan.toWorld(29, 0, f[0], f[1]);
+            assertFalse(
+                Campus.inBoxes(protect, CX + under[0], Y0 + CampusPlan.GATE_HEADROOM - 1, CZ + under[1]),
+                "the passage's headroom under the bridge" + at);
         }
     }
 

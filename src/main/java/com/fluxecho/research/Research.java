@@ -20,7 +20,8 @@ public final class Research {
         UPKEEP_1 = ResearchTree.UPKEEP_1, GRIT_YIELD = ResearchTree.GRIT_YIELD, ECO_DOME = ResearchTree.ECO_DOME,
         PHASE_2 = ResearchTree.PHASE_2, DOME = ResearchTree.DOME, TIDAL_WELL = ResearchTree.TIDAL_WELL,
         ARCANE_COURT = ResearchTree.ARCANE_COURT, BLOOD_COVENANT = ResearchTree.BLOOD_COVENANT,
-        HUNTING_GROUND = ResearchTree.HUNTING_GROUND, MANA_FOUNTAIN = ResearchTree.MANA_FOUNTAIN;
+        HUNTING_GROUND = ResearchTree.HUNTING_GROUND, MANA_FOUNTAIN = ResearchTree.MANA_FOUNTAIN,
+        RESONANCE_GATE = ResearchTree.RESONANCE_GATE, DUAL_FOIL_VAULT = ResearchTree.DUAL_FOIL_VAULT;
 
     private Research() {}
 

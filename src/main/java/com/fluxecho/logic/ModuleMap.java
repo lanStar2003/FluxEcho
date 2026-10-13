@@ -78,7 +78,10 @@ public final class ModuleMap {
     private final int unitStoreys;
     /** The plan of each storey, {@code [storey][x * depth + z]}. */
     private final Mark[][] marks;
-    /** The tiles of each unit's cells on its storey's plan, {x0, y0, x1, y1} with the far edges exclusive. */
+    /**
+     * The tiles of each unit on its storey's plan, {x0, y0, x1, y1} with the far edges exclusive: its lowest cells, or
+     * for a unit hung over the floor it is used from its whole footprint.
+     */
     private final List<List<int[]>> tiles;
 
     /**
@@ -125,7 +128,16 @@ public final class ModuleMap {
         List<List<int[]>> t = new ArrayList<>();
         for (UnitLayout.Unit u : layout.units()) {
             List<int[]> own = new ArrayList<>();
-            for (int[] c : u.cells) if (c[1] == u.floor) own.add(tile(c[0], c[2]));
+            if (u.base > u.floor) {
+                // a unit hung over the floor it is used from (0.14.0: the Dual-foil Vault's foil, whose lowest row
+                // the gate niche cuts in two) shows as its whole footprint seen from above, one tile a column, so it
+                // reads as one piece and a click on any column of it picks it
+                java.util.Set<Integer> seen = new java.util.HashSet<>();
+                for (int[] c : u.cells) if (seen.add(c[0] * depth + c[2])) own.add(tile(c[0], c[2]));
+            } else {
+                // its lowest cells, seen from above on its storey's plan
+                for (int[] c : u.cells) if (c[1] == u.base) own.add(tile(c[0], c[2]));
+            }
             t.add(Collections.unmodifiableList(own));
         }
         tiles = Collections.unmodifiableList(t);

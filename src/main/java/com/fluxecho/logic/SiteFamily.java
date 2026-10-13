@@ -98,11 +98,13 @@ public enum SiteFamily {
 
     /**
      * The lang key (under {@code fluxecho.}) a window or a sign names a site with: the inner ring's sites by number
-     * ({@code build.gui.site}, "%s 号位", given the site), the axis sites by name: 天顶 the zenith, 根位 the root.
+     * ({@code build.gui.site}, "%s 号位", given the site) but the gate by name (0.14.0: 大门, where the gatehouse
+     * stands, and the 0.9.2 ring's slot 0 on the gate road), the axis sites by name: 天顶 the zenith, 根位 the root.
      */
     public static String labelKey(int site) {
         if (site == ZENITH_SITE) return "build.gui.site_zenith";
         if (site == ROOT_SITE) return "build.gui.site_root";
+        if (site == 0) return "build.gui.site_gate";
         return "build.gui.site";
     }
 

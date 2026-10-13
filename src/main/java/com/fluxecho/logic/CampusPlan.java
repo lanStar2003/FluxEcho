@@ -70,6 +70,24 @@ public final class CampusPlan {
      * its passage {@code |R| <= GATE_PASSAGE} over the road is never built.
      */
     public static final int GATEHOUSE_FROM = 23, GATEHOUSE_TO = 39, GATEHOUSE_HALF = 15, GATE_PASSAGE = 6;
+    /**
+     * How high the gatehouse's passage stays open (0.14.0, CITY.md §2.1, §4.7): its job never clears a passage column
+     * below Y0 + {@code GATE_HEADROOM} (the bridge's cornice), so the gate road, its widenings and the establish pylons
+     * standing in the passage are never taken down; only the kiosk and the floor the road leaves unpaved are built
+     * there.
+     */
+    public static final int GATE_HEADROOM = 7;
+    /**
+     * How far from the nexus centre along the gate road the light bridge to a docked gatehouse runs (0.14.0): to its
+     * front, the passage's mouth (half a cell before {@link #GATEHOUSE_FROM}), as a hall's runs to its front row.
+     */
+    public static final double GATE_DOOR = GATEHOUSE_FROM - 0.5;
+    /**
+     * Where along the gate road the masterplan's sign of site 0 stands (0.14.0): in front of the gatehouse, on the
+     * road (R 0), as far out as a hall's sign stands before its door ({@code HALL_FRONT - 3.5}), so the gatehouse
+     * planned, rising or standing there never shuts it inside its bridge.
+     */
+    public static final double GATE_SIGN = GATEHOUSE_FROM - 2.5;
     /** The four well-field streets (phase III): the bands {@code |cross|} 18..20 out to radial 60, outside the ring. */
     public static final int STREET_FROM = 18, STREET_TO = 20, STREET_REACH = 60;
     /**
@@ -432,14 +450,15 @@ public final class CampusPlan {
     /**
      * How far from the nexus centre, along the axis of site {@code site}, the door of a module docked on it lies when
      * the client has not loaded the module (its bridge runs out to it): a hall site's module has its front row where
-     * the campus puts it ({@link #HALL_FRONT}); a diagonal's is a pavilion's inner portal ({@link #PAVILION_DOOR})
-     * only when the campus records a pavilion built there ({@code pavilion}, 0.13.0), for a module docked on a
-     * diagonal without one is a 0.9.2 module on the old inner ring, which keeps its ring bridge (-1), as the gate's
-     * does.
+     * the campus puts it ({@link #HALL_FRONT}); a diagonal's is a pavilion's inner portal ({@link #PAVILION_DOOR}) and
+     * the gate's is the gatehouse's front ({@link #GATE_DOOR}, 0.14.0) only when the campus records a module of the
+     * site's own family built there ({@code built}: a pavilion on a diagonal, 0.13.0, the gatehouse on site 0), for a
+     * module docked there without one is a 0.9.2 module on the old inner ring, which keeps its ring bridge (-1).
      */
-    public static double siteDoor(int site, boolean pavilion) {
+    public static double siteDoor(int site, boolean built) {
         for (int s : HALL_SITES) if (s == site) return HALL_FRONT - 0.5;
-        if (pavilion && family(site) == SiteFamily.PAVILION) return PAVILION_DOOR;
+        if (built && family(site) == SiteFamily.PAVILION) return PAVILION_DOOR;
+        if (built && family(site) == SiteFamily.GATE) return GATE_DOOR;
         return -1;
     }
 
@@ -521,6 +540,52 @@ public final class CampusPlan {
             for (int r = -GATEHOUSE_HALF - 2; r <= GATEHOUSE_HALF + 2; r++) if (!inGatehouse(a, r)) out.add(key(a, r));
         }
         return out;
+    }
+
+    /**
+     * Whether (a, r) lies in the gatehouse's open passage (0.14.0): its envelope's middle {@code |R| <=}
+     * {@link #GATE_PASSAGE}, over the gate road, never built but for the kiosk and the floor the road leaves unpaved.
+     */
+    public static boolean inGatePassage(int a, int r) {
+        return inGatehouse(a, r) && Math.abs(r) <= GATE_PASSAGE;
+    }
+
+    /**
+     * Whether the gatehouse's job lays its floor on the passage cell (a, r) (0.14.0, CITY.md §2.2, the generator
+     * {@code b_gate.py}): a passage cell {@code |R|} 4 to 6 the road leaves unpaved, that is not the road strip
+     * ({@code |R| <= 3}) and not the road's widenings to {@code |R| <= 5} at its node (A 25..29) and from its far
+     * threshold on (A 34 and out, as the generator counts them: past the road's end at A 36 too, which stays
+     * unpaved).
+     */
+    public static boolean gatePassageFloor(int a, int r) {
+        if (!inGatePassage(a, r)) return false;
+        int ar = Math.abs(r);
+        boolean road = ar <= GATE_HALF || ar <= GATE_WIDE && (a >= NODE_FROM && a <= NODE_TO || a >= GATE_END);
+        return !road;
+    }
+
+    /**
+     * Every ground cell a gatehouse's job takes on its site (0.14.0): its two wings ({@code |R|} 7 to 15), the passage
+     * cells it floors ({@link #gatePassageFloor}) and its apron ({@link #gatehouseApron}) less the establish floor's
+     * gate road; the cells it builds over the rest of the passage (the kiosk, the bridge) are taken only from their
+     * own heights up ({@link BuildPlan#gateKeepOut}).
+     */
+    public static Set<Long> gatehouseSite() {
+        Set<Long> out = new LinkedHashSet<>();
+        for (long k : gatehouseCells()) {
+            int a = keyA(k), r = keyR(k);
+            if (!inGatePassage(a, r) || gatePassageFloor(a, r)) out.add(k);
+        }
+        for (long k : gatehouseApron()) if (!establishCell(keyA(k), keyR(k))) out.add(k);
+        return out;
+    }
+
+    /**
+     * Whether a cell belongs to the ground the establish job takes whatever its seed (the dais, the promenade ring with
+     * the forum, the gate road): a site floor never lays a tile there.
+     */
+    private static boolean establishCell(int a, int r) {
+        return inBase(a, r) || oct(a, r, RING_R, RING_K) || inGate(a, r);
     }
 
     /** The cells of a hall footprint {@code width x depth} on a hall site. */
@@ -653,6 +718,47 @@ public final class CampusPlan {
             }
             return floor;
         }
+    }
+
+    /**
+     * The floor laid round a gatehouse by its job on site 0 (0.14.0, CITY.md §2.2), as cell key to deck part code for
+     * the Y0 cell: its apron ({@link #gatehouseApron}, two cells round the wings and the passage's two mouths) less
+     * the gate road the establish job paved; the row along the wings is trim, the shadow gap a hall's apron has, the
+     * rest takes the paving's seams and dark clusters. The passage cells the road leaves unpaved are the gatehouse's
+     * own soft floor (its shape's y0). Like every site floor it only ever grows: it never holds a cell of
+     * {@link #establishFloor()}, the dais, the ring or the gate road, nor of the gatehouse's envelope.
+     */
+    public Map<Long, Integer> gatehouseFloor() {
+        long ck = 1L << 61;
+        synchronized (sites) {
+            Map<Long, Integer> floor = sites.get(ck);
+            if (floor == null) {
+                floor = buildGatehouseFloor();
+                sites.put(ck, floor);
+            }
+            return floor;
+        }
+    }
+
+    private Map<Long, Integer> buildGatehouseFloor() {
+        Set<Long> cells = new LinkedHashSet<>(gatehouseApron());
+        // monotone growth: the establish floor (and anything in its disc) is never touched again
+        cells.removeIf(k -> paved.contains(k) || establishCell(keyA(k), keyR(k)));
+        Map<Long, Integer> floor = new LinkedHashMap<>();
+        for (long k : cells) floor.put(k, gatehouseTile(keyA(k), keyR(k)));
+        return Collections.unmodifiableMap(floor);
+    }
+
+    /** The deck code of a cell of the gatehouse's apron: trim beside a wing, then the seams and the dark clusters. */
+    private int gatehouseTile(int a, int r) {
+        for (int da = -1; da <= 1; da++) for (int dr = -1; dr <= 1; dr++) {
+            if (inGatehouse(a + da, r + dr) && !inGatePassage(a + da, r + dr)) return TRIM;
+        }
+        if (seam(a, r)) return TRIM;
+        double rad = StrictMath.hypot(a, r);
+        double chance = Math.max(0, Math.min(DARK_MAX, (rad - DARK_FROM) / DARK_SPAN));
+        if (Mix.unit(seed, Math.floorDiv(a, 3), Math.floorDiv(r, 3), S_DARK) < chance) return DARK;
+        return DECK;
     }
 
     /** Every graded cell: {@code oct(GRADE_R, GRADE_K)} less the dais. The same for every seed. */

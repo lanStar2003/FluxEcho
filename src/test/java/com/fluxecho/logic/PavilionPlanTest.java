@@ -380,7 +380,8 @@ class PavilionPlanTest {
      * Where the bridge to a module docked on a site runs when the client has not loaded the module (0.13.0): a hall
      * site's to the hall's front row, a diagonal's to a pavilion's inner portal only when the campus records a
      * pavilion built there; a module docked on a diagonal without one stands on the 0.9.2 inner ring and keeps its
-     * ring bridge (-1), as the gate's does.
+     * ring bridge (-1). The gate's runs to the gatehouse's front, its passage's mouth, when the campus records the
+     * gatehouse built there (0.14.0); without one it is a ring module's and keeps its ring bridge as well.
      */
     @Test
     void anUnloadedModulesBridgeRunsToItsDoor() {
@@ -393,9 +394,10 @@ class PavilionPlanTest {
         }
         for (int site : CampusPlan.HALL_SITES) for (boolean pavilion : new boolean[] { false, true })
             assertEquals(CampusPlan.HALL_FRONT - 0.5, CampusPlan.siteDoor(site, pavilion), 1e-12, "hall " + site);
-        for (boolean pavilion : new boolean[] { false, true }) {
-            assertEquals(-1, CampusPlan.siteDoor(0, pavilion), 1e-12, "the gate");
+        for (boolean pavilion : new boolean[] { false, true })
             assertEquals(-1, CampusPlan.siteDoor(SiteFamily.ZENITH_SITE, pavilion), 1e-12, "the zenith");
-        }
+        assertEquals(-1, CampusPlan.siteDoor(0, false), 1e-12, "a ring module on the gate");
+        assertEquals(CampusPlan.GATE_DOOR, CampusPlan.siteDoor(0, true), 1e-12, "the gatehouse");
+        assertEquals(CampusPlan.GATEHOUSE_FROM - 0.5, CampusPlan.GATE_DOOR, 1e-12);
     }
 }

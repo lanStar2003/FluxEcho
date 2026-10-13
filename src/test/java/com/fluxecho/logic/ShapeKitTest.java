@@ -19,7 +19,7 @@ class ShapeKitTest {
 
     @Test
     void theLegendIsUniqueAndComplete() {
-        String checked = "FBgPCRZKAd#e:%k*WLwnqpcrtGhou^";
+        String checked = "FBgPCRZKAd#e:%k*WLwnQqpcrtGhou^";
         Set<Integer> seen = new LinkedHashSet<>();
         for (char ch : checked.toCharArray()) {
             assertTrue(ShapeKit.checked(ch), "'" + ch + "'");
@@ -37,7 +37,12 @@ class ShapeKitTest {
         assertTrue(ShapeKit.checked('~'));
         assertThrows(IllegalArgumentException.class, () -> ShapeKit.partOf('S'), "the Archive's shelf is no city part");
         assertEquals(Parts.fitting(Parts.F_LIFT), ShapeKit.partOf('^'), "the light-lift pad (0.12.0)");
-        assertThrows(IllegalArgumentException.class, () -> ShapeKit.partOf('Q'), "the canvas comes later");
+        // the canvas (0.14.0, CITY.md §1.4): checked Q, its soft twin $ (a gate niche in a canvas wall)
+        assertEquals(Parts.deck(Parts.D_CANVAS), ShapeKit.partOf('Q'));
+        assertTrue(ShapeKit.checked('Q'));
+        assertTrue(ShapeKit.soft('$'));
+        assertEquals(Parts.deck(Parts.D_CANVAS), ShapeKit.partOf('$'));
+        assertEquals('Q', ShapeKit.checkedTwin('$'));
     }
 
     /**
@@ -76,6 +81,13 @@ class ShapeKitTest {
                 .isEmpty(),
             "soft cells need no mirror");
         assertThrows(IllegalArgumentException.class, () -> s.gateNiche(0, 0, 0, 0, 0), "an empty cell is no wall");
+        // a canvas wall's niche keeps its canvas as the soft twin (0.14.0)
+        ShapeKit.Shape c = new ShapeKit.Shape("c", 3, 2, 1);
+        for (int x = 0; x < 3; x++) c.set(x, 1, 0, 'Q');
+        c.gateNiche(1, 1, 1, 1, 0);
+        assertEquals('$', c.get(1, 1, 0));
+        assertEquals('Q', c.get(0, 1, 0));
+        assertEquals(Parts.deck(Parts.D_CANVAS), ShapeKit.partOf(c.get(1, 1, 0)));
         s.set(4, 5, 2, 'n');
         assertThrows(IllegalArgumentException.class, () -> s.gateNiche(4, 4, 5, 5, 2), "a cornice is no niche");
     }

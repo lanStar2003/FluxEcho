@@ -93,4 +93,26 @@ class UnitLayoutTest {
             for (int k = 0; k < 3; k++) assertArrayEquals(l.unit(u).sockets.get(k), l.socketOf(3 * u + k));
         }
     }
+
+    /**
+     * A unit hung on a wall over the floor it is used from (0.14.0, the Dual-foil Vault's foil) stands on that floor's
+     * storey, not on one of its own at its lowest cell; the other units keep their lowest cell's; a floor over the
+     * unit's lowest cell, or a unit the shape does not have, is refused.
+     */
+    @Test
+    void aUnitHungOnAWallStandsOnTheFloorItIsUsedFrom() {
+        ShapeKit.Shape s = shape();
+        s.unit("bed", "planter", Arrays.asList(new int[] { 2, 1, 1 }, new int[] { 3, 1, 1 }), 2, null);
+        s.unit("stand", "plinth", Arrays.asList(new int[] { 5, 3, 2 }, new int[] { 5, 4, 2 }), 1, new int[] { 0, -1 });
+        assertArrayEquals(new int[] { 1, 3 }, new UnitLayout(s).storeys());
+        UnitLayout l = new UnitLayout(s, Collections.singletonMap("stand", 1));
+        assertEquals(1, l.unit(1).floor);
+        assertEquals(3, l.unit(1).base);
+        assertEquals(1, l.unit(0).floor);
+        assertEquals(1, l.unit(0).base);
+        assertArrayEquals(new int[] { 1 }, l.storeys());
+        assertEquals(0, l.storey(1));
+        assertThrows(IllegalArgumentException.class, () -> new UnitLayout(s, Collections.singletonMap("stand", 4)));
+        assertThrows(IllegalArgumentException.class, () -> new UnitLayout(s, Collections.singletonMap("shelf", 1)));
+    }
 }

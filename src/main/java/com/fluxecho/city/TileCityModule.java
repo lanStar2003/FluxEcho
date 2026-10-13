@@ -340,6 +340,20 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         return layout().slotOfSocket(l[0], l[1], l[2]);
     }
 
+    /**
+     * The slot a sneaking empty hand takes back from at a block of a unit (0.14.0): the slot its socket shows; for a
+     * unit without sockets, whose slots show over its whole field (the Dual-foil Vault's canvases and foil), its last
+     * filled slot wherever it is clicked; -1 when there is none (an empty unit, a block of no socket of a unit that has
+     * sockets).
+     */
+    public int takeSlot(int unit, int x, int y, int z) {
+        int slot = slotAt(x, y, z);
+        if (slot >= 0 || unit < 0 || unit >= unitCount() || !layout().unit(unit).sockets.isEmpty()) return slot;
+        int[] s = unitSlots(unit);
+        for (int i = s[1] - 1; i >= 0; i--) if (sample(s[0] + i) != null) return s[0] + i;
+        return -1;
+    }
+
     /** The block {x, y, z} of the socket a slot shows in, or null when the slot has none. */
     public int[] slotCell(int slot) {
         int[] c = layout().socketOf(slot);

@@ -264,6 +264,18 @@ public final class PartRecipes {
                 ssPlate,
                 'g',
                 glowstone));
+        // the canvas (0.14.0, CITY.md §1.4): eight wall panels round a sheet of paper; the lowercase key is renamed
+        // before GT sees it (GtPattern), as every lowercase key of this table is
+        list.add(
+            recipe(
+                Parts.deck(Parts.D_CANVAS),
+                8,
+                "Canvas Panel",
+                rows("PPP", "PaP", "PPP"),
+                'P',
+                panel,
+                'a',
+                "item:minecraft:paper"));
 
         // fitting parts
         list.add(

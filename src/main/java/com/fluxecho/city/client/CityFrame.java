@@ -96,6 +96,11 @@ final class CityFrame {
         t.addVertex(x(lx, lz), y(ly), z(lx, lz));
     }
 
+    /** Adds the shape's point {x, y, z} as a vertex of an open textured batch, at the texture's {@code (u, v)}. */
+    void vertexUV(Tessellator t, double[] p, double u, double v) {
+        t.addVertexWithUV(x(p[0], p[2]), y(p[1]), z(p[0], p[2]), u, v);
+    }
+
     /** A thin line between two points of the shape; returns the quads added. */
     int line(Tessellator t, double lx0, double ly0, double lz0, double lx1, double ly1, double lz1, double w) {
         return lineRel(t, x(lx0, lz0), y(ly0), z(lx0, lz0), x(lx1, lz1), y(ly1), z(lx1, lz1), w);
