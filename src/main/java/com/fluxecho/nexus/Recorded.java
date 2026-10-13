@@ -2,6 +2,7 @@ package com.fluxecho.nexus;
 
 import java.util.function.Consumer;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IChatComponent;
@@ -13,16 +14,23 @@ import com.gtnewhorizon.structurelib.structure.IStructureElement;
 
 /**
  * A structure element that notes where StructureLib found it: so a multiblock knows which of its blocks is which part
- * exactly as StructureLib laid it out, whichever way it faces.
+ * exactly as StructureLib laid it out, whichever way it faces. It also names the block and meta it wants, so a
+ * structure that does not form can say what a wrong cell should hold ({@link TileMultiblock#firstWrong}, 0.14.2).
  */
 final class Recorded implements IStructureElement<TileMultiblock> {
 
     private final char ch;
-    private final IStructureElement<TileMultiblock> inner;
+    /** The element itself; the first wrong cell is looked for with it, which notes nothing. */
+    final IStructureElement<TileMultiblock> inner;
+    /** The block and meta the cell wants. */
+    final Block block;
+    final int meta;
 
-    Recorded(char ch, IStructureElement<TileMultiblock> inner) {
+    Recorded(char ch, IStructureElement<TileMultiblock> inner, Block block, int meta) {
         this.ch = ch;
         this.inner = inner;
+        this.block = block;
+        this.meta = meta;
     }
 
     @Override

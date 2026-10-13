@@ -136,6 +136,16 @@ public final class BuildPlan {
     }
 
     /**
+     * Whether the structure check reads the cell of a step of the kind (0.14.2): a {@link #HARD} step's (a part of the
+     * structure) and an {@link #AIR} step's (a cell that must be air). The campus builder looks at these again when the
+     * structure it raised does not form ({@code Builder.recheck}); a soft cell is built but never checked, and the
+     * caisson's {@link #DIG} and {@link #DRAIN} steps empty cells that later steps fill.
+     */
+    public static boolean formReads(byte kind) {
+        return kind == HARD || kind == AIR;
+    }
+
+    /**
      * Whether the survey before 开始 marks a step of the kind done when it finds its cell right already. Not a
      * {@link #DIG} or {@link #DRAIN} step of the caisson: a cell found empty may hold a block by the time its layer is
      * sunk (stone where lava met water in a cave, a block an enderman set down), and nothing would look at it again, so

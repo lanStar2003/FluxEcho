@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
@@ -24,6 +25,7 @@ import com.fluxecho.core.Owners;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.frame.FrameEvents;
 import com.fluxecho.logic.Blueprint;
+import com.fluxecho.logic.WrongCell;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -87,6 +89,10 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     private List<Shape> mainOnly;
     /** How far from the controller any of its shapes reaches, once worked out ({@link #reach()}). */
     private int reach = -1;
+    /** The first wrong cell last looked for ({@link #firstWrong}), the shape it was looked for in, and when. */
+    private WrongCell wrong;
+    private String wrongShape;
+    private long wrongAt = Long.MIN_VALUE;
 
     // client
     /** When the client saw it form (ms), for the forming sweep; 0 when not formed. */
@@ -228,16 +234,26 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
 
     /** A frame block of the given meta at the blueprint's character, noting where StructureLib finds it. */
     protected static IStructureElement<TileMultiblock> recorded(char ch, Block block, int meta) {
-        return new Recorded(ch, StructureUtility.ofBlock(block, meta));
+        return new Recorded(ch, StructureUtility.ofBlock(block, meta), block, meta);
     }
+
+    /** The blueprint character of a cell that must be air (StructureLib's own character for it). */
+    public static final char MUST_BE_AIR = '-';
 
     /**
      * A structure of shapes (named as given) whose parts are {@code char, Block, meta} triples; with {@code record} the
      * parts note where they are found ({@link #definition}), without they are plain ({@link #buildDefinition}).
+     * <p>
+     * In the checked structure ({@code record}) a must-be-air cell ({@code -}) is a {@link Doorway} (0.14.2): it holds
+     * air, or only what weather and plants leave in an open doorway (a snow layer, tall grass, a vine, fire), so a
+     * building the campus raised while it snowed forms all the same; anything solid or fluid still fails. StructureLib
+     * puts its own {@code -} in with {@code putIfAbsent} as it reads a shape, so ours goes in first. The built and
+     * previewed structure keeps StructureLib's own (real air): the projector empties such a cell.
      */
     protected static IStructureDefinition<TileMultiblock> define(boolean record, String[] names, Blueprint[] shapes,
         Object... parts) {
         StructureDefinition.Builder<TileMultiblock> b = StructureDefinition.builder();
+        if (record) b.addElement(MUST_BE_AIR, new Doorway());
         for (int i = 0; i < names.length; i++) b.addShape(names[i], StructureUtility.transpose(shapes[i].shape()));
         for (int i = 0; i + 2 < parts.length; i += 3) {
             char ch = (Character) parts[i];
@@ -346,6 +362,80 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         if (tries(cur) && check(cur)) return cur;
         for (Shape s : shapes()) if (s != cur && tries(s) && check(s)) return s;
         return null;
+    }
+
+    /** Ticks a first wrong cell that was looked for is kept for the windows that ask for it every tick. */
+    static final int WRONG_KEEP = 40;
+
+    /**
+     * The first cell that keeps the structure from forming as the shape it is to stand as (0.14.2): the cells of that
+     * shape's blueprint walked from the top layer down with the checked structure's own elements ({@link #definition}),
+     * so a cell StructureLib refuses; null when nothing is wrong, the structure stands as that shape, or the cells that
+     * are wrong lie in unloaded chunks. Server side. A window that asks every tick costs a walk at most every
+     * {@link #WRONG_KEEP} ticks.
+     */
+    public WrongCell firstWrong() {
+        return firstWrong(null);
+    }
+
+    /**
+     * {@link #firstWrong()} for the shape named (the nexus's next phase while the campus grows it); null names the
+     * shape it is to stand as now, and so does a name that is none of its shapes.
+     */
+    public WrongCell firstWrong(String shapeName) {
+        if (worldObj == null) return null;
+        Shape s = currentShape();
+        if (shapeName != null) for (Shape o : shapes()) if (o.name.equals(shapeName)) s = o;
+        if (formed && s == currentShape()) return null;
+        long now = worldObj.getTotalWorldTime();
+        if (s.name.equals(wrongShape) && now >= wrongAt && now - wrongAt < WRONG_KEEP) return wrong;
+        wrongShape = s.name;
+        wrongAt = now;
+        wrong = wrongCell(s);
+        return wrong;
+    }
+
+    /** Walks the shape's cells with the checked structure's elements: the first one that fails, or null. */
+    private WrongCell wrongCell(Shape s) {
+        IStructureDefinition<TileMultiblock> d = definition();
+        if (!(d instanceof StructureDefinition)) return null;
+        Map<Character, IStructureElement<TileMultiblock>> elements = ((StructureDefinition<TileMultiblock>) d)
+            .getElements();
+        ForgeDirection f = front();
+        for (Blueprint.Cell c : s.bp.cells()) {
+            IStructureElement<TileMultiblock> e = elements.get(c.ch);
+            // the controller and StructureLib's own steps are no element of ours
+            if (e == null) continue;
+            int[] p = s.bp.world(c.a, c.b, c.c, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
+            if (!worldObj.blockExists(p[0], p[1], p[2])) continue;
+            // the element itself, not its recording wrapper: looking for the wrong cell notes no part
+            Recorded r = e instanceof Recorded rec ? rec : null;
+            if ((r != null ? r.inner : e).check(this, worldObj, p[0], p[1], p[2])) continue;
+            Block b = worldObj.getBlock(p[0], p[1], p[2]);
+            String found = b == null || b.isAir(worldObj, p[0], p[1], p[2]) ? WrongCell.AIR
+                : nameKey(b, worldObj.getBlockMetadata(p[0], p[1], p[2]));
+            String wanted = r != null ? nameKey(r.block, r.meta) : WrongCell.AIR;
+            return new WrongCell(p[0], p[1], p[2], found, wanted);
+        }
+        return null;
+    }
+
+    /**
+     * The lang key of a block's name as the client translates it: its item's name for the meta (our frame parts and
+     * GT's casings name each meta), else the block's own name; {@link WrongCell#AIR} for no block.
+     */
+    static String nameKey(Block b, int meta) {
+        if (b == null) return WrongCell.AIR;
+        try {
+            Item item = Item.getItemFromBlock(b);
+            if (item != null) {
+                String k = item.getUnlocalizedName(new ItemStack(item, 1, meta));
+                if (k != null && !k.isEmpty()) return k + ".name";
+            }
+        } catch (RuntimeException e) {
+            // an item that cannot name this meta: the block's own name is still something
+        }
+        return b.getUnlocalizedName() + ".name";
     }
 
     private long ownKey() {

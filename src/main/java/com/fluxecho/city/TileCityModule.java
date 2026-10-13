@@ -221,7 +221,8 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     /**
      * The structure of its shapes ({@link #MAIN} for most; the Echo Dome Generator's {@code moored} and
      * {@code floating}, 0.12.0): every character of the blueprints as the block and meta the campus builder places for
-     * it. {@code -} is StructureLib's own "must be air" and the controller is skipped.
+     * it. {@code -} must be air ({@link TileMultiblock#define}: in the checked structure, since 0.14.2, air or what the
+     * weather leaves in a doorway) and the controller is skipped.
      */
     private IStructureDefinition<TileMultiblock> define(boolean record) {
         List<Shape> all = shapes();

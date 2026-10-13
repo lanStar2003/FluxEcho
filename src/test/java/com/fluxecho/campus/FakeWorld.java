@@ -18,11 +18,18 @@ import net.minecraft.world.chunk.IChunkProvider;
  * spawn point), the object is allocated bare. It answers what the campus tiles ask of a world: which chunks are loaded,
  * the tile entity at a cell, the time; marking a tile dirty does nothing. A chunk can be unloaded and loaded again with
  * a new tile in it, as the game does it: the old tile is not invalidated, only no longer in the world.
+ * <p>
+ * A test may set blocks ({@link #set}): a cell given none holds no block ({@code getBlock} is null) and reads as air.
+ * With {@link #onlySetCellsExist} every other cell reads as not loaded, so a test of a few cells of a large plan sees
+ * only those.
  */
 public class FakeWorld extends World {
 
     private Map<Long, TileEntity> tiles;
     private Set<Long> unloaded;
+    private Map<Long, Block> blocks;
+    private Map<Long, Integer> metas;
+    private boolean onlySet;
     long time;
 
     /** Never called: {@link #create} allocates the world without running a constructor. */
@@ -40,6 +47,8 @@ public class FakeWorld extends World {
             FakeWorld w = (FakeWorld) alloc.invoke(f.get(null), FakeWorld.class);
             w.tiles = new HashMap<>();
             w.unloaded = new HashSet<>();
+            w.blocks = new HashMap<>();
+            w.metas = new HashMap<>();
             w.isRemote = false;
             return w;
         } catch (ReflectiveOperationException e) {
@@ -80,9 +89,27 @@ public class FakeWorld extends World {
         unloaded.remove(chunk(x, z));
     }
 
+    /** Sets the block (and its meta) at the cell; null takes it away. */
+    public FakeWorld set(int x, int y, int z, Block b, int meta) {
+        if (b == null) {
+            blocks.remove(cell(x, y, z));
+            metas.remove(cell(x, y, z));
+        } else {
+            blocks.put(cell(x, y, z), b);
+            metas.put(cell(x, y, z), meta);
+        }
+        return this;
+    }
+
+    /** From now on only the cells given a block exist: every other reads as an unloaded one. */
+    public FakeWorld onlySetCellsExist() {
+        onlySet = true;
+        return this;
+    }
+
     @Override
     public boolean blockExists(int x, int y, int z) {
-        return y >= 0 && y < 256 && !unloaded.contains(chunk(x, z));
+        return y >= 0 && y < 256 && !unloaded.contains(chunk(x, z)) && (!onlySet || blocks.containsKey(cell(x, y, z)));
     }
 
     @Override
@@ -97,12 +124,19 @@ public class FakeWorld extends World {
 
     @Override
     public Block getBlock(int x, int y, int z) {
-        return null;
+        return blocks.get(cell(x, y, z));
     }
 
     @Override
     public int getBlockMetadata(int x, int y, int z) {
-        return 0;
+        Integer m = metas.get(cell(x, y, z));
+        return m == null ? 0 : m;
+    }
+
+    @Override
+    public boolean isAirBlock(int x, int y, int z) {
+        Block b = getBlock(x, y, z);
+        return b == null || b.isAir(this, x, y, z);
     }
 
     @Override

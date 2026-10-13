@@ -136,6 +136,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     // what an open GUI shows that only the server knows (NexusGui syncs them)
     public String guiStatus = "unformed", guiResearch = "", guiManifest = "", guiBalance = "0", guiUnlocked = "";
+    /** While unformed, the cell that keeps it from forming ({@link com.fluxecho.logic.WrongCell#encode}, 0.14.2). */
+    public String guiWrong = "";
     public long guiUpkeep;
     public boolean guiOpenBinding;
     public int guiCompute10, guiResearchPm, guiManifestPm, guiDocked, guiOpen, guiBound, guiRecords, guiResting;

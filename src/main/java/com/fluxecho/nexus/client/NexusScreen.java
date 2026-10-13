@@ -360,9 +360,9 @@ public final class NexusScreen {
 
     /**
      * The job panel: the job and its site, its state (and why it waits), its stage, the progress bar, EU/t and the
-     * time left, the counts (before 开始 also the machines and chests it will dismantle), whether it is free, and the
-     * queue; without a job, every module the nexus can build and where it stands; or what to do when there is no
-     * campus yet.
+     * time left, the counts (before 开始 also the machines and chests it will dismantle; paused as incomplete, the cell
+     * that keeps the structure from forming, 0.14.2), whether it is free, and the queue; without a job, every module
+     * the nexus can build and where it stands; or what to do when there is no campus yet.
      */
     public static void buildJob(NexusGui.View v, float x, float y, float w, float h) {
         GL11.glPushMatrix();
@@ -447,6 +447,9 @@ public final class NexusScreen {
             0.75f,
             b.machines > 0 ? AMBER : DIM,
             1f);
+        // paused as incomplete (0.14.2): the cell that keeps the structure from forming, on the same line
+        else if (b.wrong != null && p == BuildState.Pause.INCOMPLETE && s == BuildState.State.PAUSED)
+            small(fit(NexusGui.wrongText(b.wrong), sw), 2, 68, 0.75f, RED, 1f);
         queue(b, w, h);
     }
 

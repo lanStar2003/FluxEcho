@@ -21,6 +21,7 @@ import com.fluxecho.library.client.ArchiveScreen;
 import com.fluxecho.logic.ModuleMap;
 import com.fluxecho.logic.UnitBrowse;
 import com.fluxecho.logic.UnitLayout;
+import com.fluxecho.logic.WrongCell;
 import com.fluxecho.nexus.client.NexusScreen;
 import com.gtnewhorizons.modularui.api.forge.IItemHandlerModifiable;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
@@ -140,6 +141,10 @@ public final class CityGui {
         public int listPage, storey;
         public boolean formed, powered;
         public String dock = "unformed", owner = "";
+        /**
+         * While unformed, the cell that keeps it from forming ({@link WrongCell#encode}, 0.14.2); "" for none.
+         */
+        public String wrong = "";
         public long upkeep;
         /** The site (or ring slot) it is docked on, and the nexus's phase; -1 and 0 while undocked. */
         public int site = -1, phase;
@@ -449,6 +454,11 @@ public final class CityGui {
                     .phase() : 0,
                 v -> view.phase = v));
         b.widget(new FakeSyncWidget.StringSyncer(c::ownerName, v -> view.owner = v));
+        // unformed (0.14.2): the first cell that keeps it from forming, looked for at most every few seconds
+        b.widget(
+            new FakeSyncWidget.StringSyncer(
+                () -> c.formed() ? "" : WrongCell.encode(c.firstWrong()),
+                v -> view.wrong = v));
     }
 
     /**

@@ -276,8 +276,9 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
 
     /**
      * Every part of both shapes: the hall's frame parts, and each character of the Archive as the block and meta the
-     * campus builder places for it ({@link ArchiveShape#partOf}, {@link PartBlocks}). The door cells ({@code -}) are
-     * StructureLib's own "must be air" and the controller ({@code ~}) is skipped, as in the hall.
+     * campus builder places for it ({@link ArchiveShape#partOf}, {@link PartBlocks}). The door cells ({@code -}) must
+     * be air ({@code TileMultiblock.define}: when checked, since 0.14.2, air or what the weather leaves in a doorway)
+     * and the controller ({@code ~}) is skipped, as in the hall.
      */
     private static Object[] parts() {
         BlockFrame f = FrameModule.frame;

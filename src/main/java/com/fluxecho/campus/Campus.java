@@ -44,6 +44,7 @@ import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.WrongCell;
 import com.fluxecho.nexus.Costs;
 import com.fluxecho.nexus.NexusRegistry;
 import com.fluxecho.nexus.TileModule;
@@ -1406,6 +1407,37 @@ public final class Campus {
                     P + "pause."
                         + why.name()
                             .toLowerCase(Locale.ROOT))));
+    }
+
+    /**
+     * The builder paused a job as incomplete (0.14.2): tells the members which cell keeps the structure from forming,
+     * where it is, what is there and what should be (the first wrong cell, {@link TileMultiblock#firstWrong}), or, when
+     * none can be named (it lies in an unloaded chunk, the controller is gone), only that it did not form; either way
+     * how to go on (修复, or putting it right by hand).
+     */
+    void incomplete(BuildJob j, WrongCell cell) {
+        if (cell == null) {
+            tell(new ChatComponentTranslation(P + "incomplete", j.name()));
+            return;
+        }
+        tell(
+            new ChatComponentTranslation(
+                P + "incomplete_at",
+                j.name(),
+                cell.pos(),
+                new ChatComponentTranslation(cell.found),
+                new ChatComponentTranslation(cell.wanted)));
+    }
+
+    /**
+     * The cell that keeps the structure of a job paused as incomplete from forming (0.14.2, the build page's line), or
+     * null: no such job, or no cell can be named. Looked for with the structure's own check at most every few seconds.
+     */
+    public WrongCell incompleteCell() {
+        if (job == null || job.state != BuildState.State.PAUSED || job.pause != BuildState.Pause.INCOMPLETE)
+            return null;
+        TileMultiblock t = builder.target(job);
+        return t == null ? null : t.firstWrong(Builder.formShape(job));
     }
 
     /**

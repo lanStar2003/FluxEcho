@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 import net.minecraft.util.Vec3;
 
 import org.lwjgl.opengl.GL11;
@@ -25,6 +26,7 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.ModuleMap;
 import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.logic.UnitBrowse;
+import com.fluxecho.logic.WrongCell;
 import com.fluxecho.nexus.client.NexusScreen;
 
 /**
@@ -186,7 +188,7 @@ public final class CityScreen {
                 n > 0 ? c.moduleColor() : DIM,
                 w);
             line(7, "owner", v.owner.isEmpty() ? none : v.owner, WHITE, w);
-            String hint = EchoText.t("city.gui.status.hint." + hintKey(v));
+            String hint = hintText(v);
             double ly = 8 * 12 + 3;
             for (String l : wrap(hint, (int) ((w - 2) / 0.75f), 2)) {
                 small(l, 1, ly, 0.75f, v.powered ? DIM : AMBER, 1f);
@@ -209,6 +211,20 @@ public final class CityScreen {
         small(fit(label, 60), 1, y + 1.5, 0.75f, DIM, 1f);
         float lw = Math.min(60, font().getStringWidth(label)) * 0.75f + 6;
         right(fit(value, (int) (w - lw - 2)), w - 1, y, rgb, 1f);
+    }
+
+    /**
+     * The state's hint (0.14.2): while it is unformed and the server named the cell that keeps it from forming, where
+     * that cell is, what is there and what should be; else what {@link #hintKey} says.
+     */
+    private static String hintText(CityGui.View v) {
+        WrongCell c = v.formed ? null : WrongCell.decode(v.wrong);
+        if (c == null) return EchoText.t("city.gui.status.hint." + hintKey(v));
+        return EchoText.t(
+            "city.gui.status.hint.unformed_at",
+            c.pos(),
+            StatCollector.translateToLocal(c.found),
+            StatCollector.translateToLocal(c.wanted));
     }
 
     /** What the state's hint says: the first thing that stops the module, or that it runs. */

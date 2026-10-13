@@ -30,9 +30,11 @@ import com.fluxecho.logic.BuildPace;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.FxCodec;
+import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.Removal;
 import com.fluxecho.logic.TerrainRule;
+import com.fluxecho.nexus.Doorway;
 import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.nexus.TileNexus;
 import com.fluxlite.backend.GTWirelessBackend;
@@ -501,8 +503,9 @@ public final class Builder {
     /**
      * Waits for the structure the job raised to form (the nexus after its core, a module after its controller); on
      * success moves on (or finishes a module job). After {@link #FORM_WAIT} ticks it looks at the cells again and
-     * builds the wrong ones anew, and after {@link #FORM_TRIES} such rounds it pauses as incomplete. Returns whether
-     * the structure stands.
+     * builds the wrong ones anew ({@link #recheck}), and after {@link #FORM_TRIES} such rounds it pauses as incomplete
+     * and tells the members which cell keeps the structure from forming ({@link TileMultiblock#firstWrong}, 0.14.2).
+     * Returns whether the structure stands.
      */
     private boolean waitForm(BuildJob job, BuildPlan.Plan plan, long now, Outcome o) {
         TileMultiblock t = target(job);
@@ -526,10 +529,13 @@ public final class Builder {
         if (now - job.formSince < FORM_WAIT) return false;
         job.formSince = -1;
         job.formTries++;
-        int redo = job.formTries >= FORM_TRIES ? -1 : recheck(job, plan);
+        int redo = job.formTries >= FORM_TRIES ? -1 : recheck(job, plan, campus.world(), campus);
         if (redo < 0) {
             job.formTries = 0;
             pauseJob(job, BuildState.Pause.INCOMPLETE);
+            // name the cell that keeps it from forming (0.14.2): a lone wrong cell among thousands is hard to find
+            if (job.state == BuildState.State.PAUSED && job.pause == BuildState.Pause.INCOMPLETE)
+                campus.incomplete(job, t == null ? null : t.firstWrong(formShape(job)));
             return false;
         }
         job.stage = redo;
@@ -539,24 +545,39 @@ public final class Builder {
     }
 
     /**
-     * Looks at every HARD step again: a done one whose cell is wrong now is marked unfinished, and a skipped one (it
-     * was blocked, or an entity would not move) whose cell can take its block now is tried again. Returns the first
-     * stage that has such a step, or -1 when there is nothing to build anew (the structure fails for another reason).
+     * The shape the structure a job waits for is to form as, for naming its first wrong cell: a growth's new phase,
+     * else null (the shape the structure is to stand as now).
      */
-    private int recheck(BuildJob job, BuildPlan.Plan plan) {
-        World w = campus.world();
+    static String formShape(BuildJob job) {
+        return job.grows() ? NexusShape.shapeName(job.growPhase()) : null;
+    }
+
+    /**
+     * Looks at every step whose cell the structure check reads again ({@link BuildPlan#formReads}): a done one whose
+     * cell is wrong now is marked unfinished, and a skipped one (it was blocked, or an entity would not move) whose
+     * cell can take its block now is tried again. A HARD step's cell is wrong when it does not hold its part; since
+     * 0.14.2 a cell that must be air (an AIR step) is wrong when it holds what the structure's must-be-air cell refuses
+     * ({@link Doorway#open}: anything solid or fluid; a snow layer or tall grass the weather left there is fine, the
+     * structure forms with it), and a skipped one whose cell is open now is done as it is. Before, a doorway the
+     * weather or a player filled after its step ran was never looked at again and the job paused as incomplete for
+     * good. Returns the first stage that has such a step, or -1 when there is nothing to build anew (the structure
+     * fails for another reason).
+     */
+    static int recheck(BuildJob job, BuildPlan.Plan plan, World w, Campus campus) {
         int first = -1;
         boolean changed = false;
         for (int i = 0; i < plan.steps.size(); i++) {
             BuildPlan.Step s = plan.steps.get(i);
-            if (s.kind != BuildPlan.HARD || !w.blockExists(s.x, s.y, s.z)) continue;
+            if (!BuildPlan.formReads(s.kind) || !w.blockExists(s.x, s.y, s.z)) continue;
             if (job.done.get(i)) {
-                Block b = w.getBlock(s.x, s.y, s.z);
-                if (Terrain.isTarget(b, w.getBlockMetadata(s.x, s.y, s.z), s.part, b.isAir(w, s.x, s.y, s.z))) continue;
+                if (cellRight(w, s)) continue;
                 job.done.clear(i);
             } else if (job.skipped.get(i) && !job.flying.get(i)) {
-                if (PartBlocks.block(s.part) == null) continue;
-                TerrainRule.Verdict v = verdict(job, s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
+                if (s.kind == BuildPlan.HARD && PartBlocks.block(s.part) == null) continue;
+                // a doorway left open enough for the structure (air, or what the weather put there) is done as it is
+                TerrainRule.Verdict v = s.kind == BuildPlan.AIR && Doorway.open(w, s.x, s.y, s.z)
+                    ? TerrainRule.Verdict.ALREADY
+                    : verdict(job, s, Terrain.probe(w, s.x, s.y, s.z, s.part, campus));
                 if (v == TerrainRule.Verdict.BLOCKED) continue;
                 job.skipped.clear(i);
                 changed = true;
@@ -569,6 +590,16 @@ public final class Builder {
         }
         if (first >= 0 || changed) campus.dirty();
         return first;
+    }
+
+    /**
+     * Whether a done step's cell still passes the structure check: a HARD step's holds its part, an AIR step's is open
+     * ({@link Doorway#open}).
+     */
+    private static boolean cellRight(World w, BuildPlan.Step s) {
+        if (s.kind == BuildPlan.AIR) return Doorway.open(w, s.x, s.y, s.z);
+        Block b = w.getBlock(s.x, s.y, s.z);
+        return Terrain.isTarget(b, w.getBlockMetadata(s.x, s.y, s.z), s.part, b.isAir(w, s.x, s.y, s.z));
     }
 
     /**

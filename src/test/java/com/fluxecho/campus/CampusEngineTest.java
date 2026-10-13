@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockSnow;
 import net.minecraft.block.material.Material;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -26,7 +27,9 @@ import net.minecraft.util.ChatComponentTranslation;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.CityModule;
+import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileDomeGenerator;
+import com.fluxecho.city.TileDualFoilVault;
 import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.city.TileRoot;
 import com.fluxecho.logic.ArchiveShape;
@@ -1555,5 +1558,82 @@ class CampusEngineTest {
             BuildJob.forum(Arrays.asList(new int[] { 1, 2, 3 }, new int[] { 1, 2, 3, 4 }))
                 .keepOut()
                 .size());
+    }
+
+    /**
+     * A doorway the weather or a player filled after the builder emptied it (0.14.2). The user's Resonance Gate and
+     * Dual-foil Vault were built while it snowed: snow layers settled in two doorways of the gate (local 23,1,7 the
+     * right wing's door onto the passage, and 8,9,10) and four of the vault's front door (10,1,1 among them) after
+     * their
+     * AIR steps had run, and the builder's form check looked only at HARD steps again, so both jobs paused as 结构未成型
+     * for good. Now a done AIR step is looked at again too: a block the structure refuses there (a player's block, a
+     * full snow layer) sends the job back to the step's stage with that step unfinished; a snow layer the structure
+     * takes is left as it is, and so is air. A skipped AIR step whose doorway is open now is done as it is. Only the
+     * doorway's cell exists in the world, so every other done step is passed over as unloaded.
+     */
+    @Test
+    void aDoorwayFilledAfterItsStepRanIsBuiltAgain() {
+        Block snow = new BlockSnow() {}, stone = new Block(Material.rock) {};
+        CampusPlan campus = new CampusPlan(29L);
+        Campus c = nexus(3).campus();
+        Object[][] cases = { { CityModule.resonanceGate(), 0, new TileResonanceGate(), new int[] { 23, 1, 7 } },
+            { CityModule.resonanceGate(), 0, new TileResonanceGate(), new int[] { 8, 9, 10 } },
+            { CityModule.dualFoilVault(), 6, new TileDualFoilVault(), new int[] { 10, 1, 1 } } };
+        for (Object[] k : cases) for (int[] f : FACINGS) {
+            ModuleSpec spec = (ModuleSpec) k[0];
+            int site = (Integer) k[1];
+            TileCityModule tile = (TileCityModule) k[2];
+            int[] local = (int[]) k[3];
+            String at = spec.key + " local " + Arrays.toString(local) + " facing " + f[0] + "," + f[1];
+            BuildPlan.Plan plan = spec.plan(campus, site, CX, Y0, CZ, f[0], f[1]);
+            int[] ctrl = spec.controller(site, CX, Y0, CZ, f[0], f[1]);
+            tile.xCoord = ctrl[0];
+            tile.yCoord = ctrl[1];
+            tile.zCoord = ctrl[2];
+            tile.place((UUID) null, null, ctrl[3]);
+            int[] door = tile.worldOf(local[0], local[1], local[2]);
+            int i = -1;
+            for (int j = 0; j < plan.steps.size(); j++) if (plan.steps.get(j)
+                .at(door[0], door[1], door[2])) i = j;
+            assertTrue(i >= 0, "the doorway is a step of the plan: " + at);
+            BuildPlan.Step step = plan.steps.get(i);
+            assertEquals(BuildPlan.AIR, step.kind, at);
+            assertEquals(BuildPlan.M_SHELL, step.stage, at);
+            BuildJob job = BuildJob.module(spec, site);
+            job.done.set(0, plan.steps.size());
+            FakeWorld w = FakeWorld.create()
+                .onlySetCellsExist();
+
+            for (int meta = 0; meta <= 6; meta++) {
+                w.set(door[0], door[1], door[2], snow, meta);
+                assertEquals(-1, Builder.recheck(job, plan, w, c), "a snow layer of meta " + meta + ": " + at);
+            }
+            assertTrue(job.done.get(i), at);
+
+            w.set(door[0], door[1], door[2], stone, 0);
+            assertEquals(step.stage, Builder.recheck(job, plan, w, c), "a block in the doorway: " + at);
+            assertFalse(job.done.get(i), "built again: " + at);
+            assertEquals(plan.steps.size() - 1, job.done.cardinality(), "only that step: " + at);
+
+            job.done.set(i);
+            w.set(door[0], door[1], door[2], snow, 7);
+            assertEquals(step.stage, Builder.recheck(job, plan, w, c), "a full snow layer: " + at);
+            assertFalse(job.done.get(i), at);
+
+            // skipped once (blocked, or someone stood there) and open now: done as it is
+            job.skipped.set(i);
+            w.set(door[0], door[1], door[2], snow, 0);
+            assertEquals(-1, Builder.recheck(job, plan, w, c), "a skipped doorway with snow: " + at);
+            assertTrue(job.done.get(i), at);
+            assertFalse(job.skipped.get(i), at);
+        }
+        // a growth names its first wrong cell in the phase it grows to; a module in the shape it is to stand as
+        assertEquals(NexusShape.shapeName(2), Builder.formShape(BuildJob.grow(2)));
+        assertNull(Builder.formShape(BuildJob.module(spec(), 4)));
+        assertTrue(BuildPlan.formReads(BuildPlan.HARD));
+        assertTrue(BuildPlan.formReads(BuildPlan.AIR));
+        assertFalse(BuildPlan.formReads(BuildPlan.SOFT), "a soft cell is built, never checked");
+        assertFalse(BuildPlan.formReads(BuildPlan.DIG));
+        assertFalse(BuildPlan.formReads(BuildPlan.DRAIN));
     }
 }

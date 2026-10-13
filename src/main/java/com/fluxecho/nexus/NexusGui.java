@@ -16,6 +16,7 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
 import com.fluxecho.Config;
@@ -34,6 +35,7 @@ import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.WrongCell;
 import com.fluxecho.nexus.client.NexusScreen;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
@@ -153,6 +155,11 @@ public final class NexusGui {
         /** Machines and chests the job will take down (the survey's count, {@code Mc}; 「将拆除 N 个机器/箱子」). */
         public int machines;
         /**
+         * The cell that keeps the structure from forming while the job is paused as incomplete ({@code Wc}, 0.14.2,
+         * {@link Campus#incompleteCell}); null for none.
+         */
+        public WrongCell wrong;
+        /**
          * Whether the job is free ({@code Fe}, 「创造模式：免费」) and whether the nexus builds everything free ({@code Fb}).
          */
         public boolean free, freeBuild;
@@ -193,6 +200,7 @@ public final class NexusGui {
             recycleKinds = t.getInteger("Rk");
             recycleItems = t.getLong("Ri");
             machines = t.getInteger("Mc");
+            wrong = WrongCell.decode(t.getString("Wc"));
             free = t.getBoolean("Fe");
             freeBuild = t.getBoolean("Fb");
             modules = Campus.ModuleState.read(t.getTagList("Md", 10));
@@ -273,6 +281,9 @@ public final class NexusGui {
 
         b.widget(
             new DrawableWidget().setDrawable((x, y, w, h, partial) -> NexusScreen.header(n, x, y, w, h))
+                .dynamicTooltip(() -> headerTip(n))
+                // the wrong cell and the formed state change while the window is open
+                .setUpdateTooltipEveryTick(true)
                 .setTicker(widget -> {
                     // the first screen tick: open on the build page while the campus raises the nexus
                     if (view.opened) return;
@@ -768,6 +779,9 @@ public final class NexusGui {
         t.setInteger("Un", c.unloaded());
         t.setInteger("Na", j.natural());
         t.setInteger("Mc", j.machines());
+        // paused as incomplete (0.14.2): the cell that keeps the structure from forming
+        String wrong = WrongCell.encode(c.incompleteCell());
+        if (!wrong.isEmpty()) t.setString("Wc", wrong);
         t.setBoolean("Fe", c.free(j));
         t.setLong("Eu", eu);
         t.setLong("Et", ended ? 0 : c.etaTicks());
@@ -904,6 +918,24 @@ public final class NexusGui {
             .toLowerCase(Locale.ROOT);
     }
 
+    /** The header's tooltip: while the nexus is unformed, the cell that keeps it from forming (0.14.2). */
+    private static List<String> headerTip(TileNexus n) {
+        WrongCell c = n.formed() ? null : WrongCell.decode(n.guiWrong);
+        return c == null ? Collections.emptyList() : Collections.singletonList(wrongText(c));
+    }
+
+    /**
+     * A cell that keeps a structure from forming, in words (0.14.2, translated on the client): where it is, what is
+     * there and what should be ({@code fluxecho.build.wrong_cell}).
+     */
+    public static String wrongText(WrongCell c) {
+        return EchoText.t(
+            "build.wrong_cell",
+            c.pos(),
+            StatCollector.translateToLocal(c.found),
+            StatCollector.translateToLocal(c.wanted));
+    }
+
     /**
      * Where a job is, in a few words (translated): its stage while it builds, why it waits while it is paused, else
      * its state.
@@ -921,6 +953,11 @@ public final class NexusGui {
     /** What the screen shows that only the server knows. */
     private static void sync(TileNexus n, ModularWindow.Builder b) {
         b.widget(new FakeSyncWidget.StringSyncer(() -> Directory.nexusStatus(n), v -> n.guiStatus = v));
+        // unformed (0.14.2): the cell that keeps it from forming, for the header's tooltip
+        b.widget(
+            new FakeSyncWidget.StringSyncer(
+                () -> n.formed() ? "" : WrongCell.encode(n.firstWrong()),
+                v -> n.guiWrong = v));
         b.widget(new FakeSyncWidget.StringSyncer(n::research, v -> n.guiResearch = v));
         b.widget(new FakeSyncWidget.StringSyncer(n::manifest, v -> n.guiManifest = v));
         b.widget(new FakeSyncWidget.StringSyncer(n::balance, v -> n.guiBalance = v));
