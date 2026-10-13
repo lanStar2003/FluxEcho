@@ -8,7 +8,8 @@ package com.fluxecho.logic;
  * else; a ride takes no fall damage, nor does anything for {@link #GRACE} ticks after it.
  * <p>
  * This is the rule both sides share: what a ride does ({@link #plan}), where the player is moved each tick
- * ({@link #motion}), and which blocks a rider passes ({@link #passes}). The server plans the ride and tells the client,
+ * ({@link #motion}, {@link #ease}), when the ride ends ({@link #ended}; since 0.14.1 exactly on its pad,
+ * {@link #settle}), and which blocks a rider passes ({@link #passes}). The server plans the ride and tells the client,
  * which moves the player; both skip the same blocks' collision while the ride (and its grace) lasts, so the server's
  * check of the client's moves agrees with them and nothing rubber-bands.
  * <p>
@@ -174,6 +175,12 @@ public final class LiftShaft {
      * by {@link #ACCEL} a tick up to {@link #SPEED}, brakes over the last block and a half ({@link #BRAKE}, at least
      * {@link #CREEP}), and never passes the goal. A ride eased so takes about eight ticks longer than one at full speed
      * all the way, well within the {@link #GRACE} both sides allow it.
+     * <p>
+     * It lands exactly (0.14.1): a step that would leave the feet closer to the goal than {@link #ARRIVED} takes the
+     * whole way left instead, so every eased leg ends exactly on its goal. In 0.14.0 such a step left the feet a few
+     * hundredths short; the ride counted that as arrived, and on a ride up the feet stayed inside the pad, which is
+     * solid again once the ride ends, so the rider fell through it back down the shaft (vanilla stops a fall only for
+     * feet at or above a block's top). The last step is at most about 0.17 and the ride takes as many ticks as before.
      */
     public static double ease(double feet, double goal, int ticks, double carried) {
         double way = goal - feet, left = Math.abs(way);
@@ -181,12 +188,63 @@ public final class LiftShaft {
         double gather = START + ACCEL * Math.max(0, ticks);
         double cap = Math.min(SPEED, Math.max(gather, Math.max(0, carried)));
         cap = Math.min(cap, Math.max(CREEP, BRAKE * left));
-        return Math.copySign(Math.min(cap, left), way);
+        double step = Math.min(cap, left);
+        // what would be left is too little to ride on: take it now, so the leg ends exactly on its goal
+        if (left - step < ARRIVED) step = left;
+        return Math.copySign(step, way);
     }
 
     /** Whether the feet are at the goal. */
     public static boolean arrived(double feet, double goal) {
         return Math.abs(goal - feet) < ARRIVED;
+    }
+
+    /** How a ride stands after a look at where its rider is ({@link #ended}). */
+    public enum End {
+        /** It goes on. */
+        RIDING,
+        /** Its feet reached its end: it ends there, the feet set onto it ({@link #settle}). */
+        ARRIVED,
+        /** Its rider left the column, or it lasted {@link #GRACE} ticks longer than it should: it ends where it is. */
+        LOST
+    }
+
+    /** Whether a blocked ride turns back now: it has not turned yet and its feet reached the peak. */
+    public static boolean turns(Ride ride, boolean turned, double feet) {
+        return ride.blocked && !turned && arrived(feet, ride.peak);
+    }
+
+    /**
+     * Whether a ride ends now (0.14.1, the rule both sides share): it arrived when its feet reached its end (a blocked
+     * ride only once it turned, {@link #turns}), it is lost when the rider at {@code (x, z)} left the column of the
+     * block {@code (bx, bz)} ({@link #onColumn}) or the ride is {@code age} ticks old, {@link #GRACE} more than it
+     * takes. The client judges where it moved its player; the server judges the position the client reported last,
+     * never one its own physics step has already moved (in 0.14.0 that step's gravity hid the arrival of a ride up
+     * until the timeout and cut rides down short in mid-air).
+     */
+    public static End ended(Ride ride, boolean turned, double feet, double x, double z, int bx, int bz, long age) {
+        if ((!ride.blocked || turned) && arrived(feet, ride.to)) return End.ARRIVED;
+        if (!onColumn(x, z, bx, bz) || age > ride.ticks() + GRACE) return End.LOST;
+        return End.RIDING;
+    }
+
+    /**
+     * Where the feet of a ride that reached its end at {@code to} go (0.14.1): exactly onto it when they are within
+     * {@link #ARRIVED} of it, else where they are. The pad a ride ends on is solid again for its rider from then on,
+     * and vanilla lets feet even a little inside a block fall through it, so the client sets them onto the pad's top
+     * before the ride ends.
+     */
+    public static double settle(double feet, double to) {
+        return arrived(feet, to) ? to : feet;
+    }
+
+    /**
+     * Whether feet at {@code feet} ended a ride inside the block it stops on: less than {@link #ARRIVED} under its end
+     * {@code to} (0.14.1). They would fall through it, so the server sets such a rider onto it, a backstop for whatever
+     * kept the client from landing exactly; an eased ride never ends so ({@link #ease}).
+     */
+    public static boolean sunk(double feet, double to) {
+        return feet < to && arrived(feet, to);
     }
 
     /** The sideways motion that steers a rider at {@code pos} back to the column's middle {@code mid}. */

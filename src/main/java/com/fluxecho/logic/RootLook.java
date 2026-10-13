@@ -21,6 +21,9 @@ import java.util.List;
  * at the full tide the rings' crests showing through it ({@link #crest}).</li>
  * </ul>
  * Pure, so the tests hold the rings clear of the people and the lines on the walls.
+ * <p>
+ * Over low ground the well is shallower (0.14.1, {@link RootShape#depth}): the forms that take a {@link RootShape.Well}
+ * read its lid, its bands and its cells; those without one are the full well's.
  */
 public final class RootLook {
 
@@ -34,7 +37,7 @@ public final class RootLook {
     public static final double HEAD = 1.8, CLEAR = 0.5;
     /** From how high a tide the rings' crests show through the grate band, and how high they rise at most. */
     public static final double CREST_FROM = 0.75, CREST_HIGH = 0.9;
-    /** The forum layer over the lid (Y0) in the well's frame. */
+    /** The forum layer over the lid (Y0) in the full well's frame. */
     public static final int SURFACE_Y = RootShape.HEIGHT;
 
     private static final int[][] SIDES = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
@@ -78,6 +81,11 @@ public final class RootLook {
         return RootShape.RING_Y[ring] + 1 + RISE;
     }
 
+    /** The forum layer over the lid (Y0) in a well's frame: its depth. */
+    public static int surfaceY(RootShape.Well w) {
+        return w.depth;
+    }
+
     /**
      * How high the rings' crests rise through the grate band at a tide ({@link #tide}): nothing below
      * {@link #CREST_FROM}, then up to {@link #CREST_HIGH} blocks over the forum at the top of a spring tide.
@@ -109,15 +117,20 @@ public final class RootLook {
 
     /**
      * The stretches of rib {@code rib} that are lit, {from, to} layers (to exclusive), bottom up: the rib cells
-     * ({@code L}) of the wall where its ray enters it, broken by the flux-layer bands.
+     * ({@code L}) of the wall where its ray enters it, broken by the flux-layer bands. The full well's.
      */
     public static List<int[]> ribRuns(int rib) {
+        return ribRuns(rib, RootShape.well(RootShape.DEPTH));
+    }
+
+    /** {@link #ribRuns(int)} in a well of any depth: up to its lid. */
+    public static List<int[]> ribRuns(int rib, RootShape.Well w) {
         double[] r = ribs()[rib];
         int x = (int) Math.floor(r[0] + r[2] * 0.02), z = (int) Math.floor(r[1] + r[3] * 0.02);
         List<int[]> out = new ArrayList<>();
         int from = -1;
-        for (int y = RootShape.FLOOR_Y; y <= RootShape.LID_Y; y++) {
-            boolean lit = y < RootShape.LID_Y && RootShape.cell(x, y, z) == 'L';
+        for (int y = RootShape.FLOOR_Y; y <= w.lidY; y++) {
+            boolean lit = y < w.lidY && w.cell(x, y, z) == 'L';
             if (lit && from < 0) from = y;
             if (!lit && from >= 0) {
                 out.add(new int[] { from, y });
@@ -129,15 +142,20 @@ public final class RootLook {
 
     /**
      * The inner faces of a flux-layer band's dark course at layer {@code y} ({@link RootShape#BANDS}): {x, z, inX, inZ}
-     * for every course cell of the wall and every side of it that looks into the well.
+     * for every course cell of the wall and every side of it that looks into the well. The full well's.
      */
     public static List<int[]> bandFaces(int y) {
+        return bandFaces(y, RootShape.well(RootShape.DEPTH));
+    }
+
+    /** {@link #bandFaces(int)} in a well of any depth ({@link RootShape.Well#bands}). */
+    public static List<int[]> bandFaces(int y, RootShape.Well w) {
         List<int[]> out = new ArrayList<>();
         for (int x = 0; x < RootShape.SIZE; x++) for (int z = 0; z < RootShape.SIZE; z++) {
-            if (!RootShape.wall(x, z) || RootShape.cell(x, y, z) != ModuleLook.COURSE) continue;
+            if (!RootShape.wall(x, z) || w.cell(x, y, z) != ModuleLook.COURSE) continue;
             for (int[] o : SIDES) {
                 int nx = x + o[0], nz = z + o[1];
-                if (RootShape.inside(nx, y, nz)) out.add(new int[] { x, z, o[0], o[1] });
+                if (w.inside(nx, y, nz)) out.add(new int[] { x, z, o[0], o[1] });
             }
         }
         return Collections.unmodifiableList(out);
@@ -164,18 +182,23 @@ public final class RootLook {
      * is none.
      */
     public static double headUnder(int ring) {
+        return headUnder(ring, RootShape.well(RootShape.DEPTH));
+    }
+
+    /** {@link #headUnder(int)} in a well of any depth (over the rings it has). */
+    public static double headUnder(int ring, RootShape.Well w) {
         double outer = RootShape.RING_R[ring] + 1, c = RootShape.MID;
         double top = RootShape.FLOOR_Y + 1;
         for (int x = 0; x < RootShape.SIZE; x++) for (int z = 0; z < RootShape.SIZE; z++) {
             if (Math.hypot(x - c, z - c) > outer + 0.75) continue;
             for (int y = 0; y < RootShape.RING_Y[ring]; y++) {
-                char ch = RootShape.cell(x, y, z);
+                char ch = w.cell(x, y, z);
                 // nobody stands in water, on a ring or on the controller
                 if (ch == ShapeKit.NONE || ch == ShapeKit.AIR
                     || ch == '='
                     || ch == RootShape.RING
                     || ch == ShapeKit.CONTROLLER) continue;
-                char up = RootShape.cell(x, y + 1, z);
+                char up = w.cell(x, y + 1, z);
                 if (up == ShapeKit.NONE || up == ShapeKit.AIR) top = Math.max(top, y + 1 + HEAD);
             }
         }

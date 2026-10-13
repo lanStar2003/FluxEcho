@@ -33,25 +33,26 @@ class EcoDomeShapeTest {
             String.join("\n", EcoDomeShape.rows())
                 .getBytes(StandardCharsets.UTF_8));
         // zlib.crc32 of the generator's layers, rows from the front, y0 first, each row x 0..26
-        // (798826595 before the gate niche turned soft: the same blocks, other characters)
-        assertEquals(2037949574L, crc.getValue());
+        // (2037949574 before 0.14.1 opened the crown deck over the spiral's fourth step; 798826595 before the gate
+        // niche turned soft: the same blocks, other characters)
+        assertEquals(913267591L, crc.getValue());
     }
 
     @Test
     void theGeneratorsCounts() {
         Map<Character, Integer> want = new TreeMap<>();
-        Object[] pairs = { 'G', 720, '.', 573, 'W', 550, 'L', 443, 'd', 282, 'u', 172, ',', 162, 'n', 111, 'r', 104,
+        Object[] pairs = { 'G', 720, '.', 573, 'W', 550, 'L', 443, 'd', 282, 'u', 172, ',', 161, 'n', 111, 'r', 104,
             'F', 102, 'w', 92, 'e', 70, '-', 48, 'B', 36, 'o', 36, '=', 28, 't', 17, 'C', 16, 'q', 14, 'A', 7, '/', 6,
             '[', 3, '!', 3, 'h', 2, 'K', 1, '~', 1, 'Z', 1 };
         for (int i = 0; i < pairs.length; i += 2) want.put((Character) pairs[i], (Integer) pairs[i + 1]);
         assertEquals(want, S.counts());
         assertEquals(2777, S.checkedCount());
-        assertEquals(775, S.softCount());
+        assertEquals(774, S.softCount());
         assertEquals(48, S.airCount());
         assertEquals(14, S.decor.size());
-        assertEquals(3614, S.steps());
+        assertEquals(3613, S.steps());
         ShapeKit.Summary sum = ShapeKit.summary(S, null);
-        assertEquals(3614, sum.steps);
+        assertEquals(3613, sum.steps);
         assertEquals(12, sum.units);
         assertEquals(36, sum.slots);
     }

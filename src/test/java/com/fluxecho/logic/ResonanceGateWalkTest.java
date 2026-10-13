@@ -1,6 +1,7 @@
 package com.fluxecho.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
@@ -38,12 +39,24 @@ class ResonanceGateWalkTest {
 
     @Test
     void asManyStatesAsTheGeneratorReaches() {
-        assertEquals(932, REACHED.size());
+        assertEquals(928, REACHED.size());
         ShapeKit.Summary s = ShapeKit.summary(ResonanceGateShape.SHAPE, ResonanceGateShape.walkStarts());
         assertTrue(s.controller);
         assertTrue(s.symmetric);
         assertTrue(s.unreachable.isEmpty());
-        assertEquals(932, s.reached);
+        assertTrue(s.idleTreads.isEmpty(), "both tower stairs are climbed");
+        assertEquals(928, s.reached);
+    }
+
+    /**
+     * Nobody stands on the four tuning racks' crowns (stand 6, under the upper deck at y8): 0.14.0's walk reached them
+     * by dropping from the deck through it (932 states then), as its drop never looked at the lower column. Nothing
+     * depended on them; the racks are used from the ground hall.
+     */
+    @Test
+    void theTuningRacksAreNotStoodOn() {
+        for (int[] d : new int[][] { { 1, 4 }, { 1, 8 }, { 29, 4 }, { 29, 8 } })
+            assertFalse(REACHED.contains(ShapeKit.Shape.state(d[0], d[1], 12)), d[0] + "," + d[1]);
     }
 
     /**

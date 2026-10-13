@@ -22,13 +22,18 @@ import java.util.List;
  * </ul>
  * Pure arithmetic, so the tests hold the ribs to the leg cells, the apex cells to the sphere and the dome to its
  * budget at every distance and every radius it grows to.
+ * <p>
+ * Over high ground the pod stands lower (0.14.1, {@link DomeGeneratorShape#datum}): the forms that take the sky datum
+ * F ({@link #cy}, {@link #legRadius(double, int)}, {@link #legPoint(int, double, int)}, {@link #arcEnd(double, double,
+ * double, double, int)}, {@link #farLegQuads(int)}) follow the shorter legs and the forum nearer the pod; those without
+ * it are the full legs' (F 40).
  */
 public final class DomeLook {
 
     /** How far the dome is drawn (blocks from its centre), and the most quads it may take a frame (CITY.md §1.3). */
     public static final double LANDMARK = 512;
     public static final int BUDGET = 400;
-    /** The dome's middle in the pod's frame: the forum's surface (Y0 + 1) under the pod's axis. */
+    /** The dome's middle in the pod's frame: the forum's surface (Y0 + 1) under the pod's axis (on its full legs). */
     public static final double CX = DomeGeneratorShape.MID + 0.5, CY = 1 - DomeGeneratorShape.FLOOR_UP,
         CZ = DomeGeneratorShape.MID + 0.5;
     /** The emitter crystal's middle over the roof (Y0 + 52.5: CITY.md §2.5 "dome emitter +52"). */
@@ -58,6 +63,11 @@ public final class DomeLook {
 
     private DomeLook() {}
 
+    /** The height of the dome's middle (the forum's surface) in the pod's frame at the sky datum {@code datum}. */
+    public static double cy(int datum) {
+        return 1 - datum;
+    }
+
     /** The dome's radius at a nexus phase: 64 (II), 104 (III), 128 (IV), 160 (V) (CITY.md §6.1 item 7). */
     public static double shellRadius(int phase) {
         if (phase <= 2) return 64;
@@ -70,7 +80,15 @@ public final class DomeLook {
 
     /** A leg's radius from the axis at the height h (0 at its foot cell, 38 at its head cell), as the generator's. */
     public static double legRadius(double h) {
-        double f = 1 - Math.max(0, Math.min(DomeGeneratorShape.LEG_TOP - 1, h)) / 38.0;
+        return legRadius(h, DomeGeneratorShape.FLOOR_UP);
+    }
+
+    /**
+     * A leg's radius from the axis at the height h at the sky datum {@code datum} (0 at its foot cell, F - 2 at its
+     * head cell), as the generator's {@code dome_legs(F)}.
+     */
+    public static double legRadius(double h, int datum) {
+        double f = 1 - Math.max(0, Math.min(datum - 2, h)) / (double) (datum - 2);
         return DomeGeneratorShape.LEG_HEAD + (DomeGeneratorShape.LEG_FOOT - DomeGeneratorShape.LEG_HEAD)
             * StrictMath.pow(f, DomeGeneratorShape.LEG_CURVE);
     }
@@ -78,13 +96,18 @@ public final class DomeLook {
     /**
      * The point {@code s} of the way up leg {@code leg}'s axis (0 the bottom of its foot cell on the forum, 1 the top
      * of its head cell under the pod), in the pod's frame: through the middle of every cell the leg was rounded to,
-     * give or take the rounding (at most half a block each way).
+     * give or take the rounding (at most half a block each way). The full legs'.
      */
     public static double[] legPoint(int leg, double s) {
-        double h = -0.5 + DomeGeneratorShape.LEG_TOP * s;
-        double r = legRadius(h), th = Math.toRadians(LEG_ANGLE[leg]);
+        return legPoint(leg, s, DomeGeneratorShape.FLOOR_UP);
+    }
+
+    /** {@link #legPoint(int, double)} for the legs at the sky datum {@code datum} (F - 1 cells high). */
+    public static double[] legPoint(int leg, double s, int datum) {
+        double h = -0.5 + (datum - 1) * s;
+        double r = legRadius(h, datum), th = Math.toRadians(LEG_ANGLE[leg]);
         double a = r * Math.cos(th), rr = r * Math.sin(th);
-        return new double[] { CX - rr, h + 0.5 - DomeGeneratorShape.FLOOR_UP + 1, CZ - a };
+        return new double[] { CX - rr, h + 0.5 - datum + 1, CZ - a };
     }
 
     /**
@@ -98,11 +121,17 @@ public final class DomeLook {
 
     /**
      * Where the arc from an emitter node {@code (x, y, z)} meets a dome of radius {@code radius}: straight out from the
-     * axis at the node's own height, on the sphere (at the apex when the node stands above it).
+     * axis at the node's own height, on the sphere (at the apex when the node stands above it). On the full legs.
      */
     public static double[] arcEnd(double x, double y, double z, double radius) {
-        double dx = x - CX, dz = z - CZ, h = y - CY, len = Math.hypot(dx, dz);
-        if (h >= radius) return new double[] { CX, CY + radius, CZ };
+        return arcEnd(x, y, z, radius, DomeGeneratorShape.FLOOR_UP);
+    }
+
+    /** {@link #arcEnd(double, double, double, double)} for a pod at the sky datum {@code datum}. */
+    public static double[] arcEnd(double x, double y, double z, double radius, int datum) {
+        double cy = cy(datum);
+        double dx = x - CX, dz = z - CZ, h = y - cy, len = Math.hypot(dx, dz);
+        if (h >= radius) return new double[] { CX, cy + radius, CZ };
         double out = Math.sqrt(radius * radius - h * h);
         if (len < 1e-9) return new double[] { CX + out, y, CZ };
         return new double[] { CX + dx / len * out, y, CZ + dz / len * out };
@@ -225,12 +254,18 @@ public final class DomeLook {
 
     /**
      * The quads of the six moored legs drawn far away: {@link #FAR_LEG_LINES} lines a leg through
-     * {@link #legPoint}, each in its pieces.
+     * {@link #legPoint}, each in its pieces. The full legs', the most there are.
      */
     public static int farLegQuads() {
+        return farLegQuads(DomeGeneratorShape.FLOOR_UP);
+    }
+
+    /** {@link #farLegQuads()} for the legs at the sky datum {@code datum}: no more than the full legs'. */
+    public static int farLegQuads(int datum) {
         int quads = 0;
         for (int leg = 0; leg < DomeGeneratorShape.LEGS; leg++) for (int k = 0; k < FAR_LEG_LINES; k++) {
-            double[] a = legPoint(leg, k / (double) FAR_LEG_LINES), b = legPoint(leg, (k + 1) / (double) FAR_LEG_LINES);
+            double[] a = legPoint(leg, k / (double) FAR_LEG_LINES, datum),
+                b = legPoint(leg, (k + 1) / (double) FAR_LEG_LINES, datum);
             quads += pieces(Math.sqrt(sq(b[0] - a[0]) + sq(b[1] - a[1]) + sq(b[2] - a[2])));
         }
         return quads;

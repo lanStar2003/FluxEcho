@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -20,7 +21,8 @@ import org.junit.jupiter.api.Test;
  * The Echo Dome Generator's shape against its generator ({@code city/gen/b_sky.py}, {@code dome_pod()} and
  * {@code dome_legs()}): the same pod cells (a checksum of every layer), the same counts, mirror-symmetric, the
  * controller, the pad, the seven wards, the soft door glazing and shaft cap added to it, the legs (the generator's on
- * the side R >= 0, mirrored), the two blueprints, the walk, and the envelope it takes of a campus.
+ * the side R >= 0, mirrored), the two blueprints, the walk, and the envelope it takes of a campus; and since 0.14.1 the
+ * sky datum over high ground, the shorter legs of {@code dome_legs(F)} and a moored shape for each datum.
  */
 class DomeGeneratorShapeTest {
 
@@ -283,32 +285,192 @@ class DomeGeneratorShapeTest {
         }
         assertNull(DomeGeneratorShape.noRoom(64));
         assertNull(DomeGeneratorShape.noRoom(203));
-        assertEquals("build.module.why.height", DomeGeneratorShape.noRoom(204));
+        // 0.14.1: over high ground the pod stands lower instead of being refused; only over Y0 225 (a base no core is
+        // placed at) would even the lowest pod's controller leave the world
+        assertNull(DomeGeneratorShape.noRoom(204));
+        assertNull(DomeGeneratorShape.noRoom(225));
+        assertEquals("build.module.why.height", DomeGeneratorShape.noRoom(226));
+    }
+
+    /**
+     * The sky datum (0.14.1, CITY.md §1.3 Vertical): 40 while the pod's clear box fits under the world's top, then 36,
+     * 32 and 28; never under the phase V nexus and its growth's clear box (Y0 + 27).
+     */
+    @Test
+    void theSkyDatumStepsDownOverHighGround() {
+        assertArrayEquals(new int[] { 40, 36, 32, 28 }, DomeGeneratorShape.datums());
+        int[][] table = { { 0, 40 }, { 64, 40 }, { 203, 40 }, { 204, 36 }, { 207, 36 }, { 208, 32 }, { 211, 32 },
+            { 212, 28 }, { 218, 28 }, { 225, 28 }, { 255, 28 } };
+        for (int[] t : table) assertEquals(t[1], DomeGeneratorShape.datum(t[0]), "Y0 " + t[0]);
+        for (int y0 = 0; y0 <= 255; y0++) {
+            int f = DomeGeneratorShape.datum(y0);
+            if (y0 <= 211) assertTrue(y0 + f + 12 <= 255, "the clear box fits at " + y0);
+            if (f < 40) assertTrue(y0 + f + 4 + 12 > 255, "the highest datum that fits at " + y0);
+            assertEquals(DomeGeneratorShape.moor(f).name, DomeGeneratorShape.shapeFor(y0));
+        }
+        int growthTop = NexusShape.STAGE * NexusShape.PHASES + 2;
+        assertEquals(27, growthTop, "the growth to phase V clears up to Y0 + 27");
+        for (int f : DomeGeneratorShape.datums()) assertTrue(f > growthTop, "the pod floor over it at " + f);
+        assertEquals(DomeGeneratorShape.MOORED, DomeGeneratorShape.moor(40).name);
+        assertEquals(DomeGeneratorShape.MOORED_36, DomeGeneratorShape.moor(36).name);
+        assertEquals(DomeGeneratorShape.MOORED_32, DomeGeneratorShape.moor(32).name);
+        assertEquals(DomeGeneratorShape.MOORED_28, DomeGeneratorShape.moor(28).name);
+        assertNull(DomeGeneratorShape.moored(DomeGeneratorShape.FLOATING), "floating is one for every datum");
+        assertEquals(36, DomeGeneratorShape.moored("moored_36").datum);
+        assertSame(DomeGeneratorShape.BUILD, DomeGeneratorShape.moor(40).build);
+        assertSame(DomeGeneratorShape.MOORED_BP, DomeGeneratorShape.moor(40).blueprint);
+    }
+
+    /**
+     * The shorter legs are the generator's {@code dome_legs(F)} (b_sky.py, 0.14.1): the first three legs' checksum at
+     * every datum, mirrored to the other side, the same six feet, the head just under the pod's floor.
+     */
+    @Test
+    void theShorterLegsAreTheGenerators() {
+        // zlib.crc32 of the first three legs of dome_legs(F), "a,r,dy;" each
+        long[][] crcs = { { 40, 2025965872L }, { 36, 3549868915L }, { 32, 1137181848L }, { 28, 3416139175L } };
+        Set<String> feet40 = new HashSet<>();
+        for (int[] f : DomeGeneratorShape.feet()) feet40.add(f[0] + "," + f[1]);
+        for (long[] c : crcs) {
+            int f = (int) c[0];
+            DomeGeneratorShape.Moor m = DomeGeneratorShape.moor(f);
+            List<int[]> legs = m.legs();
+            int per = f - 1;
+            assertEquals(6 * per, legs.size(), "six legs of F - 1 cells at " + f);
+            StringBuilder half = new StringBuilder();
+            for (int i = 0; i < 3 * per; i++) {
+                int[] l = legs.get(i);
+                half.append(l[0])
+                    .append(',')
+                    .append(l[1])
+                    .append(',')
+                    .append(l[2])
+                    .append(';');
+            }
+            assertEquals(c[1], crc(half.toString()), "dome_legs(" + f + ")");
+            Set<String> feet = new HashSet<>();
+            for (int k = 0; k < 6; k++) for (int h = 0; h < per; h++) {
+                int[] l = legs.get(k * per + h);
+                if (k >= 3) {
+                    int[] mirror = legs.get((5 - k) * per + h);
+                    assertArrayEquals(new int[] { mirror[0], -mirror[1], mirror[2] }, l, "leg " + k + " mirrored");
+                }
+                assertEquals(1 + h, l[2]);
+                if (h == 0) feet.add(l[0] + "," + l[1]);
+                if (h == per - 1) {
+                    int[] p = m.campusToPod(l[0], l[1], l[2]);
+                    assertEquals(-1, p[1], "the head just under the pod's floor");
+                    assertTrue(S.get(p[0], 0, p[2]) != ' ', "under the floor");
+                }
+            }
+            assertEquals(feet40, feet, "the same feet at " + f);
+            int cells = 0;
+            for (int[] col : m.legColumns()) cells += col[3] - col[2] + 1;
+            assertEquals(legs.size(), cells, "the legs' columns are unbroken at " + f);
+        }
+    }
+
+    /**
+     * Each datum is a moored shape of its own: the pod's checked cells and its legs, F + 9 high, the controller where
+     * the module's frame puts it, mirror-symmetric; its build maps the pod's frame the same way at every datum.
+     */
+    @Test
+    void everyDatumHasItsMooredShape() {
+        for (DomeGeneratorShape.Moor m : DomeGeneratorShape.moors()) {
+            int f = m.datum;
+            Blueprint b = m.blueprint;
+            assertEquals(29, b.width());
+            assertEquals(f + 9, b.height());
+            assertEquals(25, b.depth());
+            assertTrue(b.symmetric());
+            assertEquals(
+                1027 + 6 * (f - 1),
+                b.cells()
+                    .size());
+            assertEquals(6 * (f - 1), b.count('P'));
+            assertArrayEquals(
+                new int[] { 14, 7, 8 },
+                new int[] { b.ctrlA, b.ctrlB, b.ctrlC },
+                "the controller at " + f);
+            assertArrayEquals(new int[] { 4, f - 1, 2 }, m.offset());
+            assertEquals(f - 1, m.legTop());
+            assertEquals(f + 12, m.clearTop());
+            CityBuild build = m.build;
+            assertArrayEquals(new int[] { 14, 7, 8 }, build.cellOf(10, 2, 6));
+            for (int y = 0; y < S.H; y++) for (int z = 0; z < S.D; z++) for (int x = 0; x < S.W; x++) {
+                char ch = S.get(x, y, z);
+                int[] c = build.cellOf(x, y, z);
+                assertEquals(ShapeKit.soft(ch) ? ' ' : ch, b.at(c[0], c[1], c[2]));
+                assertArrayEquals(new int[] { x, y, z }, build.localOf(c[0], c[1], c[2]));
+            }
+            for (int[] p : m.legPoints()) {
+                int[] c = build.cellOf(p[0], p[1], p[2]);
+                assertEquals('P', b.at(c[0], c[1], c[2]));
+            }
+            assertArrayEquals(new int[] { 4, 0, f + 2 }, m.podToCampus(10, 2, 6));
+            assertArrayEquals(new int[] { 10, 2, 6 }, m.campusToPod(4, 0, f + 2));
+        }
+        // the floating shape is the full legs' box without the legs: the same pod round the same controller cell
+        assertEquals(DomeGeneratorShape.MOORED_BP.ctrlB, DomeGeneratorShape.FLOATING_BP.ctrlB);
+    }
+
+    /**
+     * What it takes of a campus over high ground: the leg columns over their shorter heights, the pod's clear box from
+     * its lower floor, the controller (A 4, R 0, Y0 + F + 2); and its wards and controller stay in the world for every
+     * base a core may be placed at (Y0 225 at most), though the pod's top layers clip over Y0 218.
+     */
+    @Test
+    void theEnvelopeOverHighGround() {
+        int cx = 100, cz = -200;
+        for (int y0 = 14; y0 <= 225; y0++) {
+            int f = DomeGeneratorShape.datum(y0);
+            for (int[] fr : new int[][] { { 0, -1 }, { 1, 0 } }) {
+                int[] c = DomeGeneratorShape.controller(SiteFamily.ZENITH_SITE, cx, y0, cz, fr[0], fr[1]);
+                assertArrayEquals(
+                    new int[] { cx + 4 * fr[0], y0 + f + 2, cz + 4 * fr[1], BuildPlan.facingOrdinal(fr[0], fr[1]) },
+                    c);
+                assertTrue(c[1] <= 255, "the controller in the world at " + y0);
+                List<int[]> keep = DomeGeneratorShape.keepOut(cx, y0, cz, fr[0], fr[1]);
+                List<int[]> prot = DomeGeneratorShape.protect(cx, y0, cz, fr[0], fr[1]);
+                assertEquals(keep.size() + 1, prot.size());
+                for (int[] k : keep) assertTrue(k[4] >= y0 + 1 && k[5] <= y0 + f - 1, "a leg's heights at " + y0);
+                int[] pod = prot.get(prot.size() - 1);
+                assertEquals(y0 + f, pod[1]);
+                assertEquals(y0 + f + 12, pod[4]);
+            }
+            for (UnitLayout.Unit w : DomeGeneratorShape.UNITS.units())
+                for (int[] cell : w.cells) assertTrue(y0 + f + cell[1] <= 255, "a ward in the world at " + y0);
+            assertNull(DomeGeneratorShape.noRoom(y0), "room at " + y0);
+        }
+        // the top layers that clip: whole up to Y0 218, the glazed cap gone at 219, everything over y2 at 225
+        assertEquals(255, 218 + DomeGeneratorShape.datum(218) + DomeGeneratorShape.HEIGHT - 1);
+        assertEquals(255, 225 + DomeGeneratorShape.datum(225) + 2);
     }
 
     /**
      * The forum's paving stays whole under the legs (CITY.md §4.8): every foot stands on a paved forum cell that is no
      * light well, no leg takes a light well's column, and the supply port, the recycle bin and the pylons keep their
-     * Y0 + 1 cells.
+     * Y0 + 1 cells; at every sky datum (0.14.1), the shorter legs as the full ones.
      */
     @Test
     void theLegsMissTheForumsWellsAndFixtures() {
-        for (long seed = 1; seed <= 40; seed++) {
+        for (DomeGeneratorShape.Moor m : DomeGeneratorShape.moors()) for (long seed = 1; seed <= 40; seed++) {
             CampusPlan plan = new CampusPlan(Mix.seed((int) seed * 31, 70, (int) -seed * 17));
             Map<Long, Integer> floor = plan.establishFloor();
             Set<Long> wells = plan.wells();
-            for (int[] foot : DomeGeneratorShape.feet()) {
-                long k = CampusPlan.key(foot[0], foot[1]);
-                assertTrue(floor.containsKey(k), "a foot on the paving, seed " + seed);
-                assertFalse(wells.contains(k), "a foot on a light well, seed " + seed);
+            String at = ", seed " + seed + " datum " + m.datum;
+            for (int[] leg : m.legs()) if (leg[2] == 1) {
+                long k = CampusPlan.key(leg[0], leg[1]);
+                assertTrue(floor.containsKey(k), "a foot on the paving" + at);
+                assertFalse(wells.contains(k), "a foot on a light well" + at);
             }
-            for (int[] col : DomeGeneratorShape.legColumns())
-                assertFalse(wells.contains(CampusPlan.key(col[0], col[1])), "a leg over a well, seed " + seed);
-            for (int[] col : DomeGeneratorShape.legColumns()) {
-                for (int[] p : plan.pylons()) assertFalse(p[0] == col[0] && p[1] == col[1], "a leg on a pylon");
+            for (int[] col : m.legColumns())
+                assertFalse(wells.contains(CampusPlan.key(col[0], col[1])), "a leg over a well" + at);
+            for (int[] col : m.legColumns()) {
+                for (int[] p : plan.pylons()) assertFalse(p[0] == col[0] && p[1] == col[1], "a leg on a pylon" + at);
                 int[] port = plan.supplyPort(), bin = plan.recycleBin();
                 if (col[0] == port[0] && col[1] == port[1] || col[0] == bin[0] && col[1] == bin[1])
-                    assertTrue(col[2] > 1, "the port and the bin keep their cells");
+                    assertTrue(col[2] > 1, "the port and the bin keep their cells" + at);
             }
         }
     }

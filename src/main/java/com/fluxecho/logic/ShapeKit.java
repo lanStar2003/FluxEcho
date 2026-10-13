@@ -30,9 +30,10 @@ import java.util.TreeMap;
  * <p>
  * The self-check every generator prints ({@link #summary}) is part of the kit: the counts, the mirror test across
  * {@code x} (soft cells and the listed asymmetric cells skipped), and a walk from outside the main door in half blocks
- * (steps up at most half a block, drops at most three, light lifts joining their pads) that must reach the controller
- * at eye height and every unit. Python's {@code math.hypot} and {@code atan2} become {@link Math#sqrt} of the exact
- * integer sum and {@link StrictMath#atan2}, which give the generator's cells (the shape tests compare checksums).
+ * (steps up at most half a block, drops at most three, the body clear through every crossing, light lifts joining their
+ * pads) that must reach the controller at eye height and every unit, and (0.14.1) stand on every tread. Python's
+ * {@code math.hypot} and {@code atan2} become {@link Math#sqrt} of the exact integer sum and {@link StrictMath#atan2},
+ * which give the generator's cells (the shape tests compare checksums).
  */
 public final class ShapeKit {
 
@@ -791,9 +792,9 @@ public final class ShapeKit {
 
         /**
          * Breadth-first over the standing states {x, z, h} (h in half blocks) from the starts: a step up of at most
-         * half a block, a drop of at most three, the head clear over the crossing; a light-lift pad joins every pad of
-         * its column. Columns up to {@code margin} outside the box count. Returns the states reached, as
-         * {@link #state} keys.
+         * half a block, a drop of at most three, the body clear through the crossing ({@link #crosses}); a light-lift
+         * pad joins every pad of its column. Columns up to {@code margin} outside the box count. Returns the states
+         * reached, as {@link #state} keys.
          */
         public Set<Long> walk(List<int[]> starts, int margin) {
             Set<Long> seen = new HashSet<>();
@@ -815,14 +816,8 @@ public final class ShapeKit {
                     List<Integer> f = fl.computeIfAbsent(key(nx, nz), k -> floors(nx, nz));
                     for (int h2 : f) {
                         if (h2 - h > 1 || h - h2 > 6) continue;
-                        // the head must clear the higher of the two columns at the crossing
-                        int top = Math.max(h, h2);
-                        boolean ok = true;
-                        for (int yy = top / 2; yy < (top + 4) / 2; yy++) {
-                            if (!(passable(x, yy, z) || yy * 2 < h) || !(passable(nx, yy, nz) || yy * 2 < h2))
-                                ok = false;
-                        }
-                        if (ok && seen.add(state(nx, nz, h2))) q.add(new int[] { nx, nz, h2 });
+                        if (crosses(x, z, h, nx, nz, h2) && seen.add(state(nx, nz, h2)))
+                            q.add(new int[] { nx, nz, h2 });
                     }
                 }
                 List<Integer> pads = liftCols.get(key(x, z));
@@ -831,6 +826,39 @@ public final class ShapeKit {
                 }
             }
             return seen;
+        }
+
+        /**
+         * Whether a body standing at {@code h} in column {@code (x, z)} fits through to {@code h2} in the neighbouring
+         * column {@code (nx, nz)} (heights in half blocks; the walk has already limited the step and the drop). The
+         * body crosses at the higher of the two heights, so each column must be clear from its own standing height up
+         * to that body's head, {@code top / 2 + 1.8}: a step up is taken while the body is still over the lower
+         * column, and a drop falls through the lower column. A half slab that is a column's own floor lies below its
+         * standing height and is left out. (0.11.0 to 0.14.0 checked both columns only from the higher height and
+         * one block short of the head when that height was a half block: it walked the Eco Dome's crown stair, whose
+         * fourth step put the head into the crown island's grass, and fell through floors that would stop a drop.)
+         */
+        boolean crosses(int x, int z, int h, int nx, int nz, int h2) {
+            int top = Math.max(h, h2);
+            // the cells below ceil(top / 2 + 1.8), in half blocks
+            int head = (top + 5) / 2;
+            for (int yy = h / 2; yy < head; yy++) if (yy * 2 >= h && !passable(x, yy, z)) return false;
+            for (int yy = h2 / 2; yy < head; yy++) if (yy * 2 >= h2 && !passable(nx, yy, nz)) return false;
+            return true;
+        }
+
+        /**
+         * The treads (the half slabs of {@link ShapeKit#HALF}, checked and soft) no reached standing state stands on,
+         * {x, y, z}, lowest layer first: a stair the walk cannot climb shows here even when its units are reachable
+         * another way (0.14.1; the Eco Dome's crown planter was, by reaching up through the deck).
+         */
+        public List<int[]> idleTreads(Set<Long> reached) {
+            List<int[]> out = new ArrayList<>();
+            for (int y = 0; y < H; y++) for (int z = 0; z < D; z++) for (int x = 0; x < W; x++) {
+                if (HALF.indexOf(get(x, y, z)) >= 0 && !reached.contains(state(x, z, 2 * y + 1)))
+                    out.add(new int[] { x, y, z });
+            }
+            return out;
         }
 
         /** A standing state as one long. */
@@ -926,6 +954,8 @@ public final class ShapeKit {
         public final int checked, soft, air, decor, steps, units, slots, reached;
         public final boolean symmetric, controller;
         public final List<String> unreachable;
+        /** The treads nobody reached stands on, {x, y, z} ({@link Shape#idleTreads}; empty without starts). */
+        public final List<int[]> idleTreads;
         public final Map<Character, Integer> counts;
 
         Summary(Shape s, List<int[]> starts) {
@@ -946,18 +976,20 @@ public final class ShapeKit {
                 reached = r.size();
                 controller = s.controllerReach(r);
                 unreachable = Collections.unmodifiableList(s.unitReach(r));
+                idleTreads = Collections.unmodifiableList(s.idleTreads(r));
             } else {
                 reached = 0;
                 controller = false;
                 unreachable = Collections.emptyList();
+                idleTreads = Collections.emptyList();
             }
         }
     }
 
     /**
      * The generator's {@code summary}: counts, symmetry and, from the standing states {x, z, h} given (outside the main
-     * door), the walk: how many states it reaches, whether it reaches the controller at eye height, and which units
-     * it cannot.
+     * door), the walk: how many states it reaches, whether it reaches the controller at eye height, which units it
+     * cannot, and (0.14.1) which treads nobody stands on.
      */
     public static Summary summary(Shape s, List<int[]> starts) {
         return new Summary(s, starts);

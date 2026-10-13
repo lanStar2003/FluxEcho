@@ -7,6 +7,8 @@ import java.util.function.BooleanSupplier;
 
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.CityOffer;
+import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.SiteFamily;
 
 /**
@@ -63,6 +65,24 @@ public final class ModuleSpec {
          * {@code build.module.why.height}), or null when it fits.
          */
         String noRoom(int y0);
+
+        /**
+         * The name of the shape it stands as over a campus whose base layer is {@code y0} (0.14.1: the zenith's sky
+         * datum, the well's depth), which the builder names to the tile it commissions; null when it has one shape
+         * for every height.
+         */
+        default String shapeFor(int y0) {
+            return null;
+        }
+
+        /**
+         * Where 0.14.0 put its controller on the site, when that may differ from where the builder puts it now
+         * (0.14.1: the zenith on its full legs, the well at its full depth), so that one built there by hand over
+         * ground the builder now adapts to still docks; null when it never differs.
+         */
+        default int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
+            return null;
+        }
     }
 
     /** The module key: the tile's {@code moduleKey()} and the {@code <module>} of its job key. */
@@ -73,7 +93,10 @@ public final class ModuleSpec {
     public final String research;
     /** Its footprint across, its depth from its front row, its height. */
     public final int width, depth, height;
-    /** The sites of its family it may stand on, in order of preference (a site taken by another module is skipped). */
+    /**
+     * The sites of its family it prefers, in order (a site taken by another module is skipped); since 0.14.1 it may
+     * also take its family's other sites after these ({@link #candidates}).
+     */
     public final int[] sites;
     /** The {@link com.fluxecho.logic.Parts} code its controller is placed as (consumed at commissioning). */
     public final int corePart;
@@ -161,19 +184,49 @@ public final class ModuleSpec {
 
     /**
      * Why a campus whose base layer is {@code y0} has no room for it (a lang key under {@code fluxecho.}), or null when
-     * it fits. An axis module asks its {@link Envelope}. A module on the ground (a hall, a pavilion) stands on the
-     * campus's base layer (a gatehouse too, 0.14.0: 18 high), so it fits while its shape's top cell,
-     * {@code y0 + height - 1}, stays inside the world ({@code build.module.why.height} above y 255): every hall, and
-     * every pavilion but the Arcane Court (33 high, so a base at y 223 at most, 0.13.0), fits every base a nexus core
-     * may be placed at; the clear box over the shape needs no room, as the builder never touches cells over the world.
+     * it fits. An axis module asks its {@link Envelope}. A module on the ground (a hall, a pavilion, a gatehouse)
+     * stands on the campus's base layer, and since 0.14.1 it fits while its controller and every cell of its units
+     * stay inside the world ({@link #standTop}; {@code build.module.why.height} above y 255): its plan leaves out any
+     * cell over the world's top (the Arcane Court's finial over Y0 223) and the structure check skips those, so every
+     * module fits every base a nexus core may be placed at; the clear box over the shape needs no room either.
      */
     public String noRoom(int y0) {
         if (envelope != null) return envelope.noRoom(y0);
-        return y0 + height - 1 > WORLD_TOP ? "build.module.why.height" : null;
+        return y0 + standTop() > WORLD_TOP ? "build.module.why.height" : null;
+    }
+
+    /**
+     * The name of the shape the module stands as over a campus whose base layer is {@code y0} (0.14.1, an axis
+     * module's {@link Envelope#shapeFor}), or null when it has one shape for every height.
+     */
+    public String shapeFor(int y0) {
+        return envelope == null ? null : envelope.shapeFor(y0);
     }
 
     /** The highest y a block can stand at. */
     private static final int WORLD_TOP = 255;
+    /** The base layer the {@link #standTop} is measured over. */
+    private static final int MEASURED_AT = 64;
+    /** How high over the base layer its controller and its units stand, once worked out; MIN_VALUE before. */
+    private volatile int standTop = Integer.MIN_VALUE;
+
+    /**
+     * How high over the base layer a ground module's controller and the highest cell of its units stand (0.14.1),
+     * worked out once from its plan on its first preferred site ({@link BuildPlan#standTop}); its shape's top layer,
+     * {@code height - 1}, when the plan says nothing.
+     */
+    private int standTop() {
+        int top = standTop;
+        if (top != Integer.MIN_VALUE) return top;
+        top = height - 1;
+        if (sites.length > 0) {
+            BuildPlan.Plan p = plan(new CampusPlan(0L), sites[0], 0, MEASURED_AT, 0, 0, -1);
+            int at = p == null ? Integer.MIN_VALUE : BuildPlan.standTop(p);
+            if (at != Integer.MIN_VALUE) top = at - MEASURED_AT;
+        }
+        standTop = top;
+        return top;
+    }
 
     /**
      * The keep-out boxes the campus jobs leave alone once the module stands on the site: a hall's whole
@@ -235,10 +288,40 @@ public final class ModuleSpec {
         return controllers.controller(site, cx, y0, cz, fx, fz);
     }
 
-    /** Whether the module may stand on the site. */
+    /**
+     * Where 0.14.0 put its controller on the site, {x, y, z, facing ordinal}, when that may differ from
+     * {@link #controller} (0.14.1, an axis module's {@link Envelope#formerController}); null otherwise.
+     */
+    public int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
+        return envelope == null ? null : envelope.formerController(site, cx, y0, cz, fx, fz);
+    }
+
+    /**
+     * Whether the module may stand on the site: any site of its family (0.14.1; its preference list only before). A
+     * module the player moved, or one that took its family's other site because its favourites were taken, so still
+     * keeps its site's keep-out, protection and repairs, and docks there.
+     */
     public boolean hasSite(int site) {
-        for (int s : sites) if (s == site) return true;
-        return false;
+        return family.hasSite(site);
+    }
+
+    /**
+     * The sites it may take at the phase, in order (0.14.1, {@link CityOffer#candidates}): its preference list, then
+     * the rest of its family's sites, only those open at the phase on ground already laid ({@code groundLaid}, asked
+     * of a family's {@link SiteFamily#ground}).
+     */
+    public int[] candidates(int phase, java.util.function.Predicate<String> groundLaid) {
+        return CityOffer.candidates(kind(0), phase, groundLaid);
+    }
+
+    /**
+     * The kind as the campus's offer looks at it ({@link CityOffer.Kind}) for a campus whose base layer is {@code y0}:
+     * its key, research and the phase of its research node, its family and preference list, whether the config lets
+     * it be built, and why the campus has no room for it ({@link #noRoom}).
+     */
+    public CityOffer.Kind kind(int y0) {
+        ResearchTree.Node node = ResearchTree.get(research);
+        return new CityOffer.Kind(key, research, family, sites, node == null ? 1 : node.phase, enabled(), noRoom(y0));
     }
 
     /** Whether the builder may start new jobs for it now. */

@@ -3,6 +3,7 @@ package com.fluxecho.city;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -27,8 +28,9 @@ import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 /**
  * The root's Tidal Well as its tile sees it in the world (0.12.0), for every facing: its blueprint sits where
  * StructureLib's facing math looks for it, the console under the controller opens the window while the taps are
- * units, its one shape is the well, the rings dissolve and let players through, and a well the campus builder sank has
- * its frame where the plan put the blocks, under the nexus.
+ * units, its shapes are the wells (the full one first, the shallower ones over low ground appended since 0.14.1), the
+ * rings dissolve and let players through, and a well the campus builder sank has its frame where the plan put the
+ * blocks, under the nexus, at every depth.
  */
 class TileRootTest {
 
@@ -103,11 +105,18 @@ class TileRootTest {
     }
 
     @Test
-    void theWellIsItsOneShapeAndItsRingsLetPlayersThrough() {
+    void theWellsAreItsShapesAndItsRingsLetPlayersThrough() {
         TileRoot r = root(X, Y, Z, 2);
         List<TileMultiblock.Shape> shapes = r.shapes();
-        assertEquals(1, shapes.size());
+        // 0.12's well keeps its name and blueprint, so every well that formed still forms; the shallower wells are
+        // appended (0.14.1)
+        assertEquals(4, shapes.size());
         assertEquals(RootShape.WELL, shapes.get(0).name);
+        assertSame(RootShape.BLUEPRINT, shapes.get(0).bp);
+        assertEquals(RootShape.WELL_20, shapes.get(1).name);
+        assertEquals(RootShape.WELL_14, shapes.get(2).name);
+        assertEquals(RootShape.WELL_8, shapes.get(3).name);
+        for (TileMultiblock.Shape s : shapes) assertTrue(r.tries(s), "any well while no nexus is known");
         assertEquals(RootShape.WELL, r.shapeName());
         assertEquals(Formed.HIDE | Formed.PASS, r.flags('R'));
         assertEquals(0, r.flags('W'));
@@ -122,6 +131,50 @@ class TileRootTest {
             CityGui.MAP_MAX_H);
         assertEquals(1, map.storeys());
         assertEquals(RootShape.FLOOR_Y, map.level(0));
+    }
+
+    /**
+     * Over low ground (0.14.1): the builder names the well of the campus's depth, and the tile of a well it sank there
+     * has its frame where the plan put every block, the slab Y0 - D under the nexus's centre, the lid at Y0 - 1.
+     */
+    @Test
+    void aShallowWellsFrameIsThePlans() {
+        int cx = 40, cz = -80;
+        CampusPlan campus = new CampusPlan(7L);
+        for (int y0 : new int[] { 14, 19, 20, 25, 26, 31 }) {
+            RootShape.Well w = RootShape.forBase(y0);
+            int site = SiteFamily.ROOT_SITE;
+            int[] c = RootShape.controller(site, cx, y0, cz, 0, -1);
+            TileRoot r = root(c[0], c[1], c[2], c[3]);
+            r.expectShape(
+                CityModule.root()
+                    .shapeFor(y0));
+            assertEquals(w.name, r.shapeName());
+            assertSame(w, r.well());
+            assertSame(w.build, r.build());
+            BuildPlan.Plan p = RootShape.plan(campus, site, cx, y0, cz, 0, -1);
+            int units = 0;
+            for (BuildPlan.Step s : p.steps) {
+                int[] l = r.local(s.x, s.y, s.z);
+                assertTrue(l[1] >= 0 && l[1] < w.depth, "inside the well at " + y0);
+                assertTrue(s.y >= RootShape.LOWEST_SLAB, "over the bedrock at " + y0);
+                if (BuildPlan.digs(s.kind)) assertTrue(w.inside(l[0], l[1], l[2]));
+                else if (s.kind == BuildPlan.HARD) {
+                    char ch = w.cell(l[0], l[1], l[2]);
+                    assertEquals(ch == '~' ? Parts.moduleCore(ModuleCores.ROOT) : ShapeKit.partOf(ch), s.part);
+                }
+                if (s.group == BuildPlan.NO_GROUP) continue;
+                assertEquals(s.group, r.unitAt(s.x, s.y, s.z));
+                units++;
+            }
+            assertEquals(8, units);
+            assertArrayEquals(new int[] { cx, y0 - w.depth, cz }, r.centre(), "the slab's centre at " + y0);
+            assertArrayEquals(new int[] { cx, y0 - 1, cz }, r.worldOf(12, w.lidY, 12), "the lid's open centre");
+            for (int s = 0; s < 8; s++) {
+                int[] at = r.slotCell(s);
+                assertEquals(s, r.slotAt(at[0], at[1], at[2]), "the same taps, the same slots");
+            }
+        }
     }
 
     /** The tile of a well the builder sank has its frame where the plan put every block, under the nexus's centre. */
@@ -168,8 +221,14 @@ class TileRootTest {
         assertEquals("tidal_well", spec.research);
         assertArrayEquals(new int[] { SiteFamily.ROOT_SITE }, spec.sites);
         assertEquals(TileRoot.COLOR, spec.colour);
-        assertEquals("build.module.why.depth", spec.noRoom(31));
+        // 0.14.1: a shallower well over lower ground; none under Y0 14
+        assertEquals("build.module.why.depth", spec.noRoom(13));
+        assertEquals(null, spec.noRoom(14));
+        assertEquals(null, spec.noRoom(31));
         assertEquals(null, spec.noRoom(32));
+        assertEquals(RootShape.WELL, spec.shapeFor(32));
+        assertEquals(RootShape.WELL_20, spec.shapeFor(31));
+        assertEquals(RootShape.WELL_8, spec.shapeFor(14));
         CampusPlan campus = new CampusPlan(7L);
         int cx = 40, y0 = 70, cz = -80;
         assertTrue(
@@ -223,5 +282,136 @@ class TileRootTest {
                 assertTrue(found, lang + " lacks " + k);
             }
         }
+    }
+
+    /** A formed nexus whose base layer is {@code y0}, facing east. */
+    private static com.fluxecho.nexus.TileNexus nexus(int y0) {
+        com.fluxecho.nexus.TileNexus n = new com.fluxecho.nexus.TileNexus() {
+
+            @Override
+            public boolean formed() {
+                return true;
+            }
+        };
+        n.xCoord = -30;
+        n.yCoord = y0 + 2;
+        n.zCoord = 55;
+        n.place((UUID) null, null, 5);
+        assertEquals(y0, n.centre()[1]);
+        return n;
+    }
+
+    /** A root tile at a cell {x, y, z, facing}, which finds the nexus over it among that one nexus. */
+    private static TileRoot under(com.fluxecho.nexus.TileNexus n, int[] at) {
+        TileRoot r = new TileRoot() {
+
+            @Override
+            public com.fluxecho.nexus.TileNexus over() {
+                return over(java.util.Collections.singletonList(n));
+            }
+        };
+        r.xCoord = at[0];
+        r.yCoord = at[1];
+        r.zCoord = at[2];
+        r.place((UUID) null, null, at[3]);
+        return r;
+    }
+
+    private static int[] rootCell(com.fluxecho.nexus.TileNexus n, int depth) {
+        int[] c = n.centre();
+        return RootShape.well(depth)
+            .controller(SiteFamily.ROOT_SITE, c[0], c[1], c[2], n.front().offsetX, n.front().offsetZ);
+    }
+
+    /**
+     * Under a known nexus only the well its cell stands for is tried (0.14.1): the full well from Y0 32 up, as in
+     * 0.14.0, the shallower ones under that; a controller at the full well's cell over low ground, where 0.14.0 put
+     * every well and where one dug by hand still stands, tries the full well and finds its nexus; any while no nexus
+     * is known.
+     */
+    @Test
+    void underAKnownNexusOnlyTheWellOfItsCellIsTried() {
+        int[][] cases = { { 79, 26 }, { 32, 26 }, { 28, 20 }, { 22, 14 }, { 16, 8 } };
+        for (int[] k : cases) {
+            com.fluxecho.nexus.TileNexus n = nexus(k[0]);
+            TileRoot r = under(n, rootCell(n, RootShape.depth(k[0])));
+            assertSame(n, r.over(), "Y0 " + k[0]);
+            String only = RootShape.well(k[1]).name;
+            for (TileMultiblock.Shape s : r.shapes())
+                assertEquals(s.name.equals(only), r.tries(s), s.name + " at Y0 " + k[0]);
+        }
+        com.fluxecho.nexus.TileNexus low = nexus(28);
+        TileRoot old = under(low, rootCell(low, RootShape.DEPTH));
+        assertSame(low, old.over(), "the full well's cell over low ground");
+        for (TileMultiblock.Shape s : old.shapes())
+            assertEquals(s.name.equals(RootShape.WELL), old.tries(s), s.name + " at the full depth");
+        int[] off = rootCell(low, 20);
+        off[1]--;
+        TileRoot stray = under(low, off);
+        org.junit.jupiter.api.Assertions.assertNull(stray.over(), "a cell of neither depth");
+        for (TileMultiblock.Shape s : stray.shapes()) assertTrue(stray.tries(s), s.name + " with no nexus");
+        int[] c = low.centre();
+        assertArrayEquals(
+            rootCell(low, RootShape.DEPTH),
+            CityModule.root()
+                .formerController(SiteFamily.ROOT_SITE, c[0], c[1], c[2], low.front().offsetX, low.front().offsetZ));
+    }
+
+    /**
+     * A core placed by hand over low ground (0.14.1) names its well itself once it knows the nexus over it, so
+     * StructureLib's projector digs what its check tries (before, the full well, which the check over a nexus at Y0 20
+     * refuses); one with no nexus known and a formed one keep the shape they have.
+     */
+    @Test
+    void aCorePlacedByHandNamesItsWellUnderAKnownNexus() {
+        com.fluxecho.nexus.TileNexus n = nexus(20);
+        TileRoot r = under(n, rootCell(n, 14));
+        assertEquals(RootShape.WELL, r.shapeName(), "the first shape until it knows where it stands");
+        r.nameShapeHere();
+        assertEquals(RootShape.WELL_14, r.shapeName());
+        TileRoot lone = root(X, Y, Z, 2);
+        lone.nameShapeHere();
+        assertEquals(RootShape.WELL, lone.shapeName(), "no nexus known");
+        TileRoot formed = new TileRoot() {
+
+            {
+                formed = true;
+            }
+        };
+        formed.expectShape(RootShape.WELL_8);
+        formed.nameShapeHere();
+        assertEquals(RootShape.WELL, formed.shapeName(), "a formed well keeps the shape it stands as");
+    }
+
+    /**
+     * A formed shallow well covers the box of the shape it stands as only (0.14.1): 8 deep under Y0 16, the full
+     * well's box round its controller would reach 17 over the forum, over the nexus, its dais and the grate band, and
+     * keep our blocks there from being loose. Unformed, it covers the boxes of all its shapes.
+     */
+    @Test
+    void aFormedShallowWellCoversItsOwnBoxOnly() {
+        com.fluxecho.nexus.TileNexus n = nexus(16);
+        int[] c = n.centre(), at = rootCell(n, 8);
+        boolean[] stands = { false };
+        TileRoot r = new TileRoot() {
+
+            @Override
+            public boolean formed() {
+                return stands[0];
+            }
+        };
+        r.xCoord = at[0];
+        r.yCoord = at[1];
+        r.zCoord = at[2];
+        r.place((UUID) null, null, at[3]);
+        r.expectShape(RootShape.WELL_8);
+        assertTrue(r.covers(null, c[0], c[1] + 10, c[2]), "unformed: the boxes of every shape");
+        stands[0] = true;
+        assertFalse(r.covers(null, c[0], c[1], c[2]), "the axis at the base layer");
+        assertFalse(r.covers(null, c[0], c[1] + 10, c[2]), "the nexus over it");
+        assertTrue(r.covers(null, at[0], at[1], at[2]), "its controller");
+        int[] tap = r.slotCell(0);
+        assertTrue(r.covers(null, tap[0], tap[1], tap[2]), "a tap");
+        assertTrue(r.covers(null, c[0], c[1] - 1, c[2]), "its lid");
     }
 }

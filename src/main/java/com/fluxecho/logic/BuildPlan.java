@@ -31,6 +31,8 @@ import java.util.Set;
  * the forum, then its pod in the air.</li>
  * <li>{@link #root}: the Tidal Well under the nexus (0.12.0, {@link RootShape}), sunk as a caisson: layer by layer from
  * the lid down, each layer's wall ring before its inside is dug.</li>
+ * <li>{@link #retire}: a docked 0.9.2 library hall taken down and its ground graded and paved as the forum's (0.14.1),
+ * so the city module whose site it stood on can be built.</li>
  * </ul>
  * Steps come in stage order. Within a stage they rise bottom-up by layer and spread outward from the nexus, a cell
  * and its mirror image across the job's axis side by side, so the build reads as an ordered band. Each shelf unit of
@@ -254,7 +256,12 @@ public final class BuildPlan {
         }
     }
 
-    /** A job's whole build: its steps in order (stage by stage), its clear columns, its stage count and its key. */
+    /**
+     * A job's whole build: its steps in order (stage by stage), its clear columns, its stage count and its key. A plan
+     * never holds a cell outside the world (0.14.1, CITY.md §1.3 Vertical): a step under y 0 or over y 255 is left out
+     * as the plan is made, so a spire or a pod's top over high ground clips at the world's top instead of waiting
+     * forever on a cell nobody can place (StructureLib skips such cells as well, so the module still forms).
+     */
     public static final class Plan {
 
         /** Every step, in build order; the stages never go backwards. Unmodifiable. */
@@ -278,31 +285,46 @@ public final class BuildPlan {
 
         /**
          * @param bandStarts per stage, the offsets of its steps where a new band begins (0.12.0); null, or a null or
-         *                   empty entry, for a stage that is one band
+         *                   empty entry, for a stage that is one band. A band whose steps all lie outside the world is
+         *                   left out with them; one that loses its first steps begins at its first step left.
          * @throws IllegalArgumentException if a band would begin at its stage's first step or past its last
          */
         Plan(String key, int stages, List<List<Step>> byStage, List<Column> clear, List<List<Integer>> bandStarts) {
             this.key = key;
             this.stages = stages;
             List<Step> all = new ArrayList<>();
-            List<Integer> b = new ArrayList<>();
+            java.util.TreeSet<Integer> b = new java.util.TreeSet<>();
             starts = new int[stages + 1];
             for (int s = 0; s < stages; s++) {
                 starts[s] = all.size();
+                List<Step> given = byStage.get(s);
                 List<Integer> in = bandStarts == null || s >= bandStarts.size() ? null : bandStarts.get(s);
                 if (in != null) for (int o : in) {
-                    if (o <= 0 || o >= byStage.get(s)
-                        .size()) throw new IllegalArgumentException("a band starts outside its stage: " + o);
-                    b.add(starts[s] + o);
+                    if (o <= 0 || o >= given.size())
+                        throw new IllegalArgumentException("a band starts outside its stage: " + o);
                 }
-                all.addAll(byStage.get(s));
+                // the steps in the world, and for each given step how many of those came before it
+                int[] before = new int[given.size() + 1];
+                int kept = 0;
+                for (int i = 0; i < given.size(); i++) {
+                    before[i] = kept;
+                    Step st = given.get(i);
+                    if (st.y < 0 || st.y > WORLD_TOP) continue;
+                    all.add(st);
+                    kept++;
+                }
+                before[given.size()] = kept;
+                if (in != null) for (int o : in) {
+                    int at = before[o];
+                    if (at > 0 && at < kept) b.add(starts[s] + at);
+                }
             }
             starts[stages] = all.size();
             steps = Collections.unmodifiableList(all);
             this.clear = Collections.unmodifiableList(new ArrayList<>(clear));
             bands = new int[b.size()];
-            for (int i = 0; i < bands.length; i++) bands[i] = b.get(i);
-            java.util.Arrays.sort(bands);
+            int i = 0;
+            for (int at : b) bands[i++] = at;
         }
 
         /**
@@ -663,6 +685,106 @@ public final class BuildPlan {
         stages.set(E_FLOOR, steps(floor, E_FLOOR));
         stages.set(E_FIXTURE, steps(pylons, E_FIXTURE));
         return stages;
+    }
+
+    // ---- a 0.9.2 hall retires (0.14.1) ----
+
+    /** The stages of a retire job: the hall taken down and its ground graded, then the forum's floor and fixtures. */
+    public static final int D_CLEAR = 0, D_FLOOR = 1, D_FIXTURE = 2, D_STAGES = 3;
+    /** The plan key prefix of a retire job: {@code retire:<slot>}, the 0.9.2 ring slot the hall docks on. */
+    public static final String RETIRE = "retire";
+
+    /** The plan key of the retire job of the 0.9.2 hall on an inner ring slot: {@code retire:<slot>}. */
+    public static String retireKey(int slot) {
+        return RETIRE + ":" + slot;
+    }
+
+    /** The ring slot of a retire plan key ({@link #retireKey}), or -1 for any other key. */
+    public static int retireSlot(String key) {
+        if (key == null || !key.startsWith(RETIRE + ":")) return -1;
+        try {
+            int slot = Integer.parseInt(key.substring(RETIRE.length() + 1));
+            return slot >= 0 && slot < RingSlots.SLOTS ? slot : -1;
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * The ground a retire job works for a 0.9.2 hall, {x0, z0, x1, z1, yFrom, yTo}: the keep-out box the campus jobs
+     * left round the centre of its foundation ({@link #moduleKeepOut}) together with its bounds {x0, y0, z0, x1, y1,
+     * z1}, over the heights of its bounds. A hall docks up to {@link RingSlots#TOLERANCE} blocks off its slot point, so
+     * the ring the keep-out box adds round the hall may reach the apron of a neighbour built meanwhile; on each side
+     * where that ring meets one of the {@code keep} columns {x0, z0, x1, z1, ...} (the keep-out and protected boxes of
+     * the modules standing or being built on the other sites), the box comes back to the hall's bounds, but never
+     * inside them. So the job neither works nor marks blocked a cell of its neighbour, and the hall still comes down
+     * whole: its bounds meet no other site's ground.
+     */
+    public static int[] retireBox(int[] centre, int[] bounds, List<int[]> keep) {
+        int[] k = moduleKeepOut(centre);
+        int bx0 = Math.min(bounds[0], bounds[3]), bx1 = Math.max(bounds[0], bounds[3]);
+        int bz0 = Math.min(bounds[2], bounds[5]), bz1 = Math.max(bounds[2], bounds[5]);
+        int x0 = Math.min(k[0], bx0), z0 = Math.min(k[1], bz0), x1 = Math.max(k[2], bx1), z1 = Math.max(k[3], bz1);
+        // each side's strip is what the box takes beyond the bounds there; a side whose strip meets a neighbour's
+        // column comes back to the bounds, and every cell left beyond the bounds lies in a strip that meets none
+        boolean west = meets(keep, x0, z0, bx0 - 1, z1), east = meets(keep, bx1 + 1, z0, x1, z1);
+        boolean north = meets(keep, x0, z0, x1, bz0 - 1), south = meets(keep, x0, bz1 + 1, x1, z1);
+        return new int[] { west ? bx0 : x0, north ? bz0 : z0, east ? bx1 : x1, south ? bz1 : z1,
+            Math.min(bounds[1], bounds[4]), Math.max(bounds[1], bounds[4]) };
+    }
+
+    /** Whether a column box {x0, z0, x1, z1, ...} of the list meets the columns x0..x1, z0..z1 (none when empty). */
+    private static boolean meets(List<int[]> keep, int x0, int z0, int x1, int z1) {
+        if (keep == null || x0 > x1 || z0 > z1) return false;
+        for (int[] b : keep) {
+            if (b == null || b.length < 4) continue;
+            if (Math.max(b[0], b[2]) >= x0 && Math.min(b[0], b[2]) <= x1
+                && Math.max(b[1], b[3]) >= z0
+                && Math.min(b[1], b[3]) <= z1) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The retire job of a docked 0.9.2 library hall (0.14.1, M11.1 §3): a hall on the old inner ring stands on a city
+     * site (or, on slots 1 and 7, reaches the gate's), so the module that needs that site is offered nowhere while it
+     * stands. The job takes the hall down and gives its ground back to the campus:
+     * <ul>
+     * <li>CLEAR: every column of {@code box} {x0, z0, x1, z1, yFrom, yTo} (the hall's keep-out box round the centre of
+     * its foundation kept off its neighbours, {@link #retireBox}, from its lowest to its highest cell), from its top
+     * down to Y0 + 1, outward from the nexus; each column is then graded, as the forum's are (the floor cell at Y0
+     * grass, the ground under it filled), so the hall's foundation goes and no pit is left where it stood;</li>
+     * <li>FLOOR and FIXTURE: what the forum plan lays inside the box ({@link #forum} with nothing kept out): the
+     * forum's tiles, and on the gate road the pylons, which the establish job left out round the hall.</li>
+     * </ul>
+     * Every block it takes down goes to the recycle store; the hall's books go to the team's book vault when its core
+     * is broken, and the Echo Archive takes them back.
+     *
+     * @param key the retire plan key ({@link #retireKey})
+     * @throws IllegalArgumentException if the front is not a horizontal unit vector or the box not six numbers
+     */
+    public static Plan retire(CampusPlan plan, String key, int cx, int y0, int cz, int fx, int fz, int[] box) {
+        facingOrdinal(fx, fz);
+        if (box == null || box.length != 6) throw new IllegalArgumentException("a retire box is six numbers");
+        int x0 = Math.min(box[0], box[2]), x1 = Math.max(box[0], box[2]), z0 = Math.min(box[1], box[3]),
+            z1 = Math.max(box[1], box[3]);
+        int top = Math.max(Math.max(box[4], box[5]), y0 + 1);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        List<Clearing> clear = new ArrayList<>();
+        for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++) {
+            clear.add(new Clearing(f, x, y0 + 1, z, Math.min(WORLD_TOP, top), true));
+        }
+        clear.sort(RIPPLE);
+        // the forum's own floor and fixtures there, the establish job having left the hall's box alone
+        Plan forum = forum(plan, cx, y0, cz, fx, fz);
+        List<List<Step>> stages = empty(D_STAGES);
+        for (Step s : forum.steps) {
+            if (s.x < x0 || s.x > x1 || s.z < z0 || s.z > z1) continue;
+            int stage = s.stage == E_FIXTURE ? D_FIXTURE : D_FLOOR;
+            stages.get(stage)
+                .add(new Step(s.x, s.y, s.z, s.part, stage, s.group, s.kind));
+        }
+        return new Plan(key, D_STAGES, stages, columns(clear));
     }
 
     // ---- the nexus grows (0.12.0) ----
@@ -1181,6 +1303,20 @@ public final class BuildPlan {
     }
 
     /**
+     * The highest y a module plan's controller (its last stage, the commissioning) or a cell of one of its units
+     * takes, or {@link Integer#MIN_VALUE} for a plan with neither (0.14.1): a module on the ground fits a campus while
+     * these stay in the world, whatever of its shape over them clips at the world's top.
+     */
+    public static int standTop(Plan p) {
+        int top = Integer.MIN_VALUE, last = p.start(p.stages - 1);
+        for (int i = 0; i < p.steps.size(); i++) {
+            Step s = p.steps.get(i);
+            if (s.group != NO_GROUP || i >= last) top = Math.max(top, s.y);
+        }
+        return top;
+    }
+
+    /**
      * The module job of the Echo Dome Generator on the zenith (0.12.0, CITY.md §4.8), in its own stages
      * ({@link DomeGeneratorShape#Z_CLEAR} ..):
      * <ul>
@@ -1202,26 +1338,28 @@ public final class BuildPlan {
      * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the pod's unit cells
      */
     public static Plan zenith(int site, int cx, int y0, int cz, int fx, int fz) {
-        CityBuild m = DomeGeneratorShape.BUILD;
-        int[] ctrl = DomeGeneratorShape.controller(site, cx, y0, cz, fx, fz);
+        // the sky datum the base layer gives it (0.14.1): its legs, its pod's height and its clear box follow it
+        DomeGeneratorShape.Moor moor = DomeGeneratorShape.forBase(y0);
+        CityBuild m = moor.build;
+        int[] ctrl = moor.controller(site, cx, y0, cz, fx, fz);
         Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
         Local at = new Local(ctrl, m);
 
         List<Clearing> clear = new ArrayList<>();
-        for (int[] c : DomeGeneratorShape.legColumns()) {
+        for (int[] c : moor.legColumns()) {
             int[] w = f.world(c[0], c[1]);
             clear.add(new Clearing(f, w[0], y0 + c[2], w[1], y0 + c[3], false));
         }
         int lo = -DomeGeneratorShape.POD_MARGIN, hi = DomeGeneratorShape.SIZE + DomeGeneratorShape.POD_MARGIN;
         for (int z = lo; z < hi; z++) for (int x = lo; x < hi; x++) {
             int[] p = at.world(x, 0, z);
-            clear.add(new Clearing(f, p[0], p[1], p[2], y0 + DomeGeneratorShape.CLEAR_TOP, false));
+            clear.add(new Clearing(f, p[0], p[1], p[2], y0 + moor.clearTop(), false));
         }
         clear.sort(RIPPLE);
 
         List<List<Draft>> stages = new ArrayList<>();
         for (int i = 0; i < DomeGeneratorShape.Z_STAGES; i++) stages.add(new ArrayList<>());
-        for (int[] c : DomeGeneratorShape.legPoints()) {
+        for (int[] c : moor.legPoints()) {
             int[] p = at.world(c[0], c[1], c[2]);
             stages.get(DomeGeneratorShape.Z_LEGS)
                 .add(new Draft(f, p[0], p[1], p[2], ShapeKit.partOf(DomeGeneratorShape.LEG), HARD, NO_GROUP));
@@ -1308,8 +1446,10 @@ public final class BuildPlan {
      * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the well's unit cells
      */
     public static Plan root(int site, int cx, int y0, int cz, int fx, int fz) {
-        CityBuild m = RootShape.BUILD;
-        int[] ctrl = RootShape.controller(site, cx, y0, cz, fx, fz);
+        // the depth the base layer gives the well (0.14.1): its lid stays at Y0 - 1, its floor slab at Y0 - D
+        RootShape.Well well = RootShape.forBase(y0);
+        CityBuild m = well.build;
+        int[] ctrl = well.controller(site, cx, y0, cz, fx, fz);
         Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
         Local at = new Local(ctrl, m);
         Set<Long> unitCells = new HashSet<>();
@@ -1323,7 +1463,7 @@ public final class BuildPlan {
             List<Draft> shell = new ArrayList<>(), dig = new ArrayList<>(), drained = new ArrayList<>();
             for (int z = 0; z < m.depth(); z++) for (int x = 0; x < m.width(); x++) {
                 int[] p = at.world(x, y, z);
-                if (RootShape.inside(x, y, z)) {
+                if (well.inside(x, y, z)) {
                     dig.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DIG, NO_GROUP));
                     drained.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DRAIN, NO_GROUP));
                 }
@@ -1336,7 +1476,7 @@ public final class BuildPlan {
                 byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
                 Draft d = new Draft(f, p[0], p[1], p[2], kind == AIR ? Parts.AIR : m.part(x, y, z, ch), kind, NO_GROUP);
                 int stage = m.stage(x, y, z, ch);
-                if (stage == RootShape.R_SINK && RootShape.shell(x, y, z)) shell.add(d);
+                if (stage == RootShape.R_SINK && well.shell(x, y, z)) shell.add(d);
                 else if (stage == RootShape.R_FLOOR) floor.add(d);
                 else if (stage == RootShape.R_FIT) {
                     d.rank = m.fitRank(x, y, z, ch);

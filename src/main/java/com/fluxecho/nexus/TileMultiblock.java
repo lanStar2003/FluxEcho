@@ -125,6 +125,43 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         for (Shape s : shapes()) if (s.name.equals(name)) shape = name;
     }
 
+    /**
+     * The shape it is to stand as (0.14.1): the campus builder names it as it commissions the controller, from the
+     * campus's base layer (the zenith's sky datum, the well's depth), so the first check tries it first and the name is
+     * saved ({@code Shape}) and sent ({@code Sh}) before the structure ever forms. A formed structure keeps the shape
+     * it stands as; null and names of no shape of its are ignored.
+     */
+    public void expectShape(String name) {
+        if (name == null || formed || name.equals(shape)) return;
+        for (Shape s : shapes()) if (s.name.equals(name)) {
+            shape = name;
+            markDirty();
+            return;
+        }
+    }
+
+    /**
+     * The shape a controller that is not formed is to stand as where it stands now (0.14.1), or null when where it
+     * stands says nothing: a zenith or a root over or under a nexus it knows names the shape that nexus's base layer
+     * gives its cell. By default null.
+     */
+    protected String shapeHere() {
+        return null;
+    }
+
+    /**
+     * While it is not formed, names the shape it is to stand as where it stands ({@link #shapeHere}), as the builder
+     * does when it commissions a core (0.14.1): so a core placed by hand gets the shape its check tries and the
+     * projector builds, not the first of its shapes. On the server the client hears of a change at once.
+     */
+    public void nameShapeHere() {
+        if (formed) return;
+        String was = shape;
+        expectShape(shapeHere());
+        if (!Objects.equals(was, shape) && worldObj != null && !worldObj.isRemote)
+            worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+    }
+
     /** The shape it stands (or last stood) as: the remembered one, else the first. */
     protected Shape currentShape() {
         List<Shape> all = shapes();
@@ -173,6 +210,12 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
 
     /** After the structure formed or fell apart, or formed as another shape (then {@code now} is true), server side. */
     protected void formedChanged(boolean now) {}
+
+    /**
+     * After every check that found the structure standing (server side), whether or not that changed anything: also
+     * for a structure saved formed and found so again after a load, which {@link #formedChanged} does not hear of.
+     */
+    protected void stood() {}
 
     protected void serverTick() {}
 
@@ -425,6 +468,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     /** Checks the structure (server side): formed or not, and as which shape. */
     private void recheckNow() {
         recheck = formed ? 100 : 40;
+        nameShapeHere();
         Shape s = match();
         boolean ok = s != null;
         String was = shapeName();
@@ -440,6 +484,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             if (switched) shapeChanged(was);
             formedChanged(ok);
         }
+        if (ok) stood();
     }
 
     /** Whether every chunk of a block range (x0, y0, z0, x1, y1, z1) is loaded. */
@@ -534,6 +579,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     @Override
     public void construct(ItemStack trigger, boolean hintsOnly) {
         if (!realWorld()) placeOwnBlock();
+        else nameShapeHere();
         buildShape(trigger, hintsOnly);
     }
 
@@ -584,6 +630,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
             return -1;
         }
         if (formed) return -1;
+        nameShapeHere();
         Shape s = currentShape();
         Blueprint bp = s.bp;
         return buildDefinition().survivalBuild(

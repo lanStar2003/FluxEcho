@@ -52,8 +52,10 @@ public class BlockFitting extends Block {
     /** Set by the client proxy. */
     public static int renderId = -1;
 
-    /** The rail's centre post and arm width, and how high its collision reaches (like a fence). */
-    private static final float RAIL_MIN = 6 / 16f, RAIL_MAX = 10 / 16f, RAIL_HEIGHT = 1.5f;
+    /** The rail's centre post and arm width. */
+    private static final float RAIL_MIN = 6 / 16f, RAIL_MAX = 10 / 16f;
+    /** How high a rail's collision reaches (like a fence); the city's climb test reads it. */
+    public static final float RAIL_HEIGHT = 1.5f;
     /** The basin rim's top (0.11.0). */
     public static final float BASIN_TOP = 10 / 16f;
 

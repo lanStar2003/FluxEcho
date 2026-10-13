@@ -33,6 +33,7 @@ import com.fluxecho.logic.ArchiveShape;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
+import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.LiftRule;
@@ -66,17 +67,19 @@ import cpw.mods.fml.relauncher.SideOnly;
  * and where it stands (0.10.1: 「回响书库（需研究）」), so a player sees what comes next and how to unlock it.
  * <p>
  * The two sites on the nexus's axis (0.12.0): the zenith ({@link SiteFamily#ZENITH_SITE}) as the pod's octagon dashed
- * on the forum, drawn again up at the pod's floor (Y0 + 40), and the squares of its six legs' feet, its sign under the
- * pod; the root ({@link SiteFamily#ROOT_SITE}) as the well's octagon dashed on the forum over it, its sign behind the
- * nexus. Their signs name them (天顶, 根位) and what stands, is built or is planned there, as a hall site's do.
+ * on the forum, drawn again up at the pod's floor (Y0 + 40, or the lower sky datum over high ground since 0.14.1,
+ * {@link DomeGeneratorShape#datum}), and the squares of its six legs' feet, its sign under the pod; the root
+ * ({@link SiteFamily#ROOT_SITE}) as the well's octagon dashed on the forum over it, its sign behind the nexus. Their
+ * signs name them (天顶, 根位) and what stands, is built or is planned there, as a hall site's do.
  * <p>
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
  * {@link ItemBlockNexusCore#facingFor}): the dais, the forum, the promenade ring, the gate and the graded disc's edge
  * round the nexus centre the core would get, its front the way the core would face. It turns red, with the reason
- * over the core, when the client can already tell the server will refuse: the nexus would reach past the top of the
- * world, no sky over the core ({@code Config.buildRequireSky}), the dais on a module, or another nexus it knows of
- * closer than {@code Config.buildMinSpacing}. Nothing when the campus is off.
+ * over the core, when the client can already tell the server will refuse: the base outside the campus band (the nexus
+ * would reach past the top of the world, or since 0.14.1 no well fits over the bedrock; {@link CampusBand}, never for
+ * a core put back where it stood), no sky over the core ({@code Config.buildRequireSky}), the dais on a module, or
+ * another nexus it knows of closer than {@code Config.buildMinSpacing}. Nothing when the campus is off.
  * <p>
  * Shader-safe like {@link Shapes} (drawn after the world, skipped in the shadow pass, relative to the camera, quads
  * with a normal towards the viewer, additive, no depth writes); the outlines are drawn twice, once faintly through
@@ -219,7 +222,9 @@ public final class Masterplan {
                     begun = true;
                 }
                 Frame f = new Frame(ox, oy, oz, n.front().offsetX, n.front().offsetZ);
-                Frame up = new Frame(ox, oy + DomeGeneratorShape.FLOOR_UP, oz, f.fx, f.fz);
+                // the pod's floor at the campus's sky datum (0.14.1: lower over high ground)
+                int datum = DomeGeneratorShape.datum(c[1]);
+                Frame up = new Frame(ox, oy + datum, oz, f.fx, f.fz);
                 Site[] sites = sites(n, v, tiles, c, f.fx, f.fz);
                 float breath = 0.85f + 0.15f * (float) Math.sin(t * 0.06);
                 for (int pass = 0; pass < 2; pass++) {
@@ -260,7 +265,7 @@ public final class Masterplan {
                     if (through) GL11.glEnable(GL11.GL_DEPTH_TEST);
                 }
                 for (int s = 0; s < SITES; s++) {
-                    double[] at = signAt(s, sites[s].ring);
+                    double[] at = signAt(s, sites[s].ring, datum);
                     double[] r = f.at(at[0], at[1]);
                     signs.add(new Sign(r[0], oy + at[2], r[1], sites[s].title, sites[s].caption, sites[s].rgb, 2f));
                 }
@@ -339,7 +344,8 @@ public final class Masterplan {
         }
         for (int s = 0; s < SITES; s++) {
             Site st = new Site();
-            boolean axis = SiteFamily.axisSite(s);
+            SiteFamily family = SiteFamily.of(s);
+            boolean axis = family != null && family.axis();
             boolean docked = !axis && (n.clientDockedMask & 1 << s) != 0;
             // the gate is occupied by a gatehouse alone (0.14.0): one standing, or docked there by the campus's record
             st.occupied = s != 0 ? docked || standing[s] : gatehouse || docked && v.gateBuilt(s);
@@ -432,15 +438,16 @@ public final class Masterplan {
      * Where a site's sign stands: {A, R, height over the floor}. A diagonal's stands on its allee in front of the
      * pavilion's inner portal ({@link CampusPlan#pavilionSign}, 0.13.0), at eye height as a hall's before its door, so
      * the pavilion planned, rising or standing there never shuts it in; only a diagonal a 0.9.2 module stands on by
-     * its old inner-ring slot ({@code ring}, that module over the allee) keeps it in the octagon's middle.
+     * its old inner-ring slot ({@code ring}, that module over the allee) keeps it in the octagon's middle. The
+     * zenith's hangs under the pod at the campus's sky datum ({@code datum}, 0.14.1).
      */
-    private static double[] signAt(int site, boolean ring) {
+    private static double[] signAt(int site, boolean ring, int datum) {
         // the gate's on the road in front of the gatehouse (0.14.0), as a hall's before its door, never under the
         // bridge
         if (site == 0) return new double[] { CampusPlan.GATE_SIGN, 0, 3.2 };
         // the zenith's under the pod (off the lift's shaft, below its own plate), seen from the forum; the root's
         // behind the nexus
-        if (site == SiteFamily.ZENITH_SITE) return new double[] { 3, 0, DomeGeneratorShape.FLOOR_UP - 7.5 };
+        if (site == SiteFamily.ZENITH_SITE) return new double[] { 3, 0, datum - 7.5 };
         if (site == SiteFamily.ROOT_SITE) return new double[] { -8.5, 0, 2.2 };
         int[] ax = CampusPlan.siteAxis(site);
         if (site % 2 == 0) {
@@ -522,7 +529,7 @@ public final class Masterplan {
         ForgeDirection fd = ForgeDirection.getOrientation(ItemBlockNexusCore.facingFor(p));
         Blueprint b = NexusShape.PHASE_1;
         int[] c = b.world(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack(), x, cy, z, fd.offsetX, fd.offsetZ);
-        String why = refusal(w, b, c, x, cy, z, fd);
+        String why = refusal(w, b, c, x, cy, z, fd, ItemBlockNexusCore.putsBack(p.getHeldItem(), w, x, cy, z));
         int rgb = why == null ? CYAN : DANGER;
         float pulse = 0.8f + 0.2f * (float) Math.sin(t * 0.12);
         double ox = c[0] + 0.5 - RenderManager.renderPosX, oy = c[1] + 1.05 - RenderManager.renderPosY,
@@ -583,10 +590,13 @@ public final class Masterplan {
 
     /**
      * Why the server would refuse a lifted core at (x, cy, z) whose nexus centre is {@code c}, as far as the client
-     * can tell (the same checks in the same order as the item's), translated; null when it sees nothing wrong.
+     * can tell (the same checks in the same order as the item's; the campus band never refuses a core put back where
+     * it stood, {@code putBack}), translated; null when it sees nothing wrong.
      */
-    private static String refusal(World w, Blueprint b, int[] c, int x, int cy, int z, ForgeDirection f) {
-        if (c[1] + ItemBlockNexusCore.HEADROOM > 255) return EchoText.t("build.too_high");
+    private static String refusal(World w, Blueprint b, int[] c, int x, int cy, int z, ForgeDirection f,
+        boolean putBack) {
+        String band = CampusBand.refusal(c[1], putBack);
+        if (band != null) return EchoText.t(band);
         if (Config.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z)) return EchoText.t("build.no_sky");
         int[] p0 = b.world(0, 0, 0, x, cy, z, f.offsetX, f.offsetZ);
         int[] p1 = b.world(b.width() - 1, b.height() - 1, b.depth() - 1, x, cy, z, f.offsetX, f.offsetZ);

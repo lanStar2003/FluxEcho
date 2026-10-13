@@ -122,7 +122,7 @@ class ModulePlanTest {
             assertEquals(2777, hard.size());
             assertEquals(air, airSteps);
             assertEquals(48, airSteps.size());
-            assertTrue(soft >= 775 + 14, "the soft cells and the canopy at least");
+            assertTrue(soft >= 774 + 14, "the soft cells and the canopy at least");
             assertEquals(BuildPlan.moduleKey(EcoDomeShape.KEY, site), p.key);
             // the controller faces the nexus, its front row at radial 24 on the site's axis
             int[] ax = CampusPlan.siteAxis(site);

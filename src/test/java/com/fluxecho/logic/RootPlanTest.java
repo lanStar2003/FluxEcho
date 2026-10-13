@@ -290,4 +290,45 @@ class RootPlanTest {
         }
         assertEquals(0, zenith.bandCount());
     }
+
+    /**
+     * Over low ground (0.14.1) the job sinks the well of the campus's depth: its HARD steps are that well's cells, its
+     * slab at Y0 - D over the bedrock, its lid at Y0 - 1, layer by layer in two bands each as the full well, digging
+     * and draining exactly its inside.
+     */
+    @Test
+    void overLowGroundTheHardStepsAreTheDepthsWell() {
+        for (int y0 : new int[] { 14, 19, 20, 25, 26, 31 }) {
+            RootShape.Well w = RootShape.forBase(y0);
+            int d = w.depth;
+            Plan p = RootShape.plan(new CampusPlan(Mix.seed(CX, y0 + 2, CZ)), SiteFamily.ROOT_SITE, CX, y0, CZ, 0, -1);
+            int[] c = RootShape.controller(SiteFamily.ROOT_SITE, CX, y0, CZ, 0, -1);
+            assertEquals(y0 - d + 3, c[1]);
+            int[] front = BuildPlan.front(c[3]);
+            Set<Long> wantHard = new HashSet<>();
+            for (Blueprint.Cell cell : w.blueprint.cells()) {
+                if (cell.ch == '-') continue;
+                int[] at = w.blueprint.world(cell.a, cell.b, cell.c, c[0], c[1], c[2], front[0], front[1]);
+                wantHard.add(pos(at[0], at[1], at[2]));
+            }
+            Set<Long> hard = new HashSet<>();
+            int dig = 0, drain = 0;
+            for (Step s : p.steps) {
+                assertTrue(s.y >= y0 - d && s.y < y0, "between the slab and the lid at " + y0);
+                assertTrue(s.y >= RootShape.LOWEST_SLAB, "over the bedrock at " + y0);
+                if (s.kind == BuildPlan.HARD) hard.add(pos(s.x, s.y, s.z));
+                if (s.kind == BuildPlan.DIG) dig++;
+                if (s.kind == BuildPlan.DRAIN) drain++;
+            }
+            assertEquals(wantHard, hard, "Y0 " + y0);
+            assertEquals((d - 2) * 329, dig, "the inside dug");
+            assertEquals((d - 2) * 329, drain, "and drained");
+            assertEquals(2 * d - 3, p.bandCount(), "the lid, two bands for each of D - 2 layers, the slab");
+            assertTrue(
+                p.steps.get(p.steps.size() - 1)
+                    .at(c[0], c[1], c[2]),
+                "the controller last");
+            assertTrue(p.clear.isEmpty());
+        }
+    }
 }

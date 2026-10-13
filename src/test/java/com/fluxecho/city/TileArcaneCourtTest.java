@@ -291,9 +291,9 @@ class TileArcaneCourtTest {
 
     /**
      * The court is 33 high, the first ground module taller than the nexus core's headroom: its finial's seat stands at
-     * Y0 + 32, so a campus whose base is at y 224 or 225 (a core may still be placed there) has no room for it, and
-     * the module list says why instead of offering a job whose top cells lie above the world. The other pavilions and
-     * the halls fit every base a core may be placed at.
+     * Y0 + 32, over the world's top for a base at y 224 or 225 (a core may still be placed there). Since 0.14.1 the
+     * plan leaves the finial's cells over the world out and the court is built (its controller and units stand at
+     * Y0 + 5 at most); only a base over 250, which no core is placed at, has no room for it.
      */
     @Test
     void theCourtNeedsRoomUnderTheWorldsTop() {
@@ -303,8 +303,10 @@ class TileArcaneCourtTest {
         assertEquals(255, 223 + ArcaneCourtShape.HEIGHT - 1, "the seat at the world's top");
         assertNull(spec.noRoom(64));
         assertNull(spec.noRoom(223));
-        assertEquals("build.module.why.height", spec.noRoom(224));
-        assertEquals("build.module.why.height", spec.noRoom(highest));
+        assertNull(spec.noRoom(224), "the finial clips");
+        assertNull(spec.noRoom(highest));
+        assertNull(spec.noRoom(250), "its units' tops at the world's top");
+        assertEquals("build.module.why.height", spec.noRoom(251));
         for (ModuleSpec other : new ModuleSpec[] { CityModule.bloodCovenant(), CityModule.huntingGround(),
             CityModule.manaFountain(), CityModule.ecoDome() }) assertNull(other.noRoom(highest), other.key);
     }

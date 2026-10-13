@@ -34,6 +34,7 @@ import com.fluxecho.gate.Sight;
 import com.fluxecho.library.BookPacket;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.CityBuild;
+import com.fluxecho.logic.Renovation;
 import com.fluxecho.logic.ShapeKit;
 import com.fluxecho.logic.UnitLayout;
 import com.fluxecho.nexus.ClientTiles;
@@ -86,6 +87,12 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
      */
     boolean openOnUnit;
     private boolean powered;
+    /**
+     * The renovation revision of its kind the module was brought to ({@link Renovation}, NBT {@code Renovated},
+     * 0.14.1): 0 for a tile saved before and for a new one; the first check that finds it standing brings it to its
+     * kind's current revision (a module the current plan built has nothing to change).
+     */
+    private int renovated;
     /** Slots whose sample changed since the last delta packet. */
     private final BitSet changed;
     /** Delta packets sent so far, and a number for this tile's life (both tell the client what is newer). */
@@ -175,17 +182,22 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     }
 
     /**
-     * Whether the block could belong to it (0.12.0): it lies in the box of one of its shapes round the controller
+     * Whether the block could belong to it (0.12.0): it lies in the box of a shape of its round the controller
      * ({@link Blueprint#inBox}), not in the cube of {@link #reach()}. A city module's box is its real extent, and the
      * cube of a tall one reaches far past it: the zenith's 49-high box would make a cube of 50 each way round a
      * controller 42 over the forum, over every hall site, and its leftover blocks of ours there would stop being loose
-     * for the campus's terrain rule. The watchers of frame changes and the use of units ({@link UnitUse}) ask it too;
-     * every cell of every shape lies in its box, so neither misses one.
+     * for the campus's terrain rule. While formed only the box of the shape it stands as counts (0.14.1): the shapes of
+     * a lower pod or a shallower well keep the boxes of the full legs and the full well too, which from their
+     * controllers reach over the nexus, its dais and the forum round it. Unformed, the box of every shape counts, so a
+     * structure that could form as any of them is checked again when one of its blocks changes. The watchers of frame
+     * changes and the use of units ({@link UnitUse}) ask it too; every cell of a shape lies in that shape's box, so
+     * neither misses one.
      */
     @Override
     public boolean covers(World w, int x, int y, int z) {
         if (w != worldObj) return false;
         ForgeDirection f = front();
+        if (formed()) return currentShape().bp.inBox(x, y, z, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ);
         for (Shape s : shapes()) if (s.bp.inBox(x, y, z, xCoord, yCoord, zCoord, f.offsetX, f.offsetZ)) return true;
         return false;
     }
@@ -467,6 +479,48 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         sendSamples();
     }
 
+    // ---- the one-time renovation (0.14.1)
+
+    /**
+     * The structure was found standing: once, the cells its kind changed since the revision it was brought to
+     * ({@link Renovation}) are changed where they still hold exactly their old block, and the revision is saved. Only
+     * soft cells are listed, so it stays formed; a cell whose chunk is not loaded waits for the next check.
+     */
+    @Override
+    protected void stood() {
+        super.stood();
+        String kind = moduleKey();
+        if (renovated >= Renovation.current(kind)) return;
+        World w = worldObj;
+        int now = Renovation.apply(kind, renovated, new Renovation.Cells() {
+
+            @Override
+            public boolean loaded(int x, int y, int z) {
+                int[] p = worldOf(x, y, z);
+                return p[1] >= 0 && p[1] < 256 && w.blockExists(p[0], p[1], p[2]);
+            }
+
+            @Override
+            public boolean holds(int x, int y, int z, int part) {
+                int[] p = worldOf(x, y, z);
+                Block b = PartBlocks.block(part);
+                return b != null && w.getBlock(p[0], p[1], p[2]) == b
+                    && w.getBlockMetadata(p[0], p[1], p[2]) == PartBlocks.meta(part);
+            }
+
+            @Override
+            public void place(int x, int y, int z, int part) {
+                int[] p = worldOf(x, y, z);
+                Block b = PartBlocks.block(part);
+                if (b != null) w.setBlock(p[0], p[1], p[2], b, PartBlocks.meta(part), 3);
+            }
+        });
+        if (now != renovated) {
+            renovated = now;
+            markDirty();
+        }
+    }
+
     // ---- standing, breaking
 
     /**
@@ -683,6 +737,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         super.writeToNBT(t);
         t.setTag("Samples", samples.serializeNBT());
         t.setInteger("Unit", selectedUnit);
+        t.setInteger("Renovated", renovated);
     }
 
     @Override
@@ -694,6 +749,8 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         for (int i = 0; i < samples.getSlots(); i++)
             samples.setStackInSlot(i, i < saved.getSlots() ? saved.getStackInSlot(i) : null);
         selectedUnit = Math.max(0, Math.min(Math.max(0, unitCount() - 1), t.getInteger("Unit")));
+        // a module saved before 0.14.1 has no revision: 0, so its renovation runs once it is found standing
+        renovated = t.getInteger("Renovated");
         changed.clear();
     }
 

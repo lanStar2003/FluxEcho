@@ -190,6 +190,47 @@ class ShapeKitTest {
         assertTrue(up.contains(ShapeKit.Shape.state(2, 0, 14)), "and the deck beside the top pad");
     }
 
+    /**
+     * A floor under a ceiling exactly two above it, beside a tread: standing on the floor fits (1.8 under 2), but
+     * stepping onto the tread lifts the body to 1.5 while it is still under the ceiling, its head at 3.3 in the cell
+     * at y3. The walk refuses that step both ways (0.11.0 to 0.14.0's walk checked the higher stand's column only to
+     * y2 and took it: the Eco Dome's crown stair). A drop lands on the first floor below the edge, not through it.
+     */
+    @Test
+    void theWalkKeepsTheHeadClearWhereTheStepIsTakenAndDropsOntoTheFirstFloor() {
+        ShapeKit.Shape s = new ShapeKit.Shape("ceiling", 3, 6, 1);
+        for (int x = 0; x < 3; x++) s.set(x, 0, 0, 'F');
+        s.set(0, 3, 0, 'd');
+        s.set(1, 1, 0, 't');
+        assertEquals(Arrays.asList(2, 8), s.floors(0, 0), "one stands under the ceiling (and on it)");
+        assertTrue(
+            s.floors(1, 0)
+                .contains(3),
+            "and on the tread");
+        Set<Long> fromFloor = s.walk(Collections.singletonList(new int[] { 0, 0, 2 }), 0);
+        assertFalse(fromFloor.contains(ShapeKit.Shape.state(1, 0, 3)), "the head meets the ceiling on the way up");
+        Set<Long> fromTread = s.walk(Collections.singletonList(new int[] { 1, 0, 3 }), 0);
+        assertFalse(fromTread.contains(ShapeKit.Shape.state(0, 0, 2)), "and on the way down");
+        assertTrue(fromTread.contains(ShapeKit.Shape.state(2, 0, 2)), "the open side is walked");
+        List<int[]> idle = s.idleTreads(fromFloor);
+        assertEquals(1, idle.size(), "the tread nobody reaches from the floor");
+        assertArrayEquals(new int[] { 1, 1, 0 }, idle.get(0));
+        assertTrue(
+            s.idleTreads(fromTread)
+                .isEmpty());
+
+        // a ledge at stand 4 beside a column with a deck at y3 (stand 4) over its ground (stand 1): the walk goes on
+        // along the deck and does not drop through it to the ground three below (0.14.0's walk did)
+        ShapeKit.Shape d = new ShapeKit.Shape("drop", 2, 8, 1);
+        for (int y = 0; y < 4; y++) d.set(0, y, 0, 'W');
+        d.set(1, 0, 0, 'F');
+        d.set(1, 3, 0, 'd');
+        assertEquals(Arrays.asList(2, 8), d.floors(1, 0));
+        Set<Long> down = d.walk(Collections.singletonList(new int[] { 0, 0, 8 }), 0);
+        assertTrue(down.contains(ShapeKit.Shape.state(1, 0, 8)), "onto the deck");
+        assertFalse(down.contains(ShapeKit.Shape.state(1, 0, 2)), "not through it to the ground");
+    }
+
     @Test
     void unitsNeedCells() {
         ShapeKit.Shape s = new ShapeKit.Shape("u", 3, 3, 3);

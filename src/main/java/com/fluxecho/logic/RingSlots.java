@@ -35,7 +35,11 @@ public final class RingSlots {
         return -1;
     }
 
-    /** Modules a nexus of the phase can dock on its inner ring (blueprint 3.2: HV 2, EV 4, IV 8). */
+    /**
+     * Modules a nexus of the phase can dock on its inner ring (blueprint 3.2: HV 2, EV 4, IV 8). Since 0.14.1 only a
+     * 0.9.2 nexus without a campus keeps this room; a campus's ring room is the sites its phase opens
+     * ({@link SiteFamily#openRingSites}).
+     */
     public static int open(int phase) {
         return phase <= 0 ? 0 : phase == 1 ? 2 : phase == 2 ? 4 : SLOTS;
     }

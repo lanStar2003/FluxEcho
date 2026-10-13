@@ -18,8 +18,8 @@ import com.fluxecho.logic.LiftShaft.Ride;
 
 /**
  * The light lift's rule (0.12.0, CITY.md §2.5): which pad a ride goes to, where it stops below something else, what a
- * rider passes through, and how it is moved, on the axis shaft of a campus (dais pad at Y0, the nexus's column, the
- * pod's pad at Y0 + 40) and on made-up columns.
+ * rider passes through, how it is moved, and (0.14.1) that it lands exactly on its pad and when it ends, on the axis
+ * shaft of a campus (dais pad at Y0, the nexus's column, the pod's pad at Y0 + 40) and on made-up columns.
  */
 class LiftShaftTest {
 
@@ -244,5 +244,153 @@ class LiftShaftTest {
         assertNotNull(up);
         assertEquals(Y0 + 41, up.to);
         assertFalse(up.blocked);
+    }
+
+    // ---- the landing (0.14.1, M11.1 §1)
+
+    /** Vanilla's jump: the feet's height over the pad's top and the vertical motion at the start of the k-th tick. */
+    private static double[] jump(int k, double ceiling) {
+        double h = 0, v = 0.41999998688697815;
+        for (int i = 0; i < k; i++) {
+            if (Math.abs(v) < 0.005) v = 0;
+            double want = v, next = Math.max(0, Math.min(ceiling, h + v));
+            if (next != h + want) v = 0;
+            h = next;
+            v = (v - 0.08) * 0.9800000190734863;
+        }
+        return new double[] { h, v };
+    }
+
+    /**
+     * The feet where the client's eased ride arrives, as Lift.clientTick rides it: the speed the player had towards the
+     * goal carries on, and each tick the feet move by the eased motion (which vanilla drops when it is under 0.005)
+     * until they arrived.
+     */
+    private static double eased(double from, double to, double feet, double motion) {
+        double carried = Math.max(0, Math.signum(to - feet) * motion);
+        int t = 0;
+        while (!LiftShaft.arrived(feet, to)) {
+            double m = LiftShaft.ease(feet, to, t, carried);
+            assertTrue(Math.abs(m) <= LiftShaft.SPEED + 1e-12, "never faster than the speed: " + m);
+            assertTrue(Math.signum(to - from) * (to - feet - m) >= -1e-12, "never past the goal");
+            if (Math.abs(m) < 0.005) m = 0;
+            feet += m;
+            t++;
+            assertTrue(t <= (int) Math.ceil(Math.abs(to - from) / LiftShaft.SPEED) + 12, "it arrives in time");
+        }
+        return feet;
+    }
+
+    /**
+     * Every eased ride ends exactly on its stop height (0.14.1): every gap the lift rides (3..64), both ways, up from
+     * where vanilla's jump has the feet when the server's answer comes 1..8 ticks after the press (under open air, and
+     * under the unformed nexus's conduit that stops the head 1.2 over the pad), up from standing, and down from a
+     * standing sneak. In 0.14.0 the last step could stop up to {@link LiftShaft#ARRIVED} short, inside the pad, and the
+     * rider fell through it (the dais to the pod with the answer three ticks late: 0.04812 short).
+     */
+    @Test
+    void everyEasedRideEndsExactlyOnItsStopHeight() {
+        int rides = 0;
+        for (int gap = LiftShaft.MIN_GAP; gap <= LiftShaft.REACH; gap++) {
+            double low = 101, high = 101 + gap;
+            for (double ceiling : new double[] { 99, 0.2 }) {
+                for (int k = 1; k <= 8; k++) {
+                    double[] j = jump(k, ceiling);
+                    double feet = eased(low, high, low + j[0], j[1]);
+                    assertEquals(high, feet, 0.0, "up " + gap + ", the answer " + k + " ticks after the press");
+                    rides++;
+                }
+            }
+            assertEquals(high, eased(low, high, low, -0.0784), 0.0, "up " + gap + " from standing");
+            assertEquals(low, eased(high, low, high, -0.0784), 0.0, "down " + gap + " from a sneak");
+            rides += 2;
+        }
+        assertEquals(62 * 18, rides);
+        // the user's rides on a phase-II campus: the dais to the pod and the root island to the dais
+        double[] j3 = jump(3, 99), j4 = jump(4, 99);
+        assertEquals(Y0 + 41, eased(Y0 + 1, Y0 + 41, Y0 + 1 + j3[0], j3[1]), 0.0);
+        assertEquals(Y0 + 1, eased(Y0 - 24, Y0 + 1, Y0 - 24 + j4[0], j4[1]), 0.0);
+    }
+
+    /** A blocked ride rises until the head touches what is in the way, exactly, and sinks back exactly onto its pad. */
+    @Test
+    void aBlockedRideTurnsExactlyAtItsPeakAndEndsOnItsPad() {
+        for (int solid = 15; solid <= 60; solid++) {
+            Ride r = LiftShaft.plan(
+                new Col().set(10, Cell.PAD)
+                    .set(solid, Cell.SOLID)
+                    .set(70, Cell.PAD),
+                10,
+                1);
+            assertTrue(r.blocked);
+            double[] j = jump(2, 99);
+            double feet = r.from + j[0], top = feet, carried = Math.max(0, j[1]);
+            boolean turned = false;
+            long legStart = 0;
+            LiftShaft.End end = LiftShaft.End.RIDING;
+            for (long t = 0; t < 400; t++) {
+                if (LiftShaft.turns(r, turned, feet)) {
+                    turned = true;
+                    legStart = t;
+                    carried = 0;
+                }
+                end = LiftShaft.ended(r, turned, feet, 0.5, 0.5, 0, 0, t);
+                if (end != LiftShaft.End.RIDING) break;
+                feet += LiftShaft.ease(feet, r.goal(turned), (int) (t - legStart), carried);
+                top = Math.max(top, feet);
+            }
+            assertEquals(LiftShaft.End.ARRIVED, end);
+            assertEquals(r.peak, top, 0.0, "the head just touches the block at " + solid);
+            assertEquals(solid, top + LiftShaft.BODY, 1e-9);
+            assertEquals(r.to, feet, 0.0, "back on the pad");
+        }
+    }
+
+    /**
+     * When a ride ends (the rule both sides share since 0.14.1): at its end, a blocked one only once it turned; lost
+     * off the column or past its time; and feet that reached the end go onto it, while feet left inside the pad are
+     * what the server's backstop sets onto it.
+     */
+    @Test
+    void aRideEndsOnItsPadAndTheFeetGoOntoItsTop() {
+        Ride r = LiftShaft.plan(axis(), Y0, 1);
+        double to = r.to;
+        assertEquals(LiftShaft.End.ARRIVED, LiftShaft.ended(r, false, to, 0.5, 0.5, 0, 0, 70));
+        assertEquals(LiftShaft.End.ARRIVED, LiftShaft.ended(r, false, to - 0.049, 0.5, 0.5, 0, 0, 70));
+        assertEquals(LiftShaft.End.RIDING, LiftShaft.ended(r, false, to - 0.051, 0.5, 0.5, 0, 0, 70));
+        assertEquals(LiftShaft.End.RIDING, LiftShaft.ended(r, false, r.from, 0.5, 0.5, 0, 0, 0));
+        assertEquals(LiftShaft.End.ARRIVED, LiftShaft.ended(r, false, to, 3, 0.5, 0, 0, 70), "arriving comes first");
+        assertEquals(LiftShaft.End.LOST, LiftShaft.ended(r, false, Y0 + 20, 1.3, 0.5, 0, 0, 30), "off the column");
+        long last = r.ticks() + LiftShaft.GRACE;
+        assertEquals(LiftShaft.End.RIDING, LiftShaft.ended(r, false, Y0 + 20, 0.5, 0.5, 0, 0, last));
+        assertEquals(LiftShaft.End.LOST, LiftShaft.ended(r, false, Y0 + 20, 0.5, 0.5, 0, 0, last + 1), "past its time");
+        assertFalse(LiftShaft.turns(r, false, to), "a ride that is not blocked never turns");
+
+        Ride b = LiftShaft.plan(
+            new Col().set(10, Cell.PAD)
+                .set(20, Cell.SOLID)
+                .set(30, Cell.PAD),
+            10,
+            1);
+        assertEquals(
+            LiftShaft.End.RIDING,
+            LiftShaft.ended(b, false, b.from, 0.5, 0.5, 0, 0, 0),
+            "it starts on its end");
+        assertFalse(LiftShaft.turns(b, false, b.peak - 0.06));
+        assertTrue(LiftShaft.turns(b, false, b.peak - 0.04));
+        assertFalse(LiftShaft.turns(b, true, b.peak), "once");
+        assertEquals(LiftShaft.End.ARRIVED, LiftShaft.ended(b, true, b.from, 0.5, 0.5, 0, 0, 20));
+
+        // the client sets feet that reached the end onto it; the server sets feet left inside the pad onto it
+        assertEquals(to, LiftShaft.settle(to - 0.04812, to), 0.0, "out of the pad onto its top");
+        assertEquals(to, LiftShaft.settle(to + 0.0084, to), 0.0, "a hair over it: onto it as well");
+        assertEquals(to, LiftShaft.settle(to, to), 0.0);
+        assertEquals(to - 0.051, LiftShaft.settle(to - 0.051, to), 0.0, "not there yet: where they are");
+        assertEquals(to + 2, LiftShaft.settle(to + 2, to), 0.0);
+        assertTrue(LiftShaft.sunk(to - 0.04812, to));
+        assertTrue(LiftShaft.sunk(to - 1e-9, to));
+        assertFalse(LiftShaft.sunk(to, to), "on its top");
+        assertFalse(LiftShaft.sunk(to + 0.01, to), "over it: it falls onto it");
+        assertFalse(LiftShaft.sunk(to - 0.051, to), "too deep for a ride that arrived");
     }
 }

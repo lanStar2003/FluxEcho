@@ -35,6 +35,7 @@ import com.fluxecho.frame.Formed;
 import com.fluxecho.frame.FrameModule;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.DockOrder;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.PreviewSites;
@@ -68,8 +69,12 @@ import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
 public class TileNexus extends TileMultiblock implements ISidedInventory, ITileWithModularUI {
 
     public static final int INPUTS = 6, OUTPUTS = 2;
-    /** The most modules an active campus docks: every site but the gate's. */
-    public static final int MAX_CAMPUS_MODULES = 7;
+    /**
+     * The inner ring's sites a campus builds on, the gate's included (0.14.1: 8, one for each of the eight inner
+     * buildings; 7 before, every site but the gate's). No longer a limit: a campus offers and docks a module of every
+     * open site ({@link SiteFamily#openRingSites}).
+     */
+    public static final int MAX_CAMPUS_MODULES = RingSlots.SLOTS;
     /** What the client copy shows is going on. */
     public static final int POWERED = 1, RESEARCHING = 2, MANIFESTING = 4;
 
@@ -245,7 +250,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     /**
      * Stands the city round the nexus for the preview (0.11.0: CITY.md §3, tiers 6 to 10): every module kind the
-     * phase allows (its research's phase is reached), up to the modules the phase docks, each on the first of its
+     * phase allows (its research's phase is reached), up to the ring sites the phase opens (0.14.1,
+     * {@link SiteFamily#openRingSites}: 3 at phase I, all 8 from phase II), each on the first of its
      * preferred sites that is still free, where the campus builder raises it: its controller at the spec's place for
      * the site and its front towards the nexus. So phase I shows the Echo Archive behind the nexus and the Eco Dome to
      * its right. The campus floor is left out, as the preview would grow too heavy. A kind whose sites are all taken
@@ -272,8 +278,9 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             specs.add(spec);
             preferred.add(spec == null ? null : spec.sites);
         }
-        // an axis module (the zenith, the root) takes no room on the ring (PreviewSites counts its site apart)
-        List<PreviewSites.Place> places = PreviewSites.places(preferred, RingSlots.open(phase));
+        // an axis module (the zenith, the root) takes no room on the ring (PreviewSites counts its site apart); the
+        // room is every ring site the phase opens (0.14.1), so tier 7 already stands the whole inner city
+        List<PreviewSites.Place> places = PreviewSites.places(preferred, SiteFamily.openRingSites(phase));
         for (int i = 0; i < places.size(); i++) {
             PreviewSites.Place place = places.get(i);
             NexusModule.Preview kind = shown.get(i);
@@ -693,15 +700,17 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * Which modules it takes: its teams' formed modules, as many as its ring has room for ({@link #openSlots}). A
-     * module is found, in this order of precedence, (1) on the site the campus recorded for it, (2) standing on a site
-     * of an active campus (a hall: its centre within 3 blocks of where the site puts a module of its kind, at most one
-     * block up or down, its front towards the nexus; a pavilion, 0.13.0: the same round its diagonal's octagon centre,
-     * its front along A toward the nexus; an axis module, 0.12.0, and the gatehouse, 0.14.0: its controller exactly
-     * where its site puts it, facing that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2
-     * inner ring. A module on a site docks under the site's number, which points the same way as the ring slot of that
-     * number; the axis sites (8 the zenith, 9 the root) take no room on the ring, the gate (site 0) does. Docked and
-     * rejected modules get a lease of 220 ticks.
+     * Which modules it takes: its teams' formed modules (0.14.1: every module on a campus site; only the 0.9.2 modules
+     * on its old ring as many as the ring has room for, {@link #openSlots}, {@link DockOrder}). A module is found, in
+     * this order of precedence, (1) on the site the campus recorded for it, (2) standing on a site of an active campus
+     * (a hall: its centre within 3 blocks of where the site puts a module of its kind, at most one block up or down,
+     * its front towards the nexus; a pavilion, 0.13.0: the same round its diagonal's octagon centre, its front along A
+     * toward the nexus; an axis module, 0.12.0, and the gatehouse, 0.14.0: its controller exactly where its site puts
+     * it, or for an axis module where 0.14.0 put it, facing that way): it is adopted and the site recorded, or (3) on a
+     * slot of the 0.9.2 inner ring. A module on a site docks under the site's number, which points the same way as the
+     * ring slot of that number; the axis sites (8 the zenith, 9 the root) take no room on the ring, the gate (site 0)
+     * does. Docked and rejected modules get a lease of 220 ticks. A module of a spec is found on any site of its family
+     * (0.14.1, {@link ModuleSpec#hasSite}), not only on its preferred ones.
      */
     void refreshDock(long now) {
         int[] c = centre();
@@ -752,22 +761,18 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             ranks.add(rank);
         }
         docked.clear();
-        Set<Integer> taken = new HashSet<>();
-        java.util.SortedSet<Integer> order = new java.util.TreeSet<>(slots);
-        int ring = 0;
-        for (int rank = 0; rank <= 2; rank++) for (int k : order) {
-            boolean axis = SiteFamily.axisSite(k);
-            for (int i = 0; i < found.size(); i++) {
-                if (ranks.get(i) != rank || slots.get(i) != k) continue;
-                TileModule m = found.get(i);
-                if (taken.contains(k)) m.reject(this, k, "slot_taken", now + 220);
-                else if (!axis && ring >= open) m.reject(this, k, open == 0 ? "ring_closed" : "ring_full", now + 220);
-                else {
-                    taken.add(k);
-                    docked.add(m);
-                    if (!axis) ring++;
-                    m.dock(this, k, now + 220);
-                }
+        int[] numbers = new int[found.size()], rank = new int[found.size()];
+        for (int i = 0; i < numbers.length; i++) {
+            numbers[i] = slots.get(i);
+            rank[i] = ranks.get(i);
+        }
+        // a module on a campus site always docks; only the 0.9.2 ring modules wait for room (0.14.1, DockOrder)
+        for (DockOrder.Verdict v : DockOrder.decide(numbers, rank, open)) {
+            TileModule m = found.get(v.index);
+            if (!v.docks()) m.reject(this, numbers[v.index], v.reject, now + 220);
+            else {
+                docked.add(m);
+                m.dock(this, numbers[v.index], now + 220);
             }
         }
         dockKnown = true;
@@ -784,17 +789,23 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         if (spec == null) return -1;
         if (spec.family == SiteFamily.PAVILION) return pavilionSite(m, mc, c, fx, fz);
         if (!spec.axis() && spec.family != SiteFamily.GATE) return hallSite(m, mc, c, fx, fz);
-        for (int site : spec.sites) {
-            int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
-            if (at != null && at.length > 3
-                && at[0] == m.xCoord
-                && at[1] == m.yCoord
-                && at[2] == m.zCoord
-                && m.front()
-                    .ordinal() == at[3])
-                return site;
+        for (int site : spec.family.sites()) {
+            // the zenith or the root where 0.14.0 put it too (0.14.1): one built there by hand over ground the builder
+            // now adapts to (a lower pod, a shallower well) still docks
+            if (standsAt(m, spec.controller(site, c[0], c[1], c[2], fx, fz))
+                || standsAt(m, spec.formerController(site, c[0], c[1], c[2], fx, fz))) return site;
         }
         return -1;
+    }
+
+    /** Whether the module's controller stands at a cell {x, y, z, facing ordinal}, facing that way. */
+    private static boolean standsAt(TileModule m, int[] at) {
+        return at != null && at.length > 3
+            && at[0] == m.xCoord
+            && at[1] == m.yCoord
+            && at[2] == m.zCoord
+            && m.front()
+                .ordinal() == at[3];
     }
 
     /**
@@ -850,12 +861,14 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * How many modules its inner ring can dock: the slots its phase opens once its teams have the inner ring, and on an
-     * active campus at most seven (every site but the gate's). The axis modules (0.12.0) take none of them.
+     * The room of its inner ring, once its teams have the inner ring: on an active campus the ring sites its phase
+     * opens (0.14.1, {@link SiteFamily#openRingSites}: 3 at phase I, 8 from phase II), which is what the windows show
+     * and what a 0.9.2 module on the old ring still finds room in; every campus module docks whatever it is. A 0.9.2
+     * nexus without a campus keeps the slots of {@link RingSlots#open}. The axis modules (0.12.0) take none of it.
      */
     public int openSlots() {
-        int open = has(Research.INNER_RING) ? RingSlots.open(phase()) : 0;
-        return campus.active() ? Math.min(open, MAX_CAMPUS_MODULES) : open;
+        if (!has(Research.INNER_RING)) return 0;
+        return campus.active() ? SiteFamily.openRingSites(phase()) : RingSlots.open(phase());
     }
 
     public boolean powered() {

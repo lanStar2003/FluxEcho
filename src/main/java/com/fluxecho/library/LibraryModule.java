@@ -51,9 +51,9 @@ public final class LibraryModule {
     /**
      * The library as the campus builder raises it (0.10.0): the Echo Archive on a hall site (4 behind the nexus, then
      * 2 and 6), opened by the library research, commissioned with the Echo Library Core. New Archives are offered
-     * only while {@code archiveEnabled} is on.
+     * only while {@code archiveEnabled} is on. Public so the city's tests can stand it beside the other specs.
      */
-    static ModuleSpec spec() {
+    public static ModuleSpec spec() {
         return new ModuleSpec(
             BuildPlan.LIBRARY,
             Research.LIBRARY,

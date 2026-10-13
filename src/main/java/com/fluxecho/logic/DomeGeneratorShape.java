@@ -39,6 +39,15 @@ import java.util.Set;
  * {@link #OFFSET}. The controller {@code (10, 2, 6)} is campus {@code (A 4, R 0, Y0 + 42)}, facing +A (the gate).
  * <p>
  * Counts: the pod's checked 1,027 (moored 1,261), soft 276 + 96 door glazing + 4 shaft cap = 376, 1,637 steps.
+ * <p>
+ * The zenith adapts to high ground (0.14.1, CITY.md §1.3 Vertical): its sky datum F, the pod floor's height over the
+ * base layer, is 40 wherever the pod's clear box (Y0 + F + 12) fits under the world's top, and steps down to 36, 32
+ * and 28 over Y0 203, 207 and 211 ({@link #datum}); 28 is the least, the pod floor just over the phase V nexus and its
+ * growth's clear box (Y0 + 27). The pod's cells are the same at every datum; only the legs are shorter (the
+ * generator's {@code dome_legs(F)}, the same feet), so each datum is a moored shape of its own ({@link Moor}:
+ * {@link #MOORED} 40 as before, {@link #MOORED_36}, {@link #MOORED_32}, {@link #MOORED_28}), and the floating shape
+ * is one for every datum. Over Y0 218 the pod's top layers lie over the world's top: the plan leaves them out and the
+ * structure check skips them, and the wards and the controller stay in the world up to Y0 225 ({@link #noRoom}).
  */
 public final class DomeGeneratorShape {
 
@@ -47,6 +56,10 @@ public final class DomeGeneratorShape {
     public static final int[] SITES = { SiteFamily.ZENITH_SITE };
     /** The two shapes: on its legs (phases II, III), floating (from phase IV, CITY.md §3). */
     public static final String MOORED = "moored", FLOATING = "floating";
+    /** The moored shapes on shorter legs over high ground (0.14.1): names only ever appended. */
+    public static final String MOORED_36 = "moored_36", MOORED_32 = "moored_32", MOORED_28 = "moored_28";
+    /** The sky datums, highest first: the pod floor's height over the base layer, Y0 + F (CITY.md §1.3 Vertical). */
+    private static final int[] DATUM_LIST = { 40, 36, 32, 28 };
     /** The nexus phase from which it may stand as {@link #FLOATING}. */
     public static final int FLOAT_PHASE = 4;
     /** The pod's box: 21 across and deep, the axis at {@link #MID}; the generator allots 10 layers (y0..y9). */
@@ -93,39 +106,224 @@ public final class DomeGeneratorShape {
     public static final ShapeKit.Shape SHAPE = build(true);
     /** The seven ward units, in slot order. */
     public static final UnitLayout UNITS = new UnitLayout(SHAPE);
+    /** Its stage rule, the same at every datum. */
+    private static final CityBuild.Stages STAGES = new CityBuild.Stages() {
+
+        @Override
+        public int stage(int x, int y, int z, char ch) {
+            return DomeGeneratorShape.stage(x, y, z, ch);
+        }
+
+        @Override
+        public int fitRank(int x, int y, int z, char ch) {
+            return DomeGeneratorShape.fitRank(x, y, z, ch);
+        }
+    };
+    /** The moored generator at each sky datum, highest first (0.14.1). */
+    private static final List<Moor> MOORS = moors(DATUM_LIST);
     /** The legs in the campus frame, {a, r, dy} (dy 1..39 over the base layer), leg by leg, each from its foot. */
-    private static final List<int[]> LEG_LIST = legCells();
+    private static final List<int[]> LEG_LIST = MOORS.get(0).legs;
     /** Every leg column {a, r} with the lowest and the highest dy a leg takes in it: {a, r, dyFrom, dyTo}. */
-    private static final List<int[]> LEG_COLUMNS = legColumns(LEG_LIST);
+    private static final List<int[]> LEG_COLUMNS = MOORS.get(0).columns;
     /** The checked shapes: the pod and its legs, the pod alone (the same box, so the controller's cell is shared). */
-    public static final Blueprint MOORED_BP = blueprint(true), FLOATING_BP = blueprint(false);
+    public static final Blueprint MOORED_BP = MOORS.get(0).blueprint, FLOATING_BP = blueprint(false, FLOOR_UP);
 
-    /** The Echo Dome Generator as its module plan reads it ({@link BuildPlan#zenith}). */
-    public static final CityBuild BUILD = new CityBuild(
-        KEY,
-        SHAPE,
-        HEIGHT,
-        MOORED_BP,
-        UNITS,
-        Parts.moduleCore(ModuleCores.DOME_GENERATOR),
-        new CityBuild.Stages() {
-
-            @Override
-            public int stage(int x, int y, int z, char ch) {
-                return DomeGeneratorShape.stage(x, y, z, ch);
-            }
-
-            @Override
-            public int fitRank(int x, int y, int z, char ch) {
-                return DomeGeneratorShape.fitRank(x, y, z, ch);
-            }
-        },
-        OFFSET);
+    /** The Echo Dome Generator on its full legs as its module plan reads it ({@link BuildPlan#zenith}). */
+    public static final CityBuild BUILD = MOORS.get(0).build;
 
     static {
         if (UNITS.size() != 7 || UNITS.slots() != 7) throw new IllegalStateException("the ward units changed");
         if (LEG_LIST.size() != LEG_CELLS) throw new IllegalStateException("the legs changed");
     }
+
+    /**
+     * The generator moored at one sky datum F (0.14.1): its legs (the generator's {@code dome_legs(F)}: dy 1..F - 1,
+     * radius {@code 9 + 5 (1 - h / (F - 2))^1.6}, the same feet at every datum), its blueprint (the legs and the pod
+     * together, F + 9 high, the pod's cell (0, 0, 0) at {@link #offset}) and its build. The pod's frame is the module's
+     * own at every datum (y up from the pod floor, Y0 + F); the controller is campus (A 4, R 0, Y0 + F + 2).
+     */
+    public static final class Moor {
+
+        /** Its sky datum F: the pod floor at Y0 + F. */
+        public final int datum;
+        /** Its shape's name in the structure definitions ({@link #MOORED} at 40). */
+        public final String name;
+        /** Its checked blueprint and its build. */
+        public final Blueprint blueprint;
+        public final CityBuild build;
+        final List<int[]> legs, columns;
+
+        private Moor(int datum) {
+            this.datum = datum;
+            name = datum == FLOOR_UP ? MOORED : MOORED + "_" + datum;
+            legs = legCells(datum);
+            columns = DomeGeneratorShape.legColumns(legs);
+            blueprint = DomeGeneratorShape.blueprint(true, datum);
+            build = new CityBuild(
+                KEY,
+                SHAPE,
+                HEIGHT,
+                blueprint,
+                UNITS,
+                Parts.moduleCore(ModuleCores.DOME_GENERATOR),
+                STAGES,
+                offset());
+        }
+
+        /** The height of the legs' top cell over the base layer: Y0 + F - 1, just under the pod's rim. */
+        public int legTop() {
+            return datum - 1;
+        }
+
+        /** The pod clear box's top over the base layer: Y0 + F + 12. */
+        public int clearTop() {
+            return datum + HEIGHT + POD_HEADROOM;
+        }
+
+        /** {across, up from the blueprint's lowest layer (Y0 + 1), rows from its front (A 12)}. */
+        public int[] offset() {
+            return new int[] { OFFSET[0], datum - 1, OFFSET[2] };
+        }
+
+        /** A point of the pod as a campus cell {a, r, dy} (dy over the base layer). */
+        public int[] podToCampus(int x, int y, int z) {
+            return new int[] { MID - z, MID - x, datum + y };
+        }
+
+        /** A campus cell {a, r, dy} as a point of the pod {x, y, z} (it may lie outside the pod's box). */
+        public int[] campusToPod(int a, int r, int dy) {
+            return new int[] { MID - r, dy - datum, MID - a };
+        }
+
+        /** The cells of its legs, {a, r, dy} in the campus frame, leg by leg from the foot. */
+        public List<int[]> legs() {
+            List<int[]> out = new ArrayList<>(legs.size());
+            for (int[] c : legs) out.add(c.clone());
+            return out;
+        }
+
+        /** Its leg cells as points of the pod {x, y, z} (y from -(F - 1) to -1). */
+        public List<int[]> legPoints() {
+            List<int[]> out = new ArrayList<>(legs.size());
+            for (int[] c : legs) out.add(campusToPod(c[0], c[1], c[2]));
+            return out;
+        }
+
+        /** The columns its legs take, {a, r, dyFrom, dyTo}: the lowest and the highest leg cell in each. */
+        public List<int[]> legColumns() {
+            List<int[]> out = new ArrayList<>(columns.size());
+            for (int[] c : columns) out.add(c.clone());
+            return out;
+        }
+
+        /**
+         * Where its controller stands on the zenith: {x, y, z, facing ordinal}, campus (A 4, R 0, Y0 + F + 2) facing
+         * the nexus's front.
+         *
+         * @throws IllegalArgumentException if the site is not the zenith or the front not a horizontal unit vector
+         */
+        public int[] controller(int site, int cx, int y0, int cz, int fx, int fz) {
+            int facing = BuildPlan.facingOrdinal(fx, fz);
+            if (site != SiteFamily.ZENITH_SITE) throw new IllegalArgumentException("not the zenith: " + site);
+            int[] a = podToCampus(CTRL_X, CTRL_Y, CTRL_Z);
+            int[] w = CampusPlan.toWorld(a[0], a[1], fx, fz);
+            return new int[] { cx + w[0], y0 + a[2], cz + w[1], facing };
+        }
+
+        /** Every leg column over the heights its leg takes there: {x0, z0, x1, z1, yFrom, yTo}. */
+        public List<int[]> keepOut(int cx, int y0, int cz, int fx, int fz) {
+            List<int[]> out = new ArrayList<>();
+            for (int[] c : columns) {
+                int[] w = CampusPlan.toWorld(c[0], c[1], fx, fz);
+                out.add(new int[] { cx + w[0], cz + w[1], cx + w[0], cz + w[1], y0 + c[2], y0 + c[3] });
+            }
+            return out;
+        }
+
+        /** Every leg column over its leg's heights, and the pod's clear box from Y0 + F to Y0 + F + 12. */
+        public List<int[]> protect(int cx, int y0, int cz, int fx, int fz) {
+            List<int[]> out = new ArrayList<>();
+            for (int[] c : columns) {
+                int[] w = CampusPlan.toWorld(c[0], c[1], fx, fz);
+                out.add(new int[] { cx + w[0], y0 + c[2], cz + w[1], cx + w[0], y0 + c[3], cz + w[1] });
+            }
+            int h = MID + POD_MARGIN;
+            int[] b = box(cx, cz, fx, fz, -h, -h, h, h);
+            out.add(new int[] { b[0], y0 + datum, b[1], b[2], y0 + clearTop(), b[3] });
+            return out;
+        }
+    }
+
+    private static List<Moor> moors(int[] datums) {
+        List<Moor> out = new ArrayList<>();
+        for (int f : datums) out.add(new Moor(f));
+        return Collections.unmodifiableList(out);
+    }
+
+    /** The sky datums, highest first: 40, 36, 32, 28. */
+    public static int[] datums() {
+        return DATUM_LIST.clone();
+    }
+
+    /** The moored generator at every sky datum, the full legs (40) first. */
+    public static List<Moor> moors() {
+        return MOORS;
+    }
+
+    /**
+     * The sky datum F over a campus whose base layer is {@code y0} (0.14.1): the highest of 40, 36, 32 and 28 whose
+     * pod clear box, Y0 + F + 12, stays under the world's top (40 for Y0 <= 203, 36 for 204..207, 32 for 208..211);
+     * 28 over that, where the pod's top layers clip.
+     */
+    public static int datum(int y0) {
+        for (int f : DATUM_LIST) if (y0 + f + HEIGHT + POD_HEADROOM <= WORLD_TOP) return f;
+        return DATUM_LIST[DATUM_LIST.length - 1];
+    }
+
+    /** The moored generator over a campus whose base layer is {@code y0} ({@link #datum}). */
+    public static Moor forBase(int y0) {
+        return moor(datum(y0));
+    }
+
+    /**
+     * The moored generator at a sky datum.
+     *
+     * @throws IllegalArgumentException for a datum that is not one of {@link #datums}
+     */
+    public static Moor moor(int datum) {
+        for (Moor m : MOORS) if (m.datum == datum) return m;
+        throw new IllegalArgumentException("no sky datum " + datum);
+    }
+
+    /** The moored generator whose shape has the name, or null for the floating shape and any other name. */
+    public static Moor moored(String name) {
+        for (Moor m : MOORS) if (m.name.equals(name)) return m;
+        return null;
+    }
+
+    /** The name of the moored shape the generator over a campus whose base layer is {@code y0} stands as. */
+    public static String shapeFor(int y0) {
+        return forBase(y0).name;
+    }
+
+    /**
+     * The moored generator a controller at (x, y, z) stands for over a nexus whose base layer is {@code y0} and whose
+     * front is (fx, fz), or null when it stands at neither of its cells (0.14.1): the one at the sky datum the base
+     * layer gives ({@link #forBase}), where the builder raises it, else the one on the full legs, where 0.14.0 put
+     * every generator, so one built there by hand over high ground before the lower datums came still forms and docks.
+     */
+    public static Moor mooredAt(int x, int y, int z, int cx, int y0, int cz, int fx, int fz) {
+        for (Moor m : new Moor[] { forBase(y0), moor(FLOOR_UP) }) {
+            int[] at = m.controller(SiteFamily.ZENITH_SITE, cx, y0, cz, fx, fz);
+            if (at[0] == x && at[1] == y && at[2] == z) return m;
+        }
+        return null;
+    }
+
+    /** The highest y a block can stand at. */
+    private static final int WORLD_TOP = 255;
+    /** The highest layer of the pod a ward's socket or the controller takes: y2 over the pod floor. */
+    private static final int STAND_TOP = 2;
 
     private DomeGeneratorShape() {}
 
@@ -135,25 +333,21 @@ public final class DomeGeneratorShape {
     }
 
     /**
-     * Where its controller stands on the zenith: {x, y, z, facing ordinal}, campus (A 4, R 0, Y0 + 42) facing the
-     * nexus's front.
+     * Where its controller stands on the zenith: {x, y, z, facing ordinal}, campus (A 4, R 0, Y0 + F + 2) for the sky
+     * datum the base layer gives it ({@link #datum}; Y0 + 42 on its full legs) facing the nexus's front.
      *
      * @throws IllegalArgumentException if the site is not the zenith or the front not a horizontal unit vector
      */
     public static int[] controller(int site, int cx, int y0, int cz, int fx, int fz) {
-        int facing = BuildPlan.facingOrdinal(fx, fz);
-        if (site != SiteFamily.ZENITH_SITE) throw new IllegalArgumentException("not the zenith: " + site);
-        int[] a = podToCampus(CTRL_X, CTRL_Y, CTRL_Z);
-        int[] w = CampusPlan.toWorld(a[0], a[1], fx, fz);
-        return new int[] { cx + w[0], y0 + a[2], cz + w[1], facing };
+        return forBase(y0).controller(site, cx, y0, cz, fx, fz);
     }
 
-    /** A point of the pod as a campus cell {a, r, dy} (dy over the base layer). */
+    /** A point of the pod on its full legs as a campus cell {a, r, dy} (dy over the base layer). */
     public static int[] podToCampus(int x, int y, int z) {
         return new int[] { MID - z, MID - x, FLOOR_UP + y };
     }
 
-    /** A campus cell {a, r, dy} as a point of the pod {x, y, z} (it may lie outside the pod's box). */
+    /** A campus cell {a, r, dy} as a point of the pod on its full legs {x, y, z} (it may lie outside the pod's box). */
     public static int[] campusToPod(int a, int r, int dy) {
         return new int[] { MID - r, dy - FLOOR_UP, MID - a };
     }
@@ -168,28 +362,28 @@ public final class DomeGeneratorShape {
         return ShapeKit.octo(x - MID, z - MID, POD_R, POD_K);
     }
 
-    /** The cells of the legs, {a, r, dy} in the campus frame, leg by leg from the foot: 234 of them. */
+    /** The cells of the full legs, {a, r, dy} in the campus frame, leg by leg from the foot: 234 of them. */
     public static List<int[]> legs() {
         List<int[]> out = new ArrayList<>(LEG_LIST.size());
         for (int[] c : LEG_LIST) out.add(c.clone());
         return out;
     }
 
-    /** The leg cells as points of the pod {x, y, z} (y from -39 to -1). */
+    /** The full legs' cells as points of the pod {x, y, z} (y from -39 to -1). */
     public static List<int[]> legPoints() {
         List<int[]> out = new ArrayList<>(LEG_LIST.size());
         for (int[] c : LEG_LIST) out.add(campusToPod(c[0], c[1], c[2]));
         return out;
     }
 
-    /** The columns the legs take, {a, r, dyFrom, dyTo}: the lowest and the highest leg cell in each. */
+    /** The columns the full legs take, {a, r, dyFrom, dyTo}: the lowest and the highest leg cell in each. */
     public static List<int[]> legColumns() {
         List<int[]> out = new ArrayList<>(LEG_COLUMNS.size());
         for (int[] c : LEG_COLUMNS) out.add(c.clone());
         return out;
     }
 
-    /** The leg's feet {a, r} (their dy-1 cells): (12, +-7), (0, +-14), (-12, +-7). */
+    /** The leg's feet {a, r} (their dy-1 cells): (12, +-7), (0, +-14), (-12, +-7), the same at every datum. */
     public static List<int[]> feet() {
         List<int[]> out = new ArrayList<>();
         for (int[] c : LEG_LIST) if (c[2] == 1) out.add(new int[] { c[0], c[1] });
@@ -263,45 +457,33 @@ public final class DomeGeneratorShape {
     }
 
     /**
-     * What the campus jobs leave alone once it stands: every leg column over the heights its leg takes there, as
-     * height-ranged keep-out boxes {x0, z0, x1, z1, yFrom, yTo} ({@link BuildPlan#establish}). A grading column that
-     * reaches a leg is left out, so the forum and refresh jobs never run into the legs; the forum's tile at Y0 and the
-     * pylons, the supply port and the recycle bin at Y0 + 1 under a leg that starts higher stay in the campus's plans,
-     * so a repair still puts them back.
+     * What the campus jobs leave alone once it stands: every leg column over the heights its leg takes there (at the
+     * datum the base layer gives it), as height-ranged keep-out boxes {x0, z0, x1, z1, yFrom, yTo}
+     * ({@link BuildPlan#establish}). A grading column that reaches a leg is left out, so the forum and refresh jobs
+     * never run into the legs; the forum's tile at Y0 and the pylons, the supply port and the recycle bin at Y0 + 1
+     * under a leg that starts higher stay in the campus's plans, so a repair still puts them back.
      */
     public static List<int[]> keepOut(int cx, int y0, int cz, int fx, int fz) {
-        List<int[]> out = new ArrayList<>();
-        for (int[] c : LEG_COLUMNS) {
-            int[] w = CampusPlan.toWorld(c[0], c[1], fx, fz);
-            out.add(new int[] { cx + w[0], cz + w[1], cx + w[0], cz + w[1], y0 + c[2], y0 + c[3] });
-        }
-        return out;
+        return forBase(y0).keepOut(cx, y0, cz, fx, fz);
     }
 
     /**
      * The boxes {x0, y0, z0, x1, y1, z1} nothing but its own jobs takes a block down in: every leg column over the
-     * heights its leg takes there, and the pod's clear box (its box with {@link #POD_MARGIN} round it, from Y0 + 40 to
-     * Y0 + {@link #CLEAR_TOP}). The forum's tiles and fixtures under the legs, and the nexus under the pod, stay the
-     * nexus's own.
+     * heights its leg takes there, and the pod's clear box (its box with {@link #POD_MARGIN} round it, from Y0 + F to
+     * Y0 + F + 12; Y0 + 40 to Y0 + {@link #CLEAR_TOP} on its full legs). The forum's tiles and fixtures under the legs,
+     * and the nexus under the pod, stay the nexus's own.
      */
     public static List<int[]> protect(int cx, int y0, int cz, int fx, int fz) {
-        List<int[]> out = new ArrayList<>();
-        for (int[] c : LEG_COLUMNS) {
-            int[] w = CampusPlan.toWorld(c[0], c[1], fx, fz);
-            out.add(new int[] { cx + w[0], y0 + c[2], cz + w[1], cx + w[0], y0 + c[3], cz + w[1] });
-        }
-        int h = MID + POD_MARGIN;
-        int[] b = box(cx, cz, fx, fz, -h, -h, h, h);
-        out.add(new int[] { b[0], y0 + FLOOR_UP, b[1], b[2], y0 + CLEAR_TOP, b[3] });
-        return out;
+        return forBase(y0).protect(cx, y0, cz, fx, fz);
     }
 
     /**
-     * Why a campus whose base layer is {@code y0} has no room for it ({@code build.module.why.height}: the pod's clear
-     * box would reach over the world's top), or null.
+     * Why a campus whose base layer is {@code y0} has no room for it ({@code build.module.why.height}: even at the
+     * lowest datum its controller or a ward would lie over the world's top, over Y0 225), or null. The pod's higher
+     * layers may clip at the world's top (0.14.1): the plan leaves those cells out and the structure check skips them.
      */
     public static String noRoom(int y0) {
-        return y0 + CLEAR_TOP > 255 ? "build.module.why.height" : null;
+        return y0 + datum(y0) + STAND_TOP > WORLD_TOP ? "build.module.why.height" : null;
     }
 
     /** The world box {x0, z0, x1, z1} of the campus rectangle a0..a1 by r0..r1. */
@@ -315,18 +497,19 @@ public final class DomeGeneratorShape {
     // the generator (a port of b_sky.py's dome_pod and dome_legs)
 
     /**
-     * The legs: for each of the six angles 30 + 60k degrees, the cells of radius {@code 9 + 5 (1 - h / 38)^1.6} at the
-     * heights h = 0..38 (dy = 1 + h), rounded half to even as the generator's {@code round}. The legs on the side
-     * R < 0 (210, 270 and 330 degrees) are the mirror images of those at 150, 90 and 30 degrees.
+     * The legs at the sky datum {@code datum} (F): for each of the six angles 30 + 60k degrees, the cells of radius
+     * {@code 9 + 5 (1 - h / (F - 2))^1.6} at the heights h = 0..F - 2 (dy = 1 + h), rounded half to even as the
+     * generator's {@code round} (F 40: {@code 9 + 5 (1 - h / 38)^1.6}, h = 0..38). The legs on the side R < 0 (210, 270
+     * and 330 degrees) are the mirror images of those at 150, 90 and 30 degrees.
      */
-    private static List<int[]> legCells() {
+    private static List<int[]> legCells(int datum) {
         List<int[]> out = new ArrayList<>();
         for (int k = 0; k < LEGS; k++) {
             int src = k < LEGS / 2 ? k : LEGS - 1 - k, sign = k < LEGS / 2 ? 1 : -1;
             double th = Math.toRadians(30 + 60 * src);
             double cos = StrictMath.cos(th), sin = StrictMath.sin(th);
-            for (int h = 0; h < LEG_TOP; h++) {
-                double r = LEG_HEAD + (LEG_FOOT - LEG_HEAD) * StrictMath.pow(1 - h / 38.0, LEG_CURVE);
+            for (int h = 0; h < datum - 1; h++) {
+                double r = LEG_HEAD + (LEG_FOOT - LEG_HEAD) * StrictMath.pow(1 - h / (double) (datum - 2), LEG_CURVE);
                 out.add(new int[] { (int) Math.rint(r * cos), sign * (int) Math.rint(r * sin), 1 + h });
             }
         }
@@ -344,23 +527,27 @@ public final class DomeGeneratorShape {
     }
 
     /**
-     * The checked blueprint: the pod's checked cells (soft ones left out) at {@link #OFFSET}, and with {@code legs}
-     * every leg cell.
+     * The checked blueprint at the sky datum {@code datum} (F): the pod's checked cells (soft ones left out) with its
+     * cell (0, 0, 0) F - 1 over the blueprint's lowest layer, and with {@code legs} every leg cell; F + 9 high
+     * ({@link #BP_HEIGHT} at 40). The floating shape's is the one at 40 without legs, for every datum: the pod's cells
+     * round the controller are the same.
      */
-    private static Blueprint blueprint(boolean legs) {
-        char[][][] g = new char[BP_HEIGHT][BP_DEPTH][BP_WIDTH];
+    private static Blueprint blueprint(boolean legs, int datum) {
+        int height = datum + HEIGHT - 1, up = datum - 1;
+        char[][][] g = new char[height][BP_DEPTH][BP_WIDTH];
         for (char[][] layer : g) for (char[] row : layer) java.util.Arrays.fill(row, ' ');
         for (int y = 0; y < HEIGHT; y++) for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
             char ch = SHAPE.get(x, y, z);
             if (ch == ShapeKit.NONE || ShapeKit.soft(ch)) continue;
-            g[BP_HEIGHT - 1 - (y + OFFSET[1])][z + OFFSET[2]][x + OFFSET[0]] = ch;
+            g[height - 1 - (y + up)][z + OFFSET[2]][x + OFFSET[0]] = ch;
         }
-        if (legs) for (int[] c : LEG_LIST) {
-            int[] p = campusToPod(c[0], c[1], c[2]);
-            g[BP_HEIGHT - 1 - (p[1] + OFFSET[1])][p[2] + OFFSET[2]][p[0] + OFFSET[0]] = LEG;
+        if (legs) for (int[] c : legCells(datum)) {
+            // a campus cell {a, r, dy} as a point of the pod at this datum
+            int px = MID - c[1], py = c[2] - datum, pz = MID - c[0];
+            g[height - 1 - (py + up)][pz + OFFSET[2]][px + OFFSET[0]] = LEG;
         }
-        String[][] layers = new String[BP_HEIGHT][BP_DEPTH];
-        for (int b = 0; b < BP_HEIGHT; b++) for (int c = 0; c < BP_DEPTH; c++) layers[b][c] = new String(g[b][c]);
+        String[][] layers = new String[height][BP_DEPTH];
+        for (int b = 0; b < height; b++) for (int c = 0; c < BP_DEPTH; c++) layers[b][c] = new String(g[b][c]);
         return new Blueprint(layers);
     }
 

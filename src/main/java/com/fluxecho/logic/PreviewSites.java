@@ -13,7 +13,7 @@ import java.util.Set;
  * out rather than put anywhere else. A kind the campus does not build stands on the first free inner ring slot, as in
  * 0.9.2. Sites and ring slots are different places and are counted apart: hall site 2 is a footprint from radial 24
  * out on the nexus's right, ring slot 2 a point at the inner radius. A kind on the nexus's axis (0.12.0: the zenith's
- * site 8, the root's 9, {@link SiteFamily#axisSite}) takes no room on the ring: it stands whenever its site is free.
+ * site 8, the root's 9, {@link SiteFamily#axis}) takes no room on the ring: it stands whenever its site is free.
  */
 public final class PreviewSites {
 
@@ -84,8 +84,9 @@ public final class PreviewSites {
         return Collections.unmodifiableList(out);
     }
 
-    /** Whether a kind's sites are on the nexus's axis (its first preferred site tells). */
+    /** Whether a kind's sites are on the nexus's axis (its first preferred site's family tells, 0.14.1). */
     private static boolean axis(int[] pref) {
-        return pref != null && pref.length > 0 && SiteFamily.axisSite(pref[0]);
+        SiteFamily f = pref != null && pref.length > 0 ? SiteFamily.of(pref[0]) : null;
+        return f != null && f.axis();
     }
 }

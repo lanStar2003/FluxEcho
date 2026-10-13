@@ -58,6 +58,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Shader-safe as {@link CityRender}: in its frame ({@link CityFrame}) relative to the camera, quads only, a normal
  * towards the viewer, no depth writes (the ribs' faces turned away are left out, so the solid ribs need no depth),
  * animation by the world time alone. Each part fails on its own.
+ * <p>
+ * Over high ground the pod stands lower on shorter legs (0.14.1): the legs' ribs, the dome's ground ring and middle,
+ * the arcs and the distances follow the generator's sky datum ({@link TileDomeGenerator#datum}).
  */
 @SideOnly(Side.CLIENT)
 final class DomeGeneratorRender {
@@ -67,13 +70,12 @@ final class DomeGeneratorRender {
     private static final int LEGS = DomeGeneratorShape.LEGS, MID_SEGMENTS = 4, ARC_PIECES = 14;
     /** The gap between two segments of a rib, as a share of a segment. */
     private static final double GAP = 0.04;
-    /** The legs' box in the pod's frame (the blueprint's: the feet on the forum to the pod's floor). */
+    /** The legs' box across and deep in the pod's frame (the blueprint's); it reaches down to the forum. */
     private static final double LEG_X0 = -DomeGeneratorShape.OFFSET[0], LEG_X1 = LEG_X0 + DomeGeneratorShape.BP_WIDTH,
-        LEG_Z0 = -DomeGeneratorShape.OFFSET[2], LEG_Z1 = LEG_Z0 + DomeGeneratorShape.BP_DEPTH, LEG_Y0 = DomeLook.CY;
+        LEG_Z0 = -DomeGeneratorShape.OFFSET[2], LEG_Z1 = LEG_Z0 + DomeGeneratorShape.BP_DEPTH;
 
-    /** The legs' axes at the segment ends, near, mid and far: {@code [leg][point]{x, y, z, s}}. */
-    private static final double[][][] NEAR_AXIS = axes(DomeLook.LEG_SEGMENTS), MID_AXIS = axes(MID_SEGMENTS),
-        FAR_AXIS = axes(DomeLook.FAR_LEG_LINES);
+    /** The legs' axes at a sky datum, by datum. */
+    private static final Map<Integer, Axes> AXES = new ConcurrentHashMap<>();
     /** The emitter nodes' middles. */
     private static final double[][] NODES;
     /** The apex cells by dome radius and rings. */
@@ -92,11 +94,32 @@ final class DomeGeneratorRender {
 
     private DomeGeneratorRender() {}
 
-    private static double[][][] axes(int segments) {
+    /**
+     * The legs' axes at the segment ends at one sky datum, near, mid and far: {@code [leg][point]{x, y, z, s}}, and
+     * the forum's height in the pod's frame (the dome's middle, the legs' box's bottom).
+     */
+    private static final class Axes {
+
+        final double[][][] near, mid, far;
+        final double cy;
+
+        Axes(int datum) {
+            near = axes(DomeLook.LEG_SEGMENTS, datum);
+            mid = axes(MID_SEGMENTS, datum);
+            far = axes(DomeLook.FAR_LEG_LINES, datum);
+            cy = DomeLook.cy(datum);
+        }
+    }
+
+    private static Axes axes(int datum) {
+        return AXES.computeIfAbsent(datum, Axes::new);
+    }
+
+    private static double[][][] axes(int segments, int datum) {
         double[][][] out = new double[LEGS][segments + 1][];
         for (int leg = 0; leg < LEGS; leg++) for (int k = 0; k <= segments; k++) {
             double s = k / (double) segments;
-            double[] p = DomeLook.legPoint(leg, s);
+            double[] p = DomeLook.legPoint(leg, s, datum);
             out[leg][k] = new double[] { p[0], p[1], p[2], s };
         }
         return out;
@@ -111,14 +134,15 @@ final class DomeGeneratorRender {
         boolean docked = CityRender.docked(d), on = CityRender.on(d);
         int accent = d.moduleColor();
         double sweep = d.sweepLevel();
-        boolean moored = DomeGeneratorShape.MOORED.equals(d.shapeName());
+        boolean moored = DomeGeneratorShape.moored(d.shapeName()) != null;
+        Axes ax = axes(d.datum());
         if (moored && !OFF[LEG_PART]) try {
-            int legTier = ModuleLook.tier(false, legDistance(cam), CityRender.NEAR, Config.nexusEffectRange);
+            int legTier = ModuleLook.tier(false, legDistance(cam, ax), CityRender.NEAR, Config.nexusEffectRange);
             double below = sweep == Double.MAX_VALUE ? Double.MAX_VALUE : f.local(sweep);
             // far, faded as the landmark is rather than by the effects' range, so the legs carry on unbroken into
             // the landmark's drawing past that range
-            float p = legTier == ModuleLook.FAR ? appear * DomeLook.landmarkFade(domeDistance(cam)) : p0;
-            legs(f, t, p, legTier, on, docked, accent, below);
+            float p = legTier == ModuleLook.FAR ? appear * DomeLook.landmarkFade(domeDistance(cam, ax)) : p0;
+            legs(f, ax, t, p, legTier, on, docked, accent, below);
         } catch (Throwable x) {
             CityRender.recover();
             fail(LEG_PART, x);
@@ -134,7 +158,7 @@ final class DomeGeneratorRender {
             CityRender.close();
         }
         if (docked && !OFF[SHELL]) try {
-            shell(d, f, t, appear, cam, on);
+            shell(d, f, ax, t, appear, cam, on);
         } catch (Throwable x) {
             CityRender.recover();
             fail(SHELL, x);
@@ -143,7 +167,7 @@ final class DomeGeneratorRender {
         }
         // an idle look (CITY.md §4.8): drawn while docked, dim and amber until powered
         if (docked && tier != ModuleLook.FAR && !OFF[ARCS]) try {
-            arcs(d, f, t, p0, tier, accent, on);
+            arcs(d, f, t, p0, tier, accent, on, d.datum());
         } catch (Throwable x) {
             CityRender.recover();
             fail(ARCS, x);
@@ -160,13 +184,14 @@ final class DomeGeneratorRender {
     static void landmark(TileDomeGenerator d, double t) {
         if (!d.formed()) return;
         boolean docked = CityRender.docked(d), on = CityRender.on(d);
+        Axes ax = axes(d.datum());
         // the legs' pillars are hidden at every distance, so their drawing must carry on out here too
-        if (DomeGeneratorShape.MOORED.equals(d.shapeName()) && !OFF[LEG_PART]) try {
+        if (DomeGeneratorShape.moored(d.shapeName()) != null && !OFF[LEG_PART]) try {
             CityFrame f = new CityFrame(d);
             double sweep = d.sweepLevel();
             double below = sweep == Double.MAX_VALUE ? Double.MAX_VALUE : f.local(sweep);
-            float p = DomeLook.landmarkFade(domeDistance(CityFrame.camera(d)));
-            legs(f, t, p, ModuleLook.FAR, on, docked, d.moduleColor(), below);
+            float p = DomeLook.landmarkFade(domeDistance(CityFrame.camera(d), ax));
+            legs(f, ax, t, p, ModuleLook.FAR, on, docked, d.moduleColor(), below);
         } catch (Throwable x) {
             CityRender.recover();
             fail(LEG_PART, x);
@@ -176,7 +201,7 @@ final class DomeGeneratorRender {
         if (!docked || OFF[SHELL]) return;
         try {
             CityFrame f = new CityFrame(d);
-            shell(d, f, t, 1f, CityFrame.camera(d), on);
+            shell(d, f, ax, t, 1f, CityFrame.camera(d), on);
             double[] c = { DomeLook.CX, DomeLook.EMITTER_Y, DomeLook.CZ };
             double x = f.x(c[0], c[2]), y = f.y(c[1]), z = f.z(c[0], c[2]);
             double dist = Math.sqrt(x * x + y * y + z * z);
@@ -195,15 +220,15 @@ final class DomeGeneratorRender {
     }
 
     /** How far the camera ({@code p}, in the pod's frame) is from the dome's middle, in blocks. */
-    private static double domeDistance(double[] p) {
-        double dx = p[0] - DomeLook.CX, dy = p[1] - DomeLook.CY, dz = p[2] - DomeLook.CZ;
+    private static double domeDistance(double[] p, Axes ax) {
+        double dx = p[0] - DomeLook.CX, dy = p[1] - ax.cy, dz = p[2] - DomeLook.CZ;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    /** How far the camera is from the legs' box (the blueprint's, under the pod), in blocks. */
-    private static double legDistance(double[] p) {
+    /** How far the camera is from the legs' box (the blueprint's, under the pod down to the forum), in blocks. */
+    private static double legDistance(double[] p, Axes ax) {
         double dx = Math.max(0, Math.max(LEG_X0 - p[0], p[0] - LEG_X1));
-        double dy = Math.max(0, Math.max(LEG_Y0 - p[1], p[1]));
+        double dy = Math.max(0, Math.max(ax.cy - p[1], p[1]));
         double dz = Math.max(0, Math.max(LEG_Z0 - p[2], p[2] - LEG_Z1));
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
@@ -216,7 +241,7 @@ final class DomeGeneratorRender {
      * forming sweep's height in the pod's frame; the pillars above it still stand). Mid, fewer segments and no collars;
      * far (and in the landmark), {@link DomeLook#FAR_LEG_LINES} lines a leg.
      */
-    private static void legs(CityFrame f, double t, float p, int tier, boolean on, boolean docked, int accent,
+    private static void legs(CityFrame f, Axes ax, double t, float p, int tier, boolean on, boolean docked, int accent,
         double below) {
         if (p <= 0.01f) return;
         int glow = on ? accent : docked ? AMBER : IDLE;
@@ -225,7 +250,7 @@ final class DomeGeneratorRender {
             Shapes.begin(true);
             Tessellator tes = CityFrame.start();
             tes.setColorRGBA_I(Shapes.mix(STEEL_LIGHT, glow, 0.5), CityFrame.alpha255(0.6f * p));
-            for (double[][] leg : FAR_AXIS) for (int k = 0; k + 1 < leg.length; k++) {
+            for (double[][] leg : ax.far) for (int k = 0; k + 1 < leg.length; k++) {
                 double[] a = leg[k], b = leg[k + 1];
                 if (b[1] > below) continue;
                 f.line(tes, a[0], a[1], a[2], b[0], b[1], b[2], 0.6);
@@ -235,7 +260,7 @@ final class DomeGeneratorRender {
             return;
         }
         boolean nearby = tier == ModuleLook.NEAR;
-        double[][][] axes = nearby ? NEAR_AXIS : MID_AXIS;
+        double[][][] axes = nearby ? ax.near : ax.mid;
         // the solid ribs first
         Shapes.begin(false);
         Tessellator tes = CityFrame.start();
@@ -461,7 +486,8 @@ final class DomeGeneratorRender {
      * Without power ({@code on} false, still docked) the same pieces, faint, amber and flickering as the dome does, the
      * crackle slower.
      */
-    private static void arcs(TileDomeGenerator d, CityFrame f, double t, float p0, int tier, int accent, boolean on) {
+    private static void arcs(TileDomeGenerator d, CityFrame f, double t, float p0, int tier, int accent, boolean on,
+        int datum) {
         float p = p0 * (on ? 1f : 0.35f + 0.15f * (float) Math.sin(t * 0.21));
         if (p <= 0.01f) return;
         int core = on ? ARC : Shapes.mix(ARC, AMBER, 0.6), halo = on ? accent : AMBER;
@@ -473,7 +499,7 @@ final class DomeGeneratorRender {
         Tessellator tes = CityFrame.start();
         double[][] ends = new double[NODES.length][];
         for (int i = 0; i < NODES.length; i++) {
-            double[] a = NODES[i], b = DomeLook.arcEnd(a[0], a[1], a[2], radius);
+            double[] a = NODES[i], b = DomeLook.arcEnd(a[0], a[1], a[2], radius, datum);
             ends[i] = b;
             double len = Math.sqrt(sq(b[0] - a[0]) + sq(b[1] - a[1]) + sq(b[2] - a[2]));
             double amp = Math.min(1.6, 0.05 * len);
@@ -515,9 +541,10 @@ final class DomeGeneratorRender {
      * amber.
      * At most {@link DomeLook#shellQuads} quads, counted from the same points.
      */
-    private static void shell(TileDomeGenerator d, CityFrame f, double t, float appear, double[] cam, boolean on) {
+    private static void shell(TileDomeGenerator d, CityFrame f, Axes ax, double t, float appear, double[] cam,
+        boolean on) {
         double radius = DomeLook.shellRadius(phase(d));
-        double dist = domeDistance(cam);
+        double dist = domeDistance(cam, ax), cy = ax.cy;
         if (dist > DomeLook.LANDMARK) return;
         float a = DomeLook.landmarkFade(dist) * appear * (on ? 1f : 0.35f + 0.15f * (float) Math.sin(t * 0.21));
         if (a <= 0.01f) return;
@@ -526,7 +553,7 @@ final class DomeGeneratorRender {
         Tessellator tes = CityFrame.start();
         // the ground ring: a soft band rising from where the dome meets the forum, and a line along it
         int n = DomeLook.groundSegments(dist);
-        double gy = DomeLook.CY + 0.06;
+        double gy = cy + 0.06;
         for (int i = 0; i < n; i++) {
             double[] q0 = DomeLook.groundPoint(i, n, radius), q1 = DomeLook.groundPoint(i + 1, n, radius);
             double x0 = q0[0], z0 = q0[1], x1 = q1[0], z1 = q1[1];
@@ -548,18 +575,18 @@ final class DomeGeneratorRender {
             if (s < 0.02) continue;
             double[][] c = cells.get(i);
             tes.setColorRGBA_I(rgb, CityFrame.alpha255(0.12f * (float) s));
-            hexFill(tes, f, c, 1, 2, 3, 4);
-            hexFill(tes, f, c, 4, 5, 6, 1);
+            hexFill(tes, f, cy, c, 1, 2, 3, 4);
+            hexFill(tes, f, cy, c, 4, 5, 6, 1);
             tes.setColorRGBA_I(light, CityFrame.alpha255(0.4f * (float) s));
             for (int k = 1; k <= 6; k++) {
                 double[] u = c[k], v = c[k % 6 + 1];
                 f.line(
                     tes,
                     DomeLook.CX + u[0],
-                    DomeLook.CY + u[1],
+                    cy + u[1],
                     DomeLook.CZ + u[2],
                     DomeLook.CX + v[0],
-                    DomeLook.CY + v[1],
+                    cy + v[1],
                     DomeLook.CZ + v[2],
                     0.1);
             }
@@ -568,10 +595,10 @@ final class DomeGeneratorRender {
         Shapes.end();
     }
 
-    /** Half a hexagon: four of its points (relative to the dome's middle) as a quad. */
-    private static void hexFill(Tessellator tes, CityFrame f, double[][] c, int a, int b, int e, int g) {
+    /** Half a hexagon: four of its points (relative to the dome's middle, at the height {@code cy}) as a quad. */
+    private static void hexFill(Tessellator tes, CityFrame f, double cy, double[][] c, int a, int b, int e, int g) {
         for (int k : new int[] { a, b, e, g })
-            f.vertex(tes, DomeLook.CX + c[k][0], DomeLook.CY + c[k][1], DomeLook.CZ + c[k][2]);
+            f.vertex(tes, DomeLook.CX + c[k][0], cy + c[k][1], DomeLook.CZ + c[k][2]);
     }
 
     // ---- the forming sweep
@@ -588,8 +615,8 @@ final class DomeGeneratorRender {
             int accent = d.moduleColor();
             Shapes.begin(true);
             Tessellator tes = CityFrame.start();
-            if (DomeGeneratorShape.MOORED.equals(d.shapeName()) && y < 0) {
-                for (double[][] leg : MID_AXIS) for (int i = 0; i + 1 < leg.length; i++) {
+            if (DomeGeneratorShape.moored(d.shapeName()) != null && y < 0) {
+                for (double[][] leg : axes(d.datum()).mid) for (int i = 0; i + 1 < leg.length; i++) {
                     if (leg[i][1] > y || leg[i + 1][1] < y) continue;
                     double[] j = cut(leg[i], leg[i + 1], y);
                     double[] along = { leg[i + 1][0] - leg[i][0], leg[i + 1][1] - leg[i][1],

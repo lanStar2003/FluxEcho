@@ -605,4 +605,38 @@ class TerrainRuleTest {
             assertEquals(Verdict.BLOCKED, TerrainRule.forDrain(probe("fluid", "lava"), true, false));
         }
     }
+
+    /**
+     * A retire job (0.14.1) takes the 0.9.2 hall down whatever the configured rule: the hall's own blocks (ours, part
+     * of a formed structure, which every other job leaves standing), its core and what stands in it, all broken into
+     * the recycle store; only what is guarded stays. Its floor cells become grass after the hall's foundation is taken.
+     */
+    @Test
+    void aRetireJobTakesTheHallDownWhateverTheRule() {
+        assertEquals(Verdict.ALREADY, TerrainRule.forRetire(probe("air")));
+        for (String[] taken : new String[][] { { "ours" }, { "ours", "loose" }, { "port" }, { "hasTile", "te" },
+            { "crafted" }, { "natural" }, { "fluid", "lava" }, { "replaceable" } }) {
+            assertEquals(Verdict.CLEAR, TerrainRule.forRetire(probe(taken)), Arrays.toString(taken));
+            // a formed structure's part is left standing by the clearing of every other job
+            if (taken[0].equals("ours") && taken.length == 1)
+                assertEquals(Verdict.BLOCKED, TerrainRule.forClear(probe(taken), true, true));
+        }
+        for (String guard : new String[] { "unbreakable", "otherNexusArea", "protectedArea", "listed" }) {
+            assertEquals(Verdict.BLOCKED, TerrainRule.forRetire(probe("ours", guard)), guard);
+            assertEquals(Verdict.BLOCKED, TerrainRule.forRetireFloor(probe("ours", guard)), guard);
+        }
+        assertEquals(Verdict.ALREADY, TerrainRule.forRetireFloor(probe("target")));
+        assertEquals(Verdict.PLACE, TerrainRule.forRetireFloor(probe("air")));
+        assertEquals(Verdict.PLACE, TerrainRule.forRetireFloor(probe("fluid", "lava")));
+        assertEquals(Verdict.CLEAR, TerrainRule.forRetireFloor(probe("ours")), "the hall's foundation, then grass");
+        assertEquals(Verdict.BLOCKED, TerrainRule.forFloor(probe("ours"), false, true), "every other job leaves it");
+        // the run under the floor: the clear-all fill, the hall's lower blocks credited, a cellar's stone left
+        Probe[] column = { probe("ours"), probe("air"), probe("ours"), probe("natural"), probe("air") };
+        Verdict[] v = TerrainRule.gradeColumn(i -> column[i], column.length, false, false, true);
+        assertArrayEquals(new Verdict[] { Verdict.CLEAR, Verdict.PLACE, Verdict.REPLACE, Verdict.BLOCKED, null }, v);
+        // without the retire flag the column is graded as before
+        assertArrayEquals(
+            TerrainRule.gradeColumn(column, false, false),
+            TerrainRule.gradeColumn(i -> column[i], column.length, false, false, false));
+    }
 }

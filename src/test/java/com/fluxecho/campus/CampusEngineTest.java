@@ -407,6 +407,148 @@ class CampusEngineTest {
         assertFalse(Campus.yields(touched));
     }
 
+    /**
+     * A recorded site whose module is not known yet (its chunk not loaded since) takes its own site only (0.14.1):
+     * 0.14.0 counted it as a module of every kind of the site's family, so the other halls were neither offered nor
+     * listed anywhere until the chunk loaded.
+     */
+    @Test
+    void anUnknownModuleOnASiteIsNoModuleOfEveryKind() {
+        Map<Integer, String> kinds = new java.util.TreeMap<>();
+        kinds.put(4, "");
+        kinds.put(2, "eco_dome");
+        assertEquals(-1, Campus.builtSite(kinds, "library"));
+        assertEquals(-1, Campus.builtSite(kinds, "dual_foil_vault"));
+        assertEquals(2, Campus.builtSite(kinds, "eco_dome"));
+        kinds.put(4, "library");
+        assertEquals(4, Campus.builtSite(kinds, "library"));
+    }
+
+    /**
+     * 换一个 (0.14.1): a job nobody started goes to the end of the queue without being declined and the next one comes
+     * up; a started job, one that touched anything, or a job with nothing behind it stays where it is.
+     */
+    @Test
+    void laterPutsAJobNobodyStartedAtTheEndOfTheQueue() {
+        ModuleSpec spec = spec();
+        BuildJob a = BuildJob.module(spec, 4), b = BuildJob.module(spec, 2), c = BuildJob.module(spec, 6);
+        a.state = BuildState.State.PROJECTING;
+        List<BuildJob> queue = new ArrayList<>(Arrays.asList(b, c));
+        assertSame(b, Campus.defer(a, queue));
+        assertEquals(Arrays.asList(c, a), queue);
+        assertSame(c, Campus.defer(b, queue), "a job still surveyed gives way too");
+        assertEquals(Arrays.asList(a, b), queue);
+        c.started = true;
+        assertSame(c, Campus.defer(c, queue), "a started job keeps its place");
+        c.started = false;
+        c.touched = true;
+        assertSame(c, Campus.defer(c, queue), "so does one that touched the world");
+        assertEquals(Arrays.asList(a, b), queue);
+        List<BuildJob> none = new ArrayList<>();
+        assertSame(a, Campus.defer(a, none));
+        assertTrue(none.isEmpty());
+        assertNull(Campus.defer(null, queue));
+    }
+
+    /**
+     * The retire job of a docked 0.9.2 hall (0.14.1): {@code retire:<slot>}, named by its slot, waiting at the end of
+     * the queue like a module job; its one box is the hall's ground, saved and read back with the job, from which both
+     * sides make the same plan: every column of the box cleared from its top down to Y0 + 1 and graded, then the
+     * forum's floor and fixtures inside the box. No module, no campus job: it raises nothing.
+     */
+    @Test
+    void aRetireJobTakesTheHallDownAndGivesItsGroundBack() {
+        int[] f = FACINGS[1];
+        int[] ctrl = { CX + 5 * f[0], Y0 + 2, CZ + 5 * f[1] };
+        CampusPlan cp = new CampusPlan(Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
+        // a hall on the gate road (slot 0, 32 ahead), standing two cells low, 11 high
+        int[] o = com.fluxecho.logic.RingSlots.offset(0, 32, f[0], f[1]);
+        int[] keep = BuildPlan.moduleKeepOut(new int[] { CX + o[0], Y0 - 2, CZ + o[1] });
+        int[] box = { keep[0], keep[1], keep[2], keep[3], Y0 - 2, Y0 + 9 };
+        BuildJob j = BuildJob.read(
+            BuildJob.retire(0, box)
+                .write());
+        assertEquals("retire:0", j.key());
+        assertEquals("retire:0", j.planKey());
+        assertTrue(j.retires());
+        assertEquals(0, j.site());
+        assertArrayEquals(box, j.retireBox());
+        assertNull(j.module());
+        assertFalse(j.campusJob() || j.repair() || j.grows() || j.raisesNexus());
+        assertEquals(0, j.rank(), "it waits behind the queued jobs");
+        assertEquals("fluxecho.build.job.retire", ((ChatComponentTranslation) j.name()).getKey());
+        assertEquals("build.stage.d0", com.fluxecho.nexus.NexusGui.stageKey(j.planKey(), 0));
+        assertEquals("build.stage.d2", com.fluxecho.nexus.NexusGui.stageKey(j.planKey(), 9));
+        assertNull(
+            BuildJob.forum(Collections.emptyList())
+                .retireBox());
+        assertEquals(-1, BuildPlan.retireSlot("retire:8"), "a ring slot only");
+        assertEquals(-1, BuildPlan.retireSlot("retire:x"));
+
+        BuildPlan.Plan p = BuildJob
+            .planFor(j.planKey(), cp, CX, Y0, CZ, f[0], f[1], ctrl[0], ctrl[1], ctrl[2], j.keepOut());
+        assertEquals(BuildPlan.D_STAGES, p.stages);
+        int cols = (keep[2] - keep[0] + 1) * (keep[3] - keep[1] + 1);
+        assertEquals(cols, p.clear.size());
+        for (BuildPlan.Column c : p.clear) {
+            assertTrue(c.grade, "graded: no pit where the hall stood");
+            assertEquals(Y0 + 1, c.yFrom);
+            assertEquals(Y0 + 9, c.yTo);
+            assertTrue(c.x >= keep[0] && c.x <= keep[2] && c.z >= keep[1] && c.z <= keep[3]);
+        }
+        // the forum's tiles there, and on the gate road its pylons, which the establish job left out round the hall
+        BuildPlan.Plan forum = BuildPlan.forum(cp, CX, Y0, CZ, f[0], f[1]);
+        int inside = 0, pylons = 0;
+        for (BuildPlan.Step s : forum.steps) if (s.x >= keep[0] && s.x <= keep[2] && s.z >= keep[1] && s.z <= keep[3]) {
+            inside++;
+            if (s.stage == BuildPlan.E_FIXTURE) pylons++;
+        }
+        assertEquals(inside, p.steps.size());
+        assertTrue(pylons > 0, "the gate road's pylons stand in the hall's box");
+        assertEquals(pylons, p.count(BuildPlan.D_FIXTURE));
+        assertEquals(0, p.count(BuildPlan.D_CLEAR));
+        for (BuildPlan.Step s : p.steps) assertTrue(s.y >= Y0 && s.kind == BuildPlan.SOFT, s.toString());
+        // the same plan from the same inputs, and none without its box
+        assertEquals(
+            p.steps,
+            BuildJob.planFor("retire:0", cp, CX, Y0, CZ, f[0], f[1], ctrl[0], ctrl[1], ctrl[2], j.keepOut()).steps);
+        assertNull(BuildJob.planFor("retire:0", cp, CX, Y0, CZ, f[0], f[1], 0, 0, 0, Collections.emptyList()));
+    }
+
+    /**
+     * A retire job whose hall is gone before 开始 (0.14.1: a member broke it by hand, and the module was offered on its
+     * site at once) is withdrawn, not declined, as long as it never began: it must not clear the old box, whatever the
+     * clear-all rule says, nor lay forum tiles the module's clearing takes away again. It is kept while a docked hall
+     * still blocks its slot, while a hall (even unformed) stands in its box, and once it began.
+     */
+    @Test
+    void aRetireJobWhoseHallIsGoneIsWithdrawn() {
+        int[] box = { 10, 20, 24, 34, Y0 - 1, Y0 + 11 };
+        BuildJob mod = BuildJob.forum(Collections.emptyList());
+        BuildJob gone = BuildJob.retire(4, box), kept = BuildJob.retire(6, box.clone());
+        List<BuildJob> jobs = Arrays.asList(mod, gone, kept);
+        Set<Integer> none = Collections.emptySet();
+        assertEquals(Arrays.asList(gone, kept), Campus.staleRetires(jobs, none, b -> false));
+        assertEquals(
+            Collections.singletonList(gone),
+            Campus.staleRetires(jobs, Collections.singleton(6), b -> false),
+            "a docked hall still blocks slot 6");
+        assertTrue(
+            Campus.staleRetires(jobs, none, b -> true)
+                .isEmpty(),
+            "a hall still stands in the box");
+        gone.started = true;
+        kept.touched = true;
+        assertTrue(
+            Campus.staleRetires(jobs, none, b -> false)
+                .isEmpty(),
+            "begun: started, or something touched");
+        gone.started = false;
+        kept.touched = false;
+        gone.state = BuildState.State.DONE;
+        assertEquals(Collections.singletonList(kept), Campus.staleRetires(jobs, none, b -> false), "an ended job");
+    }
+
     @Test
     void blockedCellsAreCappedButCounted() {
         BuildJob j = BuildJob.forum(Collections.emptyList());
@@ -513,7 +655,7 @@ class CampusEngineTest {
         c.skip = true;
         c.declined.put("library", 123_456L);
         c.unfinished = BuildPlan.ESTABLISH;
-        c.graded = BuildJob.V;
+        c.graded = BuildJob.GRADE_V;
         c.free = true;
         // the item's tag is copied whenever the stack is
         NBTTagCompound t = (NBTTagCompound) c.write()
@@ -530,7 +672,7 @@ class CampusEngineTest {
         assertTrue(back.skip);
         assertEquals(123_456L, (long) back.declined.get("library"));
         assertEquals(BuildPlan.ESTABLISH, back.unfinished);
-        assertEquals(BuildJob.V, back.graded, "a campus graded by this plan is not offered a refresh again");
+        assertEquals(BuildJob.GRADE_V, back.graded, "a campus graded by this plan is not offered a refresh again");
         assertTrue(back.free, "free building goes with the core");
         assertTrue(back.at(-1, CX, Y0 + 2, CZ), "put back where it stood");
         assertFalse(back.at(0, CX, Y0 + 2, CZ), "another dimension");
@@ -581,15 +723,16 @@ class CampusEngineTest {
     }
 
     /**
-     * A researched module the ring has no room for says so (RING_FULL, a docked 0.9.2 hall counted among the docked),
-     * apart from the other reasons it is not offered; the status travels by its ordinal, appended only.
+     * The full ring (0.11.0 to 0.14.0) keeps its status for its ordinal, and a list holding it still travels; since
+     * 0.14.1 no module is ever given it: a researched module the campus offers is QUEUED, one it does not offer is
+     * NO_ROOM with its reason ({@link com.fluxecho.logic.CityOffer}).
      */
     @Test
     void aFullRingIsNamed() {
-        assertEquals(Campus.ModuleStatus.QUEUED, Campus.offerStatus(true, 1, 2));
-        assertEquals(Campus.ModuleStatus.RING_FULL, Campus.offerStatus(true, 2, 2), "the Archive and a 0.9.2 hall");
-        assertEquals(Campus.ModuleStatus.NO_ROOM, Campus.offerStatus(false, 0, 2), "no site, cancelled or off");
-        assertEquals(Campus.ModuleStatus.NO_ROOM, Campus.offerStatus(false, 2, 2));
+        assertEquals(Campus.ModuleStatus.QUEUED, Campus.offerStatus(true));
+        assertEquals(Campus.ModuleStatus.NO_ROOM, Campus.offerStatus(false), "the nexus does not stand");
+        for (boolean offering : new boolean[] { true, false })
+            assertNotEquals(Campus.ModuleStatus.RING_FULL, Campus.offerStatus(offering));
         assertEquals(4, Campus.ModuleStatus.NO_ROOM.ordinal());
         assertEquals(5, Campus.ModuleStatus.RING_FULL.ordinal());
         List<Campus.ModuleState> back = Campus.ModuleState.read(
@@ -859,7 +1002,7 @@ class CampusEngineTest {
             "never offered twice");
         c.graded(c.job());
         assertEquals(
-            BuildJob.V,
+            BuildJob.GRADE_V,
             c.carried()
                 .getInteger("Pv"));
 
@@ -882,10 +1025,42 @@ class CampusEngineTest {
         Campus d = active(nexus(3), 0, refresh, null, null);
         d.cancelJob();
         assertEquals(
-            BuildJob.V,
+            BuildJob.GRADE_V,
             d.carried()
                 .getInteger("Pv"),
             "declined for good");
+    }
+
+    /**
+     * 0.14.1 raised the plan version (the Eco Dome's plan lost a step) but not the grading: a campus graded or that
+     * declined the refresh under 0.10.1 to 0.14.0 ({@code Pv} 2) is not offered 整修园区 again, while a module job
+     * saved under the old plans still starts its books over.
+     */
+    @Test
+    void aNewPlanVersionOffersNoRefreshAgain() {
+        assertEquals(3, BuildJob.V);
+        assertEquals(2, BuildJob.GRADE_V);
+        Campus c = active(nexus(3), 2, null, null, null);
+        c.offerRefresh();
+        assertNull(c.job(), "graded under 0.14.0: nothing offered");
+        assertTrue(
+            c.queue()
+                .isEmpty());
+        Campus old = active(nexus(3), 1, null, null, null);
+        old.offerRefresh();
+        assertTrue(
+            old.job()
+                .refresh(),
+            "a campus graded before 0.10.1 still is");
+
+        BuildJob saved = BuildJob.module(spec(), 4);
+        NBTTagCompound t = saved.write();
+        t.setInteger("V", 2);
+        assertEquals(
+            2,
+            BuildJob.read(t)
+                .version(),
+            "a job saved by 0.14.0 keeps its version until the campus loads it, which starts its books over");
     }
 
     @Test
@@ -896,7 +1071,7 @@ class CampusEngineTest {
         BuildJob next = BuildJob.module(spec(), 4);
         next.state = BuildState.State.PROJECTING;
         TileNexus n = nexus(2);
-        Campus c = active(n, BuildJob.V, done, Collections.singletonList(next), null);
+        Campus c = active(n, BuildJob.GRADE_V, done, Collections.singletonList(next), null);
         assertEquals("fluxecho.build.instant_started", c.finishNow(null));
         assertEquals(
             next.key(),
@@ -923,7 +1098,7 @@ class CampusEngineTest {
         TileNexus n = nexus(4);
         BuildJob forum = BuildJob.forum(Collections.emptyList());
         forum.state = BuildState.State.PROJECTING;
-        Campus c = active(n, BuildJob.V, forum, null, archiveSite(n));
+        Campus c = active(n, BuildJob.GRADE_V, forum, null, archiveSite(n));
         // made with nothing kept out (the Archive's chunk was not loaded, say); started: it keeps off the Archive
         c.finishNow(null);
         assertEquals(
@@ -1325,7 +1500,7 @@ class CampusEngineTest {
         g.started = true;
         g.touched = true;
         g.stage = BuildPlan.E_FORM;
-        Campus c = active(nexus(3), BuildJob.V, g, null, null);
+        Campus c = active(nexus(3), BuildJob.GRADE_V, g, null, null);
         assertEquals("fluxecho.build.repair_queued", c.repairNow());
         assertEquals(
             BuildState.State.CANCELLED,

@@ -15,8 +15,8 @@ import com.fluxecho.logic.LiftShaft.Cell;
 /**
  * The light lift's look and feel (0.12.0, CITY.md §2.5): the beams run exactly where the rides go (root island ↔ dais ↔
  * pod on a campus's axis, none over a capped shaft, a stub up to what a ride would bump), a ride gathers speed and
- * settles onto its pad without passing it, the view widens with the speed, and the hoops a rider rushes past stay on
- * the beam.
+ * settles exactly onto its pad without passing it, the view widens with the speed, and the hoops a rider rushes past
+ * stay on the beam.
  */
 class LiftLookTest {
 
@@ -106,6 +106,7 @@ class LiftLookTest {
         }
         assertTrue(full, "at full speed in the middle");
         assertTrue(prev < 0.2, "settling slowly onto the pad: " + prev);
+        assertEquals(goal, feet, 0.0, "exactly onto the pad's top, not into it (0.14.1)");
         LiftShaft.Ride r = LiftShaft.plan(axis(), Y0, 1);
         assertTrue(ticks > r.ticks() && ticks <= r.ticks() + 12, "a little longer than at full speed: " + ticks);
         assertTrue(ticks < r.ticks() + LiftShaft.GRACE, "well within the grace both sides allow");

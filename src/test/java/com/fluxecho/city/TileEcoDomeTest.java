@@ -11,10 +11,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.junit.jupiter.api.Test;
 
+import com.fluxecho.campus.FakeWorld;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.BuildPlan;
@@ -162,5 +165,46 @@ class TileEcoDomeTest {
                 CampusPlan.moduleCentre(site, EcoDomeShape.DEPTH),
                 CampusPlan.toLocal(centre[0] - cx, centre[2] - cz, f[0], f[1]));
         }
+    }
+
+    /**
+     * A dome saved before 0.14.1 has no renovation revision: the first check that finds it standing runs its
+     * renovation ({@link com.fluxecho.logic.Renovation}, the grass over the crown stair) and saves revision 1, so it
+     * never runs again; while the chunk of the cell is not loaded it waits. (Which block the cell holds is the logic's
+     * test; this world has no blocks.)
+     */
+    @Test
+    void aDomeSavedBeforeIsRenovatedOnceItStands() {
+        try {
+            TileEntity.addMapping(TileEcoDome.class, "fluxecho:eco_dome");
+        } catch (IllegalArgumentException alreadyThere) {
+            // another test registered it
+        }
+        FakeWorld w = FakeWorld.create();
+        NBTTagCompound saved = new NBTTagCompound();
+        dome(X, Y, Z, 3).writeToNBT(saved);
+        saved.removeTag("Renovated");
+        TileEcoDome d = w.put(new TileEcoDome(), X, Y, Z);
+        d.readFromNBT(saved);
+        assertEquals(0, renovated(d), "0.14.0 saved none");
+
+        int[] cell = d.worldOf(12, EcoDomeShape.CROWN_Y, 22);
+        w.unload(cell[0], cell[2]);
+        d.stood();
+        assertEquals(0, renovated(d), "the cell's chunk is not loaded: later");
+        w.load(cell[0], cell[2]);
+        d.stood();
+        assertEquals(1, renovated(d));
+        TileEcoDome back = new TileEcoDome();
+        NBTTagCompound again = new NBTTagCompound();
+        d.writeToNBT(again);
+        back.readFromNBT(again);
+        assertEquals(1, renovated(back), "brought up for good");
+    }
+
+    private static int renovated(TileEcoDome d) {
+        NBTTagCompound t = new NBTTagCompound();
+        d.writeToNBT(t);
+        return t.getInteger("Renovated");
     }
 }

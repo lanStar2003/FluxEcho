@@ -173,7 +173,8 @@ public final class CityRender {
                 close();
             }
             if (!OFF[PLATE]) try {
-                for (double[] at : PLATES.computeIfAbsent(m.moduleKey(), k -> ModuleLook.plates(m.build())))
+                for (double[] at : PLATES
+                    .computeIfAbsent(m.moduleKey() + "@" + m.shapeName(), k -> ModuleLook.plates(m.build())))
                     plate(f, m, at, fade * appear);
             } catch (Throwable x) {
                 recover();
@@ -260,7 +261,7 @@ public final class CityRender {
      * core alone, or a module half built, shows no line in the air), each looked up in the world without an array.
      */
     private static void course(CityFrame f, TileCityModule m, double t, float fade, boolean nearby) {
-        int[][] cells = COURSES.computeIfAbsent(m.moduleKey(), k -> courseOf(m));
+        int[][] cells = COURSES.computeIfAbsent(m.moduleKey() + "@" + m.shapeName(), k -> courseOf(m));
         if (cells.length == 0) return;
         boolean formed = m.formed(), docked = formed && docked(m), on = docked && m.clientPowered;
         World w = m.getWorldObj();

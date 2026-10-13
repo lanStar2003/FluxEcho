@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -165,5 +166,50 @@ class DomeLookTest {
 
     private static double sq(double d) {
         return d * d;
+    }
+
+    /**
+     * Over high ground (0.14.1) the ribs run through the shorter legs' cells as they do through the full legs', from
+     * the forum (F - 1 under the pod's floor) to the pod; the arcs reach the dome round the nearer forum; and the far
+     * legs never cost more than the full legs', so the landmark keeps its budget at every datum.
+     */
+    @Test
+    void theRibsFollowTheShorterLegs() {
+        for (DomeGeneratorShape.Moor m : DomeGeneratorShape.moors()) {
+            int f = m.datum, per = f - 1;
+            List<int[]> cells = m.legs();
+            for (int i = 0; i < cells.size(); i++) {
+                int leg = i / per;
+                int[] c = cells.get(i);
+                int[] p = m.campusToPod(c[0], c[1], c[2]);
+                double[] q = DomeLook.legPoint(leg, (c[2] - 0.5) / per, f);
+                assertEquals(p[1] + 0.5, q[1], 1e-9, "the same height");
+                double off = Math.hypot(p[0] + 0.5 - q[0], p[2] + 0.5 - q[2]);
+                assertTrue(
+                    off <= Math.sqrt(0.5) + 1e-9,
+                    "datum " + f + " leg " + leg + " cell " + i + " off by " + off);
+            }
+            for (int leg = 0; leg < DomeGeneratorShape.LEGS; leg++) {
+                double[] foot = DomeLook.legPoint(leg, 0, f), head = DomeLook.legPoint(leg, 1, f);
+                assertEquals(DomeLook.cy(f), foot[1], 1e-9, "the foot on the forum");
+                assertEquals(0, head[1], 1e-9, "the head at the pod's floor");
+                assertEquals(
+                    DomeGeneratorShape.LEG_HEAD,
+                    Math.hypot(head[0] - DomeLook.CX, head[2] - DomeLook.CZ),
+                    1e-9);
+            }
+            for (int[] n : DomeGeneratorShape.nodes()) {
+                double[] b = DomeLook.arcEnd(n[0] + 0.5, n[1] + 0.5, n[2] + 0.5, 64, f);
+                double d = Math.sqrt(sq(b[0] - DomeLook.CX) + sq(b[1] - DomeLook.cy(f)) + sq(b[2] - DomeLook.CZ));
+                assertEquals(64, d, 1e-9, "on the sphere round the forum at datum " + f);
+            }
+            assertTrue(DomeLook.farLegQuads(f) <= DomeLook.farLegQuads(), "no more than the full legs at " + f);
+            for (int phase = 2; phase <= 5; phase++) for (int d = 0; d <= (int) DomeLook.LANDMARK; d += 7) {
+                double r = DomeLook.shellRadius(phase);
+                assertTrue(DomeLook.shellQuads(d, r) + DomeLook.farLegQuads(f) + 1 <= DomeLook.BUDGET);
+            }
+        }
+        assertEquals(DomeLook.CY, DomeLook.cy(DomeGeneratorShape.FLOOR_UP), 0);
+        assertArrayEquals(DomeLook.legPoint(2, 0.3), DomeLook.legPoint(2, 0.3, 40), 0);
     }
 }

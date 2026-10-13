@@ -3,13 +3,17 @@ package com.fluxecho.campus;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -31,13 +35,14 @@ import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPace;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
+import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.CityOffer;
 import com.fluxecho.logic.FxCodec;
 import com.fluxecho.logic.Mix;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
-import com.fluxecho.logic.RingSlots;
 import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.Costs;
 import com.fluxecho.nexus.NexusRegistry;
@@ -56,7 +61,8 @@ import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
  * A nexus placed by hand the 0.9.2 way, or saved by 0.9.2, is <i>legacy</i>: nothing is built and nothing in the world
  * is touched until a member lays the forum. An <i>active</i> campus runs one job at a time ({@link Builder}); each job
  * is surveyed, projected, and waits for a member's 开始 before it touches anything. Module jobs appear by themselves
- * once the nexus's teams have a module's research and the ring has room for it.
+ * once the nexus's teams have a module's research and a site of its is free (0.14.1: no ring room to wait for any
+ * more, {@link CityOffer}); a docked 0.9.2 hall that alone stands in a module's way is offered a retire job.
  * <p>
  * Materials come from members (补给, the intake slot) and, for a started job, from automation (the supply port,
  * {@link #offer}); the ledger only takes what the job still needs. Every entry point returns a lang key under
@@ -109,9 +115,9 @@ public final class Campus {
     /** Every job of this nexus is free (an operator's switch, NBT {@code Fb}). */
     private boolean freeBuild;
     /**
-     * The plan version ({@link BuildJob#V}) under which the campus's grading last ran in full, or a campus job was
-     * declined (NBT {@code Pv}; 0 for a campus saved before 0.10.1). Below the current version the campus is offered a
-     * refresh ({@link BuildJob#refresh}) once.
+     * The grading version ({@link BuildJob#GRADE_V}; up to 0.14.0 it was {@link BuildJob#V}, then also 2) under which
+     * the campus's grading last ran in full, or a campus job was declined (NBT {@code Pv}; 0 for a campus saved before
+     * 0.10.1). Below the current one the campus is offered a refresh ({@link BuildJob#refresh}) once.
      */
     private int gradedVersion;
     private BuildJob job;
@@ -456,43 +462,222 @@ public final class Campus {
     // ---- module jobs
 
     /**
-     * Offers a module job for every module kind whose research the nexus's teams have, that has no module yet
-     * (docked, sited or being built), while the ring has room: on the first free hall site of its preference, in
-     * PROJECTING once surveyed, waiting for a member's 开始.
+     * Offers a module job for every module kind the campus's look offers ({@link #look}, {@link CityOffer}): its
+     * research done, its phase reached, room for its height, turned on, not cancelled lately and a site of its free; on
+     * the first free site of its candidates, in PROJECTING once surveyed, waiting for a member's 开始. There is no ring
+     * room to wait for since 0.14.1: every building the nexus has researched is offered as soon as a site of its is
+     * free. A kind kept off its last free site by nothing but a docked 0.9.2 hall gets the hall a retire job
+     * ({@link #offerRetire}).
      */
     private void autoJobs(long now) {
         // the docked modules are known only once the nexus has looked for them since it loaded or formed
         if (!nexus.formed() || !nexus.dockKnown()) return;
         offerRefresh();
         offerGrowth(now);
-        int busy = busyModules();
-        int cap = moduleCap();
-        for (ModuleSpec spec : ModuleSpecs.all()) {
-            // an axis module (0.12.0: the zenith, the root) takes no room on the inner ring
-            if (!spec.axis() && busy >= cap) continue;
-            if (!spec.enabled() || !nexus.has(spec.research) || exists(spec)) continue;
-            if (declined(spec, now) || !phaseFits(spec) || roomFor(spec) != null) continue;
-            int site = freeSite(spec, -1, 1);
-            if (site < 0) continue;
-            enqueue(BuildJob.module(spec, site));
-            if (!spec.axis()) busy++;
+        Set<Integer> halls = new LinkedHashSet<>();
+        for (CityOffer.Offer o : look(now)) {
+            if (o.hall >= 0 && CityOffer.LEGACY_HALL.equals(o.reason)) halls.add(o.hall);
+            ModuleSpec spec = o.offered() ? ModuleSpecs.get(o.kind.key) : null;
+            if (spec == null) continue;
+            enqueue(BuildJob.module(spec, o.site));
             // the site as every window names it (0.14.0): "4 号位" by number, but 大门, 天顶, 根位 by name
             tell(
                 new ChatComponentTranslation(
                     P + "unlocked",
                     new ChatComponentTranslation("fluxecho.module." + spec.key),
-                    new ChatComponentTranslation("fluxecho." + SiteFamily.labelKey(site), String.valueOf(site))));
+                    siteLabel(o.site)));
+        }
+        withdraw(staleRetires(jobs(), halls, this::hallStandsIn));
+        for (int slot : halls) offerRetire(slot, now);
+    }
+
+    /**
+     * The retire jobs that outlived their hall (0.14.1): not begun ({@link #yields}: never started, nothing touched,
+     * nothing in flight), their slot no longer among those a docked 0.9.2 hall blocks a building's last site on
+     * ({@code halls}), and no library hall left, formed or not, with its centre in their box ({@code hallInBox}). A
+     * member who broke the hall by hand gets the module offered on its site at once, and the job must not then clear
+     * the old box (it takes everything unguarded there, whatever {@code buildClearAll} says) and lay forum tiles the
+     * module's clearing takes away again. A job whose hall still stands, even unformed or undocked, is kept: it is then
+     * the one thing that can clear the site.
+     */
+    static List<BuildJob> staleRetires(List<BuildJob> jobs, Set<Integer> halls, Predicate<int[]> hallInBox) {
+        List<BuildJob> out = new ArrayList<>();
+        for (BuildJob j : jobs) {
+            if (!j.retires() || !yields(j) || halls.contains(BuildPlan.retireSlot(j.planKey()))) continue;
+            int[] box = j.retireBox();
+            if (box == null || !hallInBox.test(box)) out.add(j);
+        }
+        return out;
+    }
+
+    /**
+     * Whether a library hall, formed or not, has the centre of its foundation in the box's columns, or part of the box
+     * lies in a chunk that is not loaded (a hall may stand there unseen).
+     */
+    private boolean hallStandsIn(int[] box) {
+        World w = world();
+        if (w == null) return true;
+        int y = Math.max(0, Math.min(255, box[4]));
+        for (int x : new int[] { box[0], box[2] })
+            for (int z : new int[] { box[1], box[3] }) if (!w.blockExists(x, y, z)) return true;
+        for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
+            if (m.isInvalid() || m.getWorldObj() != w || !(m instanceof com.fluxecho.library.TileLibrary)) continue;
+            if (inColumns(box, m.centre())) return true;
+        }
+        return false;
+    }
+
+    /** Takes jobs that never began out of the queue, the current one too, without declining them. */
+    private void withdraw(List<BuildJob> gone) {
+        if (gone.isEmpty()) return;
+        queue.removeAll(gone);
+        if (gone.contains(job)) nextJob();
+        needDirty = true;
+        stateChanged();
+    }
+
+    /** A site as every window names it: "4 号位" by number, 大门, 天顶 and 根位 by name. */
+    private static IChatComponent siteLabel(int site) {
+        return new ChatComponentTranslation("fluxecho." + SiteFamily.labelKey(site), String.valueOf(site));
+    }
+
+    /**
+     * The campus's look at every module kind (0.14.1, {@link CityOffer#look}), in registration order: the kinds that
+     * stand or have a job left out, the others with where they would go and why they are not offered when they are
+     * not. Both the offers ({@link #autoJobs}) and the module list ({@link #modules}) come from it.
+     */
+    private List<CityOffer.Offer> look(long now) {
+        int y0 = centre()[1];
+        List<CityOffer.Kind> kinds = new ArrayList<>();
+        Set<String> standing = new HashSet<>();
+        for (ModuleSpec spec : ModuleSpecs.all()) {
+            kinds.add(spec.kind(y0));
+            if (exists(spec)) standing.add(spec.key);
+        }
+        return CityOffer
+            .look(kinds, nexus.phase(), nexus::has, standing, new SiteView(), declined, now, Campus::groundLaid);
+    }
+
+    /**
+     * Whether the campus job that lays a family's ground has run ({@link SiteFamily#ground}): the outer establish and
+     * the third ring's come with 0.15.0 and later, so no site out there opens yet.
+     */
+    static boolean groundLaid(String job) {
+        return false;
+    }
+
+    /**
+     * What stands on the campus's sites now ({@link CityOffer.Sites}), seen once for one look: the recorded sites and
+     * the jobs (each takes its site), the keep-out boxes of the modules on the recorded sites, and every loaded module
+     * of the dimension (a stray one near the nexus keeps its keep-out box clear; the centre of any lies on no free
+     * site), each docked 0.9.2 library hall marked with its ring slot, so that a site it alone blocks can be told
+     * apart.
+     */
+    private final class SiteView implements CityOffer.Sites {
+
+        final int[] c = centre(), f = front();
+        final List<int[]> recorded = new ArrayList<>();
+        final List<CityOffer.Stray> strays = new ArrayList<>();
+        final List<TileModule> modules = new ArrayList<>();
+
+        SiteView() {
+            for (int site : sites.keySet()) recorded.addAll(siteKeepOut(site));
+            World w = world();
+            int reach = CampusPlan.GRADE_R + 24;
+            if (w != null) for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
+                if (m.isInvalid() || m.getWorldObj() != w) continue;
+                modules.add(m);
+                int[] mc = m.centre();
+                boolean near = Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) <= reach;
+                int[] keep = near && !onRecordedSite(m) ? BuildPlan.moduleKeepOut(mc) : null;
+                strays.add(new CityOffer.Stray(keep, mc[0], mc[2], legacyHallSlot(m)));
+            }
+        }
+
+        @Override
+        public int blocker(CityOffer.Kind kind, int site) {
+            if (sites.containsKey(site) || jobOnSite(site) != null) return CityOffer.OTHER;
+            ModuleSpec spec = ModuleSpecs.get(kind.key);
+            if (spec == null) return CityOffer.OTHER;
+            if (spec.axis()) {
+                // an axis site (0.12.0) is free when no loaded module stands on its controller cell: the keep-out
+                // boxes and the module centres are about the ground round the nexus, which the zenith only touches
+                // with its legs
+                int[] at = spec.controller(site, c[0], c[1], c[2], f[0], f[1]);
+                for (TileModule m : modules)
+                    if (m.xCoord == at[0] && m.yCoord == at[1] && m.zCoord == at[2]) return CityOffer.OTHER;
+                return CityOffer.FREE;
+            }
+            return CityOffer.blocker(spec.footprint(site, c[0], c[2], f[0], f[1], 1), recorded, strays);
         }
     }
 
-    /** Whether the nexus has grown to the phase the module's family opens at (CITY.md §2.1: the zenith at II). */
-    private boolean phaseFits(ModuleSpec spec) {
-        return nexus.phase() >= spec.family.opens;
+    /**
+     * The inner ring slot of a module that is a docked 0.9.2 library hall of this nexus (0.14.1): a formed Echo Library
+     * standing as the 0.9.2 hall and docked here, which the campus may retire. -1 for any other module.
+     */
+    private int legacyHallSlot(TileModule m) {
+        if (!(m instanceof com.fluxecho.library.TileLibrary l)
+            || !com.fluxecho.library.TileLibrary.HALL.equals(l.shapeName())
+            || !l.formed()
+            || l.nexus() != nexus) return -1;
+        return SiteFamily.ringSite(l.slot()) ? l.slot() : -1;
     }
 
-    /** Why this campus has no room for the module ({@link ModuleSpec#noRoom}: the zenith's height), or null. */
-    private String roomFor(ModuleSpec spec) {
-        return spec.noRoom(centre()[1]);
+    /**
+     * Offers the retire job of the docked 0.9.2 hall on a ring slot (0.14.1, {@link BuildJob#retire}): the hall is all
+     * that keeps a researched module off its last free site. Not while one is still to run for it, nor for a day after
+     * a member cancelled it; the job waits for 开始 like any other.
+     */
+    private void offerRetire(int slot, long now) {
+        String key = BuildPlan.retireKey(slot);
+        for (BuildJob j : jobs()) if (key.equals(j.key) && !BuildState.ended(j.state)) return;
+        Long until = declined.get(key);
+        if (until != null && now < until) return;
+        TileModule hall = null;
+        for (TileModule m : nexus.docked()) if (legacyHallSlot(m) == slot) hall = m;
+        if (hall == null) return;
+        enqueue(BuildJob.retire(slot, retireBox(hall)));
+        tell(new ChatComponentTranslation(P + "retire_offered", siteLabel(slot)));
+    }
+
+    /**
+     * The ground a retire job works for a 0.9.2 hall, {x0, z0, x1, z1, yFrom, yTo} ({@link BuildPlan#retireBox}): the
+     * keep-out box the campus jobs left round the centre of its foundation and its bounds, from its lowest to its
+     * highest cell, each side kept off the ground of the modules on the recorded sites and of the module jobs (their
+     * keep-out and protected columns), so a neighbour built next to a hall that stands off its slot point keeps its
+     * apron.
+     */
+    int[] retireBox(TileModule hall) {
+        List<int[]> keep = new ArrayList<>();
+        for (int site : sites.keySet()) {
+            keep.addAll(siteKeepOut(site));
+            for (int[] p : siteProtect(site)) keep.add(new int[] { p[0], p[2], p[3], p[5] });
+        }
+        int[] c = centre(), f = front();
+        for (BuildJob j : jobs()) {
+            ModuleSpec spec = BuildState.ended(j.state) || j.retires() ? null : ModuleSpecs.get(j.module());
+            if (spec == null || !spec.hasSite(j.site)) continue;
+            keep.addAll(spec.keepOut(plan(), j.site, c[0], c[1], c[2], f[0], f[1]));
+            for (int[] p : spec.protect(plan(), j.site, c[0], c[1], c[2], f[0], f[1]))
+                keep.add(new int[] { p[0], p[2], p[3], p[5] });
+        }
+        return BuildPlan.retireBox(hall.centre(), hall.bounds(), keep);
+    }
+
+    /**
+     * Before a retire job that has touched nothing starts (0.14.1): its box is taken again round its hall, if the hall
+     * still docks here, as a campus job's keep-out is ({@link #freshKeepOut}); a neighbour may have been built next to
+     * the hall since the job was offered.
+     */
+    private void freshRetireBox() {
+        TileModule hall = null;
+        for (TileModule m : nexus.docked()) if (legacyHallSlot(m) == job.site) hall = m;
+        if (hall == null || !job.retarget(Collections.singletonList(retireBox(hall)))) return;
+        builder.reset();
+        needDirty = true;
+        etaAt = Long.MIN_VALUE;
+        stateChanged();
     }
 
     /**
@@ -514,29 +699,6 @@ public final class Campus {
     }
 
     /**
-     * The ring's room: the slots the nexus's phase opens (2 at phase I, 4 at II, CITY.md §3), at most
-     * {@link TileNexus#MAX_CAMPUS_MODULES} on a campus.
-     */
-    private int moduleCap() {
-        return Math.min(RingSlots.open(nexus.phase()), TileNexus.MAX_CAMPUS_MODULES);
-    }
-
-    /**
-     * Modules docked on the inner ring, and inner-ring module jobs (not repairs) queued or running: what takes the
-     * ring's room. The axis modules (0.12.0) stand off the ring and take none.
-     */
-    private int busyModules() {
-        int busy = nexus.ringDocked();
-        for (BuildJob j : jobs()) if (j.module() != null && !j.repair() && !SiteFamily.axisSite(j.site)) busy++;
-        return busy;
-    }
-
-    private boolean declined(ModuleSpec spec, long now) {
-        Long until = declined.get(spec.key);
-        return until != null && now < until;
-    }
-
-    /**
      * Whether a module of the kind already stands or is being built: one on a recorded hall site, one docked in the
      * shape the campus builds ({@link #campusShape}), or a job for it. Since 0.10.1 a docked 0.9.2 library hall does
      * not count, so the Echo Archive is offered next to it once the library is researched and a hall site is free.
@@ -554,13 +716,19 @@ public final class Campus {
         return !com.fluxecho.library.TileLibrary.HALL.equals(m.shapeName());
     }
 
-    /** The recorded hall site a module of the kind stands on, or -1. */
+    /**
+     * The recorded site a module of the kind stands on, or -1. A site whose module is not known yet ("": its chunk was
+     * not loaded since the site was recorded) only takes its own site (0.14.1): before, it counted as a module of every
+     * kind of the site's family, so none of them was offered or listed anywhere else until the chunk loaded.
+     */
     private int builtSite(ModuleSpec spec) {
-        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
-            String kind = siteKinds.get(e.getKey());
-            if (spec.key.equals(kind) || ("".equals(kind) || kind == null) && spec.hasSite(e.getKey()))
-                return e.getKey();
-        }
+        return builtSite(siteKinds, spec.key);
+    }
+
+    /** The recorded site whose module is of the kind ({@code kinds}: site → module key, "" when not known), or -1. */
+    static int builtSite(Map<Integer, String> kinds, String key) {
+        for (Map.Entry<Integer, String> e : new TreeMap<>(kinds).entrySet())
+            if (key.equals(e.getValue())) return e.getKey();
         return -1;
     }
 
@@ -585,14 +753,14 @@ public final class Campus {
         /** It stands on a hall site (or docked in its campus shape). */
         BUILT,
         /**
-         * Researched but not offered now: no hall site is free, it was cancelled a while ago, or the config turned it
-         * off (before 0.11.0 also a full ring, now {@link #RING_FULL}).
+         * Researched but not offered now, and why ({@link ModuleState#reason}, 0.12.0 and 0.14.1): the nexus's phase,
+         * the campus's height or depth, turned off in the config, cancelled lately, a docked 0.9.2 hall in the way, or
+         * something else on every site it may take ({@link CityOffer}); no reason while the nexus does not stand.
          */
         NO_ROOM,
         /**
-         * Researched, a hall site free, but the inner ring is full (0.11.0): every place the phase opens holds a docked
-         * module or a module job, a docked 0.9.2 library hall on the old ring included, so the player learns that
-         * taking one down (or the next phase) makes room.
+         * Researched, a site free, but the inner ring full (0.11.0 to 0.14.0). Since 0.14.1 there is no ring room to
+         * wait for and nothing is given this status; it stays for its ordinal, and a client still names it.
          */
         RING_FULL
     }
@@ -691,18 +859,21 @@ public final class Campus {
 
     /**
      * Every module kind the nexus can build ({@link ModuleSpecs}) and where it stands: built (on its site), being
-     * built, waiting, needing its research, or researched with no room now; with the site it is on or would go to.
-     * Server side (it asks the research of the nexus's teams).
+     * built, waiting, needing its research, or researched and not offered now with the reason; with the site it is on
+     * or would go to. Server side (it asks the research of the nexus's teams). The kinds with no module and no job are
+     * the campus's look ({@link #look}), the same that offers them, so the list and the offers never disagree.
      */
     public List<ModuleState> modules() {
         List<ModuleState> out = new ArrayList<>();
         World w = world();
         if (w == null || w.isRemote) return out;
-        for (ModuleSpec spec : ModuleSpecs.all()) out.add(moduleState(spec, w.getTotalWorldTime()));
+        Map<String, CityOffer.Offer> looked = new HashMap<>();
+        for (CityOffer.Offer o : look(w.getTotalWorldTime())) looked.put(o.kind.key, o);
+        for (ModuleSpec spec : ModuleSpecs.all()) out.add(moduleState(spec, looked.get(spec.key)));
         return out;
     }
 
-    private ModuleState moduleState(ModuleSpec spec, long now) {
+    private ModuleState moduleState(ModuleSpec spec, CityOffer.Offer o) {
         int site = builtSite(spec);
         if (site >= 0) return new ModuleState(spec.key, spec.research, ModuleStatus.BUILT, site);
         for (TileModule m : nexus.docked()) {
@@ -718,33 +889,19 @@ public final class Campus {
                 started ? ModuleStatus.BUILDING : ModuleStatus.QUEUED,
                 j.site);
         }
-        int planned = active ? freeSite(spec, -1, 1) : -1;
-        if (!nexus.has(spec.research)) {
-            return new ModuleState(
-                spec.key,
-                spec.research,
-                ModuleStatus.NEEDS_RESEARCH,
-                planned >= 0 ? planned : spec.sites.length > 0 ? spec.sites[0] : -1);
-        }
-        // 0.12.0: an axis module waits for the phase its family opens at, and for a campus with the height for it
-        String why = !phaseFits(spec) ? P_WHY + "phase" : roomFor(spec);
-        if (why != null) return new ModuleState(spec.key, spec.research, ModuleStatus.NO_ROOM, planned, why);
-        boolean offerable = active && nexus.formed() && spec.enabled() && planned >= 0 && !declined(spec, now);
-        int busy = spec.axis() ? 0 : busyModules(), cap = spec.axis() ? 1 : moduleCap();
-        return new ModuleState(spec.key, spec.research, offerStatus(offerable, busy, cap), planned);
+        if (o == null) return new ModuleState(spec.key, spec.research, ModuleStatus.NO_ROOM, -1);
+        if (!o.researched) return new ModuleState(spec.key, spec.research, ModuleStatus.NEEDS_RESEARCH, o.site);
+        if (o.reason != null) return new ModuleState(spec.key, spec.research, ModuleStatus.NO_ROOM, o.site, o.reason);
+        return new ModuleState(spec.key, spec.research, offerStatus(active && nexus.formed()), o.site);
     }
 
-    /** The prefix of the reasons a module has no room (lang keys under {@code fluxecho.}). */
-    static final String P_WHY = "build.module.why.";
-
     /**
-     * Where a researched module with no job stands: offered at the next look (QUEUED) when nothing stops it and the
-     * ring has room; RING_FULL when only the ring's room stops it ({@link #busyModules} of {@link #moduleCap}, a
-     * docked 0.9.2 hall counted); NO_ROOM for anything else (no free site, cancelled lately, turned off).
+     * Where a researched module the campus's look offers stands while it has no job: offered at the next look
+     * (QUEUED), or NO_ROOM while the campus does not offer at all (a nexus that does not stand). Never
+     * {@link ModuleStatus#RING_FULL} since 0.14.1: there is no ring room to wait for.
      */
-    static ModuleStatus offerStatus(boolean offerable, int busy, int cap) {
-        if (!offerable) return ModuleStatus.NO_ROOM;
-        return busy < cap ? ModuleStatus.QUEUED : ModuleStatus.RING_FULL;
+    static ModuleStatus offerStatus(boolean offering) {
+        return offering ? ModuleStatus.QUEUED : ModuleStatus.NO_ROOM;
     }
 
     /** Sends the description again when the module list changed (a research done, a site taken). */
@@ -764,14 +921,15 @@ public final class Campus {
     // ---- the refresh of an older campus
 
     /**
-     * Offers the 整修园区 job (0.10.1) to a campus whose grading last ran under an older plan version (a 0.10.0 campus:
-     * its floor kept leaves and logs, its wells were sunk): the forum plan again, with the boxes of the modules round
-     * it kept out. Not while a campus job is still to run (so never twice); the job waits for 开始 like any other. The
-     * version is noted only once the grading ran ({@link #graded}) or a member cancelled the job ({@link #cancel}): a
-     * core broken while the refresh waits or runs carries the old version, and the campus put back is offered it again.
+     * Offers the 整修园区 job (0.10.1) to a campus whose grading last ran under an older grading version
+     * ({@link BuildJob#GRADE_V}; a 0.10.0 campus: its floor kept leaves and logs, its wells were sunk): the forum plan
+     * again, with the boxes of the modules round it kept out. Not while a campus job is still to run (so never twice);
+     * the job waits for 开始 like any other. The version is noted only once the grading ran ({@link #graded}) or a
+     * member cancelled the job ({@link #cancel}): a core broken while the refresh waits or runs carries the old
+     * version, and the campus put back is offered it again.
      */
     void offerRefresh() {
-        if (gradedVersion >= BuildJob.V) return;
+        if (gradedVersion >= BuildJob.GRADE_V) return;
         for (BuildJob j : jobs()) if (j.campusJob() && !BuildState.ended(j.state)) return;
         keepOutAt = Long.MIN_VALUE;
         enqueue(BuildJob.refresh(keepOut()));
@@ -785,64 +943,17 @@ public final class Campus {
      */
     void graded(BuildJob j) {
         if (!j.campusJob() || j.repair() || j.keepClear || j.version != BuildJob.V) return;
-        if (gradedVersion >= BuildJob.V) return;
-        gradedVersion = BuildJob.V;
+        if (gradedVersion >= BuildJob.GRADE_V) return;
+        gradedVersion = BuildJob.GRADE_V;
         dirty();
     }
 
     /**
-     * The next hall site of the spec from {@code from} in direction {@code dir} (in its order of preference; from -1
-     * the first) that is free: no recorded module, no job, no loaded module standing there, and its footprint clear of
-     * the keep-out boxes. -1 when none is.
+     * The job (current or queued, not over) on a site, or null. A retire job (0.14.1) names its hall's ring slot as its
+     * site but takes none: the module waiting for that site still says the hall is in its way.
      */
-    private int freeSite(ModuleSpec spec, int from, int dir) {
-        int n = spec.sites.length;
-        int start = -1;
-        for (int i = 0; i < n; i++) if (spec.sites[i] == from) start = i;
-        for (int k = 1; k <= n; k++) {
-            int idx = start < 0 ? k - 1 : Math.floorMod(start + dir * k, n);
-            int site = spec.sites[idx];
-            if (site == from) continue;
-            if (siteFree(spec, site)) return site;
-        }
-        return -1;
-    }
-
-    private boolean siteFree(ModuleSpec spec, int site) {
-        if (sites.containsKey(site) || jobOnSite(site) != null) return false;
-        int[] c = centre();
-        int[] f = front();
-        if (spec.axis()) {
-            // an axis site (0.12.0) is free when no loaded module stands on its controller cell: the keep-out boxes and
-            // the module centres are about the ground round the nexus, which the zenith only touches with its legs
-            int[] at = spec.controller(site, c[0], c[1], c[2], f[0], f[1]);
-            for (TileModule m : NexusRegistry.modules(world().provider.dimensionId)) {
-                if (m.isInvalid() || m.getWorldObj() != world()) continue;
-                if (m.xCoord == at[0] && m.yCoord == at[1] && m.zCoord == at[2]) return false;
-            }
-            return true;
-        }
-        int[] box = spec.footprint(site, c[0], c[2], f[0], f[1], 1);
-        refreshKeepOut();
-        for (int[] k : liveKeepOut) if (overlap(box, k)) return false;
-        for (TileModule m : NexusRegistry.modules(world().provider.dimensionId)) {
-            if (m.isInvalid() || m.getWorldObj() != world()) continue;
-            int[] mc = m.centre();
-            if (mc[0] >= box[0] && mc[0] <= box[2] && mc[2] >= box[1] && mc[2] <= box[3]) return false;
-        }
-        return true;
-    }
-
-    private static boolean overlap(int[] a, int[] b) {
-        int ax0 = Math.min(a[0], a[2]), ax1 = Math.max(a[0], a[2]), az0 = Math.min(a[1], a[3]),
-            az1 = Math.max(a[1], a[3]);
-        int bx0 = Math.min(b[0], b[2]), bx1 = Math.max(b[0], b[2]), bz0 = Math.min(b[1], b[3]),
-            bz1 = Math.max(b[1], b[3]);
-        return ax0 <= bx1 && bx0 <= ax1 && az0 <= bz1 && bz0 <= az1;
-    }
-
     private BuildJob jobOnSite(int site) {
-        for (BuildJob j : jobs()) if (j.site == site && !BuildState.ended(j.state)) return j;
+        for (BuildJob j : jobs()) if (j.site == site && !j.retires() && !BuildState.ended(j.state)) return j;
         return null;
     }
 
@@ -890,6 +1001,44 @@ public final class Campus {
             .rank() >= rank) at++;
         queue.add(at, j);
         return current;
+    }
+
+    /**
+     * 换一个 (0.14.1): the current job, not started yet, goes to the end of the queue and the next one comes up, so a
+     * member can reach any queued job without cancelling the ones before it (a cancelled module is not offered again
+     * for a day). Only while the job could give way to a repair ({@link #yields}: never started, nothing touched,
+     * nothing in flight); it is not declined, and it is surveyed again when its turn comes back.
+     */
+    public String defer(EntityPlayer p) {
+        if (job == null || BuildState.ended(job.state)) return NO_JOB;
+        if (!nexus.member(p)) return NOT_MEMBER;
+        if (queue.isEmpty()) return P + "defer_alone";
+        BuildJob next = defer(job, queue);
+        if (next == job) return P + "defer_locked";
+        job = next;
+        if (!job.started && !BuildState.ended(job.state)) job.resurvey();
+        builder.reset();
+        needDirty = true;
+        etaAt = Long.MIN_VALUE;
+        stateChanged();
+        return P + "deferred";
+    }
+
+    /** Whether 换一个 would bring up another job now ({@link #defer}; for the GUI's button). */
+    public boolean canDefer() {
+        return job != null && !queue.isEmpty() && yields(job);
+    }
+
+    /**
+     * Where 换一个 leaves the jobs; returns the current job afterwards. A current job that may give way
+     * ({@link #yields}) goes to the end of the queue and the queue's first job takes its place; otherwise (or with
+     * nothing queued) nothing moves.
+     */
+    static BuildJob defer(BuildJob current, List<BuildJob> queue) {
+        if (current == null || queue.isEmpty() || !yields(current)) return current;
+        BuildJob next = queue.remove(0);
+        queue.add(current);
+        return next;
     }
 
     /** Whether a job may give way to a repair: not over, never started, nothing touched, nothing in flight. */
@@ -987,7 +1136,8 @@ public final class Campus {
      * axis sites (0.12.0) and the gate (0.14.0), whose bounds take in what stays the nexus's.
      */
     static boolean boxedSite(int site) {
-        return SiteFamily.axisSite(site) || SiteFamily.of(site) == SiteFamily.GATE;
+        SiteFamily f = SiteFamily.of(site);
+        return f != null && (f.axis() || f == SiteFamily.GATE);
     }
 
     /** Whether the cell lies in one of the boxes {x0, y0, z0, x1, y1, z1}. */
@@ -1158,21 +1308,31 @@ public final class Campus {
         return s.stackSize - left;
     }
 
-    /** Whether a cell of ours belongs to another structure: another multiblock's box, or a keep-out box of the job. */
+    /**
+     * Whether a cell of ours belongs to another structure: another multiblock's box, or a keep-out box of the job. The
+     * boxes are worked out at most once a second, and again as soon as another job is the current one (0.14.1): they
+     * depend on the job, and a retire job's hall is guarded from every job but itself.
+     */
     boolean protectedCell(int x, int y, int z) {
         World w = world();
         long now = w.getTotalWorldTime();
-        if (now - protectedAt >= 20 || protectedAt == Long.MIN_VALUE) {
+        if (now - protectedAt >= 20 || protectedAt == Long.MIN_VALUE || protectedFor != job) {
             protectedAt = now;
+            protectedFor = job;
             protectedBoxes = protectedBoxes();
         }
         return inBoxes(protectedBoxes, x, y, z);
     }
 
+    /** The job the protected boxes were worked out for. */
+    private BuildJob protectedFor;
+
     private List<int[]> protectedBoxes() {
         List<int[]> out = new ArrayList<>();
         World w = world();
         int[] own = job == null ? null : moduleController(job);
+        // a retire job (0.14.1) works the ground of the hall it takes down: the hall, and its one box, are its own
+        int[] retire = job == null ? null : job.retireBox();
         // the modules on the campus's recorded hall sites, loaded or not, but the one the job builds or repairs
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
             if (job != null && job.module() != null && job.site == e.getKey()) continue;
@@ -1183,6 +1343,7 @@ public final class Campus {
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (m == nexus) continue;
             if (own != null && m.xCoord == own[0] && m.yCoord == own[1] && m.zCoord == own[2]) continue;
+            if (retire != null && m instanceof TileModule tm && inColumns(retire, tm.centre())) continue;
             // the zenith's bounds take in the nexus's whole column from its legs to its pod: its own boxes above say
             // what it takes, so the nexus can still grow and be repaired under it (0.12.0); the gatehouse's take in
             // the gate road and the pylons under its bridge, which its boxes leave to the nexus's jobs (0.14.0)
@@ -1196,10 +1357,17 @@ public final class Campus {
             }
         }
         // the job's keep-out boxes: whole columns, or a height-ranged box over its heights (0.12.0)
-        if (job != null) for (int[] k : job.keepOut) out.add(
+        if (job != null && retire == null) for (int[] k : job.keepOut) out.add(
             new int[] { Math.min(k[0], k[2]), k.length == 6 ? Math.min(k[4], k[5]) : 0, Math.min(k[1], k[3]),
                 Math.max(k[0], k[2]), k.length == 6 ? Math.max(k[4], k[5]) : 255, Math.max(k[1], k[3]) });
         return out;
+    }
+
+    /** Whether the cell's column lies in the columns of a box {x0, z0, x1, z1, ...}. */
+    static boolean inColumns(int[] box, int[] cell) {
+        return cell[0] >= Math.min(box[0], box[2]) && cell[0] <= Math.max(box[0], box[2])
+            && cell[2] >= Math.min(box[1], box[3])
+            && cell[2] <= Math.max(box[1], box[3]);
     }
 
     /** Whether the column lies in another nexus's campus. */
@@ -1316,12 +1484,15 @@ public final class Campus {
     /**
      * 铺设广场 on a legacy nexus: the campus becomes active and the forum job is made (grading, floor, fixtures).
      * Refused, like a lifted core, when another campus lies within {@code Config.buildMinSpacing}: the campuses would
-     * overlap.
+     * overlap; and since 0.14.1 when its base lies outside the campus band ({@link CampusBand}): a nexus built by hand
+     * may stand anywhere, but a campus over Y0 225 could not grow, one under Y0 14 has no room for its well.
      */
     public String layForum(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
         if (active || !Config.campusEnabled) return P + "legacy_only";
         int[] c = centre();
+        String band = CampusBand.refusal(c[1], false);
+        if (band != null) return "fluxecho." + band;
         if (CampusRegistry.tooClose(world(), c[0], c[2], Config.buildMinSpacing) != null) return P + "forum_too_close";
         active = true;
         hinted = true;
@@ -1384,6 +1555,7 @@ public final class Campus {
      * loaded round the player, or a module may have been built meanwhile.
      */
     private void freshKeepOut() {
+        if (job != null && job.retires()) freshRetireBox();
         if (job == null || !job.campusJob()) return;
         keepOutAt = Long.MIN_VALUE;
         if (job.retarget(keepOut())) {
@@ -1473,9 +1645,11 @@ public final class Campus {
         job.state = BuildState.cancel(job.state);
         if (job.module() != null && !job.repair())
             declined.put(job.module(), world().getTotalWorldTime() + DECLINE_TICKS);
+        // a retire job cancelled is offered again a day later too (0.14.1)
+        if (job.retires()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
         // a growth cancelled is offered again a day later, as a module is (0.12.0)
         if (job.grows()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
-        if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.V);
+        if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.GRADE_V);
         if (job == instantJob) instantJob = null;
         stateChanged();
     }
@@ -1489,13 +1663,18 @@ public final class Campus {
         return j.campusJob() && !j.repair();
     }
 
-    /** ◀ ▶: moves a module job's projection to the next free site of its module, until it touched anything. */
+    /**
+     * ◀ ▶: moves a module job's projection to the next free site of its module, until it touched anything: through its
+     * candidates (0.14.1, {@link ModuleSpec#candidates}: its preference list, then its family's other sites open at the
+     * nexus's phase).
+     */
     public String moveSite(EntityPlayer p, int dir) {
         if (job == null || BuildState.ended(job.state)) return NO_JOB;
         if (!nexus.member(p)) return NOT_MEMBER;
         ModuleSpec spec = ModuleSpecs.get(job.module());
         if (spec == null || job.repair() || job.touched || !job.flights.isEmpty()) return P + "site_locked";
-        int site = freeSite(spec, job.site, dir < 0 ? -1 : 1);
+        int site = CityOffer
+            .move(spec.kind(centre()[1]), job.site, dir, nexus.phase(), Campus::groundLaid, new SiteView());
         if (site < 0) return P + "site_locked";
         job.moveTo(spec, site);
         builder.reset();
@@ -1774,7 +1953,7 @@ public final class Campus {
      * A campus as a broken core carries it ({@link #carried}), read and written without a world. Item NBT:
      * {@code Dim}, {@code Pos} (the core, int[3]), {@code F} (its front), {@code Sites} [{S, P, K}] as the campus saves
      * them, {@code Skip}, {@code Declined} {module: until}, {@code Job} (the plan key of the campus job not finished,
-     * "" for none), {@code Pv} (the plan version its grading last ran under, 0.10.1), {@code Fb} (free building) and
+     * "" for none), {@code Pv} (the grading version its grading last ran under, 0.10.1), {@code Fb} (free building) and
      * {@code Ph} (the phase the nexus had grown to, 0.12.0; 1 when missing).
      */
     static final class Carried {

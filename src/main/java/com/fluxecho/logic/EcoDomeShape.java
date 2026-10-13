@@ -43,7 +43,8 @@ import java.util.Set;
  * with the same blocks as soft cells ({@link ShapeKit.Shape#gateNiche}), so the structure check never looks at it and
  * the 内境 gate can open it later without changing the checked shape or the build plan's HARD steps.
  * <p>
- * Counts: checked 2,777, soft 775 (12 of them the niche), must-be-air 48, decor 14 (the canopy) = 3,614 steps.
+ * Counts: checked 2,777, soft 774 (12 of them the niche), must-be-air 48, decor 14 (the canopy) = 3,613 steps (0.14.1:
+ * the crown deck opened one more grass cell over the spiral, which had cost the head on its fourth step).
  */
 public final class EcoDomeShape {
 
@@ -386,8 +387,10 @@ public final class EcoDomeShape {
         for (int x = 0; x < W; x++) for (int z = 0; z < D; z++) {
             if (!ShapeKit.octo(x - MID, z - cz, 3, 4) || x == MID && z == cz) continue;
             Double top = tops.get(ShapeKit.key(x, z));
-            // the stair opening: headroom over the last steps
-            if (top != null && 9.2 < top && top < 12) continue;
+            // the stair opening: headroom over the last steps. A step whose top is t is crossed at t + 0.5 (the body
+            // rises onto the next step while still over this one), so the deck must clear t + 0.5 + 1.8; 0.11.0 to
+            // 0.14.0 opened only over tops above 9.2 and left the grass at (12, 11, 22) over step 3 in the head's way
+            if (top != null && 8.7 < top && top < 12) continue;
             boolean edgeC = !ShapeKit.octo(x - MID, z - cz, 2, 3);
             s.set(x, 11, z, edgeC ? 'B' : ',');
             if (edgeC) s.set(x, 12, z, 'r');

@@ -135,8 +135,9 @@ public final class CityModule {
 
     /**
      * The Echo Dome Generator as the campus builder raises it (0.12.0): on the zenith over the nexus (its pod 21 x 21
-     * and 10 high at Y0 + 40, its legs on the forum), opened by the {@code dome} research, commissioned with its module
-     * core. It takes no room on the inner ring; what it takes of the campus is its {@link DomeGeneratorShape} envelope.
+     * and 10 high at Y0 + 40, or lower over high ground since 0.14.1, {@link DomeGeneratorShape#datum}; its legs on
+     * the forum), opened by the {@code dome} research, commissioned with its module core. It takes no room on the inner
+     * ring; what it takes of the campus is its {@link DomeGeneratorShape} envelope.
      */
     public static ModuleSpec domeGenerator() {
         return new ModuleSpec(
@@ -173,14 +174,25 @@ public final class CityModule {
                 public String noRoom(int y0) {
                     return DomeGeneratorShape.noRoom(y0);
                 }
+
+                @Override
+                public String shapeFor(int y0) {
+                    return DomeGeneratorShape.shapeFor(y0);
+                }
+
+                @Override
+                public int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
+                    return DomeGeneratorShape.moor(DomeGeneratorShape.FLOOR_UP)
+                        .controller(site, cx, y0, cz, fx, fz);
+                }
             });
     }
 
     /**
      * The root under the nexus as the campus builder raises it (0.12.0): this version its Tidal Well (25 x 25, 26 deep
-     * from Y0 - 1 to Y0 - 26), opened by the {@code tidal_well} research, sunk as a caisson and commissioned with its
-     * module core. It takes no room on the inner ring and nothing on the forum; a campus too close to bedrock has no
-     * room for it ({@link RootShape#noRoom}).
+     * from Y0 - 1 to Y0 - 26, or shallower over low ground since 0.14.1, {@link RootShape#depth}), opened by the
+     * {@code tidal_well} research, sunk as a caisson and commissioned with its module core. It takes no room on the
+     * inner ring and nothing on the forum; a campus under Y0 14 has no room for it ({@link RootShape#noRoom}).
      */
     public static ModuleSpec root() {
         return new ModuleSpec(
@@ -216,6 +228,17 @@ public final class CityModule {
                 @Override
                 public String noRoom(int y0) {
                     return RootShape.noRoom(y0);
+                }
+
+                @Override
+                public String shapeFor(int y0) {
+                    return RootShape.shapeFor(y0);
+                }
+
+                @Override
+                public int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
+                    return RootShape.well(RootShape.DEPTH)
+                        .controller(site, cx, y0, cz, fx, fz);
                 }
             });
     }

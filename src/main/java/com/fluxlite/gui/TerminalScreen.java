@@ -309,7 +309,8 @@ public class TerminalScreen extends ControlCenterScreen {
             c.circle(x + 8, ry + 8, 3, 0xFF000000 | m.getInteger("c"));
             int slot = m.getInteger("slot");
             // a ring module by its slot, an axis module and the gatehouse (0.14.0) by its site's name (天顶, 根位, 大门)
-            String where = SiteFamily.axisSite(slot) || gatehouse(m.getString("k"))
+            SiteFamily family = SiteFamily.of(slot);
+            String where = family != null && family.axis() || gatehouse(m.getString("k"))
                 ? tr("fluxecho." + SiteFamily.labelKey(slot))
                 : tr("fluxlite.gui.term.slot", slot + 1);
             text(c, where + "  " + tr("fluxecho.module." + m.getString("k")), x + 16, ry + 4, Theme.LABEL);

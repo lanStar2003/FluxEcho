@@ -411,7 +411,7 @@ public final class Builder {
             int y = y0 - i;
             if (y > 255 || job.stepAt(c.x, y, c.z) >= 0) return null;
             return seen[i] = gradeProbe(w, c.x, y, c.z, y0);
-        }, n, job.module() != null, Config.buildClearAll);
+        }, n, job.module() != null, Config.buildClearAll, job.retires());
         int used = GLANCE;
         for (int i = 0; i < n; i++) {
             if (seen[i] != null) used += LOOK;
@@ -446,7 +446,8 @@ public final class Builder {
                 // past the last stage: the cells left for an entity are tried again, then a module waits for its
                 // structure and the campus jobs are done
                 if (!touchUp(job, plan, now, o)) return o;
-                if (job.campusJob() || job.grows()) finish(job, now);
+                // a retire job (0.14.1) raises nothing: it is done once the hall is down and its ground laid
+                if (job.campusJob() || job.grows() || job.retires()) finish(job, now);
                 else waitForm(job, plan, now, o);
                 return o;
             }
@@ -751,8 +752,12 @@ public final class Builder {
             .isSolid() ? Parts.DIRT : Parts.GRASS;
     }
 
-    /** {@link TerrainRule#forFloor} for the floor cell, {@link TerrainRule#forFill} under it. */
+    /**
+     * {@link TerrainRule#forFloor} for the floor cell, {@link TerrainRule#forFill} under it; for a retire job (0.14.1)
+     * {@link TerrainRule#forRetireFloor} and the clear-all fill, as {@link TerrainRule#gradeColumn} surveys them.
+     */
     private static TerrainRule.Verdict gradeVerdict(BuildJob job, TerrainRule.Probe p, boolean floor) {
+        if (job.retires()) return floor ? TerrainRule.forRetireFloor(p) : TerrainRule.forFill(p, true);
         return floor ? TerrainRule.forFloor(p, job.module() != null, Config.buildClearAll)
             : TerrainRule.forFill(p, Config.buildClearAll);
     }
@@ -1292,12 +1297,15 @@ public final class Builder {
     }
 
     /**
-     * Gives a module controller standing on the job's controller cell its owner and its front towards the nexus, makes
-     * it look at its structure again and records it on the job's site.
+     * Gives a module controller standing on the job's controller cell its owner and its front towards the nexus, and
+     * the shape the campus's base layer gives it (0.14.1: the zenith's sky datum, the well's depth), makes it look at
+     * its structure again and records it on the job's site.
      */
     private void commission(BuildJob job, TileMultiblock m, UUID owner, String ownerName, int front) {
         World w = campus.world();
         m.place(owner, ownerName, front);
+        ModuleSpec spec = ModuleSpecs.get(job.module());
+        if (spec != null) m.expectShape(spec.shapeFor(campus.centre()[1]));
         m.markDirty();
         w.markBlockForUpdate(m.xCoord, m.yCoord, m.zCoord);
         FrameEvents.changed(w, m.xCoord, m.yCoord, m.zCoord);
@@ -1546,6 +1554,8 @@ public final class Builder {
      * blocks of ours away, credited as their parts; under the clear-all rule every job does.
      */
     static TerrainRule.Verdict clearVerdict(BuildJob job, TerrainRule.Probe p) {
+        // a retire job (0.14.1) takes the 0.9.2 hall down whatever the rule: the members agreed to it with 开始
+        if (job.retires()) return TerrainRule.forRetire(p);
         return TerrainRule.forClear(p, job.module() != null, Config.buildClearAll);
     }
 

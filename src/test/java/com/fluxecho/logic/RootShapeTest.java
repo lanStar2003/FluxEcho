@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,7 +23,8 @@ import org.junit.jupiter.api.Test;
  * The root's shapes against their generator ({@code city/gen/b_root.py}): the Tidal Well cell for cell (a checksum of
  * every layer), its counts, mirror-symmetric but for the soft helix ramp, the lid open over the lift, the walls and
  * their bands, the island with its pad and controller, the eight tide taps, the walk from the island's pad, the rings
- * out of reach; the deep root and the ley core as data; the stages; and what the well takes of a campus.
+ * out of reach; the deep root and the ley core as data; the stages; and what the well takes of a campus; and since
+ * 0.14.1 the shallower wells over low ground ({@code tidal_well(D)}), their taps, walks, rings and stages.
  */
 class RootShapeTest {
 
@@ -272,9 +274,13 @@ class RootShapeTest {
     @Test
     void theEnvelope() {
         assertNull(RootShape.noRoom(32), "the slab at y6, over the bedrock");
-        assertEquals("build.module.why.depth", RootShape.noRoom(31));
+        // 0.14.1: over lower ground the well is shallower instead of being refused; under Y0 14 none fits
+        assertNull(RootShape.noRoom(31));
+        assertNull(RootShape.noRoom(14), "the shallowest well's slab at y6");
+        assertEquals("build.module.why.depth", RootShape.noRoom(13));
         assertEquals("build.module.why.depth", RootShape.noRoom(10));
         assertEquals(32, RootShape.LOWEST_Y0);
+        assertEquals(14, RootShape.MIN_Y0);
         assertTrue(
             RootShape.keepOut()
                 .isEmpty(),
@@ -294,9 +300,168 @@ class RootShapeTest {
                 c);
         }
         assertThrows(IllegalArgumentException.class, () -> RootShape.controller(4, cx, y0, cz, 0, -1));
+        // over low ground: the controller and the protected box follow the well's depth
+        for (int low : new int[] { 14, 19, 20, 25, 26, 31 }) {
+            int d = RootShape.depth(low);
+            assertArrayEquals(
+                new int[] { cx, low - d + 3, cz - 2, BuildPlan.facingOrdinal(0, -1) },
+                RootShape.controller(SiteFamily.ROOT_SITE, cx, low, cz, 0, -1));
+            assertArrayEquals(
+                new int[] { cx - 11, low - d, cz - 11, cx + 11, low - 1, cz + 11 },
+                RootShape.protect(cx, low, cz, 0, -1)
+                    .get(0));
+        }
         assertArrayEquals(new int[] { SiteFamily.ROOT_SITE }, RootShape.SITES);
         assertEquals(ModuleCores.ROOT, RootShape.BUILD.corePart() - Parts.MODULE_CORE);
         assertEquals(RootShape.KEY, ModuleCores.KEYS[ModuleCores.ROOT]);
         assertFalse(SiteFamily.ROOT.hasSite(SiteFamily.ZENITH_SITE));
+    }
+
+    /**
+     * The well's depth over low ground (0.14.1, CITY.md §1.3 Vertical): the deepest of 26, 20, 14 and 8 whose floor
+     * slab stays at y 6 or over, so the slab never reaches the bedrock for a base a core may be placed at (Y0 14 up).
+     */
+    @Test
+    void theWellsDepthStepsUpOverLowGround() {
+        assertArrayEquals(new int[] { 26, 20, 14, 8 }, RootShape.depths());
+        int[][] table = { { 255, 26 }, { 79, 26 }, { 32, 26 }, { 31, 20 }, { 26, 20 }, { 25, 14 }, { 20, 14 },
+            { 19, 8 }, { 14, 8 } };
+        for (int[] t : table) assertEquals(t[1], RootShape.depth(t[0]), "Y0 " + t[0]);
+        for (int y0 = RootShape.MIN_Y0; y0 <= 255; y0++) {
+            int d = RootShape.depth(y0);
+            assertTrue(y0 - d >= RootShape.LOWEST_SLAB, "the slab over the bedrock at " + y0);
+            for (int deeper : RootShape.depths()) if (deeper > d) assertTrue(y0 - deeper < RootShape.LOWEST_SLAB);
+            assertEquals(RootShape.well(d).name, RootShape.shapeFor(y0));
+        }
+        assertEquals(RootShape.WELL, RootShape.well(26).name);
+        assertEquals(RootShape.WELL_20, RootShape.well(20).name);
+        assertEquals(RootShape.WELL_14, RootShape.well(14).name);
+        assertEquals(RootShape.WELL_8, RootShape.well(8).name);
+        assertEquals(20, RootShape.named("well_20").depth);
+        assertNull(RootShape.named(RootShape.DEEP), "the deep root is no well");
+        assertThrows(IllegalArgumentException.class, () -> RootShape.well(25));
+        RootShape.Well full = RootShape.well(26);
+        assertSame(RootShape.SHAPE, full.shape);
+        assertSame(RootShape.BUILD, full.build);
+        assertSame(RootShape.BLUEPRINT, full.blueprint);
+    }
+
+    /** The shallower wells are the generator's {@code tidal_well(D)} cell for cell (b_root.py, 0.14.1). */
+    @Test
+    void theShallowerWellsAreTheGenerators() {
+        // {depth, zlib.crc32 of its layers, checked, soft, steps, the generator's walk}
+        long[][] want = { { 26, 996641253L, 3268, 238, 3507, 414 }, { 20, 1024968167L, 2740, 237, 2978, 407 },
+            { 14, 607618077L, 2184, 230, 2415, 392 }, { 8, 1009653990L, 1608, 194, 1803, 307 } };
+        for (long[] w : want) {
+            RootShape.Well well = RootShape.well((int) w[0]);
+            ShapeKit.Shape s = well.shape;
+            String at = " at depth " + w[0];
+            assertEquals(w[1], crc(RootShape.rows(s)), "tidal_well(" + w[0] + ")");
+            assertEquals(w[2], s.checkedCount(), "checked" + at);
+            assertEquals(w[3], s.softCount(), "soft" + at);
+            assertEquals(1, s.airCount(), "the lid's open centre" + at);
+            assertEquals(w[4], s.steps(), "steps" + at);
+            assertEquals(w[0], s.H);
+            assertTrue(
+                s.symmetric()
+                    .isEmpty(),
+                "mirror-symmetric" + at);
+            // the walk from the island's pad reaches the controller and every tap
+            Set<Long> reached = s.walk(RootShape.walkStarts(), 2);
+            assertEquals(w[5], reached.size(), "the generator's walk" + at);
+            assertTrue(s.controllerReach(reached));
+            assertTrue(
+                s.unitReach(reached)
+                    .isEmpty());
+            // the blueprint is the shape's box with its soft cells left out, its controller on the island
+            assertEquals(well.depth, well.blueprint.height());
+            assertEquals(
+                s.checkedCount() + 1,
+                well.blueprint.cells()
+                    .size(),
+                "the checked cells and the lid's open centre" + at);
+            assertArrayEquals(new int[] { 12, 3, 10 }, s.controller);
+            assertArrayEquals(new int[] { 12, 3, 10 }, well.build.controller());
+        }
+    }
+
+    /**
+     * Every depth keeps the full well's floor level, island, controller and its eight taps on the same cells in the
+     * same order (so a tap's slot is the same), and the lid with its open centre at y D - 1.
+     */
+    @Test
+    void theTapsKeepTheirCellsAndOrderAtEveryDepth() {
+        for (RootShape.Well w : RootShape.wells()) {
+            UnitLayout u = w.units;
+            assertEquals(8, u.size());
+            assertEquals(8, u.slots());
+            for (int i = 0; i < 8; i++) {
+                UnitLayout.Unit t = u.unit(i), full = RootShape.UNITS.unit(i);
+                assertEquals(full.name, t.name);
+                assertEquals(full.kind, t.kind);
+                assertEquals(full.slots, t.slots);
+                assertArrayEquals(full.cells.get(0), t.cells.get(0), "tap " + i + " at depth " + w.depth);
+                assertEquals(i, u.slotOfSocket(t.cells.get(0)[0], 1, t.cells.get(0)[2]));
+            }
+            for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
+                assertEquals(RootShape.SHAPE.get(x, RootShape.FLOOR_Y, z), w.cell(x, RootShape.FLOOR_Y, z), "floor");
+                assertEquals(RootShape.SHAPE.get(x, RootShape.SLAB_Y, z), w.cell(x, RootShape.SLAB_Y, z), "slab");
+                if (!RootShape.inWell(x, z)) continue;
+                char lid = w.cell(x, w.lidY, z);
+                if (x == 12 && z == 12) assertEquals('-', lid, "the lid's centre is open for the lift");
+                else assertEquals(RootShape.wall(x, z) ? 'F' : 'B', lid);
+                for (int y = 1; y < w.lidY; y++) {
+                    assertEquals(RootShape.wall(x, z), w.shell(x, y, z));
+                    assertEquals(!RootShape.wall(x, z), w.inside(x, y, z));
+                }
+            }
+            assertEquals('K', w.cell(12, 2, 10));
+            assertEquals('~', w.cell(12, 3, 10));
+            assertEquals(w.depth - 1, w.lidY);
+            assertArrayEquals(new int[] { 2, 0, 3 - w.depth }, w.toCampus(12, 3, 10));
+            assertArrayEquals(new int[] { 12, 3, 10 }, w.fromCampus(2, 0, 3 - w.depth));
+        }
+    }
+
+    /**
+     * A shallower well keeps the bands and rings that fit under its lid (20 deep: two bands, three rings; 14 deep: one
+     * band, two rings; 8 deep: none), its rings out of reach, its ramp up to four under the lid, every cell staged.
+     */
+    @Test
+    void theBandsRingsAndRampFitUnderTheLid() {
+        int[][] bands = { { 6, 12, 18 }, { 6, 12 }, { 6 }, {} };
+        int[][] rings = { { 6, 11, 16 }, { 6, 11, 16 }, { 6, 11 }, {} };
+        int[] perRing = { 76, 76, 48, 0 };
+        for (int i = 0; i < 4; i++) {
+            RootShape.Well w = RootShape.wells()
+                .get(i);
+            assertArrayEquals(bands[i], w.bands(), "bands at depth " + w.depth);
+            assertArrayEquals(rings[i], w.ringY(), "rings at depth " + w.depth);
+            assertEquals(rings[i].length, w.ringR().length);
+            int ringCells = 0;
+            for (int y = 0; y < w.depth; y++) for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
+                char ch = w.cell(x, y, z);
+                if (ch == RootShape.RING) {
+                    ringCells++;
+                    int k = java.util.Arrays.binarySearch(w.ringY(), y);
+                    assertTrue(k >= 0, "a ring off its layers at y" + y);
+                }
+                if (ch == ' ') continue;
+                int st = w.stage(x, y, z, ch);
+                assertTrue(st >= RootShape.R_SINK && st <= RootShape.R_COMMISSION);
+                if (st == RootShape.R_SINK) assertTrue(w.shell(x, y, z));
+            }
+            assertEquals(perRing[i], ringCells);
+            Set<Long> reached = w.shape.walk(RootShape.walkStarts(), 2);
+            int top = 0;
+            for (long st : reached) {
+                top = Math.max(top, ShapeKit.Shape.stateH(st));
+                int x = ShapeKit.Shape.stateX(st), z = ShapeKit.Shape.stateZ(st), feet = ShapeKit.Shape.stateH(st) / 2;
+                for (int[] d : new int[][] { { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } })
+                    for (int y = feet - 1; y <= feet + 2; y++)
+                        assertFalse(w.cell(x + d[0], y, z + d[1]) == RootShape.RING, "a ring within reach");
+            }
+            assertTrue(top / 2 + 2 <= w.lidY, "a head clear of the lid at depth " + w.depth);
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.fluxecho.logic;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,8 +66,12 @@ class SitePlanTest {
         assertArrayEquals(CampusPlan.HALL_SITES, SiteFamily.HALL.sites());
         assertArrayEquals(CampusPlan.PAVILION_SITES, SiteFamily.PAVILION.sites());
         assertArrayEquals(new int[] { 0 }, SiteFamily.GATE.sites());
+        // the families further out have numbers of their own (0.14.1), none on the inner ring or the axis's 8 and 9
         for (SiteFamily f : new SiteFamily[] { SiteFamily.OUTER_DIAG, SiteFamily.OUTER_FLANK, SiteFamily.SKY,
-            SiteFamily.ORBIT, SiteFamily.THIRD }) assertEquals(0, f.sites().length, f + " stands off the inner ring");
+            SiteFamily.ORBIT, SiteFamily.THIRD }) for (int s : f.sites()) {
+                assertTrue(s > SiteFamily.ROOT_SITE, f + " stands off the inner ring: " + s);
+                assertEquals(f, SiteFamily.of(s));
+            }
         // the axis (0.12.0): the zenith over the nexus and the root under it, one site each past the ring's eight
         assertArrayEquals(new int[] { SiteFamily.ZENITH_SITE }, SiteFamily.ZENITH.sites());
         assertArrayEquals(new int[] { SiteFamily.ROOT_SITE }, SiteFamily.ROOT.sites());
@@ -81,6 +86,50 @@ class SitePlanTest {
         assertEquals(1, SiteFamily.HALL.opens);
         assertEquals(2, SiteFamily.PAVILION.opens);
         assertEquals(10, SiteFamily.values().length);
+    }
+
+    /**
+     * The families later versions build on have site numbers of their own (0.14.1), so no outer site is ever taken for
+     * an axis site (0.14.0 called every site from 8 up the axis's) or folded onto the inner ring by its number modulo 8
+     * (11 was a pavilion's, 20 a hall's): the outer diagonals 11-17 odd, the flankers 20-27, the sky 30-37, the orbit
+     * 40, the third ring 50-65. Each opens at its phase, half the flankers and the sky's berths a phase later, and the
+     * outer families stand on ground their own campus job lays.
+     */
+    @Test
+    void theFamiliesFurtherOutHaveNumbersOfTheirOwn() {
+        java.util.Set<Integer> all = new java.util.HashSet<>();
+        for (SiteFamily f : SiteFamily.values()) for (int s : f.sites()) {
+            assertTrue(all.add(s), "site " + s + " belongs to one family");
+            assertEquals(f, SiteFamily.of(s), "site " + s);
+        }
+        assertArrayEquals(new int[] { 11, 13, 15, 17 }, SiteFamily.OUTER_DIAG.sites());
+        assertArrayEquals(new int[] { 20, 21, 22, 23, 24, 25, 26, 27 }, SiteFamily.OUTER_FLANK.sites());
+        assertArrayEquals(new int[] { 30, 31, 32, 33, 34, 35, 36, 37 }, SiteFamily.SKY.sites());
+        assertArrayEquals(new int[] { 40 }, SiteFamily.ORBIT.sites());
+        assertEquals(16, SiteFamily.THIRD.sites().length);
+        assertEquals(50, SiteFamily.THIRD.sites()[0]);
+        assertEquals(65, SiteFamily.THIRD.sites()[15]);
+        for (int s : new int[] { -1, 10, 12, 18, 19, 28, 38, 41, 49, 66, 255 }) assertNull(SiteFamily.of(s), "" + s);
+        for (int s : new int[] { 11, 13, 20, 30, 50 }) assertFalse(SiteFamily.axisSite(s), "site " + s);
+        assertTrue(SiteFamily.axisSite(40), "the orbit's deck stands on the axis");
+        assertEquals(3, SiteFamily.opensAt(11));
+        assertEquals(4, SiteFamily.opensAt(20));
+        assertEquals(5, SiteFamily.opensAt(21));
+        assertEquals(4, SiteFamily.opensAt(30));
+        assertEquals(5, SiteFamily.opensAt(31));
+        assertEquals(5, SiteFamily.opensAt(40));
+        assertEquals(5, SiteFamily.opensAt(57));
+        assertEquals(1, SiteFamily.opensAt(4));
+        assertEquals(2, SiteFamily.opensAt(0));
+        assertEquals(Integer.MAX_VALUE, SiteFamily.opensAt(10));
+        assertEquals(SiteFamily.OUTER_GROUND, SiteFamily.OUTER_DIAG.ground());
+        assertEquals(SiteFamily.OUTER_GROUND, SiteFamily.OUTER_FLANK.ground());
+        assertEquals(SiteFamily.THIRD_GROUND, SiteFamily.THIRD.ground());
+        for (SiteFamily f : new SiteFamily[] { SiteFamily.HALL, SiteFamily.PAVILION, SiteFamily.GATE, SiteFamily.ZENITH,
+            SiteFamily.ROOT, SiteFamily.SKY, SiteFamily.ORBIT }) assertNull(f.ground(), f.name());
+        // no establish key is mistaken for a ground job, nor the other way round
+        assertEquals(0, BuildPlan.establishPhase(SiteFamily.OUTER_GROUND));
+        assertEquals(0, BuildPlan.establishPhase(SiteFamily.THIRD_GROUND));
     }
 
     @Test

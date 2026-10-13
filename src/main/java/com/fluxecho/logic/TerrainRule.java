@@ -290,6 +290,33 @@ public final class TerrainRule {
     }
 
     /**
+     * The verdict for a cell of a retire job's ground (0.14.1): the 0.9.2 hall the members agreed to take down with
+     * 开始, and the margin round it the campus jobs always left to it. Everything there goes, whichever rule the config
+     * picks, as {@link #forClear(Probe, boolean, boolean)}'s clear-all rule takes it: air → ALREADY; guarded
+     * (unbreakable, another nexus's area, another structure's box, the {@code buildBlocked} list) → BLOCKED; anything
+     * else → CLEAR, broken as a player's break does it, into the recycle store. The hall's own blocks are taken so
+     * whether its structure still stands or not (a formed structure's parts are BLOCKED to every other job), and the
+     * hall itself is not a box guarded from this job.
+     */
+    public static Verdict forRetire(Probe p) {
+        if (p.air) return Verdict.ALREADY;
+        if (p.guarded()) return Verdict.BLOCKED;
+        return Verdict.CLEAR;
+    }
+
+    /**
+     * The verdict for the floor-level cell (Y0) of a retire job's graded column (0.14.1): grass already → ALREADY;
+     * guarded → BLOCKED; air, a replaceable block or a fluid → PLACE; anything else (the hall's foundation) → CLEAR,
+     * taken away, then grass.
+     */
+    public static Verdict forRetireFloor(Probe p) {
+        if (p.target) return Verdict.ALREADY;
+        if (p.guarded()) return Verdict.BLOCKED;
+        if (p.air || p.replaceable || p.fluid) return Verdict.PLACE;
+        return Verdict.CLEAR;
+    }
+
+    /**
      * The verdict for the floor-level cell (Y0) of a graded column that the plan does not pave: it becomes grass
      * whatever was there (0.10.1, a unified floor). The grass already → ALREADY; guarded → BLOCKED; air, a replaceable
      * block or a fluid → PLACE (lava only under the clear-all rule; the conservative rule leaves it); anything else as
@@ -343,11 +370,22 @@ public final class TerrainRule {
      * after the end of the run is never asked for (the survey probes the world through this).
      */
     public static Verdict[] gradeColumn(IntFunction<Probe> cell, int cells, boolean module, boolean all) {
+        return gradeColumn(cell, cells, module, all, false);
+    }
+
+    /**
+     * {@link #gradeColumn(IntFunction, int, boolean, boolean)}, for a retire job's column when {@code retire} (0.14.1):
+     * its floor cell by {@link #forRetireFloor}, the cells under it by the clear-all rule's {@link #forFill} (the
+     * hall's lower blocks are taken, a cellar's stone stays).
+     */
+    public static Verdict[] gradeColumn(IntFunction<Probe> cell, int cells, boolean module, boolean all,
+        boolean retire) {
         Verdict[] out = new Verdict[cells];
         for (int i = 0; i < cells; i++) {
             Probe p = cell.apply(i);
             if (p == null) continue;
-            out[i] = i == 0 ? forFloor(p, module, all) : forFill(p, all);
+            if (retire) out[i] = i == 0 ? forRetireFloor(p) : forFill(p, true);
+            else out[i] = i == 0 ? forFloor(p, module, all) : forFill(p, all);
             if (out[i] == Verdict.BLOCKED) break;
         }
         return out;

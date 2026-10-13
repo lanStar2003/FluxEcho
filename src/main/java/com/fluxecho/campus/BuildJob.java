@@ -22,13 +22,14 @@ import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.SiteFamily;
 
 /**
  * One construction job of a nexus campus and how far it has got: which plan it builds (the establish job, the forum of
  * a 0.9.2 nexus, a module on a site, a repair of one of those, the 0.10.1 refresh of a campus laid out by an older
- * plan, or since 0.12.0 the growth of the nexus to its next phase), where it is in its life
- * ({@link BuildState}), which stage it is in, which steps are done or skipped, how far the clearing has dug, which
- * cells are in flight, and the counts the GUI shows.
+ * plan, since 0.12.0 the growth of the nexus to its next phase, or since 0.14.1 the retirement of a docked 0.9.2
+ * hall), where it is in its life ({@link BuildState}), which stage it is in, which steps are done or skipped, how far
+ * the clearing has dug, which cells are in flight, and the counts the GUI shows.
  * <p>
  * The plan itself is never saved: {@link #planFor} recomputes it from the job key, the nexus's position and front, the
  * {@link CampusPlan} seeded with the nexus controller's position, and the keep-out boxes saved with the job, so the
@@ -41,9 +42,16 @@ public final class BuildJob {
      * The version of the plans: raise it whenever {@link BuildPlan} or the module shapes change what a job builds, so a
      * job saved with older plans starts its bookkeeping over (its built cells come free) instead of misreading it.
      * 2 (0.10.1): the light wells lie flush in the floor layer, the recycle bin stands beside the supply port, and a
-     * module's clear box grades its floor.
+     * module's clear box grades its floor. 3 (0.14.1): the Eco Dome's plan lost the soft grass step over its crown
+     * stair, which moves every later step of it.
      */
-    public static final int V = 2;
+    public static final int V = 3;
+    /**
+     * The version of the campus grading the 整修园区 offer (0.10.1) holds a campus to, saved as its {@code Pv}: 2, the
+     * floor, wells and fixtures of 0.10.1's forum plan. It moves only when those change, not with every {@link #V}
+     * (0.14.1): before, raising {@code V} for a module's plan would have offered every campus a renovation again.
+     */
+    public static final int GRADE_V = 2;
     /** The most cells in flight at once, and the most blocked cells reported (the GUI, the red boxes, the save). */
     public static final int MAX_FLIGHTS = 256, MAX_BLOCKED = 64;
     /** The most blocked cells kept by position; beyond that they are only counted. */
@@ -55,6 +63,11 @@ public final class BuildJob {
      * finished under an older plan version, so its floor, wells and fixtures are brought up to the current plan.
      */
     public static final String REFRESH = "refresh";
+    /**
+     * The prefix of a retire job's key (0.14.1, {@link #retire}): {@code retire:<slot>}, the job and its plan key
+     * alike.
+     */
+    public static final String RETIRE = BuildPlan.RETIRE + ":";
 
     /**
      * A launched cell on its way: it was paid for and lands at {@link #land}. It remembers what it paid for (the part
@@ -231,6 +244,21 @@ public final class BuildJob {
         return j;
     }
 
+    /**
+     * The retire job of the docked 0.9.2 library hall on an inner ring slot (0.14.1, {@code retire:<slot>},
+     * {@link BuildPlan#retire}): it takes the hall down into the recycle store and gives its ground back to the forum,
+     * so the city module whose site it stood on can be built. It waits for 开始 like any job. Its one box
+     * {x0, z0, x1, z1, yFrom, yTo} is the ground it works, not a box it keeps out of: the hall's keep-out columns over
+     * the hall's heights. It travels in the job's keep-out list, so it is saved and reaches the client as every job's
+     * boxes do and both sides make the same plan. Its site is the slot, which the 建造 page names.
+     */
+    public static BuildJob retire(int slot, int[] box) {
+        String k = BuildPlan.retireKey(slot);
+        BuildJob j = new BuildJob(k, k, slot);
+        j.setKeepOut(Collections.singletonList(box));
+        return j;
+    }
+
     private void setKeepOut(List<int[]> boxes) {
         keepOut.clear();
         if (boxes != null) for (int[] b : boxes) if (keepOutBox(b)) keepOut.add(b.clone());
@@ -273,7 +301,10 @@ public final class BuildJob {
 
     // ---- identity
 
-    /** The job key: {@code establish}, {@code forum}, {@code module:<module>@<site>}, {@code repair:...}. */
+    /**
+     * The job key: {@code establish}, {@code forum}, {@code module:<module>@<site>}, {@code repair:...}, and since
+     * 0.14.1 {@code retire:<slot>}.
+     */
     public String key() {
         return key;
     }
@@ -283,7 +314,9 @@ public final class BuildJob {
         return planKey;
     }
 
-    /** The hall site of a module job or a module repair; -1 for the others. */
+    /**
+     * The site of a module job or a module repair, the inner ring slot of a retire job (0.14.1); -1 for the others.
+     */
     public int site() {
         return site;
     }
@@ -367,6 +400,21 @@ public final class BuildJob {
         return REFRESH.equals(key);
     }
 
+    /** Whether it retires a docked 0.9.2 hall (0.14.1, {@link #retire}). */
+    public boolean retires() {
+        return BuildPlan.retireSlot(planKey) >= 0;
+    }
+
+    /**
+     * The ground a retire job works, {x0, z0, x1, z1, yFrom, yTo} ({@link #retire}), or null for any other job (or a
+     * retire job saved without it).
+     */
+    public int[] retireBox() {
+        if (!retires()) return null;
+        for (int[] b : keepOut) if (b.length == 6) return b.clone();
+        return null;
+    }
+
     /** Whether it goes ahead of the queued jobs ({@link Campus#admit}): a repair, the refresh, or a growth. */
     public boolean priority() {
         return rank() > 0;
@@ -426,6 +474,10 @@ public final class BuildJob {
     public static IChatComponent name(String key, String planKey) {
         if (key == null || key.isEmpty()) return new ChatComponentTranslation("fluxecho.build.gui.none");
         if (REFRESH.equals(key)) return new ChatComponentTranslation("fluxecho.build.job.refresh");
+        int slot = BuildPlan.retireSlot(planKey);
+        if (slot >= 0) return new ChatComponentTranslation(
+            "fluxecho.build.job.retire",
+            new ChatComponentTranslation("fluxecho." + SiteFamily.labelKey(slot), String.valueOf(slot)));
         int grow = BuildPlan.growPhase(planKey);
         if (grow > 0) return new ChatComponentTranslation(
             "fluxecho.build.job.grow",
@@ -460,6 +512,11 @@ public final class BuildJob {
         int grow = BuildPlan.growPhase(planKey);
         if (grow > 0) return BuildPlan.grow(grow, cx, y0, cz, fx, fz, ctrlX, ctrlY, ctrlZ);
         if (BuildPlan.FORUM.equals(planKey)) return BuildPlan.forum(cp, cx, y0, cz, fx, fz, keepOut);
+        if (BuildPlan.retireSlot(planKey) >= 0) {
+            // a retire job's one box is the hall's ground it works (0.14.1)
+            for (int[] b : keepOut) if (b.length == 6) return BuildPlan.retire(cp, planKey, cx, y0, cz, fx, fz, b);
+            return null;
+        }
         ModuleSpec spec = ModuleSpecs.ofJob(planKey);
         int site = ModuleSpecs.siteOf(planKey);
         if (spec == null || !spec.hasSite(site)) return null;

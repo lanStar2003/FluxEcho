@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,5 +105,42 @@ class RootLookTest {
             assertTrue(want.contains(CampusPlan.key(campus[0], campus[1])));
             assertTrue(RootShape.inWell(c[0], c[1]), "over the well");
         }
+    }
+
+    /**
+     * A shallower well's drawing (0.14.1): its rings (those it has) move under its lid and clear of every head, its
+     * ribs' lines run from the floor to its lid broken only by its own bands, its bands face into it, and the forum
+     * over its lid is its depth up in its frame.
+     */
+    @Test
+    void aShallowerWellIsDrawnUnderItsOwnLid() {
+        for (RootShape.Well w : RootShape.wells()) {
+            String at = " at depth " + w.depth;
+            for (int i = 0; i < w.ringY().length; i++) {
+                // the drawn ring (its steel a fifth of a block each way of its layer's middle, risen by the tide)
+                // stays under the lid; 14 deep the upper ring's cell risen whole would touch it, its steel does not
+                assertTrue(
+                    RootShape.RING_Y[i] + 0.5 + RootLook.RISE + 0.2 < w.lidY,
+                    "ring " + i + " under the lid" + at);
+                assertTrue(RootLook.ringLowest(i) >= RootLook.headUnder(i, w) + RootLook.CLEAR, "ring " + i + at);
+            }
+            assertEquals(w.depth, RootLook.surfaceY(w));
+            for (int rib = 0; rib < 8; rib++) {
+                double[] r = RootLook.ribs()[rib];
+                int x = (int) Math.floor(r[0] + r[2] * 0.02), z = (int) Math.floor(r[1] + r[3] * 0.02);
+                List<int[]> runs = RootLook.ribRuns(rib, w);
+                assertEquals(w.bands().length + 1, runs.size(), "stretches between the bands" + at);
+                assertEquals(RootShape.FLOOR_Y, runs.get(0)[0]);
+                assertEquals(w.lidY, runs.get(runs.size() - 1)[1], "up to the lid" + at);
+                for (int[] run : runs) for (int y = run[0]; y < run[1]; y++) assertEquals('L', w.cell(x, y, z));
+            }
+            for (int y : w.bands()) {
+                List<int[]> f = RootLook.bandFaces(y, w), full = RootLook.bandFaces(y);
+                assertEquals(full.size(), f.size(), "the same course as the full well's" + at);
+                for (int i = 0; i < f.size(); i++) assertArrayEquals(full.get(i), f.get(i));
+                for (int[] face : f) assertTrue(w.inside(face[0] + face[2], y, face[1] + face[3]));
+            }
+        }
+        assertEquals(RootLook.SURFACE_Y, RootLook.surfaceY(RootShape.well(26)));
     }
 }

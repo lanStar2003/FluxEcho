@@ -32,6 +32,7 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.BuildPlan;
+import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.LiftRule;
 import com.fluxecho.logic.NexusShape;
 
@@ -46,10 +47,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Sneaking, clicking a side, or clicking a frame, deck or fitting block places the core the 0.9.2 way: a legacy
  * nexus the player builds by hand.
  * <p>
- * A lifted placement is refused when the nexus could not grow there: too close to the top of the world, no open sky
- * over the core, its base on a module, or another campus within {@code Config.buildMinSpacing}. Only the server
- * decides a lifted placement; the client applies the same rule and then waits for the block instead of guessing, so
- * a refused or moved placement never leaves a ghost block or a wrong stack count behind.
+ * A lifted placement is refused when the nexus could not grow there: its base outside the campus band (too close to
+ * the top of the world, or since 0.14.1 too close to the bedrock for any well, {@link CampusBand}; never for a core put
+ * back where it stood), no open sky over the core, its base on a module, or another campus within
+ * {@code Config.buildMinSpacing}. Only the server decides a lifted placement; the client applies the same rule and
+ * then waits for the block instead of guessing, so a refused or moved placement never leaves a ghost block or a wrong
+ * stack count behind.
  * <p>
  * A core broken off a nexus ({@link BlockNexusCore}) carries the campus's credit ({@link #CREDIT}: the ledger's raw
  * credit and parts, the recycle store) and the manifestation that was still running ({@link #PENDING},
@@ -82,7 +85,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     /** Item NBT: the active campus the core was broken off ({@link Campus#carried}). */
     public static final String CAMPUS = "Campus";
     /** Blocks above the base the nexus needs below the top of the world for a lifted placement (Y0 + 30 ≤ 255). */
-    public static final int HEADROOM = 30;
+    public static final int HEADROOM = CampusBand.HEADROOM;
 
     public ItemBlockNexusCore(Block block) {
         super(block);
@@ -142,7 +145,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         if (!p.canPlayerEdit(x, cy, z, LiftRule.TOP, stack)) return false;
         boolean campus = Config.nexusEnabled && Config.campusEnabled;
         if (campus) {
-            IChatComponent no = refusal(w, p, x, cy, z);
+            IChatComponent no = refusal(w, p, x, cy, z, putsBack(stack, w, x, cy, z));
             if (no != null) {
                 p.addChatMessage(no);
                 return false;
@@ -176,12 +179,16 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         return true;
     }
 
-    /** Why the nexus cannot grow round a core at (x, cy, z) facing away from the player; null when it can. */
-    private static IChatComponent refusal(World w, EntityPlayer p, int x, int cy, int z) {
+    /**
+     * Why the nexus cannot grow round a core at (x, cy, z) facing away from the player; null when it can. A core put
+     * back where it stood ({@code putBack}) is never refused for its height (0.14.1, {@link CampusBand}).
+     */
+    private static IChatComponent refusal(World w, EntityPlayer p, int x, int cy, int z, boolean putBack) {
         ForgeDirection f = ForgeDirection.getOrientation(facingFor(p));
         Blueprint b = NexusShape.PHASE_1;
         int[] c = b.world(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack(), x, cy, z, f.offsetX, f.offsetZ);
-        if (c[1] + HEADROOM > 255) return new ChatComponentTranslation("fluxecho.build.too_high");
+        String band = CampusBand.refusal(c[1], putBack);
+        if (band != null) return new ChatComponentTranslation("fluxecho." + band);
         if (Config.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z))
             return new ChatComponentTranslation("fluxecho.build.no_sky");
         if (onModule(w, box(b, x, cy, z, f))) return new ChatComponentTranslation("fluxecho.build.on_module");
@@ -189,6 +196,19 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         if (near != null)
             return new ChatComponentTranslation("fluxecho.build.too_close", near[0] + ", " + near[1] + ", " + near[2]);
         return null;
+    }
+
+    /**
+     * Whether the core in the stack goes back where it stood (0.14.1): it carries an active campus ({@link #CAMPUS})
+     * that was broken off a core at this very block of this dimension, so the campus resumes there
+     * ({@link Campus#resume}) and the campus band does not refuse it.
+     */
+    public static boolean putsBack(ItemStack stack, World w, int x, int y, int z) {
+        NBTTagCompound t = stack == null ? null : stack.getTagCompound();
+        if (t == null || w == null || !t.hasKey(CAMPUS, 10)) return false;
+        NBTTagCompound c = t.getCompoundTag(CAMPUS);
+        if (!c.hasKey("Pos")) return false;
+        return CampusBand.putBack(c.getInteger("Dim"), c.getIntArray("Pos"), w.provider.dimensionId, x, y, z);
     }
 
     /** The front a core placed by the entity gets: it faces the placer (as {@link BlockNexus#onBlockPlacedBy}). */

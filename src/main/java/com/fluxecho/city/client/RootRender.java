@@ -6,6 +6,8 @@ import static com.fluxecho.client.FluxDraw.WHITE;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.Tessellator;
@@ -48,6 +50,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * towards the viewer, no depth writes (the rings' faces turned away are left out), the caustics a little over the
  * water's still surface so a shader pack's water does not cover them; animation by the world time alone. Each part
  * fails on its own.
+ * <p>
+ * Over low ground the well is shallower (0.14.1): the rings, ribs, bands and the forum over it are those of the well
+ * the tile stands as ({@link TileRoot#well}), worked out once for each depth.
  */
 @SideOnly(Side.CLIENT)
 final class RootRender {
@@ -61,25 +66,43 @@ final class RootRender {
     private static final double C = RootShape.MID + 0.5, POOL_Y = RootShape.FLOOR_Y + ModuleLook.WATER_TOP + 0.035;
 
     private static final double[][] RIBS = RootLook.ribs();
-    private static final List<List<int[]>> RUNS;
-    private static final List<List<int[]>> BANDS;
-    private static final double[][] WATER = ModuleLook.water(RootShape.BUILD, RootShape.FLOOR_Y, 0.5)
-        .toArray(new double[0][]);
     private static final List<int[]> GRATE = RootLook.grate();
+    /** What is drawn of a well of each depth, by depth. */
+    private static final Map<Integer, Look> LOOKS = new ConcurrentHashMap<>();
 
     private static final int RINGS = 0, RIB_PART = 1, BAND_PART = 2, POOL = 3, SURFACE = 4;
     private static final String[] NAMES = { "tide rings", "rising ribs", "flux-layer bands", "pool", "grate glow" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
-    static {
-        List<List<int[]>> runs = new ArrayList<>(), bands = new ArrayList<>();
-        for (int i = 0; i < RIBS.length; i++) runs.add(RootLook.ribRuns(i));
-        for (int y : RootShape.BANDS) bands.add(RootLook.bandFaces(y));
-        RUNS = runs;
-        BANDS = bands;
+    private RootRender() {}
+
+    /**
+     * Where a well of one depth is drawn: its lit ribs' stretches, its bands and their faces, its rings, its pool's
+     * water and the forum's layer over its lid, in the well's own frame.
+     */
+    private static final class Look {
+
+        final List<List<int[]>> runs = new ArrayList<>(), bandFaces = new ArrayList<>();
+        final int[] bands;
+        final int rings, lid, surface;
+        final double[][] water;
+
+        Look(RootShape.Well w) {
+            for (int i = 0; i < RIBS.length; i++) runs.add(RootLook.ribRuns(i, w));
+            bands = w.bands();
+            for (int y : bands) bandFaces.add(RootLook.bandFaces(y, w));
+            rings = w.ringY().length;
+            lid = w.lidY;
+            surface = RootLook.surfaceY(w);
+            water = ModuleLook.water(w.build, RootShape.FLOOR_Y, 0.5)
+                .toArray(new double[0][]);
+        }
     }
 
-    private RootRender() {}
+    private static Look look(TileRoot r) {
+        RootShape.Well w = r.well();
+        return LOOKS.computeIfAbsent(w.depth, d -> new Look(w));
+    }
 
     /**
      * Draws the Tidal Well's own visuals; {@code p0} is its distance fade times how far it has formed, {@code cam} the
@@ -92,8 +115,9 @@ final class RootRender {
         double day = w.getWorldTime() + (t - Math.floor(t)), tide = RootLook.tide(day);
         boolean docked = CityRender.docked(r), on = CityRender.on(r);
         int accent = r.moduleColor();
+        Look look = look(r);
         if (!OFF[RINGS]) try {
-            rings(f, t, day, p0, tier, on, docked, accent, cam);
+            rings(f, look.rings, t, day, p0, tier, on, docked, accent, cam);
         } catch (Throwable x) {
             CityRender.recover();
             fail(RINGS, x);
@@ -103,7 +127,7 @@ final class RootRender {
         if (!docked || tier == ModuleLook.FAR) return;
         boolean nearby = tier == ModuleLook.NEAR;
         if (!OFF[RIB_PART]) try {
-            ribs(f, t, p0, nearby, on, accent);
+            ribs(f, look, t, p0, nearby, on, accent);
         } catch (Throwable x) {
             CityRender.recover();
             fail(RIB_PART, x);
@@ -111,7 +135,7 @@ final class RootRender {
             CityRender.close();
         }
         if (nearby && !OFF[BAND_PART]) try {
-            bands(f, t, p0, on, accent);
+            bands(f, look, t, p0, on, accent);
         } catch (Throwable x) {
             CityRender.recover();
             fail(BAND_PART, x);
@@ -119,7 +143,7 @@ final class RootRender {
             CityRender.close();
         }
         if (!OFF[POOL]) try {
-            pool(f, t, p0, tide, nearby && on, accent);
+            pool(f, look, t, p0, tide, nearby && on, accent);
         } catch (Throwable x) {
             CityRender.recover();
             fail(POOL, x);
@@ -127,7 +151,7 @@ final class RootRender {
             CityRender.close();
         }
         if (!OFF[SURFACE]) try {
-            surface(r, f, t, day, p0, tide, on, accent);
+            surface(r, f, look, t, day, p0, tide, on, accent);
         } catch (Throwable x) {
             CityRender.recover();
             fail(SURFACE, x);
@@ -139,19 +163,20 @@ final class RootRender {
     // ---- the rings
 
     /**
-     * The three tide rings: eight arcs of steel a ring with a gap between each, at the height and turn the tide gives
-     * them (only the faces turned to the camera: no depth needed), then a seam of light round each and lights riding
-     * it. Far, three lines.
+     * The three tide rings (the {@code n} lowest, those a shallower well has): eight arcs of steel a ring with a gap
+     * between each, at the height and turn the tide gives them (only the faces turned to the camera: no depth needed),
+     * then a seam of light round each and lights riding it. Far, three lines.
      */
-    private static void rings(CityFrame f, double t, double day, float p, int tier, boolean on, boolean docked,
+    private static void rings(CityFrame f, int n, double t, double day, float p, int tier, boolean on, boolean docked,
         int accent, double[] cam) {
+        if (n == 0) return;
         int glow = on ? accent : docked ? AMBER : IDLE;
         float life = p * (on ? 1f : docked ? 0.6f : 0.3f);
         if (tier == ModuleLook.FAR) {
             Shapes.begin(true);
             Tessellator tes = CityFrame.start();
             tes.setColorRGBA_I(glow, CityFrame.alpha255(0.5f * life));
-            for (int i = 0; i < RootShape.RING_Y.length; i++) {
+            for (int i = 0; i < n; i++) {
                 double y = ringY(i, day), r = RootShape.RING_R[i] + 0.5;
                 for (int k = 0; k < 16; k++) {
                     double a0 = k * Math.PI / 8, a1 = (k + 1) * Math.PI / 8;
@@ -174,7 +199,7 @@ final class RootRender {
         int pieces = nearby ? NEAR_PIECES : 1;
         Shapes.begin(false);
         Tessellator tes = CityFrame.start();
-        for (int i = 0; i < RootShape.RING_Y.length; i++) {
+        for (int i = 0; i < n; i++) {
             double y = ringY(i, day), turn = RootLook.ringTurn(i, t, day);
             double r0 = RootShape.RING_R[i], r1 = r0 + 1, top = y + RING_HALF, bottom = y - RING_HALF;
             for (int k = 0; k < ARCS; k++) {
@@ -199,7 +224,7 @@ final class RootRender {
         if (!nearby) return;
         Shapes.begin(true);
         tes = CityFrame.start();
-        for (int i = 0; i < RootShape.RING_Y.length; i++) {
+        for (int i = 0; i < n; i++) {
             double y = ringY(i, day) + RING_HALF + 0.01, turn = RootLook.ringTurn(i, t, day),
                 r = RootShape.RING_R[i] + 0.5;
             float breath = 0.6f + 0.4f * (float) Math.sin(t * 0.05 + i * 2.1);
@@ -223,7 +248,7 @@ final class RootRender {
         tes.draw();
         Shapes.end();
         Motes.begin();
-        for (int i = 0; i < RootShape.RING_Y.length; i++) {
+        for (int i = 0; i < n; i++) {
             double y = ringY(i, day) + RING_HALF + 0.05, r = RootShape.RING_R[i] + 0.5;
             for (int k = 0; k < 3; k++) {
                 double a = RootLook.ringTurn(i, t, day) * 3 + k * 2 * Math.PI / 3;
@@ -270,7 +295,7 @@ final class RootRender {
      * The eight lit ribs, a line up each stretch between the bands on the wall's inner face, a wave of light climbing
      * them (each rib a little behind the one before); near, a soft halo too; mid, a line a stretch.
      */
-    private static void ribs(CityFrame f, double t, float p, boolean nearby, boolean on, int accent) {
+    private static void ribs(CityFrame f, Look look, double t, float p, boolean nearby, boolean on, int accent) {
         float life = p * (on ? 1f : 0.55f);
         int glow = on ? accent : AMBER;
         Shapes.begin(true);
@@ -278,8 +303,8 @@ final class RootRender {
         for (int i = 0; i < RIBS.length; i++) {
             double[] r = RIBS[i];
             double x = r[0] - r[2] * 0.04, z = r[1] - r[3] * 0.04;
-            double climb = (t * 0.12 + i * 3.1) % (RootShape.LID_Y + 8) - 4;
-            for (int[] run : RUNS.get(i)) {
+            double climb = (t * 0.12 + i * 3.1) % (look.lid + 8) - 4;
+            for (int[] run : look.runs.get(i)) {
                 if (!nearby) {
                     double mid = (run[0] + run[1]) / 2.0, d = mid - climb;
                     tes.setColorRGBA_I(glow, CityFrame.alpha255(life * (0.3f + 0.4f * (float) Math.exp(-d * d / 20))));
@@ -302,22 +327,24 @@ final class RootRender {
     }
 
     /**
-     * The three flux-layer bands: a line along the inner faces of each dark course, breathing slowly, in its layer's
-     * tint (表层 the well's colour, 记忆层 towards violet, 深层 towards the deep root's green).
+     * The three flux-layer bands (those a shallower well has): a line along the inner faces of each dark course,
+     * breathing slowly, in its layer's tint (表层 the well's colour, 记忆层 towards violet, 深层 towards the deep
+     * root's green).
      */
-    private static void bands(CityFrame f, double t, float p, boolean on, int accent) {
+    private static void bands(CityFrame f, Look look, double t, float p, boolean on, int accent) {
+        if (look.bands.length == 0) return;
         float life = p * (on ? 1f : 0.55f);
         Shapes.begin(true);
         Tessellator tes = CityFrame.start();
-        for (int b = 0; b < RootShape.BANDS.length; b++) {
-            int y = RootShape.BANDS[b];
+        for (int b = 0; b < look.bands.length; b++) {
+            int y = look.bands[b];
             // the lowest band is the deepest layer
             int tint = b == 0 ? Shapes.mix(accent, DEEP, 0.6) : b == 1 ? Shapes.mix(accent, VIOLET, 0.55) : accent;
             if (!on) tint = AMBER;
             float a = life * (0.4f + 0.15f * (float) Math.sin(t * 0.04 + b * 2.3));
             double ly = y + 0.5;
             tes.setColorRGBA_I(tint, CityFrame.alpha255(a));
-            for (int[] face : BANDS.get(b)) {
+            for (int[] face : look.bandFaces.get(b)) {
                 double ax, az, bx, bz;
                 if (face[2] != 0) {
                     ax = bx = (face[2] > 0 ? face[0] + 1 : face[0]) + face[2] * 0.04;
@@ -344,12 +371,13 @@ final class RootRender {
      * The pool's surface: a glow on every cell of water, brighter as the tide rises; powered and near, caustics: two
      * families of wavering lines, one along each axis, crossing on the water and drifting.
      */
-    private static void pool(CityFrame f, double t, float p, double tide, boolean caustics, int accent) {
-        if (WATER.length == 0) return;
+    private static void pool(CityFrame f, Look look, double t, float p, double tide, boolean caustics, int accent) {
+        double[][] water = look.water;
+        if (water.length == 0) return;
         Shapes.begin(true);
         Tessellator tes = CityFrame.start();
         tes.setColorRGBA_I(accent, CityFrame.alpha255(p * (0.05f + 0.05f * (float) (tide + 1) / 2)));
-        for (double[] c : WATER) {
+        for (double[] c : water) {
             double x0 = c[0] - 0.5, z0 = c[1] - 0.5;
             f.vertex(tes, x0, POOL_Y, z0);
             f.vertex(tes, x0 + 1, POOL_Y, z0);
@@ -358,7 +386,7 @@ final class RootRender {
         }
         if (caustics) {
             int rgb = Shapes.mix(WATER_LIGHT, WHITE, 0.4);
-            for (double[] c : WATER) {
+            for (double[] c : water) {
                 double x0 = c[0] - 0.5, z0 = c[1] - 0.5;
                 float a = p * (0.16f + 0.1f * (float) Math.sin(t * 0.07 + x0 * 0.9 + z0 * 1.3));
                 tes.setColorRGBA_I(rgb, CityFrame.alpha255(a));
@@ -378,10 +406,10 @@ final class RootRender {
 
     /**
      * The forum's grate band over the well (where a grate tile lies), glowing with the tide; at the top of a high tide
-     * the rings' crests show through it, blades of light standing round the dais.
+     * the rings' crests show through it, blades of light standing round the dais (in a well that has rings).
      */
-    private static void surface(TileRoot r, CityFrame f, double t, double day, float p, double tide, boolean on,
-        int accent) {
+    private static void surface(TileRoot r, CityFrame f, Look look, double t, double day, float p, double tide,
+        boolean on, int accent) {
         World w = r.getWorldObj();
         int code = Parts.deck(Parts.D_GRATE);
         Block grate = PartBlocks.block(code);
@@ -389,13 +417,13 @@ final class RootRender {
         if (grate == null) return;
         float life = p * (on ? 1f : 0.5f);
         float a = life * (0.06f + 0.22f * (float) Math.max(0, tide)) * (0.85f + 0.15f * (float) Math.sin(t * 0.05));
-        double top = RootLook.SURFACE_Y + 1.02;
+        double top = look.surface + 1.02;
         Shapes.begin(true);
         Tessellator tes = CityFrame.start();
         tes.setColorRGBA_I(on ? accent : AMBER, CityFrame.alpha255(a));
         int shown = 0;
         for (int[] c : GRATE) {
-            int[] at = r.worldOf(c[0], RootLook.SURFACE_Y, c[1]);
+            int[] at = r.worldOf(c[0], look.surface, c[1]);
             if (w.getBlock(at[0], at[1], at[2]) != grate || w.getBlockMetadata(at[0], at[1], at[2]) != meta) continue;
             f.vertex(tes, c[0], top, c[1]);
             f.vertex(tes, c[0] + 1, top, c[1]);
@@ -404,8 +432,8 @@ final class RootRender {
             shown++;
         }
         double crest = RootLook.crest(tide);
-        if (crest > 0 && shown > 0) {
-            double turn = RootLook.ringTurn(RootShape.RING_Y.length - 1, t, day);
+        if (crest > 0 && shown > 0 && look.rings > 0) {
+            double turn = RootLook.ringTurn(look.rings - 1, t, day);
             for (int i = 0; i < BLADES; i++) {
                 double ang = turn + i * 2 * Math.PI / BLADES, rad = 6.0;
                 double x = C + Math.cos(ang) * rad, z = C + Math.sin(ang) * rad;

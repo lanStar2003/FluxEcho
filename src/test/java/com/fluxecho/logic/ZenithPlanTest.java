@@ -146,4 +146,60 @@ class ZenithPlanTest {
         assertThrows(IllegalArgumentException.class, () -> DomeGeneratorShape.controller(2, CX, Y0, CZ, 0, -1));
         assertThrows(IllegalArgumentException.class, () -> BuildPlan.zenith(SiteFamily.ZENITH_SITE, CX, Y0, CZ, 1, 1));
     }
+
+    /**
+     * Over high ground (0.14.1) the job builds the moored shape of the campus's sky datum: its HARD steps are that
+     * shape's cells in the world (those over y 255 left out, from Y0 219), the legs F - 1 high, the pod's floor at
+     * Y0 + F, the clearing up to Y0 + F + 12, and the wards and the controller always in.
+     */
+    @Test
+    void overHighGroundTheHardStepsAreTheDatumsShape() {
+        for (int y0 : new int[] { 204, 209, 213, 218, 219, 222, 225 }) {
+            DomeGeneratorShape.Moor m = DomeGeneratorShape.forBase(y0);
+            int f = m.datum;
+            Blueprint b = m.blueprint;
+            Plan p = DomeGeneratorShape
+                .plan(new CampusPlan(Mix.seed(CX, y0 + 2, CZ)), SiteFamily.ZENITH_SITE, CX, y0, CZ, 0, -1);
+            int[] c = DomeGeneratorShape.controller(SiteFamily.ZENITH_SITE, CX, y0, CZ, 0, -1);
+            assertEquals(y0 + f + 2, c[1]);
+            int[] front = BuildPlan.front(c[3]);
+            Set<Long> want = new HashSet<>();
+            int over = 0;
+            for (Blueprint.Cell cell : b.cells()) {
+                int[] w = b.world(cell.a, cell.b, cell.c, c[0], c[1], c[2], front[0], front[1]);
+                if (w[1] > 255) over++;
+                else want.add(pos(w[0], w[1], w[2]));
+            }
+            if (y0 <= 218) assertEquals(0, over, "the whole pod in the world at " + y0);
+            else assertTrue(over > 0, "the pod's top clips at " + y0);
+            Set<Long> hard = new HashSet<>();
+            for (Step s : p.steps) {
+                assertTrue(s.y <= 255, "a step over the world at " + y0);
+                if (s.kind == BuildPlan.HARD) hard.add(pos(s.x, s.y, s.z));
+            }
+            assertEquals(want, hard, "Y0 " + y0);
+            assertEquals(6 * (f - 1), p.count(DomeGeneratorShape.Z_LEGS));
+            for (int i = p.start(DomeGeneratorShape.Z_LEGS); i < p.end(DomeGeneratorShape.Z_LEGS); i++) {
+                int y = p.steps.get(i).y;
+                assertTrue(y >= y0 + 1 && y <= y0 + f - 1);
+            }
+            for (int i = p.start(DomeGeneratorShape.Z_FLOOR); i < p.end(DomeGeneratorShape.Z_FLOOR); i++)
+                assertEquals(y0 + f, p.steps.get(i).y);
+            assertEquals(1 + 7 * 2, p.count(DomeGeneratorShape.Z_FIT), "the console and every ward");
+            assertTrue(
+                p.steps.get(p.steps.size() - 1)
+                    .at(c[0], c[1], c[2]),
+                "the controller last");
+            int pod = 0;
+            for (BuildPlan.Column col : p.clear) if (col.yFrom == y0 + f) {
+                assertEquals(y0 + f + 12, col.yTo);
+                pod++;
+            }
+            assertEquals(23 * 23, pod);
+            assertEquals(
+                23 * 23 + m.legColumns()
+                    .size(),
+                p.clear.size());
+        }
+    }
 }

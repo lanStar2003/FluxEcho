@@ -3,6 +3,7 @@ package com.fluxecho.logic;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,30 @@ class EcoDomeWalkTest {
         assertTrue(s.controller);
         assertTrue(s.symmetric);
         assertTrue(s.unreachable.isEmpty());
+        assertTrue(s.idleTreads.isEmpty(), "every tread of the three stairs is stood on");
         assertEquals(1179, s.reached);
+    }
+
+    /**
+     * Every step of the spiral round the trunk is stood on, from stand 7.5 to stand 12, and the crown island beyond
+     * it at stand 12: 0.11.0 to 0.14.0 built the crown deck's grass at (12, 11, 22) over the fourth step's crossing,
+     * where a body rising onto stand 9.5 meets it with its head, so nobody climbed past stand 9. (The walk then
+     * checked the head one block short and passed it; walked as it is now, that dome reaches 1,172 states, none on
+     * the crown.)
+     */
+    @Test
+    void theCrownStairIsClimbedToTheTop() {
+        ShapeKit.Shape s = EcoDomeShape.SHAPE;
+        List<int[]> steps = ShapeKit.spiral(EcoDomeShape.TRUNK_X, EcoDomeShape.TRUNK_Z, 7, 10, 0, 1);
+        // the tenth step is the crown's own deck under the crown planter's rim: one steps off the ninth onto the
+        // landing beside it instead
+        for (int i = 0; i < 9; i++) {
+            int[] st = steps.get(i);
+            int h = st[3] == 't' ? 2 * st[1] + 1 : 2 * (st[1] + 1);
+            assertTrue(REACHED.contains(ShapeKit.Shape.state(st[0], st[2], h)), "step " + i + " at stand " + h / 2.0);
+        }
+        assertTrue(REACHED.contains(ShapeKit.Shape.state(15, 21, 2 * (EcoDomeShape.CROWN_Y + 1))), "the landing");
+        assertEquals(' ', s.get(12, EcoDomeShape.CROWN_Y, 22), "the deck opens over the fourth step's crossing");
     }
 
     @Test

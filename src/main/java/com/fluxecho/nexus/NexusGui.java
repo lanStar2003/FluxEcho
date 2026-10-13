@@ -136,6 +136,8 @@ public final class NexusGui {
         /** Whether the campus may build at all (config), and whether this one is active (not a 0.9.2 nexus). */
         public boolean enabled = true, active;
         public boolean skipBlocked, canRepair, started, canMove;
+        /** Whether 换一个 would bring up another job now ({@code Df}, 0.14.1, {@link Campus#canDefer}). */
+        public boolean canDefer;
         /** The job key and its plan key; both empty without a job. */
         public String job = "", planKey = "";
         public int site = -1, state, pause, stage, stages, placed, total, cleared, blocked, skipped, unloaded;
@@ -169,6 +171,7 @@ public final class NexusGui {
             canRepair = t.getBoolean("Rp");
             started = t.getBoolean("Go");
             canMove = t.getBoolean("Mv");
+            canDefer = t.getBoolean("Df");
             job = t.getString("K");
             planKey = t.hasKey("Pk") ? t.getString("Pk") : job;
             site = t.hasKey("S") ? t.getInteger("S") : -1;
@@ -367,8 +370,9 @@ public final class NexusGui {
     }
 
     /**
-     * The build page: the job panel, the buttons below it (开始/暂停, 补给, 取消; ◀ site ▶, 跳过受阻; 取出, 铺设广场 or
-     * 修复), the bill with its pager, the intake slot and the balance on the right.
+     * The build page: the job panel, the buttons below it (开始/暂停, 补给, 取消; ◀ site ▶, 跳过受阻; 取出, then 修复 and
+     * 换一个 on an active campus, 铺设广场 on a 0.9.2 nexus), the bill with its pager, the intake slot and the balance on
+     * the right.
      */
     private static void buildPage(TileNexus n, ModularWindow.Builder b, View view) {
         Function<Widget, Boolean> on = widget -> view.page == PAGE_BUILD;
@@ -487,7 +491,7 @@ public final class NexusGui {
                     .setSize(60, BTN_H)
                     .setEnabled(on));
 
-        // row 3: 取出, 铺设广场 (a 0.9.2 nexus) or 修复
+        // row 3: 取出, then 修复 and 换一个 on an active campus (0.14.1), or 铺设广场 across both on a 0.9.2 nexus
         b.widget(
             button(
                 () -> EchoText.t("build.gui.withdraw"),
@@ -504,13 +508,36 @@ public final class NexusGui {
                             .setEnabled(on));
         b.widget(
             button(
-                () -> EchoText.t(bd.active ? "build.gui.repair" : "build.gui.lay_forum"),
-                () -> !bd.active && bd.enabled,
-                () -> bd.active ? !bd.canRepair : !bd.enabled,
-                () -> EchoText.lines(bd.active ? "build.gui.repair.tip" : "build.gui.lay_forum.tip"),
+                () -> EchoText.t("build.gui.repair"),
+                () -> false,
+                () -> !bd.canRepair,
+                () -> EchoText.lines("build.gui.repair.tip"),
+                (widget) -> act(n, widget, feed, p -> forumOrRepair(n.campus(), p))).setPos(50, ROW3_Y)
+                    .setSize(40, BTN_H)
+                    .setEnabled(widget -> view.page == PAGE_BUILD && bd.active));
+        b.widget(
+            button(
+                () -> EchoText.t("build.gui.defer"),
+                () -> false,
+                () -> !bd.canDefer,
+                () -> EchoText.lines("build.gui.defer.tip"),
+                (widget) -> act(
+                    n,
+                    widget,
+                    feed,
+                    p -> n.campus()
+                        .defer(p))).setPos(92, ROW3_Y)
+                            .setSize(42, BTN_H)
+                            .setEnabled(widget -> view.page == PAGE_BUILD && bd.active));
+        b.widget(
+            button(
+                () -> EchoText.t("build.gui.lay_forum"),
+                () -> bd.enabled,
+                () -> !bd.enabled,
+                () -> EchoText.lines("build.gui.lay_forum.tip"),
                 (widget) -> act(n, widget, feed, p -> forumOrRepair(n.campus(), p))).setPos(50, ROW3_Y)
                     .setSize(84, BTN_H)
-                    .setEnabled(on));
+                    .setEnabled(widget -> view.page == PAGE_BUILD && !bd.active));
 
         // the bill: its title, the pager, eight lines
         b.widget(
@@ -706,6 +733,7 @@ public final class NexusGui {
                 .kinds());
         t.setLong("Ri", recycled);
         t.setBoolean("Fb", c.freeBuild());
+        t.setBoolean("Df", c.active() && c.canDefer());
         if (c.active()) t.setTag("Md", Campus.ModuleState.write(c.modules()));
         NBTTagList q = new NBTTagList();
         for (String k : c.queue()) {
@@ -833,8 +861,9 @@ public final class NexusGui {
      * other modules (0.11.0), whose stages have the same numbers; since 0.12.0 {@code build.stage.g<n>} for the growth
      * of the nexus (clearing, the new stage, forming) and {@code build.stage.z<n>} for the zenith's Echo Dome Generator
      * (clearing, the legs, the floor, the shell, the roof, the fittings, commissioning), {@code build.stage.r<n>} for
-     * the root's Tidal Well (the caisson sinking, draining, the floor, the fittings, commissioning). A job past its
-     * last stage (a module waiting for its structure to form, a finished job) shows its last stage.
+     * the root's Tidal Well (the caisson sinking, draining, the floor, the fittings, commissioning); since 0.14.1
+     * {@code build.stage.d<n>} for the retirement of a 0.9.2 hall (taking it down, the forum's floor, its fixtures). A
+     * job past its last stage (a module waiting for its structure to form, a finished job) shows its last stage.
      */
     public static String stageKey(String planKey, int stage) {
         String family;
@@ -852,6 +881,9 @@ public final class NexusGui {
         } else if (spec != null && spec.family == SiteFamily.ROOT) {
             family = "r";
             last = RootShape.R_COMMISSION;
+        } else if (BuildPlan.retireSlot(planKey) >= 0) {
+            family = "d";
+            last = BuildPlan.D_FIXTURE;
         } else {
             String module = ModuleSpecs.moduleOf(planKey);
             family = module == null || BuildPlan.LIBRARY.equals(module) ? "m" : "c";

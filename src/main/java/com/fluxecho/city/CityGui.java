@@ -92,7 +92,10 @@ public final class CityGui {
     // the strip below every page
     public static final int STRIP_Y = 142, FOOT_X = 9, FOOT_Y = 145, FOOT_W = 242, FOOT_H = 26;
 
-    /** Each module kind's plans, worked out once (pure data, the same on both sides). */
+    /**
+     * Each module kind's plans, worked out once for each shape it stands as (pure data, the same on both sides; a
+     * shallower Tidal Well's ramp is not the full well's, 0.14.1).
+     */
     private static final Map<String, ModuleMap> MAPS = new ConcurrentHashMap<>();
 
     private CityGui() {}
@@ -100,7 +103,7 @@ public final class CityGui {
     /** The plans of a module's kind. */
     public static ModuleMap map(TileCityModule c) {
         return MAPS.computeIfAbsent(
-            c.moduleKey(),
+            c.moduleKey() + "@" + c.shapeName(),
             k -> new ModuleMap(c.build(), c.layout(), c.dissolves(), MAP_MAX_W, MAP_MAX_H, c.planLevels()));
     }
 

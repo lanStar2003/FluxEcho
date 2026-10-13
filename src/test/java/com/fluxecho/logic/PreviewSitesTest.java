@@ -156,14 +156,45 @@ class PreviewSitesTest {
         assertEquals(6, two.size(), "the room is out after the fourth ring module");
     }
 
+    /**
+     * The nexus's preview stands at each phase as many ring kinds as the phase opens ring sites (0.14.1,
+     * {@link SiteFamily#openRingSites}), as the campus builds them: tier 7 (phase II) is the whole inner city, all ten
+     * kinds of the registration order on their first preferences (0.14.0's room of four left the hunting ground, the
+     * mana fountain, the gate and the vault out); tier 6 (phase I) has room for the three halls.
+     */
+    @Test
+    void phaseTwoStandsTheWholeCity() {
+        int[] zenith = DomeGeneratorShape.SITES, root = { SiteFamily.ROOT_SITE };
+        List<int[]> all = Arrays.asList(
+            LIBRARY,
+            ECO_DOME,
+            zenith,
+            root,
+            ArcaneCourtShape.SITES,
+            BloodCovenantShape.SITES,
+            HuntingGroundShape.SITES,
+            ManaFountainShape.SITES,
+            new int[] { 0 },
+            VAULT);
+        List<PreviewSites.Place> p = PreviewSites.places(all, SiteFamily.openRingSites(2));
+        assertEquals(10, p.size());
+        int[] want = { 4, 2, SiteFamily.ZENITH_SITE, SiteFamily.ROOT_SITE, 7, 5, 3, 1, 0, 6 };
+        for (int i = 0; i < want.length; i++) assertEquals(want[i], p.get(i).site, "kind " + i);
+        assertEquals(3, SiteFamily.openRingSites(1));
+        assertEquals(
+            3,
+            PreviewSites.places(Arrays.asList(LIBRARY, ECO_DOME, VAULT), SiteFamily.openRingSites(1))
+                .size());
+    }
+
     /** The NEI city preview's budget (CITY.md §3, M10): the nexus and every module it stands, in checked cells. */
     private static final int PREVIEW_BUDGET = 60_000;
 
     /**
      * The preview's heaviest tier at each phase stays within its budget with the modules of this version standing: the
      * nexus's phase, the Archive, the Eco Dome, the dome generator (moored, or floating from phase IV), the Tidal Well
-     * and, from phase II, all four pavilions and (0.14.0) the gatehouse and the Dual-foil Vault (more than phase II's
-     * room lets stand, so the bound holds from phase III on, when all of them do).
+     * and, from phase II, all four pavilions and (0.14.0) the gatehouse and the Dual-foil Vault (all of them stand from
+     * phase II since 0.14.1, {@link #phaseTwoStandsTheWholeCity}).
      */
     @Test
     void thePreviewStaysWithinItsBudget() {

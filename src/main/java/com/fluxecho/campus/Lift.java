@@ -42,8 +42,14 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * player also passes our blocks in the two cells over a pad ({@link #boardable}), so a pad they fill can be boarded.
  * <p>
  * The server ends a ride when the feet reached its end, when the player left the column or the world, or when it lasted
- * {@link LiftShaft#GRACE} ticks longer than it should; it tells the client then. A rider takes no fall damage during
- * the ride and its grace, and is not taken for a flying cheat while riding.
+ * {@link LiftShaft#GRACE} ticks longer than it should ({@link LiftShaft#ended}); it tells the client then. A rider
+ * takes no fall damage during the ride and its grace, and is not taken for a flying cheat while riding.
+ * <p>
+ * The landing (0.14.1): the client's ride ends exactly on its pad ({@link LiftShaft#ease}) and sets the feet onto the
+ * pad's top when it ends ({@link #settle}), because the pad is solid again from then on and vanilla lets feet inside a
+ * block fall through it; the server judges the position the client reported ({@link #serverStart}), so it ends the
+ * ride about one packet after the client and a return trip right away is taken; and a rider whose feet still ended
+ * inside the pad is set onto it by the server.
  */
 public final class Lift {
 
@@ -64,6 +70,11 @@ public final class Lift {
         double carried = Double.NaN;
         /** The vertical motion the client gave the rider on its last tick (for the view's widening). */
         double motion;
+        /**
+         * The server's look (0.14.1): where the client last reported the rider, taken at the start of the player's tick
+         * before the server's own physics step moves it ({@link #serverStart}); NaN until then.
+         */
+        double seenFeet = Double.NaN, seenX, seenZ;
 
         State(UUID player, int dim, int x, int z, LiftShaft.Ride ride, long start) {
             this.player = player;
@@ -210,7 +221,28 @@ public final class Lift {
         return t;
     }
 
-    /** One server tick of a rider (after its moves were taken). */
+    /**
+     * The start of a rider's server tick (0.14.1): a player's tick runs inside the handling of its movement packet,
+     * and here the player is still where the client last reported it, so that is what {@link #serverTick} judges the
+     * ride on. Its vertical motion is dropped too: the server's own physics step that follows would otherwise let it
+     * fall faster and faster through the pads the rider passes, for nothing (the client moves the rider).
+     */
+    static void serverStart(EntityPlayerMP p) {
+        State s = SERVER.get(p.getUniqueID());
+        if (s == null || !s.riding) return;
+        s.seenFeet = p.boundingBox.minY;
+        s.seenX = p.posX;
+        s.seenZ = p.posZ;
+        p.motionY = 0;
+    }
+
+    /**
+     * One server tick of a rider (the end of the player's tick, after the server's own physics step): the ride is
+     * judged on where the client reported the rider ({@link #serverStart}; in 0.14.0 it was judged after that step had
+     * moved the rider, which hid the arrival of a ride up until the timeout and cut rides down short in mid-air), so
+     * it ends about one packet after the client's. A rider whose feet ended a ride just inside the block it stops on
+     * ({@link LiftShaft#sunk}) is set onto it, the one place a ride ever moves a player from the server.
+     */
     static void serverTick(EntityPlayerMP p) {
         State s = SERVER.get(p.getUniqueID());
         if (s == null) return;
@@ -221,14 +253,25 @@ public final class Lift {
             return;
         }
         p.fallDistance = 0;
-        double feet = p.boundingBox.minY;
-        if (s.ride.blocked && !s.turned && LiftShaft.arrived(feet, s.ride.peak)) s.turned = true;
-        boolean done = (!s.ride.blocked || s.turned) && LiftShaft.arrived(feet, s.ride.to);
-        boolean lost = p.isDead || p.dimension != s.dim
-            || !LiftShaft.onColumn(p.posX, p.posZ, s.x, s.z)
-            || now - s.start > s.ride.ticks() + LiftShaft.GRACE;
-        if (done || lost) {
+        double feet = s.seenFeet, x = s.seenX, z = s.seenZ;
+        if (Double.isNaN(feet)) {
+            // no start of this tick was seen: where the player was before the physics step is the same position
+            feet = p.prevPosY;
+            x = p.prevPosX;
+            z = p.prevPosZ;
+        }
+        s.seenFeet = Double.NaN;
+        if (LiftShaft.turns(s.ride, s.turned, feet)) s.turned = true;
+        LiftShaft.End end = LiftShaft.ended(s.ride, s.turned, feet, x, z, s.x, s.z, now - s.start);
+        boolean gone = p.isDead || p.dimension != s.dim;
+        if (end != LiftShaft.End.RIDING || gone) {
             s.end(now);
+            if (end == LiftShaft.End.ARRIVED && !gone
+                && LiftShaft.sunk(feet, s.ride.to)
+                && p.playerNetServerHandler != null) {
+                // the backstop: one set-back onto the pad's top, which the client takes as it is told
+                p.playerNetServerHandler.setPlayerLocation(x, s.ride.to, z, p.rotationYaw, p.rotationPitch);
+            }
             NBTTagCompound t = new NBTTagCompound();
             t.setInteger("D", 0);
             NexusNet.tell(p, NexusNet.LIFT_RIDE, t);
@@ -273,7 +316,11 @@ public final class Lift {
         int dir = t.getInteger("D");
         State c = client;
         if (dir == 0) {
-            if (c != null && c.riding) c.end(now);
+            if (c != null && c.riding) {
+                // the server ended the ride first: feet that reached its end stand on the pad, not in it
+                settle(self, c.ride.to);
+                c.end(now);
+            }
             return;
         }
         LiftShaft.Ride ride = new LiftShaft.Ride(
@@ -300,8 +347,9 @@ public final class Lift {
     /**
      * One client tick of the local player's ride (before it moves): its motion towards the goal, gathering speed and
      * settling onto the pad ({@link LiftShaft#ease}; the server does not move the player, so the feel is the client's
-     * alone), and back to the column's middle; the ride ends when the feet reached its end, when the player left the
-     * column, or when it lasted {@link LiftShaft#GRACE} ticks longer than it should. Returns whether it rides now.
+     * alone), and back to the column's middle; the ride ends when the feet reached its end ({@link LiftShaft#ended}:
+     * set exactly onto it first, {@link #settle}), when the player left the column, or when it lasted
+     * {@link LiftShaft#GRACE} ticks longer than it should. Returns whether it rides now.
      */
     public static boolean clientTick(EntityPlayer self) {
         State c = client;
@@ -318,15 +366,16 @@ public final class Lift {
         }
         self.fallDistance = 0;
         double feet = self.boundingBox.minY;
-        if (c.ride.blocked && !c.turned && LiftShaft.arrived(feet, c.ride.peak)) {
+        if (LiftShaft.turns(c.ride, c.turned, feet)) {
             // the head bumped the ceiling: the way back down gathers speed afresh
             c.turned = true;
             c.legStart = now;
             c.carried = 0;
         }
-        if ((!c.ride.blocked || c.turned) && LiftShaft.arrived(feet, c.ride.to)
-            || !LiftShaft.onColumn(self.posX, self.posZ, c.x, c.z)
-            || now - c.start > c.ride.ticks() + LiftShaft.GRACE) {
+        LiftShaft.End end = LiftShaft.ended(c.ride, c.turned, feet, self.posX, self.posZ, c.x, c.z, now - c.start);
+        if (end != LiftShaft.End.RIDING) {
+            // the pad is solid again once the ride ends, so feet that reached it go onto its top first
+            if (end == LiftShaft.End.ARRIVED) settle(self, c.ride.to);
             c.end(now);
             self.motionY = 0;
             return false;
@@ -338,6 +387,19 @@ public final class Lift {
         self.motionX = LiftShaft.steer(self.posX, c.x + 0.5);
         self.motionZ = LiftShaft.steer(self.posZ, c.z + 0.5);
         return true;
+    }
+
+    /**
+     * Sets the feet of the local player whose ride ends at {@code to} exactly there when they are within
+     * {@link LiftShaft#ARRIVED} of it ({@link LiftShaft#settle}; 0.14.1). The box is moved as the game's own moves
+     * move it, so the feet land on the pad's top to the last bit (vanilla lets feet even a hair inside a block fall
+     * through it); the server accepts a move this small.
+     */
+    static void settle(EntityPlayer self, double to) {
+        double feet = self.boundingBox.minY, d = LiftShaft.settle(feet, to) - feet;
+        if (d == 0) return;
+        self.boundingBox.offset(0, d, 0);
+        self.posY = self.boundingBox.minY + self.yOffset - self.ySize;
     }
 
     /** The vertical speed the local player's ride gave it on its last tick, blocks a tick; 0 when it rides none. */
@@ -367,11 +429,16 @@ public final class Lift {
     /** The server's handlers. */
     public static final class Handler {
 
+        /**
+         * A rider's tick on the server: its start, where the player still is where the client reported it, and its
+         * end, after the server's own physics step.
+         */
         @SubscribeEvent
         public void onPlayerTick(TickEvent.PlayerTickEvent e) {
-            if (e.phase != TickEvent.Phase.END || !(e.player instanceof EntityPlayerMP p)) return;
+            if (!(e.player instanceof EntityPlayerMP p)) return;
             if (p.worldObj == null || p.worldObj.isRemote) return;
-            serverTick(p);
+            if (e.phase == TickEvent.Phase.START) serverStart(p);
+            else serverTick(p);
         }
 
         /** No fall damage on a ride and for its grace. */

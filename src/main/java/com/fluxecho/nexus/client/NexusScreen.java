@@ -452,9 +452,9 @@ public final class NexusScreen {
 
     /**
      * Without a job: every module the nexus can build, a line each with its name and site and a line with where it
-     * stands (needs its research, queued, building, built, the ring full, no room), {@link NexusGui#MODULE_ROWS} of
-     * them on
-     * the page {@code page} (0.13.0: the pager on the head line turns it); returns the height under the list.
+     * stands (needs its research, queued, building, built, or not offered and why: 0.14.1's reasons replace the full
+     * ring), {@link NexusGui#MODULE_ROWS} of them on the page {@code page} (0.13.0: the pager on the head line turns
+     * it); returns the height under the list.
      */
     private static int modules(NexusGui.Build b, int page, int y, float w, float h) {
         if (b.modules.isEmpty()) return y + 1;
