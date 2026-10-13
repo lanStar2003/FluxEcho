@@ -19,10 +19,11 @@ import java.util.Set;
  * {@code R} to its right (clockwise seen from above); {@link #toWorld} and {@link #toLocal} turn that frame into world
  * offsets the same way {@link RingSlots#offset} does. Site {@code k} sits {@code 45 * k} degrees clockwise from the
  * front: site 0 is the gate, sites 4, 2 and 6 take halls (the Echo Archive, the Eco Dome), the diagonals the pavilions
- * (0.11.0: their envelopes, {@link SiteFamily}; nothing stands there yet).
+ * (0.11.0: their envelopes, {@link SiteFamily}; 0.13.0: the pavilions themselves, their floor {@link #pavilionFloor}).
  * <p>
  * The establish job paves the forum ({@code oct(16, 22)} round the dais), its grate band, the gate and the whole
- * promenade ring ({@code oct(19, 26)}); a hall job later adds its forecourt and apron with {@link #siteFloor}. Floors
+ * promenade ring ({@code oct(19, 26)}); a hall job later adds its forecourt and apron with {@link #siteFloor}, a
+ * pavilion job (0.13.0) its apron and diagonal allee with {@link #pavilionFloor}. Floors
  * only ever grow: a site floor never touches a cell of the establish floor, so a finished tile is never re-evaluated.
  * <p>
  * The tile rules are a port of the scratch generator {@code spec/gen/synth_campus.py}: light only on lines (forum ribs,
@@ -401,6 +402,105 @@ public final class CampusPlan {
         return out;
     }
 
+    /**
+     * How far out on its diagonal ({@code |a| + |r|}) a pavilion site's masterplan sign stands (0.13.0): on the
+     * allee's chevrons, three cells in from its end at the lit threshold of the pavilion's inner portal.
+     */
+    public static final int PAVILION_SIGN = ALLEE_TO - 3;
+
+    /**
+     * Where the masterplan's sign of a diagonal site stands (0.13.0), {a, r}: on the middle line of its allee at
+     * {@link #PAVILION_SIGN}, in front of the pavilion's inner (nexus-side) portal, as a hall's sign stands in front of
+     * its door. The cell lies outside every pavilion envelope and apron, so the pavilion built there never shuts the
+     * sign inside its walls; the sign names it from the allee people walk up to it on.
+     *
+     * @throws IllegalArgumentException for a site that is not a diagonal
+     */
+    public static int[] pavilionSign(int site) {
+        int[] ax = AXES[Math.floorMod(site, AXES.length)];
+        if (ax[0] == 0 || ax[1] == 0) throw new IllegalArgumentException("not a diagonal site: " + site);
+        int d = PAVILION_SIGN / 2;
+        return new int[] { ax[0] * d, ax[1] * d };
+    }
+
+    /**
+     * How far along a diagonal a pavilion's inner portal lies from the nexus centre (0.13.0): the face of its octagon's
+     * chamfer, {@code |a| + |r|} = 2 * 36 - 16, half a cell out, along the unit diagonal (about 39.2 blocks).
+     */
+    public static final double PAVILION_DOOR = (2.0 * DIAGONAL_CENTRE - DIAGONAL_K - 0.5) / Math.sqrt(2);
+
+    /**
+     * How far from the nexus centre, along the axis of site {@code site}, the door of a module docked on it lies when
+     * the client has not loaded the module (its bridge runs out to it): a hall site's module has its front row where
+     * the campus puts it ({@link #HALL_FRONT}); a diagonal's is a pavilion's inner portal ({@link #PAVILION_DOOR})
+     * only when the campus records a pavilion built there ({@code pavilion}, 0.13.0), for a module docked on a
+     * diagonal without one is a 0.9.2 module on the old inner ring, which keeps its ring bridge (-1), as the gate's
+     * does.
+     */
+    public static double siteDoor(int site, boolean pavilion) {
+        for (int s : HALL_SITES) if (s == site) return HALL_FRONT - 0.5;
+        if (pavilion && family(site) == SiteFamily.PAVILION) return PAVILION_DOOR;
+        return -1;
+    }
+
+    /**
+     * The way a pavilion's blueprint front faces on a diagonal site (0.13.0, CITY.md §2.1), {da, dr}: along A toward
+     * the nexus, -A on the sites ahead of it (1 and 7), +A on the sites behind it (3 and 5).
+     *
+     * @throws IllegalArgumentException for a site that is not a diagonal
+     */
+    public static int[] pavilionFront(int site) {
+        int[] c = diagonalCentre(site);
+        return new int[] { c[0] > 0 ? -1 : 1, 0 };
+    }
+
+    /** The diagonal site whose pavilion centre lies within 3 of (a, r) on both axes, or -1 (the dock's test). */
+    public static int pavilionSiteAt(int a, int r) {
+        for (int site : PAVILION_SITES) {
+            int[] c = diagonalCentre(site);
+            if (Math.abs(a - c[0]) <= 3 && Math.abs(r - c[1]) <= 3) return site;
+        }
+        return -1;
+    }
+
+    /**
+     * Every cell a pavilion's job takes on its site (0.13.0): its apron {@code oct(14, 18)} with the envelope, its
+     * clear
+     * margin and its seeded annex inside, and its diagonal allee. What the campus jobs keep out of and what only the
+     * pavilion's own jobs take down once it stands ({@link #rowBoxes} makes boxes of it).
+     */
+    public static Set<Long> pavilionSite(int site) {
+        Set<Long> out = octCells(diagonalCentre(site), DIAGONAL_SIZE / 2 + PAVILION_APRON, DIAGONAL_K + PAVILION_APRON);
+        out.addAll(pavilionAllee(site));
+        return out;
+    }
+
+    /**
+     * A set of cells as boxes {a0, r0, a1, r1} (inclusive): one per run of neighbouring cells along R in each row of A,
+     * so a box holds only cells of the set (an octagon is a box a row, the diagonal allee three cells a row).
+     */
+    public static List<int[]> rowBoxes(Set<Long> cells) {
+        java.util.TreeMap<Integer, java.util.TreeSet<Integer>> rows = new java.util.TreeMap<>();
+        for (long k : cells) rows.computeIfAbsent(keyA(k), x -> new java.util.TreeSet<>())
+            .add(keyR(k));
+        List<int[]> out = new ArrayList<>();
+        for (Map.Entry<Integer, java.util.TreeSet<Integer>> e : rows.entrySet()) {
+            int a = e.getKey();
+            Integer from = null, last = null;
+            for (int r : e.getValue()) {
+                if (from != null && r == last + 1) {
+                    last = r;
+                    continue;
+                }
+                if (from != null) out.add(new int[] { a, from, a, last });
+                from = r;
+                last = r;
+            }
+            if (from != null) out.add(new int[] { a, from, a, last });
+        }
+        return out;
+    }
+
     /** Whether (a, r) lies in the gatehouse's envelope (site 0, the gate family), its open passage included. */
     public static boolean inGatehouse(int a, int r) {
         return a >= GATEHOUSE_FROM && a <= GATEHOUSE_TO && Math.abs(r) <= GATEHOUSE_HALF;
@@ -529,6 +629,32 @@ public final class CampusPlan {
         }
     }
 
+    /**
+     * The floor laid by a pavilion job at a diagonal site (0.13.0, CITY.md §2.2), as cell key to deck part code for the
+     * Y0 cell: its apron ({@link #pavilionApron}, 140 cells, its inner row round the building trim) and its diagonal
+     * allee from the promenade ring ({@link #pavilionAllee}, 44 cells, three of them in the apron): the allee's centre
+     * cells (on even {@code |a| + |r|}) a lit dashed line, chevrons at {@code |a| + |r|} 50 to 53, a lit threshold at
+     * 54
+     * and 55 before the inner portal, the allee's sides trim as a path's curbs are. The rest takes the paving's seams
+     * and dark clusters. Like a hall's floor it only ever grows: it never holds a cell of {@link #establishFloor()},
+     * the
+     * dais, the ring or the gate, nor of the pavilion's own envelope (181 cells on every diagonal).
+     *
+     * @throws IllegalArgumentException if the site is not a diagonal
+     */
+    public Map<Long, Integer> pavilionFloor(int site) {
+        diagonalCentre(site);
+        long ck = (1L << 62) | Math.floorMod(site, AXES.length);
+        synchronized (sites) {
+            Map<Long, Integer> floor = sites.get(ck);
+            if (floor == null) {
+                floor = buildPavilionFloor(Math.floorMod(site, AXES.length));
+                sites.put(ck, floor);
+            }
+            return floor;
+        }
+    }
+
     /** Every graded cell: {@code oct(GRADE_R, GRADE_K)} less the dais. The same for every seed. */
     public Set<Long> gradeArea() {
         return Grade.AREA;
@@ -585,6 +711,52 @@ public final class CampusPlan {
         Map<Long, Integer> floor = new LinkedHashMap<>();
         for (long k : cells) floor.put(k, tile(keyA(k), keyR(k), all, site, width, depth, apron.contains(k)));
         return Collections.unmodifiableMap(floor);
+    }
+
+    /** The allee's chevrons from this {@code |a| + |r|}, its lit threshold from {@code ALLEE_TO - 1}. */
+    private static final int ALLEE_CHEVRONS = 50, ALLEE_THRESHOLD = ALLEE_TO - 1;
+
+    private Map<Long, Integer> buildPavilionFloor(int site) {
+        Set<Long> apron = pavilionApron(site), allee = pavilionAllee(site);
+        Set<Long> cells = new LinkedHashSet<>(apron);
+        cells.addAll(allee);
+        // monotone growth: the establish floor (and anything in its disc) is never touched again
+        cells.removeIf(k -> {
+            int a = keyA(k), r = keyR(k);
+            return paved.contains(k) || inBase(a, r) || oct(a, r, RING_R, RING_K) || inGate(a, r);
+        });
+        Set<Long> all = new HashSet<>(paved);
+        all.addAll(cells);
+        Map<Long, Integer> floor = new LinkedHashMap<>();
+        for (long k : cells)
+            floor.put(k, pavilionTile(keyA(k), keyR(k), all, site, apron.contains(k), allee.contains(k)));
+        return Collections.unmodifiableMap(floor);
+    }
+
+    /** The deck code of a cell of a pavilion's floor, by the rules of {@link #pavilionFloor} in priority order. */
+    private int pavilionTile(int a, int r, Set<Long> all, int site, boolean apron, boolean allee) {
+        if (allee) {
+            int t = Math.abs(a) + Math.abs(r), d = Math.abs(a) - Math.abs(r);
+            if (t >= ALLEE_THRESHOLD) return LIT;
+            if (t >= ALLEE_CHEVRONS) return CHEVRON;
+            if (d == 0) return LIT;
+        }
+        if (apron) {
+            // the shadow gap round the building, as a hall's apron has it
+            for (int da = -1; da <= 1; da++) for (int dr = -1; dr <= 1; dr++) {
+                if (inPavilion(site, a + da, r + dr)) return TRIM;
+            }
+        } else {
+            for (int[] d : SIDES) {
+                int na = a + d[0], nr = r + d[1];
+                if (!all.contains(key(na, nr)) && !inBase(na, nr) && !inPavilion(site, na, nr)) return TRIM;
+            }
+        }
+        if (seam(a, r)) return TRIM;
+        double rad = StrictMath.hypot(a, r);
+        double chance = Math.max(0, Math.min(DARK_MAX, (rad - DARK_FROM) / DARK_SPAN));
+        if (Mix.unit(seed, Math.floorDiv(a, 3), Math.floorDiv(r, 3), S_DARK) < chance) return DARK;
+        return DECK;
     }
 
     /**

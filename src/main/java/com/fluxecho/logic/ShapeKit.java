@@ -14,8 +14,10 @@ import java.util.TreeMap;
 
 /**
  * The kit the City of Echoes' building shapes are drawn with (0.11.0): a port of the scratch generators' shared
- * {@code city/gen/kit.py} and of the helpers the hall generator ({@code b_hall.py}) uses, so every building's
- * {@code XShape} can port its generator line by line, the way {@link ArchiveShape} ported {@code archive.py}.
+ * {@code city/gen/kit.py} and of the helpers the hall generator ({@code b_hall.py}) and (0.13.0) the pavilion
+ * generator ({@code b_pav.py}: the octagonal plan, its chamfer portals, the shell with its pilaster rhythm, the centre
+ * controller, the octagon norm, the back gate niche) use, so every building's {@code XShape} can port its generator
+ * line by line, the way {@link ArchiveShape} ported {@code archive.py}.
  * <p>
  * A {@link Shape} is a box of characters in the local frame every module uses: {@code x} across {@code 0..W-1}
  * ({@code MID} the middle), {@code y} up ({@code y0} the foundation layer people stand on), {@code z} from the front
@@ -302,7 +304,8 @@ public final class ShapeKit {
      * An Archive-style spiral round a centre post: step {@code i} sits on the ring cell {@code (start + i) % 8}
      * ({@code x} mirrored when {@code mirror} is -1), each step half a block higher; {@code yFrom} is the standing
      * height before the first step. A step whose top is a whole block is a panel ({@code W}) one below it, the others
-     * are treads ({@code t}). Returns {x, y, z, character} per step, lowest first.
+     * are treads ({@code t}). Returns {x, y, z, character} per step, lowest first. The pavilion generator's own
+     * {@code spiral} (round an octagon's post) is the same function.
      */
     public static List<int[]> spiral(int cx, int cz, int yFrom, int steps, int start, int mirror) {
         List<int[]> out = new ArrayList<>();
@@ -338,6 +341,225 @@ public final class ShapeKit {
             for (int x = cx - 3; x <= cx + 3; x++)
                 for (int dz = 1; dz <= 2; dz++) s.decor.add(new int[] { x, yLintel, z - dz, 'R' });
         }
+    }
+
+    // ---- the pavilion helpers (b_pav.py, 0.13.0) ----
+
+    /**
+     * The pavilions' box (CITY.md §2.1, the PAVILION family): {@code PAV_SIZE} across and deep ({@code b_pav.N}), its
+     * middle {@code PAV_C} ({@code C}), and the octagon {@code oct(PAV_HALF, PAV_K)} of their plan ({@code HALF},
+     * {@code K}) round it, the diagonal sites' {@code oct(12, 16)}.
+     */
+    public static final int PAV_SIZE = 25, PAV_C = 12, PAV_HALF = 12, PAV_K = 16;
+
+    /**
+     * The chamfer of the octagon {@code oct(h, round(4h / 3))} the generators draw: 16 for 12, 15 for 11, 13 for 10.
+     */
+    public static int octK(int h) {
+        // 4h / 3 is a whole number or a third off one, so it rounds as (4h + 1) / 3 does, never at a half
+        return (4 * h + 1) / 3;
+    }
+
+    /**
+     * The octagon norm ({@code b_pav.onorm}): the smallest {@code h} with {@code |du|, |dv| <= h} and
+     * {@code |du| + |dv| <= 4h / 3} (the chamfer not rounded), that is {@code max(|du|, |dv|, ceil(3(|du| + |dv|) /
+     * 4))}. The pavilions' rings of floor and furniture are drawn on it.
+     */
+    public static int onorm(int du, int dv) {
+        int a = Math.abs(du), b = Math.abs(dv);
+        // math.ceil((a + b) * 0.75) in whole numbers
+        return Math.max(Math.max(a, b), (3 * (a + b) + 3) / 4);
+    }
+
+    /**
+     * The columns {@code (x, z)} of a pavilion's box inside {@code oct(half, k)} round its middle ({@code plan_cells}).
+     */
+    public static Set<Long> planCells(int half, int k) {
+        Set<Long> out = new LinkedHashSet<>();
+        for (int x = 0; x < PAV_SIZE; x++) for (int z = 0; z < PAV_SIZE; z++) {
+            if (octo(x - PAV_C, z - PAV_C, half, k)) out.add(key(x, z));
+        }
+        return out;
+    }
+
+    /** The pavilion's plan, {@code oct(12, 16)} round its middle: 481 columns. */
+    public static Set<Long> planCells() {
+        return planCells(PAV_HALF, PAV_K);
+    }
+
+    /**
+     * The pavilion generator's {@code thick_edge}: the cells of a set with any of their 8 neighbours outside it, the
+     * same rule as {@link #thickBoundary}.
+     */
+    public static Set<Long> thickEdge(Set<Long> cells) {
+        return thickBoundary(cells);
+    }
+
+    /**
+     * The four chamfer portals of a pavilion's plan edge ({@code portal_cells}): the edge cells of the chamfers within
+     * two of the diagonals ({@code |du| + |dv| >= K - 1}, {@code ||du| - |dv|| <= 2}, both at least 5 out), and one
+     * more cell inward from each (along either axis or both, kept near the diagonal), so every opening is two deep and
+     * walkable along the diagonal.
+     */
+    public static Set<Long> portalCells(Set<Long> edge) {
+        Set<Long> out = new LinkedHashSet<>();
+        for (long k : edge) {
+            int x = keyX(k), z = keyZ(k);
+            int du = Math.abs(x - PAV_C), dv = Math.abs(z - PAV_C);
+            if (du + dv >= PAV_K - 1 && Math.abs(du - dv) <= 2 && Math.min(du, dv) >= 5) out.add(k);
+        }
+        // one more cell inward so the opening is two deep and walkable on the diagonal
+        Set<Long> inner = new LinkedHashSet<>();
+        for (long k : out) {
+            int x = keyX(k), z = keyZ(k);
+            int sx = x > PAV_C ? 1 : -1, sz = z > PAV_C ? 1 : -1;
+            int[][] in = { { x - sx, z }, { x, z - sz }, { x - sx, z - sz } };
+            for (int[] p : in) {
+                int du = Math.abs(p[0] - PAV_C), dv = Math.abs(p[1] - PAV_C);
+                if (Math.abs(du - dv) <= 2) inner.add(key(p[0], p[1]));
+            }
+        }
+        Set<Long> all = new LinkedHashSet<>(out);
+        all.addAll(inner);
+        return all;
+    }
+
+    /** What {@link #shell} drew: the plan's columns, its thick edge (the walls) and the portals' columns. */
+    public static final class Shell {
+
+        public final Set<Long> plan, edge, doors;
+
+        Shell(Set<Long> plan, Set<Long> edge, Set<Long> doors) {
+            this.plan = Collections.unmodifiableSet(plan);
+            this.edge = Collections.unmodifiableSet(edge);
+            this.doors = Collections.unmodifiableSet(doors);
+        }
+    }
+
+    /** The numbers {@code from..to - 1} (Python's {@code range(from, to)}), for {@link #shell}'s glazed rows. */
+    public static int[] range(int from, int to) {
+        int[] out = new int[Math.max(0, to - from)];
+        for (int i = 0; i < out.length; i++) out[i] = from + i;
+        return out;
+    }
+
+    /** A pavilion's shell with the generator's defaults: the lintel at y5, the plinth course in dark panel. */
+    public static Shell shell(Shape s, int wallTop, int rhythm, int[] glazeRows) {
+        return shell(s, wallTop, rhythm, glazeRows, 5, 'w');
+    }
+
+    /**
+     * A pavilion's shell ({@code b_pav.shell}): the foundation ring ({@code F}) on the plan's thick edge and soft deck
+     * inside at y0; walls on the edge from y1 to {@code wallTop}: the plinth course at y1, lit pilasters every
+     * {@code rhythm} cells along the four flat faces, lit jambs either side of each chamfer portal, glazing in the flat
+     * faces' {@code glazeRows}, panels elsewhere; the four chamfer portals ({@link #portalCells}) must be air from y1
+     * to y4, two deep, under a cornice lintel at {@code lintel}.
+     */
+    public static Shell shell(Shape s, int wallTop, int rhythm, int[] glazeRows, int lintel, char plinth) {
+        Set<Long> plan = planCells();
+        Set<Long> edge = thickEdge(plan);
+        Set<Long> doors = portalCells(edge);
+        for (long k : plan) s.set(keyX(k), 0, keyZ(k), edge.contains(k) ? 'F' : '.');
+        for (long k : edge) {
+            int x = keyX(k), z = keyZ(k);
+            int du = x - PAV_C, dv = z - PAV_C;
+            boolean flat = Math.abs(du) == PAV_HALF || Math.abs(dv) == PAV_HALF;
+            int along = Math.abs(du) == PAV_HALF ? dv : du;
+            boolean door = doors.contains(k);
+            int off = Math.abs(Math.abs(du) - Math.abs(dv)), near = Math.min(Math.abs(du), Math.abs(dv));
+            for (int y = 1; y <= wallTop; y++) {
+                if (door && y <= 4) continue;
+                char ch = 'W';
+                if (y == 1) ch = plinth;
+                else if (door && y == lintel) ch = 'n';
+                else if (flat && along % rhythm == 0) ch = 'L';
+                // the jambs either side of each portal
+                else if (!flat && (off == 3 || off == 4) && near >= 4) ch = 'L';
+                else if (flat && contains(glazeRows, y)) ch = 'G';
+                s.set(x, y, z, ch);
+            }
+        }
+        for (long k : doors) {
+            int x = keyX(k), z = keyZ(k);
+            for (int y = 1; y < 5; y++) s.set(x, y, z, AIR);
+            s.set(x, lintel, z, 'n');
+        }
+        return new Shell(plan, edge, doors);
+    }
+
+    private static boolean contains(int[] a, int v) {
+        for (int x : a) if (x == v) return true;
+        return false;
+    }
+
+    /** The pavilion's controller at the middle ({@code centre_controller}): on its console stand at {@code y - 1}. */
+    public static void centreController(Shape s, int y) {
+        s.set(PAV_C, y - 1, PAV_C, 'K');
+        s.set(PAV_C, y, PAV_C, CONTROLLER);
+        s.controller = new int[] { PAV_C, y, PAV_C };
+    }
+
+    /**
+     * The pavilions' gate niche (内境门位, CITY.md §4.15): the back flat face's middle, {@code x NICHE_X0..NICHE_X1},
+     * {@code y NICHE_Y0..NICHE_Y1}, {@code z NICHE_Z}.
+     */
+    public static final int PAV_NICHE_X0 = PAV_C - 1, PAV_NICHE_X1 = PAV_C + 1, PAV_NICHE_Y0 = 1, PAV_NICHE_Y1 = 4,
+        PAV_NICHE_Z = PAV_SIZE - 1;
+
+    /**
+     * The pavilion's gate niche ({@code b_pav.back_niche}): the back flat face's middle, {@code x 11..13, y 1..4,
+     * z 24}, the same blocks as soft cells, so the 内境 gate can open it later.
+     */
+    public static void backNiche(Shape s) {
+        s.gateNiche(PAV_NICHE_X0, PAV_NICHE_X1, PAV_NICHE_Y0, PAV_NICHE_Y1, PAV_NICHE_Z);
+    }
+
+    /** Whether a cell of a pavilion is part of its gate niche. */
+    public static boolean pavilionNiche(int x, int y, int z) {
+        return z == PAV_NICHE_Z && x >= PAV_NICHE_X0 && x <= PAV_NICHE_X1 && y >= PAV_NICHE_Y0 && y <= PAV_NICHE_Y1;
+    }
+
+    /**
+     * The standing states {x, z, h} the pavilion generator's self-check walks from ({@code b_pav.starts}): outside
+     * the four chamfer portals (and one more outside the main one, toward the nexus) at ground level.
+     */
+    public static List<int[]> pavilionStarts() {
+        List<int[]> out = new ArrayList<>();
+        int[][] s = { { 1, 1, 2 }, { 2, 0, 2 }, { 23, 1, 2 }, { 1, 23, 2 }, { 23, 23, 2 } };
+        for (int[] p : s) out.add(p.clone());
+        return out;
+    }
+
+    /**
+     * The checked layers of a shape {@code height} high, for {@link Blueprint}: soft cells become spaces (anything
+     * goes there), the rest as drawn; layer 0 of the blueprint is the shape's top.
+     */
+    public static Blueprint blueprint(Shape s, int height) {
+        String[][] layers = new String[height][s.D];
+        for (int y = 0; y < height; y++) for (int z = 0; z < s.D; z++) {
+            StringBuilder row = new StringBuilder(s.W);
+            for (int x = 0; x < s.W; x++) {
+                char ch = s.get(x, y, z);
+                row.append(soft(ch) ? NONE : ch);
+            }
+            layers[height - 1 - y][z] = row.toString();
+        }
+        return new Blueprint(layers);
+    }
+
+    /**
+     * Every layer of a shape as rows of characters, y0 first, each layer's rows from the front, each row
+     * {@code x 0..W-1}:
+     * joined with newlines, what the shape tests take the generator's checksum ({@code zlib.crc32}) of.
+     */
+    public static List<String> layers(Shape s) {
+        List<String> out = new ArrayList<>();
+        for (int y = 0; y < s.H; y++) for (int z = 0; z < s.D; z++) {
+            char[] r = new char[s.W];
+            for (int x = 0; x < s.W; x++) r[x] = s.get(x, y, z);
+            out.add(new String(r));
+        }
+        return out;
     }
 
     // ---- shapes ----

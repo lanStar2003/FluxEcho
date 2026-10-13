@@ -101,7 +101,7 @@ public final class CityGui {
     public static ModuleMap map(TileCityModule c) {
         return MAPS.computeIfAbsent(
             c.moduleKey(),
-            k -> new ModuleMap(c.build(), c.layout(), c.dissolves(), MAP_MAX_W, MAP_MAX_H));
+            k -> new ModuleMap(c.build(), c.layout(), c.dissolves(), MAP_MAX_W, MAP_MAX_H, c.planLevels()));
     }
 
     /** The most slots one unit of the module has, as many as the grid shows (at most {@link #GRID_MAX}). */

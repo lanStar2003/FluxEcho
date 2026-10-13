@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -88,6 +89,81 @@ class ModuleLookTest {
         assertEquals(-1.0, p[2], 1e-9);
     }
 
+    /**
+     * A centrally planned module (0.13.0, the pavilions) has no canopy and no front wall for its controller: its plate
+     * floats over the central console, three and a half blocks over the controller, or over the top of a column that
+     * stands on the controller (the Mana Fountain's obelisk) so it never floats inside it.
+     */
+    @Test
+    void aCentralPlansPlateFloatsOverItsCentre() {
+        CityBuild court = ArcaneCourtShape.BUILD;
+        assertTrue(ModuleLook.central(court));
+        assertFalse(ModuleLook.central(B), "the Eco Dome's controller is in its front wall");
+        double[] p = ModuleLook.plate(court);
+        assertEquals(12.5, p[0], 1e-9);
+        assertEquals(2 + 3.6, p[1], 1e-9, "the hall is open over the altar");
+        assertEquals(12.5, p[2], 1e-9);
+        assertEquals(
+            1,
+            ModuleLook.plates(court)
+                .size());
+        // a column on the controller: the plate floats over its top
+        ShapeKit.Shape s = new ShapeKit.Shape("column", 5, 8, 5);
+        for (int x = 0; x < 5; x++) for (int z = 0; z < 5; z++) s.set(x, 0, z, 'd');
+        s.set(2, 1, 2, ShapeKit.CONTROLLER);
+        s.controller = new int[] { 2, 1, 2 };
+        for (int y = 2; y <= 4; y++) s.set(2, y, 2, 'W');
+        CityBuild column = new CityBuild(
+            "column",
+            s,
+            8,
+            ShapeKit.blueprint(s, 8),
+            new UnitLayout(s),
+            Parts.moduleCore(ModuleCores.ARCANE_COURT),
+            new CityBuild.Stages() {
+
+                @Override
+                public int stage(int x, int y, int z, char ch) {
+                    return BuildPlan.M_SHELL;
+                }
+
+                @Override
+                public int fitRank(int x, int y, int z, char ch) {
+                    return 0;
+                }
+            });
+        assertTrue(ModuleLook.central(column));
+        double[] q = ModuleLook.plate(column);
+        assertEquals(2.5, q[0], 1e-9);
+        assertEquals(4 + 1 + ModuleLook.OVER_COLUMN, q[1], 1e-9);
+        assertEquals(2.5, q[2], 1e-9);
+    }
+
+    /**
+     * The other three pavilions' plates (0.13.0): the Blood Covenant Altar's 3.6 over its controller on the dais, open
+     * to the oculus; the Echo Hunting Ground's 3.6 over the emitter, open to the sky; the Mana Fountain Array's over
+     * the
+     * top of the obelisk (its seat at y7), so it never floats inside the spout.
+     */
+    @Test
+    void thePavilionsPlatesFloatOverTheirCentres() {
+        double[] blood = ModuleLook.plate(BloodCovenantShape.BUILD);
+        assertArrayEquals(new double[] { 12.5, 3 + 3.6, 12.5 }, blood, 1e-9);
+        double[] hunting = ModuleLook.plate(HuntingGroundShape.BUILD);
+        assertArrayEquals(new double[] { 12.5, 2 + 3.6, 12.5 }, hunting, 1e-9);
+        double[] mana = ModuleLook.plate(ManaFountainShape.BUILD);
+        assertArrayEquals(new double[] { 12.5, 7 + 1 + ModuleLook.OVER_COLUMN, 12.5 }, mana, 1e-9);
+        for (CityBuild b : new CityBuild[] { BloodCovenantShape.BUILD, HuntingGroundShape.BUILD,
+            ManaFountainShape.BUILD }) {
+            assertTrue(ModuleLook.central(b), b.key());
+            assertEquals(
+                1,
+                ModuleLook.plates(b)
+                    .size(),
+                b.key());
+        }
+    }
+
     /** Near inside or within the near distance of the box, mid within the effect range, far beyond (CITY.md §1.3). */
     @Test
     void theTiers() {
@@ -164,5 +240,41 @@ class ModuleLookTest {
         assertFalse(ModuleLook.beeName("Forestry:beehouse"));
         assertFalse(ModuleLook.beeName("minecraft:wheat_seeds"));
         assertFalse(ModuleLook.beeName(null));
+    }
+
+    @Test
+    void theSharedDrawingsQuadsAreCountedByTier() {
+        // the Eco Dome: 125 plinth faces, one plate, 36 sockets (CityRender's own sums)
+        int faces = ModuleLook.course(B)
+            .size();
+        assertEquals(125, faces);
+        // the forming sweep as CityRender draws it through the 27 x 35 box: a plane and its rim's four lines cut into
+        // pieces of 8 blocks, 4 + 5 + 4 + 5
+        int sweep = 19;
+        assertEquals(sweep, ModuleLook.sweepQuads(B));
+        assertEquals(sweep, ModuleLook.baseQuads(B, EcoDomeShape.UNITS, ModuleLook.FAR), "far");
+        assertEquals(
+            sweep + ModuleLook.PLATE_QUADS + faces,
+            ModuleLook.baseQuads(B, EcoDomeShape.UNITS, ModuleLook.MID),
+            "mid");
+        assertEquals(
+            sweep + ModuleLook.PLATE_QUADS + 3 * faces + 36 * 4 * 3,
+            ModuleLook.baseQuads(B, EcoDomeShape.UNITS, ModuleLook.NEAR),
+            "near");
+        // a 25 x 25 pavilion's sweep: four pieces a side
+        CityBuild[] pavilions = { ArcaneCourtShape.BUILD, BloodCovenantShape.BUILD, HuntingGroundShape.BUILD,
+            ManaFountainShape.BUILD };
+        UnitLayout[] layouts = { ArcaneCourtShape.UNITS, BloodCovenantShape.UNITS, HuntingGroundShape.UNITS,
+            ManaFountainShape.UNITS };
+        for (int i = 0; i < pavilions.length; i++) {
+            assertEquals(17, ModuleLook.sweepQuads(pavilions[i]), pavilions[i].key());
+            assertEquals(17, ModuleLook.baseQuads(pavilions[i], layouts[i], ModuleLook.FAR), pavilions[i].key());
+        }
+        // a module the lift enters and hangs in the air carries two plates
+        assertEquals(
+            ModuleLook.sweepQuads(DomeGeneratorShape.BUILD) + 2 * ModuleLook.PLATE_QUADS
+                + ModuleLook.course(DomeGeneratorShape.BUILD)
+                    .size(),
+            ModuleLook.baseQuads(DomeGeneratorShape.BUILD, DomeGeneratorShape.UNITS, ModuleLook.MID));
     }
 }

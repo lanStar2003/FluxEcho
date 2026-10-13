@@ -82,6 +82,8 @@ public final class NexusGui {
     public static final int BTN_H = 14, ROW1_Y = 110, ROW2_Y = 127, ROW3_Y = 144;
     public static final int BILL_X = 142, BILL_Y = 24, BILL_W = 98, BILL_HEAD_W = 80, ROW_H = 12, ROWS_Y = 35;
     public static final int PAGER_X = 224, PAGER_W = 16, PAGER_H = 10;
+    /** Where in the job panel the module list (without a job) has its head line. */
+    public static final int MODULES_Y = 13;
     public static final int INTAKE_X = 144, INTAKE_Y = 137, FOOT_X = 164, FOOT_Y = 136, FOOT_W = 76, FOOT_H = 22;
 
     private static final String P = "fluxecho.build.";
@@ -95,6 +97,8 @@ public final class NexusGui {
         public int page = PAGE_NEXUS;
         /** The bill page shown (0 or 1). */
         public int billPage;
+        /** The page of the module list shown without a job (0.13.0: eight modules do not fit at once); the client's. */
+        public int modulePage;
         /** When 取消 was clicked once ({@code System.currentTimeMillis}); 0 when it was not. */
         public long cancelAt;
         /** The build page's numbers. */
@@ -378,6 +382,17 @@ public final class NexusGui {
                 .setSize(JOB_W, JOB_H)
                 .setEnabled(on));
 
+        // without a job, the module list's pager (0.13.0), on the list's head line
+        b.widget(new ButtonWidget().setOnClick((click, widget) -> {
+            if (!widget.isClient()) return;
+            view.modulePage = (view.modulePage + 1) % modulePages(bd);
+        })
+            .setBackground((x, y, w, h, partial) -> NexusScreen.modulePager(view, x, y, w, h))
+            .dynamicTooltip(() -> EchoText.lines("build.gui.module_page.tip"))
+            .setPos(JOB_X + JOB_W - PAGER_W - 2, JOB_Y + MODULES_Y - 1)
+            .setSize(PAGER_W, PAGER_H)
+            .setEnabled(widget -> view.page == PAGE_BUILD && showsModules(bd) && modulePages(bd) > 1));
+
         // row 1: 开始/暂停, 补给, 取消 (two clicks: the first arms, the second, on its own button, confirms)
         b.widget(
             button(
@@ -527,6 +542,19 @@ public final class NexusGui {
                 .setPos(FOOT_X, FOOT_Y)
                 .setSize(FOOT_W, FOOT_H)
                 .setEnabled(on));
+    }
+
+    /** Modules the job panel lists at once without a job (two lines each). */
+    public static final int MODULE_ROWS = 3;
+
+    /** How many pages the module list takes ({@link #MODULE_ROWS} modules a page; 1 for an empty list). */
+    public static int modulePages(Build b) {
+        return Math.max(1, (b.modules.size() + MODULE_ROWS - 1) / MODULE_ROWS);
+    }
+
+    /** Whether the job panel shows the module list: the campus is active and has no job. */
+    static boolean showsModules(Build b) {
+        return b.received && b.enabled && b.active && !b.hasJob();
     }
 
     /** A flux button with a changing label and state; {@code click} runs on both sides. */

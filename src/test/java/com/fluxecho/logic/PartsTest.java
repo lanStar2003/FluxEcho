@@ -109,8 +109,25 @@ class PartsTest {
         assertEquals("root", ModuleCores.key(ModuleCores.ROOT));
         assertEquals(ModuleCores.ROOT, ModuleCores.meta(RootShape.KEY));
         assertTrue(ModuleCores.built(ModuleCores.ROOT));
+        // 0.13.0: the Arcane Court's core is meta 2
+        assertEquals(2, ModuleCores.ARCANE_COURT);
+        assertEquals("arcane_court", ModuleCores.key(ModuleCores.ARCANE_COURT));
+        assertEquals(ModuleCores.ARCANE_COURT, ModuleCores.meta(ArcaneCourtShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.ARCANE_COURT));
+        assertEquals(66, Parts.moduleCore(ModuleCores.ARCANE_COURT));
+        // and the other three pavilions' metas 3, 4 and 5
+        assertEquals(3, ModuleCores.BLOOD_COVENANT);
+        assertEquals(4, ModuleCores.HUNTING_GROUND);
+        assertEquals(5, ModuleCores.MANA_FOUNTAIN);
+        assertEquals(ModuleCores.BLOOD_COVENANT, ModuleCores.meta(BloodCovenantShape.KEY));
+        assertEquals(ModuleCores.HUNTING_GROUND, ModuleCores.meta(HuntingGroundShape.KEY));
+        assertEquals(ModuleCores.MANA_FOUNTAIN, ModuleCores.meta(ManaFountainShape.KEY));
+        assertEquals(67, Parts.moduleCore(ModuleCores.BLOOD_COVENANT));
+        assertEquals(68, Parts.moduleCore(ModuleCores.HUNTING_GROUND));
+        assertEquals(69, Parts.moduleCore(ModuleCores.MANA_FOUNTAIN));
         assertArrayEquals(
-            new int[] { ModuleCores.ECO_DOME, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
+            new int[] { ModuleCores.ECO_DOME, ModuleCores.ARCANE_COURT, ModuleCores.BLOOD_COVENANT,
+                ModuleCores.HUNTING_GROUND, ModuleCores.MANA_FOUNTAIN, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
             ModuleCores.built());
         assertFalse(ModuleCores.built(ModuleCores.DUAL_FOIL_VAULT), "the vault comes in 0.14.0");
         int last = -1;

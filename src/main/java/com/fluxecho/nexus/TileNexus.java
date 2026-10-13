@@ -696,8 +696,9 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
      * Which modules it takes: its teams' formed modules, as many as its ring has room for ({@link #openSlots}). A
      * module is found, in this order of precedence, (1) on the site the campus recorded for it, (2) standing on a site
      * of an active campus (a hall: its centre within 3 blocks of where the site puts a module of its kind, at most one
-     * block up or down, its front towards the nexus; an axis module, 0.12.0: its controller exactly where its site puts
-     * it, facing that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2 inner ring. A module on
+     * block up or down, its front towards the nexus; a pavilion, 0.13.0: the same round its diagonal's octagon centre,
+     * its front along A toward the nexus; an axis module, 0.12.0: its controller exactly where its site puts it, facing
+     * that way): it is adopted and the site recorded, or (3) on a slot of the 0.9.2 inner ring. A module on
      * a site docks under the site's number, which points the same way as the ring slot of that number; the axis sites
      * (8 the zenith, 9 the root) take no room on the ring. Docked and rejected modules get a lease of 220 ticks.
      */
@@ -772,12 +773,14 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     }
 
     /**
-     * The site of an active campus a module stands on, or -1: a hall site ({@link #hallSite}), or for a module on the
-     * nexus's axis (0.12.0) a site of its spec whose controller cell and front are exactly the module's.
+     * The site of an active campus a module stands on, or -1: a hall site ({@link #hallSite}), a pavilion site
+     * ({@link #pavilionSite}, 0.13.0), or for a module on the nexus's axis (0.12.0) a site of its spec whose controller
+     * cell and front are exactly the module's.
      */
     private static int campusSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
         ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
         if (spec == null) return -1;
+        if (spec.family == SiteFamily.PAVILION) return pavilionSite(m, mc, c, fx, fz);
         if (!spec.axis()) return hallSite(m, mc, c, fx, fz);
         for (int site : spec.sites) {
             int[] at = spec.controller(site, c[0], c[1], c[2], fx, fz);
@@ -806,6 +809,23 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         int[] axis = CampusPlan.siteAxis(site);
         int[] facing = CampusPlan.toLocal(m.front().offsetX, m.front().offsetZ, fx, fz);
         return facing[0] == -axis[0] && facing[1] == -axis[1] ? site : -1;
+    }
+
+    /**
+     * The pavilion site a module stands on (0.13.0), or -1: its module kind has a campus spec that builds on that
+     * diagonal, its centre is within 3 blocks of the site's octagon centre ({@link CampusPlan#moduleCentre}, campus
+     * frame), at most one block up or down from the nexus's base, and its front points along A toward the nexus
+     * ({@link CampusPlan#pavilionFront}).
+     */
+    private static int pavilionSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        if (spec == null || Math.abs(mc[1] - c[1]) > 1) return -1;
+        int[] local = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
+        int site = CampusPlan.pavilionSiteAt(local[0], local[1]);
+        if (site < 0 || !spec.hasSite(site)) return -1;
+        int[] want = CampusPlan.pavilionFront(site);
+        int[] facing = CampusPlan.toLocal(m.front().offsetX, m.front().offsetZ, fx, fz);
+        return facing[0] == want[0] && facing[1] == want[1] ? site : -1;
     }
 
     private void undockAll() {

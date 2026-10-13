@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -3120051733007147521,
+      "questIDLow:4": -8295953146924627145
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "斜角的亭子：一座八角形的露天圆形剧场，看台围着中间的全息竞技场。中枢长到相位 II、研究「回响猎场」（回响分支，要先研究相位 II 和回响结晶）以后，中枢在园区斜角的亭子位上投影出它：先挑右后方的 3 号位，再 5、1、7 号位。\n\n• 研究要 30000 算力，和 16 块钛板、4 块 EV 电路板、8 块相位合金、4 把弓；\n• 在显化台用 8 块回响晶、8 块相位合金、4 块共鸣玻璃、2 块 EV 电路板、2 把弓显化出回响猎场核心，交给中枢，再在「建造」页按「开始」；\n• 25×25、10 格高，露天：半格一级的看台一圈圈升到外墙，不用跳就能走遍；四条通道从切角门穿过看台底下通到竞技场。核心在竞技场正中的全息发射器上；\n• 12 个印记台围着竞技场，每个一个样本座，放你的猎物印记；\n• 建好后自己停靠到中枢上，从团队无线电网取 128 EU/t。成型后看台上方那一圈天篷环化作一顶半透明的六角光篷（边上琥珀色、竞技场上方青色）；停靠后每 6 秒一道扫描线扫过竞技场的全息网格，放了东西的印记台上浮着一个小剪影：放的是猎物印记或刷怪蛋时，是那一类怪的轮廓（人形、四足兽、爬虫……），用它刷怪蛋的颜色（没有刷怪蛋的怪是灰青色）。\n\n[note]相位 II 的内环只有 4 个位置，亭子也占：已经有档案馆和生态穹的园区只建得下两座亭子，另外两座在「建造」页写着「内环已满」，等相位 III 内环开到 8 个。这个版本的印记台什么都能放，怪的全息在竞技场里表演、并行回响猎物的掉落是以后的版本。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 4,
+        "OreDict:8": "",
+        "id:8": "fluxecho:module_core"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l回响猎场",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -9186689529160640921,
+  "questIDLow:4": -5015082439008687525,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 4,
+          "OreDict:8": "",
+          "id:8": "fluxecho:module_core"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

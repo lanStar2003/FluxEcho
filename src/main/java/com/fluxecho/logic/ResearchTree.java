@@ -130,7 +130,8 @@ public final class ResearchTree {
     public static final String ANCHOR = "anchor", INNER_RING = "inner_ring", PHASE_2 = "phase_2",
         ECHO_CRYSTAL = "echo_crystal", LIBRARY = "library", LIBRARY_REACH = "library_reach", COMPUTE_1 = "compute_1",
         UPKEEP_1 = "upkeep_1", TIDAL_WELL = "tidal_well", GRIT_YIELD = "grit_yield", DOME = "dome",
-        ECO_DOME = "eco_dome";
+        ECO_DOME = "eco_dome", ARCANE_COURT = "arcane_court", BLOOD_COVENANT = "blood_covenant",
+        HUNTING_GROUND = "hunting_ground", MANA_FOUNTAIN = "mana_fountain";
 
     private static final Map<String, Node> NODES = new LinkedHashMap<>();
 
@@ -159,10 +160,13 @@ public final class ResearchTree {
                 "ore:gemFluxCrystal*32" },
             0,
             2);
+        // 0.13.0: the echo crystal, the library and its reach stand a little right of where 0.9.0 put them, so the
+        // English names under them ("Echo Crystallization", "Echo Library") keep off the anchor's and the reach's arms
+        // at the smallest GUI (ResearchTreeTest)
         add(
             ECHO_CRYSTAL,
             Branch.ECHO,
-            228,
+            232,
             88,
             new String[] { ANCHOR },
             6_000,
@@ -172,7 +176,7 @@ public final class ResearchTree {
         add(
             LIBRARY,
             Branch.ECHO,
-            266,
+            268,
             62,
             new String[] { ECHO_CRYSTAL, INNER_RING },
             12_000,
@@ -182,7 +186,7 @@ public final class ResearchTree {
         add(
             LIBRARY_REACH,
             Branch.ECHO,
-            306,
+            312,
             76,
             new String[] { LIBRARY },
             24_000,
@@ -254,6 +258,57 @@ public final class ResearchTree {
             new String[] { "ore:gemEchoCrystal*4", "ore:treeSapling*16", "ore:blockGlass*32" },
             0,
             1);
+        // 0.13.0: the pavilions on the diagonals (CITY.md §4.3-4.6, Appendix B), EV costs and one themed vanilla item
+        // each: the Arcane Court's is the enchanting table it scales up, the Blood Covenant Altar's nether wart grown
+        // on soul sand, the Echo Hunting Ground's bows, the Mana Fountain Array's poppies for its garden. On the map
+        // the altar stands at the top, over the library and right of the eco dome, and the other three step down the
+        // right-hand side each on a row of its own (the Arcane Court under the library's reach, the Echo Hunting
+        // Ground below it, the Mana Fountain Array by the compute branch's name). No line from phase II or the echo
+        // crystal runs through another star, and no name, English or Chinese, runs into another name, a star or a
+        // constellation's name at any GUI size down to the smallest (ResearchTreeTest).
+        add(
+            ARCANE_COURT,
+            Branch.ECHO,
+            290,
+            110,
+            new String[] { PHASE_2, ECHO_CRYSTAL },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
+                "item:minecraft:enchanting_table*2" },
+            0,
+            2);
+        add(
+            BLOOD_COVENANT,
+            Branch.ECHO,
+            282,
+            16,
+            new String[] { PHASE_2, ECHO_CRYSTAL },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
+                "item:minecraft:nether_wart*16" },
+            0,
+            2);
+        add(
+            HUNTING_GROUND,
+            Branch.ECHO,
+            316,
+            146,
+            new String[] { PHASE_2, ECHO_CRYSTAL },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "item:minecraft:bow*4" },
+            0,
+            2);
+        add(
+            MANA_FOUNTAIN,
+            Branch.ECHO,
+            272,
+            182,
+            new String[] { PHASE_2, ECHO_CRYSTAL },
+            30_000,
+            new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
+                "item:minecraft:red_flower*16" },
+            0,
+            2);
     }
 
     private ResearchTree() {}

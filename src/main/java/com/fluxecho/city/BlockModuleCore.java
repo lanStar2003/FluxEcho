@@ -29,7 +29,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * Icons per meta: {@code fluxecho:module_core/<module>/front}, {@code front_on}, {@code side}, {@code top}; a meta
  * without a module yet shows the Eco Dome's. 0.12.0 adds the Echo Dome Generator (meta 7) and the root's Tidal Well
- * (meta 8).
+ * (meta 8), 0.13.0 the four pavilions: the Arcane Court (meta 2), the Blood Covenant Altar (3), the Echo Hunting
+ * Ground (4) and the Mana Fountain Array (5).
  */
 public class BlockModuleCore extends BlockNexus {
 
@@ -43,6 +44,10 @@ public class BlockModuleCore extends BlockNexus {
     @Override
     public TileEntity createNewTileEntity(World w, int meta) {
         if (meta == ModuleCores.ECO_DOME) return new TileEcoDome();
+        if (meta == ModuleCores.ARCANE_COURT) return new TileArcaneCourt();
+        if (meta == ModuleCores.BLOOD_COVENANT) return new TileBloodCovenant();
+        if (meta == ModuleCores.HUNTING_GROUND) return new TileHuntingGround();
+        if (meta == ModuleCores.MANA_FOUNTAIN) return new TileManaFountain();
         if (meta == ModuleCores.DOME_GENERATOR) return new TileDomeGenerator();
         if (meta == ModuleCores.ROOT) return new TileRoot();
         return null;

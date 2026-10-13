@@ -22,9 +22,10 @@ import java.util.Set;
  * <li>{@link #forum}: the same without the nexus, for a 0.9.2 nexus that already stands, leaving the halls docked
  * round it alone;</li>
  * <li>{@link #module}: a module on a hall site (0.11.0, the Echo Archive's plan made general: the Archive through
- * {@link #ARCHIVE}, every city module through its {@link CityBuild}): its forecourt and apron, its interior floor, its
- * shell from the bottom up, its decks, upper walls and roof, its fittings and units, the canopy (and for a city module
- * its seeded ornaments), and the controller last.</li>
+ * {@link #ARCHIVE}, every city module through its {@link CityBuild}) or (0.13.0) a pavilion on a diagonal site: its
+ * forecourt and apron (a pavilion's apron and allee), its interior floor, its shell from the bottom up, its decks,
+ * upper walls and roof, its fittings and units, the canopy (and for a city module its seeded ornaments), and the
+ * controller last.</li>
  * <li>{@link #grow}: the next stage of a formed nexus (0.12.0, CITY.md §3), at phase II with the light-lift pad;</li>
  * <li>{@link #zenith}: the Echo Dome Generator over the nexus (0.12.0, {@link DomeGeneratorShape}): its six legs from
  * the forum, then its pod in the air.</li>
@@ -95,6 +96,11 @@ public final class BuildPlan {
     /** The seeded annex: its kinds, how far out of the footprint it stands, and the rows it leaves free at each end. */
     static final int ANNEX_PLANTERS = 0, ANNEX_LAMPS = 1, ANNEX_BENCHES = 2, ANNEX_PYLON = 3, ANNEX_KINDS = 4,
         ANNEX_OFFSET = 2, ANNEX_FROM = 6;
+    /**
+     * A pavilion's annex (0.13.0) stands on its apron's outer row beside a flat side face, rows 8 to 16: there the row
+     * lies inside the apron {@code oct(14, 18)} (14 out across, at most 4 along), clear of the chamfer portals.
+     */
+    public static final int PAVILION_ANNEX_FROM = 8;
     /** Hash salts of the ornaments. */
     private static final int S_CANOPY = 41, S_ANNEX_SIDE = 43, S_ANNEX_KIND = 47;
     /**
@@ -801,6 +807,16 @@ public final class BuildPlan {
          */
         int fitRank(int x, int y, int z, char ch);
 
+        /**
+         * The order within its stage of a cell that belongs to no unit, in the stages built bottom-up (SHELL, DECK,
+         * UPPER, ROOF, DECOR; not FLOOR or FIT): a stage lays its cells by this order first, lower first, each order
+         * bottom-up (0.13.0: the Echo Hunting Ground's terraces ring by ring from the arena out, then the vomitoria's
+         * bridges). 0 for every cell, as every module before has it, keeps each stage bottom-up as it always was.
+         */
+        default int order(int x, int y, int z, char ch) {
+            return 0;
+        }
+
         /** The cells {x, y, z} of every unit, in unit order: each unit is one launch group (its index the group id). */
         List<List<int[]>> units();
 
@@ -833,6 +849,41 @@ public final class BuildPlan {
     public static int[] hallController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
         int[] c = m.controller();
         return hallController(site, cx, y0, cz, fx, fz, c[1], c[2]);
+    }
+
+    /**
+     * Where the controller of a pavilion stands on a pavilion site (0.13.0, CITY.md §2.1), and which way it faces:
+     * {x, y, z, facing ordinal}. The middle column of the module's box stands on the site's octagon centre
+     * ({@link CampusPlan#diagonalCentre}, (+-36, +-36)) with its foundation at Y0, and its blueprint's front faces
+     * along A toward the nexus ({@link CampusPlan#pavilionFront}: sites 1 and 7 look along -A, sites 3 and 5 along +A).
+     * A centrally planned building's controller is that middle column's ({@code (12, 2, 12)}: {@code (+-36, Y0 + 2,
+     * +-36)}), so {@link Blueprint#world} puts the module's centre on {@link CampusPlan#moduleCentre}.
+     *
+     * @throws IllegalArgumentException if the site is not a pavilion site or the front not a horizontal unit vector
+     */
+    public static int[] pavilionController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
+        facingOrdinal(fx, fz);
+        if (SiteFamily.of(site) != SiteFamily.PAVILION)
+            throw new IllegalArgumentException("not a pavilion site: " + site);
+        int[] centre = CampusPlan.diagonalCentre(site);
+        int[] front = CampusPlan.pavilionFront(site);
+        int[] fw = CampusPlan.toWorld(front[0], front[1], fx, fz);
+        int[] c = m.controller();
+        // the controller lies (dx, dz) from the box's middle column in the shape's frame, which Blueprint.world turns
+        // into the world as across (fz, -fx) and back (-fx, -fz)
+        int dx = c[0] - (m.width() - 1) / 2, dz = c[2] - (m.depth() - 1) / 2;
+        int ox = dx * fw[1] - dz * fw[0], oz = -dx * fw[0] - dz * fw[1];
+        int[] w = CampusPlan.toWorld(centre[0], centre[1], fx, fz);
+        return new int[] { cx + w[0] + ox, y0 + c[1], cz + w[1] + oz, facingOrdinal(fw[0], fw[1]) };
+    }
+
+    /**
+     * Where a module's controller stands on a ground site of its family: {@link #pavilionController} on a pavilion
+     * site, {@link #hallController} anywhere else (which takes hall sites only).
+     */
+    public static int[] moduleController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz) {
+        if (SiteFamily.of(site) == SiteFamily.PAVILION) return pavilionController(m, site, cx, y0, cz, fx, fz);
+        return hallController(m, site, cx, y0, cz, fx, fz);
     }
 
     /**
@@ -876,26 +927,35 @@ public final class BuildPlan {
     }
 
     /**
-     * The module job of a hall module (0.11.0): the generic plan the Archive and every city hall share.
+     * The module job of a hall module (0.11.0) or a pavilion (0.13.0): the generic plan the Archive and every city
+     * module on a ground site share.
      * <ul>
-     * <li>CLEAR: the footprint and {@link #MODULE_MARGIN} round it, from Y0 + 1 to {@link #MODULE_HEADROOM} above the
-     * shape's top layer that holds anything, outward from the nexus, grading their Y0 cells.</li>
-     * <li>FLOOR: {@link CampusPlan#siteFloor} and the soft cells the module puts in FLOOR, outward from the nexus.</li>
-     * <li>SHELL, DECK, UPPER, ROOF: the cells the module puts there, bottom-up by layer.</li>
+     * <li>CLEAR: the footprint and {@link #MODULE_MARGIN} round it (a hall's whole box, a pavilion's octagon), from Y0
+     * + 1 to {@link #MODULE_HEADROOM} above the shape's top layer that holds anything, outward from the nexus, grading
+     * their Y0 cells.</li>
+     * <li>FLOOR: the site's floor ({@link CampusPlan#siteFloor} for a hall, {@link CampusPlan#pavilionFloor} for a
+     * pavilion: its apron and its diagonal allee) and the soft cells the module puts in FLOOR, outward from the
+     * nexus.</li>
+     * <li>SHELL, DECK, UPPER, ROOF: the cells the module puts there, bottom-up by layer (by the module's own order
+     * first where it gives one, {@link ModuleBuild#order}, 0.13.0: the Echo Hunting Ground's terraces ring by
+     * ring).</li>
      * <li>FIT: the cells ranked before the units, every unit as one contiguous group in unit order (bottom-up within
      * the group), then the cells ranked after them.</li>
-     * <li>DECOR: the shape's decor and, for a module that wants them, the seeded ornaments ({@link #ornaments}).</li>
+     * <li>DECOR: the shape's decor and, for a module that wants them, the seeded ornaments ({@link #ornaments}; a
+     * pavilion's annex beside a flat side, {@link #PAVILION_ANNEX_FROM}).</li>
      * <li>COMMISSION: the controller, the last step.</li>
      * </ul>
      * A soft cell is a SOFT step, {@code -} an AIR step, every other cell a HARD step placed where
-     * {@link Blueprint#world} puts it for the module's controller ({@link #hallController}), so the HARD steps are
+     * {@link Blueprint#world} puts it for the module's controller ({@link #moduleController}), so the HARD steps are
      * exactly the cells the structure check looks at.
      *
-     * @throws IllegalArgumentException if the site is not a hall site or the front not a horizontal unit vector
+     * @throws IllegalArgumentException if the site is neither a hall site nor a pavilion site, or the front not a
+     *                                  horizontal unit vector
      * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the shape's unit cells
      */
     public static Plan module(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, ModuleBuild m) {
-        int[] ctrl = hallController(m, site, cx, y0, cz, fx, fz);
+        boolean pavilion = SiteFamily.of(site) == SiteFamily.PAVILION;
+        int[] ctrl = moduleController(m, site, cx, y0, cz, fx, fz);
         int[] ax = CampusPlan.siteAxis(site);
         Frame f = new Frame(cx, y0, cz, fx, fz, ax[0], ax[1]);
         Local at = new Local(ctrl, m);
@@ -906,9 +966,13 @@ public final class BuildPlan {
         for (int y = 0; y < h; y++) for (int z = 0; z < d; z++) for (int x = 0; x < w; x++) {
             if (m.cell(x, y, z) != ShapeKit.NONE) top = Math.max(top, y);
         }
+        // a hall clears its whole box and MODULE_MARGIN round it; a pavilion its footprint (the columns its base layer
+        // holds) and MODULE_MARGIN round that, its octagon oct(12, 16) grown to oct(13, 18), inside its apron
+        Set<Long> footprint = pavilion ? footprint(m) : null;
         List<Clearing> clear = new ArrayList<>();
         for (int z = -MODULE_MARGIN; z < d + MODULE_MARGIN; z++) {
             for (int x = -MODULE_MARGIN; x < w + MODULE_MARGIN; x++) {
+                if (pavilion && !near(footprint, x, z, MODULE_MARGIN)) continue;
                 int[] p = at.world(x, 0, z);
                 clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + top + 1 + MODULE_HEADROOM, true));
             }
@@ -918,8 +982,8 @@ public final class BuildPlan {
         List<List<Draft>> stages = new ArrayList<>();
         for (int i = 0; i < M_STAGES; i++) stages.add(new ArrayList<>());
         List<Draft> floor = stages.get(M_FLOOR);
-        for (Map.Entry<Long, Integer> e : plan.siteFloor(site, w, d)
-            .entrySet()) {
+        Map<Long, Integer> siteFloor = pavilion ? plan.pavilionFloor(site) : plan.siteFloor(site, w, d);
+        for (Map.Entry<Long, Integer> e : siteFloor.entrySet()) {
             long k = e.getKey();
             paving(
                 floor,
@@ -953,15 +1017,25 @@ public final class BuildPlan {
                 if (rank == 0) throw new IllegalStateException(m.key() + ": a fitting ranked with the units");
                 dr.rank = rank;
                 (rank < 0 ? before : after).add(dr);
-            } else stages.get(stage)
-                .add(dr);
+            } else {
+                // its order within a stage built bottom-up (0 for every module but those that give one)
+                if (stage != M_FLOOR) dr.rank = m.order(x, y, z, ch);
+                stages.get(stage)
+                    .add(dr);
+            }
         }
         List<Draft> decor = stages.get(M_DECOR);
         for (int[] c : m.decor()) {
             int[] p = at.world(c[0], c[1], c[2]);
             decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
         }
-        if (m.ornaments()) ornaments(decor, f, at, m, Mix.seed(ctrl[0], ctrl[1], ctrl[2]));
+        if (m.ornaments()) ornaments(
+            decor,
+            f,
+            at,
+            m,
+            Mix.seed(ctrl[0], ctrl[1], ctrl[2]),
+            pavilion ? PAVILION_ANNEX_FROM : ANNEX_FROM);
 
         // every unit as one contiguous group, bottom-up within it
         List<Draft> units = new ArrayList<>();
@@ -982,12 +1056,14 @@ public final class BuildPlan {
             throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + shapeUnitCells);
         }
 
-        for (int s = M_FLOOR; s < M_STAGES; s++) {
-            if (s != M_FIT) stages.get(s)
-                .sort(s == M_FLOOR ? RIPPLE : BOTTOM_UP);
-        }
+        // FLOOR ripples out from the nexus; the other stages but FIT go by their cells' order, each order bottom-up
+        // (with every order 0, as before 0.13.0, that is bottom-up alone: the same comparisons, the same plan)
         Comparator<Draft> ranked = Comparator.<Draft>comparingInt(dr -> dr.rank)
             .thenComparing(BOTTOM_UP);
+        for (int s = M_FLOOR; s < M_STAGES; s++) {
+            if (s != M_FIT) stages.get(s)
+                .sort(s == M_FLOOR ? RIPPLE : ranked);
+        }
         before.sort(ranked);
         after.sort(ranked);
         List<Draft> fit = stages.get(M_FIT);
@@ -1222,13 +1298,14 @@ public final class BuildPlan {
      * <ul>
      * <li>the canopy is 2, 3 or 4 rows deep (the shape's canopy is two; its outermost row is repeated outward);</li>
      * <li>one side's apron (its outer row, {@link #ANNEX_OFFSET} out from the footprint, at Y0 + 1, from row
-     * {@link #ANNEX_FROM} to row depth - 1 - {@link #ANNEX_FROM}) takes an annex: a planter wall (grass beds between
+     * {@code annexFrom} to row depth - 1 - {@code annexFrom}: {@link #ANNEX_FROM} for a hall,
+     * {@link #PAVILION_ANNEX_FROM} for a pavilion) takes an annex: a planter wall (grass beds between
      * basin rims every fourth cell), a lamp row (a post two high with a lit crown cap every third cell), a bench row
      * (stair treads with a gap every fifth cell) or a holo-sign pylon (a pedestal and two posts in the middle of the
      * side).</li>
      * </ul>
      */
-    static void ornaments(List<Draft> decor, Frame f, Local at, ModuleBuild m, long seed) {
+    static void ornaments(List<Draft> decor, Frame f, Local at, ModuleBuild m, long seed, int annexFrom) {
         int depth = canopyDepth(seed);
         List<int[]> canopy = m.decor();
         if (!canopy.isEmpty() && depth > CANOPY_MIN) {
@@ -1240,10 +1317,27 @@ public final class BuildPlan {
                 decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
             }
         }
-        for (int[] c : annex(m.width(), m.depth(), seed)) {
+        for (int[] c : annex(m.width(), m.depth(), annexFrom, seed)) {
             int[] p = at.world(c[0], c[1], c[2]);
             decor.add(new Draft(f, p[0], p[1], p[2], c[3], SOFT, NO_GROUP));
         }
+    }
+
+    /** The columns {x, z} (as {@link ShapeKit#key}) a module's base layer holds: its footprint. */
+    private static Set<Long> footprint(ModuleBuild m) {
+        Set<Long> out = new HashSet<>();
+        for (int x = 0; x < m.width(); x++) for (int z = 0; z < m.depth(); z++) {
+            if (m.cell(x, 0, z) != ShapeKit.NONE) out.add(ShapeKit.key(x, z));
+        }
+        return out;
+    }
+
+    /** Whether a column lies within {@code margin} (either way, diagonals too) of a column of the set. */
+    private static boolean near(Set<Long> cells, int x, int z, int margin) {
+        for (int dx = -margin; dx <= margin; dx++) for (int dz = -margin; dz <= margin; dz++) {
+            if (cells.contains(ShapeKit.key(x + dx, z + dz))) return true;
+        }
+        return false;
     }
 
     /** The canopy's depth in rows for a module seed: 2, 3 or 4. */
@@ -1256,11 +1350,20 @@ public final class BuildPlan {
         return Math.min(ANNEX_KINDS - 1, (int) (Mix.unit(seed, S_ANNEX_KIND) * ANNEX_KINDS));
     }
 
-    /** The annex's cells in the module's local frame, {x, y, z, part}, for a module {@code width x depth}. */
+    /** The annex's cells in the module's local frame, {x, y, z, part}, for a hall {@code width x depth}. */
     public static List<int[]> annex(int width, int depth, long seed) {
+        return annex(width, depth, ANNEX_FROM, seed);
+    }
+
+    /**
+     * The annex's cells in the module's local frame, {x, y, z, part}, for a module {@code width x depth} whose annex
+     * leaves {@code from} rows free at each end: a hall {@link #ANNEX_FROM}, a pavilion
+     * {@link #PAVILION_ANNEX_FROM} (0.13.0).
+     */
+    public static List<int[]> annex(int width, int depth, int from, long seed) {
         int x = Mix.unit(seed, S_ANNEX_SIDE) < 0.5 ? -ANNEX_OFFSET : width - 1 + ANNEX_OFFSET;
         int kind = annexKind(seed);
-        int z0 = ANNEX_FROM, z1 = depth - 1 - ANNEX_FROM;
+        int z0 = from, z1 = depth - 1 - from;
         List<int[]> cells = new ArrayList<>();
         for (int z = z0; z <= z1; z++) {
             int i = z - z0;
@@ -1548,7 +1651,10 @@ public final class BuildPlan {
 
         final int part, group;
         final byte kind;
-        /** Its rank within the FIT stage ({@link ModuleBuild#fitRank}). */
+        /**
+         * Its rank within the FIT stage ({@link ModuleBuild#fitRank}), or its order within a stage built bottom-up
+         * ({@link ModuleBuild#order}, 0.13.0).
+         */
         int rank;
 
         Draft(Frame f, int x, int y, int z, int part, byte kind, int group) {

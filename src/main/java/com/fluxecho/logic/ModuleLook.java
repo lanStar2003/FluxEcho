@@ -11,7 +11,8 @@ import java.util.List;
  * of its sockets an item shows in. Pure data, so the renderer keeps no geometry of its own and the tests can hold the
  * rules: the line runs on the outside of the walls only, never across a doorway; the plate floats in front of the
  * controller above the canopy; a socket's sample shows over the basin rim beside it; a ripple stays on its water.
- * Also how much a module draws for a camera ({@link #tier}), and which samples are bees.
+ * Also how much a module draws for a camera ({@link #tier}) and what the shared drawing costs it there
+ * ({@link #baseQuads}, 0.13.0), and which samples are bees.
  */
 public final class ModuleLook {
 
@@ -154,7 +155,8 @@ public final class ModuleLook {
     /**
      * Where the name plate's middle floats: on the controller's axis, over the middle of the portal's canopy (the
      * shape's decor in front of it, {@code z < 0}); without a canopy, three and a half blocks over the controller and
-     * one and a half out from the front. {x, y, z} in the module's frame (fractional, the middle of the controller's
+     * one and a half out from the front; for a centrally planned module (0.13.0, {@link #central}) over its central
+     * console ({@link #overCentre}). {x, y, z} in the module's frame (fractional, the middle of the controller's
      * column at {@code x + 0.5}).
      */
     public static double[] plate(CityBuild b) {
@@ -165,9 +167,35 @@ public final class ModuleLook {
             top = Math.max(top, d[1]);
             front = Math.min(front, d[2]);
         }
+        if (top == Integer.MIN_VALUE && central(b)) return overCentre(b);
         if (top == Integer.MIN_VALUE) return new double[] { c[0] + 0.5, c[1] + 3.6, -1.5 };
         // over the canopy's middle: it reaches from the front wall (z 0) out to the front of its outer row
         return new double[] { c[0] + 0.5, top + 1.75, front / 2.0 };
+    }
+
+    /** How high over the top of the column standing on a centrally planned module's controller its plate floats. */
+    public static final double OVER_COLUMN = 1.75;
+
+    /**
+     * Whether a module is centrally planned (0.13.0, CITY.md §1.1: the pavilions): its controller stands over the
+     * middle of its box, on the central console, not in a front wall.
+     */
+    public static boolean central(CityBuild b) {
+        int[] c = b.controller();
+        return c[0] == (b.width() - 1) / 2 && c[2] == (b.depth() - 1) / 2;
+    }
+
+    /**
+     * A centrally planned module's plate (0.13.0): over the central console, three and a half blocks over the
+     * controller, or, when a column stands on the controller (the Mana Fountain's obelisk), {@link #OVER_COLUMN} over
+     * that column's top, so the plate never floats inside it.
+     */
+    static double[] overCentre(CityBuild b) {
+        int[] c = b.controller();
+        int y = c[1];
+        while (y + 1 < b.height() && b.cell(c[0], y + 1, c[2]) != ShapeKit.NONE) y++;
+        double over = y == c[1] ? c[1] + 3.6 : y + 1 + OVER_COLUMN;
+        return new double[] { c[0] + 0.5, over, c[2] + 0.5 };
     }
 
     /** How high over its block's foot a lift-entered module's plate floats over its controller. */
@@ -205,4 +233,40 @@ public final class ModuleLook {
 
     /** The light-lift pad's character. */
     public static final char LIFT = '^';
+
+    /**
+     * The most quads a name plate takes (0.13.0): its pane and its two rules (15), and one a letter of its two lines
+     * for up to 65 letters.
+     */
+    public static final int PLATE_QUADS = 80;
+
+    /**
+     * The forming sweep's quads as {@code CityRender} draws it through the module's box (the blueprint's, as the
+     * module's {@code bounds()} gives it): a plane, and the four lines of its rim, each cut into pieces of at most
+     * {@link DomeLook#PIECE} blocks as every line is ({@link DomeLook#pieces}): 17 for a 25 x 25 pavilion, 19 for the
+     * 27 x 35 Eco Dome. (The Echo Dome Generator draws its own sweep, up its legs and then through its pod.)
+     */
+    public static int sweepQuads(CityBuild b) {
+        Blueprint bp = b.blueprint();
+        return 1 + 2 * DomeLook.pieces(bp.width()) + 2 * DomeLook.pieces(bp.depth());
+    }
+
+    /**
+     * The most quads the drawing every city module shares takes a frame for one module at a tier (0.13.0, CITY.md §1.3,
+     * {@link #tier}): the forming sweep while it forms ({@link #sweepQuads}); within the effect range its name plates
+     * ({@link #plates}, seen within 48 blocks) and its plinth line ({@link #course}: a core a face, near a two-quad
+     * halo
+     * too); near, the samples in its sockets (on each of a socket's four sides a glow and up to two pictures). A module
+     * kind's own visuals come on top; the sum must stay within 2,000 near, 300 mid and 64 far.
+     */
+    public static int baseQuads(CityBuild b, UnitLayout layout, int tier) {
+        int n = sweepQuads(b);
+        if (tier == FAR) return n;
+        n += plates(b).size() * PLATE_QUADS;
+        int faces = course(b).size();
+        if (tier == MID) return n + faces;
+        int sockets = 0;
+        for (UnitLayout.Unit u : layout.units()) sockets += u.sockets.size();
+        return n + faces * 3 + sockets * 4 * 3;
+    }
 }

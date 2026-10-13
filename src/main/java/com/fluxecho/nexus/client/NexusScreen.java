@@ -368,13 +368,13 @@ public final class NexusScreen {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         try {
-            buildJob0(v.build, w, h);
+            buildJob0(v.build, v.modulePage, w, h);
         } finally {
             GL11.glPopMatrix();
         }
     }
 
-    private static void buildJob0(NexusGui.Build b, float w, float h) {
+    private static void buildJob0(NexusGui.Build b, int modulePage, float w, float h) {
         if (!b.received) return;
         int lw = (int) w - 4, sw = (int) ((w - 4) / 0.75f);
         if (!b.enabled) {
@@ -388,7 +388,7 @@ public final class NexusScreen {
         }
         if (!b.hasJob()) {
             text(fit(EchoText.t("build.gui.no_job"), lw), 2, 2, DIM, 1f);
-            int y = modules(b, 13, w, h);
+            int y = modules(b, modulePage, NexusGui.MODULES_Y, w, h);
             int lines = (int) ((h - 10 - y) / 8);
             if (lines > 0) paragraph(EchoText.t("build.gui.no_job_hint"), y, sw, lines, DIM);
             queue(b, w, h);
@@ -452,14 +452,18 @@ public final class NexusScreen {
 
     /**
      * Without a job: every module the nexus can build, a line each with its name and site and a line with where it
-     * stands (needs its research, queued, building, built, the ring full, no room); returns the height under the list.
+     * stands (needs its research, queued, building, built, the ring full, no room), {@link NexusGui#MODULE_ROWS} of
+     * them on
+     * the page {@code page} (0.13.0: the pager on the head line turns it); returns the height under the list.
      */
-    private static int modules(NexusGui.Build b, int y, float w, float h) {
+    private static int modules(NexusGui.Build b, int page, int y, float w, float h) {
         if (b.modules.isEmpty()) return y + 1;
         int sw = (int) ((w - 4) / 0.75f);
         small(EchoText.t("build.gui.modules"), 2, y, 0.75f, VIOLET, 1f);
         y += 9;
-        for (Campus.ModuleState m : b.modules) {
+        int from = Math.floorMod(page, NexusGui.modulePages(b)) * NexusGui.MODULE_ROWS;
+        int to = Math.min(b.modules.size(), from + NexusGui.MODULE_ROWS);
+        for (Campus.ModuleState m : b.modules.subList(from, to)) {
             if (y + 16 > h - 10) break;
             // a built module names its site in its status line
             String site = m.site >= 0 && m.status != Campus.ModuleStatus.BUILT
@@ -598,6 +602,28 @@ public final class NexusScreen {
             frame(0, 0, w, h, SEAM, 1f);
             end();
             smallCentered((v.billPage % pages + 1) + "/" + pages, w / 2.0, (h - 6) / 2.0, 0.75f, CYAN, 1f);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
+
+    /** The module list's pager (0.13.0): this page and how many, as the bill's pager shows its own. */
+    public static void modulePager(NexusGui.View v, float x, float y, float w, float h) {
+        int pages = NexusGui.modulePages(v.build);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0);
+        try {
+            begin();
+            gradient(0, 0, w, h, PANE, 1f, DEEP, 1f);
+            frame(0, 0, w, h, SEAM, 1f);
+            end();
+            smallCentered(
+                (Math.floorMod(v.modulePage, pages) + 1) + "/" + pages,
+                w / 2.0,
+                (h - 6) / 2.0,
+                0.75f,
+                CYAN,
+                1f);
         } finally {
             GL11.glPopMatrix();
         }

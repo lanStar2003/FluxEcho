@@ -20,6 +20,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.campus.Campus;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
@@ -30,6 +31,7 @@ import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
+import com.fluxecho.logic.SiteFamily;
 import com.fluxecho.nexus.BlockNexus;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileModule;
@@ -510,8 +512,10 @@ public final class NexusRender {
      * How far from the nexus centre, along the axis of site {@code k}, the door of the module docked on it is; -1 when
      * that module stands on the 0.9.2 inner ring instead (it keeps its ring bridge). The module is looked for among the
      * loaded tiles (docked to this nexus under number {@code k}): its door is the face of its structure nearest the
-     * nexus. When it is not loaded here, a hall site's module is taken to have its front row where the campus puts it
-     * ({@link CampusPlan#HALL_FRONT}); any other site keeps the ring bridge.
+     * nexus (a pavilion's, 0.13.0: its inner chamfer portal). When it is not loaded here ({@link CampusPlan#siteDoor}),
+     * a hall site's module is taken to have its front row where the campus puts it ({@link CampusPlan#HALL_FRONT}), a
+     * diagonal's its pavilion's portal only when the client's campus records a pavilion built there; a module docked
+     * on a diagonal without one is a 0.9.2 module on the old inner ring, and like the gate's it keeps the ring bridge.
      */
     private static double siteDoor(TileNexus n, int k, int fx, int fz, List<TileMultiblock> tiles) {
         int[] c = n.centre();
@@ -523,6 +527,8 @@ public final class NexusRender {
             if (!mod.clientDocked || mod.clientSlot != k || !Arrays.equals(mod.clientNexus, c)) continue;
             int[] mc = mod.centre();
             if (RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz) == k) return -1;
+            // a pavilion's door is its inner chamfer portal on the diagonal, not the corner of its box (0.13.0)
+            if (SiteFamily.of(k) == SiteFamily.PAVILION) return CampusPlan.PAVILION_DOOR;
             int[] b = mod.bounds();
             if (b == null) break;
             // the corner of its block range nearest the nexus, measured from the middle of the centre cell
@@ -534,9 +540,8 @@ public final class NexusRender {
             if (near > 6) return near;
             break;
         }
-        for (int site : CampusPlan.HALL_SITES) if (site == k) return CampusPlan.HALL_FRONT - 0.5;
-        // nothing docks by site on the gate or the reserved diagonals yet: a module there stands on the ring
-        return -1;
+        Campus.View v = n.clientCampus;
+        return CampusPlan.siteDoor(k, v != null && v.pavilionBuilt(k));
     }
 
     /**

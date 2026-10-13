@@ -9,7 +9,10 @@ import java.util.List;
  * general): one plan a storey, the module's box seen from above with the front (its doors) at the bottom and the
  * across axis running to the right of someone walking in, {@link #cell} pixels a block and a one-pixel margin round it.
  * The storeys are the floors its units stand on ({@link UnitLayout#storeys()}); a storey's plan shows what stands at
- * that height over the floor below it ({@link Mark}), and every unit of the storey as its cells.
+ * that height over the floor below it ({@link Mark}), and every unit of the storey as its cells. A module may add
+ * plans of levels no unit stands on after them (0.13.0, {@link #overview}: the Blood Covenant Altar's upper tiers), to
+ * show its building. A console or controller standing right over a plan's empty middle shows on it (the altar's,
+ * over the dais's open middle cell).
  * <p>
  * It says what each block of a storey's plan is, where each unit's cells lie on its storey's plan, and which unit a
  * point of a plan is nearest, so what is drawn and what a click picks always agree. Pure arithmetic over a module's
@@ -69,7 +72,10 @@ public final class ModuleMap {
     public final int cell, w, h;
 
     private final UnitLayout layout;
+    /** The levels of the plans: the units' storeys, then the levels shown for the building alone. */
     private final int[] storeys;
+    /** How many of the plans are the units' storeys. */
+    private final int unitStoreys;
     /** The plan of each storey, {@code [storey][x * depth + z]}. */
     private final Mark[][] marks;
     /** The tiles of each unit's cells on its storey's plan, {x0, y0, x1, y1} with the far edges exclusive. */
@@ -82,16 +88,40 @@ public final class ModuleMap {
      * @param dissolves the characters that give way once the module forms (drawn as {@link Mark#TRUNK})
      */
     public ModuleMap(CityBuild build, UnitLayout layout, String dissolves, int maxW, int maxH) {
+        this(build, layout, dissolves, maxW, maxH, NO_LEVELS);
+    }
+
+    /**
+     * The plans of a module with plans of levels no unit stands on (0.13.0, a module kind's opt-in: the Blood
+     * Covenant Altar's upper tiers), after the units' storeys: each shows what stands at that height over the floor
+     * below it, as a storey's plan does, and holds no units.
+     *
+     * @param levels the extra levels, rising, each above every unit storey
+     * @throws IllegalArgumentException for a level not above the units' storeys and the levels before it, or outside
+     *                                  the module's box
+     */
+    public ModuleMap(CityBuild build, UnitLayout layout, String dissolves, int maxW, int maxH, int[] levels) {
         this.layout = layout;
         width = build.width();
         depth = build.depth();
         cell = Math.max(1, Math.min(MAX_CELL, Math.min((maxW - 2) / width, (maxH - 2) / depth)));
         w = width * cell + 2;
         h = depth * cell + 2;
-        storeys = layout.storeys();
+        int[] floors = layout.storeys();
+        unitStoreys = floors.length;
+        storeys = java.util.Arrays.copyOf(floors, floors.length + levels.length);
+        for (int i = 0; i < levels.length; i++) {
+            int below = floors.length + i == 0 ? Integer.MIN_VALUE : storeys[floors.length + i - 1];
+            if (levels[i] <= below || levels[i] >= build.height())
+                throw new IllegalArgumentException("a plan level above the storeys, in the box: " + levels[i]);
+            storeys[floors.length + i] = levels[i];
+        }
         marks = new Mark[storeys.length][];
-        for (int s = 0; s < storeys.length; s++)
-            marks[s] = plan(build, storeys[s] + (flush(build, layout, storeys[s]) ? 1 : 0), dissolves);
+        for (int s = 0; s < storeys.length; s++) {
+            int level = s < unitStoreys ? storeys[s] + (flush(build, layout, storeys[s]) ? 1 : 0) : storeys[s];
+            marks[s] = plan(build, level, dissolves);
+            centre(build, marks[s], level);
+        }
         List<List<int[]>> t = new ArrayList<>();
         for (UnitLayout.Unit u : layout.units()) {
             List<int[]> own = new ArrayList<>();
@@ -120,9 +150,17 @@ public final class ModuleMap {
 
     // ---- storeys
 
-    /** How many storeys (plans) there are. */
+    /** How many storeys (plans) there are, the levels shown for the building alone included. */
     public int storeys() {
         return storeys.length;
+    }
+
+    /**
+     * Whether a plan shows a level no unit stands on, for the building alone (0.13.0: the Blood Covenant Altar's upper
+     * tiers); it holds no units.
+     */
+    public boolean overview(int storey) {
+        return storey >= unitStoreys && storey < storeys.length;
     }
 
     /** The height the units of a storey stand at (the y of their cells in the module's frame). */
@@ -141,7 +179,8 @@ public final class ModuleMap {
      */
     public int storeyAt(double y) {
         int out = -1;
-        for (int s = 0; s < storeys.length; s++) if (storeys[s] <= y + 0.5) out = s;
+        for (int s = 0; s < storeys.length; s++)
+            if (storeys[s] <= y + 0.5 && (out < 0 || storeys[s] > storeys[out])) out = s;
         return out;
     }
 
@@ -202,17 +241,36 @@ public final class ModuleMap {
 
     // ---- what a block shows
 
+    private static final int[] NO_LEVELS = new int[0];
+
+    /**
+     * Marks the module's console or controller on a plan at {@code level} when it stands right over the plan's empty
+     * cell in the controller's column (0.13.0: the Blood Covenant Altar's console stands on its dais at y2, over the
+     * dais's open middle cell at the plan's y1), as {@link Mark#CONSOLE} or {@link Mark#CORE}, so the plan shows where
+     * the window is opened. A plan whose cell there holds anything (a console, a wall) keeps it.
+     */
+    private void centre(CityBuild b, Mark[] plan, int level) {
+        int[] c = b.controller();
+        if (c[0] < 0 || c[0] >= width || c[2] < 0 || c[2] >= depth) return;
+        if (!open(b.cell(c[0], level, c[2]))) return;
+        char over = level + 1 < b.height() ? b.cell(c[0], level + 1, c[2]) : ShapeKit.NONE;
+        if (over == 'K') plan[c[0] * depth + c[2]] = Mark.CONSOLE;
+        else if (over == ShapeKit.CONTROLLER) plan[c[0] * depth + c[2]] = Mark.CORE;
+    }
+
     /** The floor parts a unit set flush into a floor sits among (0.12.0). */
     private static final String FLOORS = "dBFg:e%#*";
 
     /**
      * Whether the units of a storey are set flush into its floor (0.12.0: the Tidal Well's taps lie in the pool's rim
-     * at
-     * the level of the walkway, people standing one higher): a unit cell of that level has a floor part beside it at
-     * the same level. Its plan then shows what stands one level up, over that floor, as for a storey whose units stand
-     * on it (the Eco Dome's planters).
+     * at the level of the walkway, people standing one higher): a unit cell of that level has a floor part beside it
+     * at the same level. Its plan then shows what stands one level up, over that floor, as for a storey whose units
+     * stand on it (the Eco Dome's planters). A storey where people stand beside a unit at its own level (0.13.0: the
+     * Echo Hunting Ground's consoles stand on the arena's floor with the seating's blocks behind them), an open cell
+     * over a floor beside one of its unit cells, is never flush: its plan stays at its level, where the people are.
      */
     static boolean flush(CityBuild b, UnitLayout layout, int level) {
+        boolean embedded = false;
         for (UnitLayout.Unit u : layout.units()) {
             if (u.floor != level) continue;
             for (int[] c : u.cells) {
@@ -220,11 +278,18 @@ public final class ModuleMap {
                 for (int[] o : SIDES) {
                     int x = c[0] + o[0], z = c[2] + o[1];
                     if (x < 0 || x >= b.width() || z < 0 || z >= b.depth()) continue;
-                    if (FLOORS.indexOf(b.cell(x, level, z)) >= 0) return true;
+                    char beside = b.cell(x, level, z);
+                    if (FLOORS.indexOf(beside) >= 0) embedded = true;
+                    else if (open(beside) && level > 0 && !open(b.cell(x, level - 1, z))) return false;
                 }
             }
         }
-        return false;
+        return embedded;
+    }
+
+    /** Whether a cell is open space: nothing, or must-be-air. */
+    private static boolean open(char ch) {
+        return ch == ShapeKit.NONE || ch == ShapeKit.AIR;
     }
 
     /** A storey's plan at height {@code y}: every block, then walls inside a mass made {@link Mark#SOLID}. */

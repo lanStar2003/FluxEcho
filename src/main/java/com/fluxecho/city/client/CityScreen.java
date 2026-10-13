@@ -587,14 +587,25 @@ public final class CityScreen {
         return out;
     }
 
-    /** A storey's tab: its number, lit while its plan is shown. */
+    /**
+     * A storey's tab: its number, lit while its plan is shown; a level shown for the building alone (0.13.0,
+     * {@link ModuleMap#overview}) by its height.
+     */
     public static void storeyTab(TileCityModule c, CityGui.View v, int storey, float x, float y, float w, float h) {
-        NexusScreen.tab(EchoText.t("city.gui.storey_short", storey + 1), x, y, w, h, v.storey == storey);
+        String label = v.map.overview(storey) ? EchoText.t("city.gui.level_short", v.map.level(storey))
+            : EchoText.t("city.gui.storey_short", storey + 1);
+        NexusScreen.tab(label, x, y, w, h, v.storey == storey);
     }
 
-    /** A storey tab's tooltip: the storey, its height and its units. */
+    /**
+     * A storey tab's tooltip: the storey, its height and its units; a level shown for the building alone, its height.
+     */
     public static List<String> storeyTip(TileCityModule c, CityGui.View v, int storey) {
         List<String> out = new ArrayList<>();
+        if (v.map.overview(storey)) {
+            out.add(EchoText.t("city.gui.level.tip", v.map.level(storey)));
+            return out;
+        }
         int kept = 0, slots = 0;
         List<Integer> units = v.map.units(storey);
         for (int u : units) {

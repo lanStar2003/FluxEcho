@@ -17,10 +17,12 @@ public final class ModuleCores {
         "sky_sails", "observatory", "droplet_hangar", "weather_station", "orbital_anchor" };
     /**
      * The metas that have a module in this version, in meta order (0.11.0 the Eco Dome; 0.12.0 the Echo Dome
-     * Generator and the root's Tidal Well); the rest are reserved. Their cores are listed in the creative tab and have
-     * their own icons.
+     * Generator and the root's Tidal Well; 0.13.0 the four pavilions: the Arcane Court, the Blood Covenant Altar, the
+     * Echo Hunting Ground and the Mana Fountain Array); the rest are reserved. Their cores are listed in the creative
+     * tab and have their own icons.
      */
-    private static final int[] BUILT = { ECO_DOME, DOME_GENERATOR, ROOT };
+    private static final int[] BUILT = { ECO_DOME, ARCANE_COURT, BLOOD_COVENANT, HUNTING_GROUND, MANA_FOUNTAIN,
+        DOME_GENERATOR, ROOT };
 
     private ModuleCores() {}
 

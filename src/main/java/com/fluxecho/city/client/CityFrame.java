@@ -102,6 +102,29 @@ final class CityFrame {
     }
 
     /**
+     * A band between two points of the shape turned to the camera, tapering from {@code w0} wide at the first end to
+     * {@code w1} at the second (0.13.0, the Arcane Court's brush strokes): each end at least about a pixel wide where
+     * it is, unless it is nothing, so a stroke still runs out to a point. One quad; the caller keeps the pieces
+     * short.
+     */
+    void taper(Tessellator t, double lx0, double ly0, double lz0, double lx1, double ly1, double lz1, double w0,
+        double w1) {
+        double ax = x(lx0, lz0), ay = y(ly0), az = z(lx0, lz0), bx = x(lx1, lz1), by = y(ly1), bz = z(lx1, lz1);
+        double dx = bx - ax, dy = by - ay, dz = bz - az;
+        double mx = (ax + bx) / 2, my = (ay + by) / 2, mz = (az + bz) / 2;
+        // sideways: across the line and across the line of sight
+        double sx = dy * mz - dz * my, sy = dz * mx - dx * mz, sz = dx * my - dy * mx;
+        double len = Math.sqrt(sx * sx + sy * sy + sz * sz);
+        if (len < 1e-9) return;
+        double pix = Math.sqrt(mx * mx + my * my + mz * mz) * PIXEL;
+        double ka = (w0 <= 0 ? 0 : Math.max(w0, pix)) / 2 / len, kb = (w1 <= 0 ? 0 : Math.max(w1, pix)) / 2 / len;
+        t.addVertex(ax - sx * ka, ay - sy * ka, az - sz * ka);
+        t.addVertex(ax + sx * ka, ay + sy * ka, az + sz * ka);
+        t.addVertex(bx + sx * kb, by + sy * kb, bz + sz * kb);
+        t.addVertex(bx - sx * kb, by - sy * kb, bz - sz * kb);
+    }
+
+    /**
      * A soft upright band of light between two points of the shape at the same heights: brightest along {@code yc},
      * fading out to nothing {@code half} above and below; {@code a0} at the first end, {@code a1} at the second.
      */

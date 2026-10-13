@@ -6,8 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -67,6 +74,174 @@ class ResearchTreeTest {
                 a.id);
             for (ResearchTree.Node b : ResearchTree.all())
                 if (a != b) assertTrue(Math.hypot(a.x - b.x, a.y - b.y) >= 24, a.id + " too close to " + b.id);
+        }
+    }
+
+    /** How near a line between two stars may pass any other star's middle: clear of its disc and most of its arms. */
+    private static final double LINK_CLEAR = 9;
+
+    /** How far a point lies from the segment between two others. */
+    private static double fromSegment(double px, double py, double ax, double ay, double bx, double by) {
+        double dx = bx - ax, dy = by - ay;
+        double t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+        return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+    }
+
+    // The star map as StarMapScreen draws it, in GUI pixels. The map's scale is the smaller of (w - 48) / WIDTH and
+    // (h - 70) / HEIGHT, and the map is centred. A star has radius r = 7 * scale; once done, its two arms reach 1.4 r
+    // and are 1.4 pixels wide, and its dot is a square 0.7 r across. A node's name is drawn centred under it at 0.75 of
+    // the font's size, its top 2 pixels below r. A constellation's name is drawn at 0.6 * scale of the font's size,
+    // kept within 0.75 and 1.2, its top 4 pixels over its point. The font is Minecraft's: 8 pixels high, ascii.png's
+    // advances, 9 pixels for a CJK glyph; zh_CN's unicode font draws ASCII a little narrower, which only leaves more
+    // room.
+
+    /** The lang files whose names the star map writes, as LangTest reads them. */
+    private static final Path LANG = Paths.get("src", "main", "resources", "assets", "fluxecho", "lang");
+    /**
+     * The GUI sizes {width, height} the map is checked at: the smallest Minecraft makes (a 4:3 screen at GUI scale
+     * Auto), 1280 x 720 and 2560 x 1440 at Auto (426 x 240), 1920 x 1080 at Auto (480 x 270), and larger ones up to
+     * 1920 x 1080 at GUI scale 1.
+     */
+    private static final int[][] GUIS = { { 320, 240 }, { 426, 240 }, { 480, 270 }, { 512, 288 }, { 640, 360 },
+        { 683, 384 }, { 853, 480 }, { 960, 540 }, { 1280, 720 }, { 1920, 1080 } };
+    /** How far apart, in GUI pixels, any two things the map draws stay. */
+    private static final double GAP = 0.5;
+    /** The star map's header and footer bands, in GUI pixels, which no node's name may run into. */
+    private static final int HEADER = 24, FOOTER = 30;
+
+    /** {scale, left, top} of the map on a GUI of w x h. */
+    private static double[] place(int w, int h) {
+        double scale = Math.min((w - 48.0) / ResearchTree.WIDTH, (h - 70.0) / ResearchTree.HEIGHT);
+        return new double[] { scale, (w - ResearchTree.WIDTH * scale) / 2,
+            30 + (h - 70 - ResearchTree.HEIGHT * scale) / 2 };
+    }
+
+    /** The boxes {x0, y0, x1, y1} of a done star, its largest look: its two arms and its dot. */
+    private static double[][] star(ResearchTree.Node n, double[] m) {
+        double cx = m[1] + n.x * m[0], cy = m[2] + n.y * m[0], r = 7 * m[0], arm = 1.4 * r, dot = 0.35 * r;
+        return new double[][] { { cx - arm, cy - 0.7, cx + arm, cy + 0.7 }, { cx - 0.7, cy - arm, cx + 0.7, cy + arm },
+            { cx - dot, cy - dot, cx + dot, cy + dot } };
+    }
+
+    /** The box of a node's name under its star. */
+    private static double[] name(ResearchTree.Node n, double[] m, Map<String, String> lang) {
+        double cx = m[1] + n.x * m[0], top = m[2] + n.y * m[0] + 7 * m[0] + 2;
+        double half = textWidth(text(lang, "research.node." + n.id)) * 0.75 / 2;
+        return new double[] { cx - half, top, cx + half, top + 8 * 0.75 };
+    }
+
+    /** The box of a constellation's name. */
+    private static double[] title(ResearchTree.Branch b, double[] m, Map<String, String> lang) {
+        double size = Math.max(0.75, Math.min(1.2, m[0] * 0.6));
+        double cx = m[1] + b.labelX * m[0], top = m[2] + b.labelY * m[0] - 4;
+        double half = textWidth(text(lang, "research.branch." + b.key)) * size / 2;
+        return new double[] { cx - half, top, cx + half, top + 8 * size };
+    }
+
+    /** Whether two boxes come nearer each other than {@link #GAP}. */
+    private static boolean meet(double[] a, double[] b) {
+        return a[0] < b[2] + GAP && b[0] < a[2] + GAP && a[1] < b[3] + GAP && b[1] < a[3] + GAP;
+    }
+
+    /** The width Minecraft 1.7.10's font gives a string at full size, in GUI pixels. */
+    static int textWidth(String s) {
+        int w = 0;
+        for (int i = 0; i < s.length(); i++) w += advance(s.charAt(i));
+        return w;
+    }
+
+    /** One glyph's advance: ascii.png's (most letters 6, the narrow ones less, a space 4), 9 for a CJK glyph. */
+    private static int advance(char c) {
+        if (c >= 128) return 9;
+        if ("!,.:;i|".indexOf(c) >= 0) return 2;
+        if ("'`l".indexOf(c) >= 0) return 3;
+        if (" I[]t".indexOf(c) >= 0) return 4;
+        if ("\"()*<>fk{}".indexOf(c) >= 0) return 5;
+        if ("@~".indexOf(c) >= 0) return 7;
+        return 6;
+    }
+
+    /** A lang file's keys and texts. */
+    private static Map<String, String> lang(String file) throws IOException {
+        Map<String, String> m = new HashMap<>();
+        for (String line : Files.readAllLines(LANG.resolve(file), StandardCharsets.UTF_8)) {
+            String l = line.startsWith("﻿") ? line.substring(1) : line;
+            int eq = l.indexOf('=');
+            if (eq > 0 && !l.startsWith("#")) m.put(l.substring(0, eq), l.substring(eq + 1));
+        }
+        return m;
+    }
+
+    private static String text(Map<String, String> lang, String key) {
+        String s = lang.get("fluxecho." + key);
+        assertNotNull(s, key);
+        return s;
+    }
+
+    /** The model's font gives the widths Minecraft's does for a few names. */
+    @Test
+    void textWidthsAreMinecrafts() {
+        assertEquals(68, textWidth("Arcane Court"));
+        assertEquals(104, textWidth("Echo Hunting Ground"));
+        assertEquals(106, textWidth("Blood Covenant Altar"));
+        assertEquals(27, textWidth("秘法庭"));
+    }
+
+    /**
+     * Nothing the star map writes lies on anything else it draws, in either language and at every GUI size down to
+     * the smallest: no star and no node's name on a constellation's name, no node's name on another node's star or
+     * name, and every node's name on the screen between the header and the footer. Each name is as wide as its lang
+     * string makes it, so the English names, far wider than the Chinese ones, are what this keeps apart (0.13.0:
+     * 'Arcane Court' and 'Echo Hunting Ground' ran together on one row, and 'Blood Covenant Altar' lay on the eco
+     * dome's star and touched the echo branch's name below 640 x 360; since 0.9.0 'Echo Crystallization' had crossed
+     * the anchor's arm and 'Echo Library' the arm of 'Lending Across Worlds' at 426 x 240).
+     */
+    @Test
+    void starsAndNamesKeepOffEachOther() throws IOException {
+        for (String file : new String[] { "en_US.lang", "zh_CN.lang" }) {
+            Map<String, String> lang = lang(file);
+            for (int[] gui : GUIS) {
+                double[] m = place(gui[0], gui[1]);
+                String at = " (" + file + ", " + gui[0] + " x " + gui[1] + ")";
+                for (ResearchTree.Node n : ResearchTree.all()) {
+                    double[] name = name(n, m, lang);
+                    assertTrue(
+                        name[0] >= 0 && name[2] <= gui[0] && name[1] >= HEADER && name[3] <= gui[1] - FOOTER,
+                        n.id + "'s name off the map" + at);
+                    for (ResearchTree.Branch b : ResearchTree.Branch.values()) {
+                        double[] title = title(b, m, lang);
+                        assertFalse(meet(name, title), n.id + "'s name on the name of " + b.key + at);
+                        for (double[] s : star(n, m))
+                            assertFalse(meet(s, title), n.id + "'s star on the name of " + b.key + at);
+                    }
+                    for (ResearchTree.Node o : ResearchTree.all()) {
+                        if (o == n) continue;
+                        for (double[] s : star(o, m))
+                            assertFalse(meet(name, s), n.id + "'s name on " + o.id + "'s star" + at);
+                        assertFalse(meet(name, name(o, m, lang)), n.id + "'s name on " + o.id + "'s" + at);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * A line between two stars (a node and one it requires) never runs through a third star, so the map shows no
+     * requirement that is not there (0.13.0: the line from the echo crystal to the Arcane Court ran through the
+     * library's star, and the one from phase II to the Echo Hunting Ground through the eco dome's). The frame's spine
+     * is the one exception: phase II's line down to the dome runs through the inner ring and the anchor, the chain
+     * phase II itself stands on.
+     */
+    @Test
+    void noLinkRunsThroughAThirdStar() {
+        for (ResearchTree.Node n : ResearchTree.all()) for (String id : n.requires) {
+            ResearchTree.Node r = ResearchTree.get(id);
+            if (r.id.equals(ResearchTree.PHASE_2) && n.id.equals(ResearchTree.DOME)) continue;
+            for (ResearchTree.Node m : ResearchTree.all()) {
+                if (m == n || m == r) continue;
+                double d = fromSegment(m.x, m.y, r.x, r.y, n.x, n.y);
+                assertTrue(d >= LINK_CLEAR, r.id + " -> " + n.id + " passes " + d + " from " + m.id);
+            }
         }
     }
 
@@ -175,6 +350,83 @@ class ResearchTreeTest {
         done.add(ResearchTree.PHASE_2);
         assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(dome, done, 1, 999), "the dome needs phase II");
         assertEquals(ResearchTree.Block.NONE, ResearchTree.check(dome, done, 2, 999));
+    }
+
+    /**
+     * The Arcane Court's research (0.13.0, CITY.md Appendix B): a phase II node on the echo branch after phase II and
+     * the echo crystal, researched on a nexus of phase II, with the phase's EV costs and the enchanting table it scales
+     * up (vanilla, so no optional mod's item stands in a cost).
+     */
+    @Test
+    void theArcaneCourt() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.ARCANE_COURT);
+        assertNotNull(n);
+        assertEquals(ResearchTree.Branch.ECHO, n.branch);
+        assertEquals(2, n.phase);
+        assertEquals(2, n.nexusPhase());
+        assertTrue(ResearchTree.availableNow(n));
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.ECHO_CRYSTAL), n.requires);
+        assertEquals(30_000, n.compute);
+        assertEquals(0, ResearchTree.phaseOf(ResearchTree.ARCANE_COURT), "it opens no phase");
+        Set<String> names = new HashSet<>();
+        for (ResearchTree.Cost c : n.costs) {
+            names.add(c.name);
+            if (!c.ore) assertTrue(c.name.startsWith("minecraft:"), "a vanilla item: " + c.name);
+        }
+        assertTrue(names.contains("plateTitanium") && names.contains("circuitEV") && names.contains("ingotPhaseAlloy"));
+        assertTrue(names.contains("minecraft:enchanting_table"));
+        Set<String> done = new HashSet<>();
+        done.add(ResearchTree.ANCHOR);
+        done.add(ResearchTree.INNER_RING);
+        done.add(ResearchTree.PHASE_2);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 2, 999), "the echo crystal first");
+        done.add(ResearchTree.ECHO_CRYSTAL);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 1, 999), "a nexus of phase II");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 2, 999));
+        assertEquals(ResearchTree.ARCANE_COURT, com.fluxecho.logic.ArcaneCourtShape.KEY, "the module is its node");
+    }
+
+    /**
+     * The other three pavilions' research (0.13.0, CITY.md Appendix B): like the Arcane Court's, phase II nodes on the
+     * echo branch after phase II and the echo crystal, with the phase's EV costs and one themed vanilla item each (the
+     * Blood Covenant Altar's nether wart, the Echo Hunting Ground's bows, the Mana Fountain Array's poppies); every
+     * node is its module's key, and the four pavilions stand apart on the star map.
+     */
+    @Test
+    void theOtherPavilions() {
+        String[] ids = { ResearchTree.BLOOD_COVENANT, ResearchTree.HUNTING_GROUND, ResearchTree.MANA_FOUNTAIN };
+        String[] themed = { "minecraft:nether_wart", "minecraft:bow", "minecraft:red_flower" };
+        String[] keys = { BloodCovenantShape.KEY, HuntingGroundShape.KEY, ManaFountainShape.KEY };
+        for (int i = 0; i < ids.length; i++) {
+            ResearchTree.Node n = ResearchTree.get(ids[i]);
+            assertNotNull(n, ids[i]);
+            assertEquals(keys[i], n.id, "the module is its node");
+            assertEquals(ResearchTree.Branch.ECHO, n.branch);
+            assertEquals(2, n.phase);
+            assertTrue(ResearchTree.availableNow(n), "research all grants it");
+            assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.ECHO_CRYSTAL), n.requires);
+            assertEquals(30_000, n.compute);
+            assertEquals(0, ResearchTree.phaseOf(ids[i]), "it opens no phase");
+            Set<String> names = new HashSet<>();
+            for (ResearchTree.Cost c : n.costs) {
+                names.add(c.name);
+                if (!c.ore) assertTrue(c.name.startsWith("minecraft:"), "a vanilla item: " + c.name);
+            }
+            assertTrue(
+                names.contains("plateTitanium") && names.contains("circuitEV") && names.contains("ingotPhaseAlloy"));
+            assertTrue(names.contains(themed[i]), ids[i] + " takes " + themed[i]);
+            Set<String> done = new HashSet<>();
+            done.add(ResearchTree.ANCHOR);
+            done.add(ResearchTree.INNER_RING);
+            done.add(ResearchTree.PHASE_2);
+            assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 2, 999), "the echo crystal first");
+            done.add(ResearchTree.ECHO_CRYSTAL);
+            assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 1, 999), "a nexus of phase II");
+            assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 2, 999));
+        }
+        Set<String> now = new HashSet<>();
+        for (ResearchTree.Node n : ResearchTree.availableNow()) now.add(n.id);
+        assertTrue(now.contains(ResearchTree.ARCANE_COURT) && now.containsAll(java.util.Arrays.asList(ids)));
     }
 
     @Test

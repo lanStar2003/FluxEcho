@@ -115,6 +115,98 @@ class PreviewSitesTest {
         assertEquals(2, q.get(RingSlots.SLOTS + 1).site);
     }
 
+    /**
+     * The pavilions (0.13.0) take the diagonals by their preference lists, and with the inner ring's room of eight at
+     * phase III every kind stands at once on a site of its own: three halls, the four pavilions, the gatehouse and both
+     * axis kinds. Taken in another order the pavilions still each find a diagonal.
+     */
+    @Test
+    void thePavilionsTakeTheDiagonals() {
+        int[] mana = ManaFountainShape.SITES, arcane = ArcaneCourtShape.SITES, hunting = HuntingGroundShape.SITES,
+            blood = BloodCovenantShape.SITES, gate = { 0 }, zenith = DomeGeneratorShape.SITES,
+            root = { SiteFamily.ROOT_SITE };
+        assertEquals(Arrays.toString(new int[] { 7, 1, 5, 3 }), Arrays.toString(arcane));
+        assertEquals(Arrays.toString(new int[] { 1, 7, 3, 5 }), Arrays.toString(mana));
+        assertEquals(Arrays.toString(new int[] { 3, 5, 1, 7 }), Arrays.toString(hunting));
+        assertEquals(Arrays.toString(new int[] { 5, 3, 7, 1 }), Arrays.toString(blood));
+        List<PreviewSites.Place> p = PreviewSites.places(
+            Arrays.asList(LIBRARY, ECO_DOME, zenith, root, arcane, VAULT, mana, hunting, blood, gate),
+            RingSlots.open(3));
+        assertEquals(10, p.size());
+        int[] want = { 4, 2, SiteFamily.ZENITH_SITE, SiteFamily.ROOT_SITE, 7, 6, 1, 3, 5, 0 };
+        java.util.Set<Integer> sites = new java.util.HashSet<>();
+        for (int i = 0; i < want.length; i++) {
+            assertEquals(want[i], p.get(i).site, "kind " + i);
+            assertEquals(-1, p.get(i).slot);
+            assertTrue(sites.add(p.get(i).site));
+        }
+        // the pavilions in the other order: each still takes the first diagonal no earlier one took
+        List<PreviewSites.Place> q = PreviewSites
+            .places(Arrays.asList(blood, hunting, mana, arcane), RingSlots.open(3));
+        assertEquals(5, q.get(0).site);
+        assertEquals(3, q.get(1).site);
+        assertEquals(1, q.get(2).site);
+        assertEquals(7, q.get(3).site);
+        // phase II's room of four: the Archive, the Eco Dome, the court and one more stand; the axis kinds always
+        List<PreviewSites.Place> two = PreviewSites
+            .places(Arrays.asList(LIBRARY, ECO_DOME, zenith, root, arcane, mana, hunting), RingSlots.open(2));
+        assertEquals(7, two.get(4).site);
+        assertEquals(1, two.get(5).site);
+        assertEquals(6, two.size(), "the room is out after the fourth ring module");
+    }
+
+    /** The NEI city preview's budget (CITY.md §3, M10): the nexus and every module it stands, in checked cells. */
+    private static final int PREVIEW_BUDGET = 60_000;
+
+    /**
+     * The preview's heaviest tier at each phase stays within its budget with the modules of this version standing: the
+     * nexus's phase, the Archive, the Eco Dome, the dome generator (moored, or floating from phase IV), the Tidal Well
+     * and, from phase II, all four pavilions (more than phase II's room lets stand, so the bound holds from phase III
+     * on, when all four do).
+     */
+    @Test
+    void thePreviewStaysWithinItsBudget() {
+        for (int phase = 1; phase <= NexusShape.PHASES; phase++) {
+            int cells = NexusShape.phase(phase)
+                .cells()
+                .size()
+                + ArchiveShape.BLUEPRINT.cells()
+                    .size()
+                + EcoDomeShape.BLUEPRINT.cells()
+                    .size()
+                + RootShape.BLUEPRINT.cells()
+                    .size()
+                + (phase >= 4 ? DomeGeneratorShape.FLOATING_BP : DomeGeneratorShape.MOORED_BP).cells()
+                    .size();
+            if (phase >= 2) cells += ArcaneCourtShape.BLUEPRINT.cells()
+                .size()
+                + BloodCovenantShape.BLUEPRINT.cells()
+                    .size()
+                + HuntingGroundShape.BLUEPRINT.cells()
+                    .size()
+                + ManaFountainShape.BLUEPRINT.cells()
+                    .size();
+            assertTrue(cells <= PREVIEW_BUDGET, "phase " + phase + ": " + cells + " cells");
+        }
+        assertEquals(
+            2058 + 160,
+            ArcaneCourtShape.BLUEPRINT.cells()
+                .size(),
+            "the court's checked cells and its portals' air");
+        assertEquals(
+            1694 + 160,
+            BloodCovenantShape.BLUEPRINT.cells()
+                .size());
+        assertEquals(
+            1531 + 88,
+            HuntingGroundShape.BLUEPRINT.cells()
+                .size());
+        assertEquals(
+            1107 + 160,
+            ManaFountainShape.BLUEPRINT.cells()
+                .size());
+    }
+
     @Test
     void theRoomTheyDockStopsThem() {
         List<PreviewSites.Place> p = PreviewSites.places(Arrays.asList(LIBRARY, ECO_DOME, VAULT), RingSlots.open(1));

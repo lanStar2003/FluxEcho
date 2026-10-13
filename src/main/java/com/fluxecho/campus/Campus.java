@@ -658,6 +658,21 @@ public final class Campus {
             }
             return out;
         }
+
+        /**
+         * Whether the list records a pavilion built on the site (0.13.0): a {@link ModuleStatus#BUILT} state there
+         * whose module is a pavilion's ({@link SiteFamily#PAVILION}). A module docked on a diagonal that the client
+         * has not loaded is then the pavilion, not a 0.9.2 module on the old inner ring.
+         */
+        public static boolean pavilionBuilt(List<ModuleState> modules, int site) {
+            if (modules == null || SiteFamily.of(site) != SiteFamily.PAVILION) return false;
+            for (ModuleState m : modules) {
+                if (m.status != ModuleStatus.BUILT || m.site != site) continue;
+                ModuleSpec spec = ModuleSpecs.get(m.key);
+                if (spec != null && spec.family == SiteFamily.PAVILION) return true;
+            }
+            return false;
+        }
     }
 
     /**
@@ -2276,6 +2291,11 @@ public final class Campus {
         /** Whether there is a job. */
         public boolean hasJob() {
             return job != null && !job.isEmpty();
+        }
+
+        /** Whether the campus records a pavilion built on the site (0.13.0, {@link ModuleState#pavilionBuilt}). */
+        public boolean pavilionBuilt(int site) {
+            return ModuleState.pavilionBuilt(modules, site);
         }
 
         public BuildState.State stateEnum() {

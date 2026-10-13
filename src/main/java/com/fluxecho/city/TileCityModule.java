@@ -158,6 +158,15 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         return "";
     }
 
+    /**
+     * The levels of its shape the window's plan page shows after its units' storeys, for the building alone (0.13.0,
+     * {@link com.fluxecho.logic.ModuleMap#overview}): none unless a module kind gives them (the Blood Covenant Altar's
+     * upper tiers).
+     */
+    public int[] planLevels() {
+        return new int[0];
+    }
+
     // ---- the multiblock
 
     @Override

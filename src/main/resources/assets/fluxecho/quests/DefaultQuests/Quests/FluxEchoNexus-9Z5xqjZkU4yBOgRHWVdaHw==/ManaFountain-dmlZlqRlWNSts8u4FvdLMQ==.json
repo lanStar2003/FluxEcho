@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -3120051733007147521,
+      "questIDLow:4": -8295953146924627145
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "斜角的亭子：一座低矮的回廊庭院，八座喷泉围着中间的魔法阵和方尖碑。中枢长到相位 II、研究「魔力泉阵」（回响分支，要先研究相位 II 和回响结晶）以后，中枢在园区斜角的亭子位上投影出它：先挑右前方的 1 号位（大门旁边），再 7、3、5 号位。\n\n• 研究要 30000 算力，和 16 块钛板、4 块 EV 电路板、8 块相位合金、16 朵虞美人；\n• 在显化台用 8 块回响晶、8 块相位合金、4 块共鸣玻璃、2 块 EV 电路板、8 朵虞美人显化出魔力泉阵核心，交给中枢，再在「建造」页按「开始」。方尖碑顶上是一个晶核座，要交做好的，别的交原料就行；\n• 25×25、8 格高，四座亭子里最矮的：四个切角门进到玻璃顶的回廊，穿过一圈柱廊就是露天的庭院，核心在庭院正中方尖碑的控制台座上；回廊下面是草地，种你自己的花、放你自己的魔力池；\n• 16 个单元：8 座喷泉（一圈池沿围着水，样本座浮在水上）和 8 个花瓮；\n• 建好后自己停靠到中枢上，从团队无线电网取 128 EU/t。成型后方尖碑的上半截化作一道螺旋上升的魔力泉柱；停靠后每座喷泉喷出一道淡蓝的光弧落进泉柱，地上的魔法阵转起来；有电时魔力的光点从泉柱飘出柱廊，落到回廊下的花园里。\n\n[note]相位 II 的内环只有 4 个位置，亭子也占：已经有档案馆和生态穹的园区只建得下两座亭子，另外两座在「建造」页写着「内环已满」，等相位 III 内环开到 8 个。这个版本的单元什么都能放，给花园里的魔力池充魔力是以后的版本。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 5,
+        "OreDict:8": "",
+        "id:8": "fluxecho:module_core"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l魔力泉阵",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 8532449472568187092,
+  "questIDLow:4": -5930172292797084879,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 5,
+          "OreDict:8": "",
+          "id:8": "fluxecho:module_core"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

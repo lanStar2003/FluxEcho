@@ -17,12 +17,20 @@ import java.util.List;
  */
 public final class CityBuild implements BuildPlan.ModuleBuild {
 
-    /** Which stage a cell that belongs to no unit is built in, and its order within FIT. */
+    /**
+     * Which stage a cell that belongs to no unit is built in, its order within FIT, and (0.13.0, opt-in) its order
+     * within a stage built bottom-up ({@link BuildPlan.ModuleBuild#order}).
+     */
     public interface Stages {
 
         int stage(int x, int y, int z, char ch);
 
         int fitRank(int x, int y, int z, char ch);
+
+        /** Its order within a stage built bottom-up; 0, every stage plainly bottom-up, unless a module gives one. */
+        default int order(int x, int y, int z, char ch) {
+            return 0;
+        }
     }
 
     private final String key;
@@ -135,6 +143,11 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
     @Override
     public int fitRank(int x, int y, int z, char ch) {
         return stages.fitRank(x, y, z, ch);
+    }
+
+    @Override
+    public int order(int x, int y, int z, char ch) {
+        return stages.order(x, y, z, ch);
     }
 
     @Override

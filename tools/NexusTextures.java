@@ -4,8 +4,8 @@ import javax.imageio.ImageIO;
 
 /**
  * Draws the textures of the Flux Nexus era (0.9.0): the flux frame's parts, the nexus's and the library's cores, the
- * flux materials and the library's index cards; (0.11.0) the frame's cladding anchor and the city's module cores; and
- * (0.12.0) the phase's materials, phase alloy and resonant glass.
+ * flux materials and the library's index cards; (0.11.0) the frame's cladding anchor and the city's module cores;
+ * (0.12.0) the phase's materials, phase alloy and resonant glass; and (0.13.0) the four pavilions' module cores.
  * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
  */
@@ -22,6 +22,14 @@ public class NexusTextures {
     static final int GUARD_BLUE = 0x7DB8FF;
     /** The Tidal Well's accent (0.12.0), as {@code TileRoot.COLOR}. */
     static final int TIDE_BLUE = 0x3FC8E8;
+    /** The Arcane Court's accent (0.13.0), as {@code TileArcaneCourt.COLOR}. */
+    static final int ARCANE_VIOLET = 0xC77DFF;
+    /** The Blood Covenant Altar's accent (0.13.0), as {@code TileBloodCovenant.COLOR}. */
+    static final int BLOOD_RED = 0xE0344A;
+    /** The Echo Hunting Ground's accent (0.13.0), as {@code TileHuntingGround.COLOR}. */
+    static final int HUNT_AMBER = 0xFF9A3C;
+    /** The Mana Fountain Array's accent (0.13.0), as {@code TileManaFountain.COLOR}. */
+    static final int MANA_BLUE = 0x6AA8FF;
     static final int FRAMES = 8;
 
     interface Px {
@@ -90,6 +98,30 @@ public class NexusTextures {
         anim(root + "front_on", (x, y, f) -> coreFront(x, y, f, true, TIDE_BLUE, NexusTextures::wellEmblem));
         still(root + "side", (x, y, f) -> coreSide(x, y, TIDE_BLUE));
         still(root + "top", (x, y, f) -> coreTop(x, y, TIDE_BLUE));
+        // the Arcane Court's (0.13.0): violet, the octagonal hall under its steep spire, the finial's crystal lit
+        String arcane = "blocks/module_core/arcane_court/";
+        still(arcane + "front", (x, y, f) -> coreFront(x, y, f, false, ARCANE_VIOLET, NexusTextures::spireEmblem));
+        anim(arcane + "front_on", (x, y, f) -> coreFront(x, y, f, true, ARCANE_VIOLET, NexusTextures::spireEmblem));
+        still(arcane + "side", (x, y, f) -> coreSide(x, y, ARCANE_VIOLET));
+        still(arcane + "top", (x, y, f) -> coreTop(x, y, ARCANE_VIOLET));
+        // the Blood Covenant Altar's (0.13.0): red, three stepped tiers under the blood orb
+        String blood = "blocks/module_core/blood_covenant/";
+        still(blood + "front", (x, y, f) -> coreFront(x, y, f, false, BLOOD_RED, NexusTextures::altarEmblem));
+        anim(blood + "front_on", (x, y, f) -> coreFront(x, y, f, true, BLOOD_RED, NexusTextures::altarEmblem));
+        still(blood + "side", (x, y, f) -> coreSide(x, y, BLOOD_RED));
+        still(blood + "top", (x, y, f) -> coreTop(x, y, BLOOD_RED));
+        // the Echo Hunting Ground's (0.13.0): amber, the amphitheatre seen from above round its lit holo grid
+        String hunting = "blocks/module_core/hunting_ground/";
+        still(hunting + "front", (x, y, f) -> coreFront(x, y, f, false, HUNT_AMBER, NexusTextures::arenaEmblem));
+        anim(hunting + "front_on", (x, y, f) -> coreFront(x, y, f, true, HUNT_AMBER, NexusTextures::arenaEmblem));
+        still(hunting + "side", (x, y, f) -> coreSide(x, y, HUNT_AMBER));
+        still(hunting + "top", (x, y, f) -> coreTop(x, y, HUNT_AMBER));
+        // the Mana Fountain Array's (0.13.0): pale blue, the spout over the basin and the jets arcing into it
+        String mana = "blocks/module_core/mana_fountain/";
+        still(mana + "front", (x, y, f) -> coreFront(x, y, f, false, MANA_BLUE, NexusTextures::fountainEmblem));
+        anim(mana + "front_on", (x, y, f) -> coreFront(x, y, f, true, MANA_BLUE, NexusTextures::fountainEmblem));
+        still(mana + "side", (x, y, f) -> coreSide(x, y, MANA_BLUE));
+        still(mana + "top", (x, y, f) -> coreTop(x, y, MANA_BLUE));
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
@@ -443,6 +475,63 @@ public class NexusTextures {
         if (oct >= 5 && oct < 6) return 1;
         if (oct >= 2.6 && oct < 3.5) return 2;
         if (oct < 1.2) return 2;
+        return 0;
+    }
+
+    /**
+     * The Arcane Court's emblem (0.13.0): a steep spire (its two edges) over the hall's walls and cornice, the slit
+     * windows and the finial's crystal lit.
+     */
+    static int spireEmblem(int x, int y) {
+        double dx = Math.abs(x - 7.5);
+        if (y <= 2) return dx < 1 ? 2 : 0;
+        if (y <= 8) {
+            double half = (y - 2) * 0.62;
+            return dx >= half - 0.5 && dx < half + 0.5 ? 1 : 0;
+        }
+        if (y == 9 || y == 13) return x >= 3 && x <= 12 ? 1 : 0;
+        if (y > 13) return 0;
+        if (x == 3 || x == 12) return 1;
+        return (x == 5 || x == 7 || x == 8 || x == 10) && y >= 10 && y <= 12 ? 2 : 0;
+    }
+
+    /**
+     * The Blood Covenant Altar's emblem (0.13.0): three stepped tiers, the top one open in the oculus, and the blood orb
+     * over it with its light falling in, lit.
+     */
+    static int altarEmblem(int x, int y) {
+        if (Math.hypot(x - 7.5, y - 3.5) < 1.8) return 2;
+        if ((x == 7 || x == 8) && y >= 5 && y <= 6) return 2;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        if (y == 10 && x >= 2 && x <= 13 || y >= 10 && y <= 13 && (x == 2 || x == 13)) return 1;
+        if (y == 8 && x >= 4 && x <= 11 || y >= 8 && y <= 9 && (x == 4 || x == 11)) return 1;
+        if (y >= 6 && y <= 7 && (x == 6 || x == 9)) return 1;
+        return 0;
+    }
+
+    /**
+     * The Echo Hunting Ground's emblem (0.13.0): the amphitheatre seen from above, its outer wall, the terraces as a
+     * stepped ring and the arena's holo grid lit in the middle.
+     */
+    static int arenaEmblem(int x, int y) {
+        double dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5);
+        double oct = Math.max(Math.max(dx, dy), (dx + dy) * 0.75);
+        if (oct >= 5.2 && oct < 6.2) return 1;
+        if (oct >= 3.8 && oct < 4.6 && (x + y) % 2 == 0) return 1;
+        if (oct < 2.8) return (x + y) % 2 == 0 ? 2 : 0;
+        return 0;
+    }
+
+    /**
+     * The Mana Fountain Array's emblem (0.13.0): the obelisk's spout rising from the basin, two jets of light arcing in
+     * to it from the fountains either side, lit; the basin's line and the fountains' rims under them.
+     */
+    static int fountainEmblem(int x, int y) {
+        if (y == 12 && x >= 2 && x <= 13) return 1;
+        if (y == 11 && (x <= 4 || x >= 11) && x >= 2 && x <= 13) return 1;
+        if ((x == 7 || x == 8) && y >= 3 && y <= 11) return 2;
+        double dx = Math.abs(x - 7.5);
+        if (dx >= 1.5 && dx <= 5.5 && Math.abs(y - (3.5 + dx * dx * 0.3)) < 0.6) return 2;
         return 0;
     }
 

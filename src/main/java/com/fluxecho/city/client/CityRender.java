@@ -28,9 +28,13 @@ import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.PartBlocks;
+import com.fluxecho.city.TileArcaneCourt;
+import com.fluxecho.city.TileBloodCovenant;
 import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileDomeGenerator;
 import com.fluxecho.city.TileEcoDome;
+import com.fluxecho.city.TileHuntingGround;
+import com.fluxecho.city.TileManaFountain;
 import com.fluxecho.city.TileRoot;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
@@ -48,7 +52,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * What every city module shows of itself (0.11.0, CITY.md §1.1 and §1.6 item 8), one renderer for every
  * {@link TileCityModule}; a module kind's own visuals come on top ({@link EcoDomeRender}; 0.12.0
  * {@link DomeGeneratorRender}, whose dome is a landmark drawn past the effects' range too, {@link #landmark}, and
- * {@link RootRender}).
+ * {@link RootRender}; 0.13.0 the pavilions' {@link ArcaneCourtRender}, {@link BloodCovenantRender},
+ * {@link HuntingGroundRender} and {@link ManaFountainRender}).
  * <ul>
  * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
  * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
@@ -175,6 +180,11 @@ public final class CityRender {
                 else if (m instanceof TileDomeGenerator g)
                     DomeGeneratorRender.draw(g, f, t, fade * appear, cam, tier, appear);
                 else if (m instanceof TileRoot r) RootRender.draw(r, f, t, fade * appear, cam, tier);
+                else if (m instanceof TileArcaneCourt ac) ArcaneCourtRender.draw(ac, f, t, fade * appear, tier);
+                else if (m instanceof TileBloodCovenant bc)
+                    BloodCovenantRender.draw(bc, f, t, fade * appear, cam, tier);
+                else if (m instanceof TileHuntingGround hg) HuntingGroundRender.draw(hg, f, t, fade * appear, tier);
+                else if (m instanceof TileManaFountain mf) ManaFountainRender.draw(mf, f, t, fade * appear, tier);
             } catch (Throwable x) {
                 recover();
                 fail(OWN, x);

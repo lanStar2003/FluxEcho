@@ -1,5 +1,6 @@
 package com.fluxecho.campus;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -10,7 +11,8 @@ import com.fluxecho.logic.SiteFamily;
 
 /**
  * A kind of module the campus builder can raise for a nexus: what research opens it, which family of sites it stands on
- * ({@link SiteFamily}: the halls for the Echo Archive and the Eco Dome, the zenith for the Echo Dome Generator), how
+ * ({@link SiteFamily}: the halls for the Echo Archive and the Eco Dome, the zenith for the Echo Dome Generator, the
+ * diagonals for the pavilions since 0.13.0), how
  * large it is, which of the family's sites it prefers, the part its controller is placed as, its colour, and how its
  * build plan and controller position follow from a site. The builder creates a module job for a spec once a nexus's
  * teams have its research (see {@link Campus#tick}); everything else about the module (its tile, its shape) belongs to
@@ -71,7 +73,7 @@ public final class ModuleSpec {
     public final String research;
     /** Its footprint across, its depth from its front row, its height. */
     public final int width, depth, height;
-    /** The hall sites it may stand on, in order of preference. */
+    /** The sites of its family it may stand on, in order of preference (a site taken by another module is skipped). */
     public final int[] sites;
     /** The {@link com.fluxecho.logic.Parts} code its controller is placed as (consumed at commissioning). */
     public final int corePart;
@@ -81,7 +83,10 @@ public final class ModuleSpec {
     private final PlanFactory plans;
     private final ControllerFactory controllers;
     private final BooleanSupplier enabled;
-    /** What an axis module takes of the campus (0.12.0); null for the halls and the pavilions. */
+    /**
+     * What an axis module takes of the campus (0.12.0); null for the halls and the pavilions (their room is their
+     * height alone, {@link #noRoom}).
+     */
     private final Envelope envelope;
 
     public ModuleSpec(String key, String research, int width, int depth, int height, int[] sites, int corePart,
@@ -156,29 +161,60 @@ public final class ModuleSpec {
 
     /**
      * Why a campus whose base layer is {@code y0} has no room for it (a lang key under {@code fluxecho.}), or null when
-     * it fits; the halls and pavilions always fit.
+     * it fits. An axis module asks its {@link Envelope}. A module on the ground (a hall, a pavilion) stands on the
+     * campus's base layer, so it fits while its shape's top cell, {@code y0 + height - 1}, stays inside the world
+     * ({@code build.module.why.height} above y 255): every hall, and every pavilion but the Arcane Court (33 high, so
+     * a base at y 223 at most, 0.13.0), fits every base a nexus core may be placed at; the clear box over the shape
+     * needs no room, as the builder leaves the cells above the world alone.
      */
     public String noRoom(int y0) {
-        return envelope == null ? null : envelope.noRoom(y0);
+        if (envelope != null) return envelope.noRoom(y0);
+        return y0 + height - 1 > WORLD_TOP ? "build.module.why.height" : null;
     }
+
+    /** The highest y a block can stand at. */
+    private static final int WORLD_TOP = 255;
 
     /**
      * The keep-out boxes the campus jobs leave alone once the module stands on the site: a hall's whole
-     * {@link #siteBox} as whole columns {x0, z0, x1, z1}, an axis module's own boxes ({@link Envelope#keepOut}, which
-     * may be height-ranged {x0, z0, x1, z1, yFrom, yTo}).
+     * {@link #siteBox} as whole columns {x0, z0, x1, z1}, a pavilion's apron and allee row by row (0.13.0), an axis
+     * module's own boxes ({@link Envelope#keepOut}, which may be height-ranged {x0, z0, x1, z1, yFrom, yTo}).
      */
     public List<int[]> keepOut(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.keepOut(site, cx, y0, cz, fx, fz);
+        if (family == SiteFamily.PAVILION) return pavilionBoxes(site, cx, cz, fx, fz);
         return Collections.singletonList(siteBox(plan, site, cx, y0, cz, fx, fz));
     }
 
     /**
+     * A pavilion's site (0.13.0) as whole-column boxes {x0, z0, x1, z1} in the world: every row of its apron
+     * {@code oct(14, 18)} (the building, its clear margin and its annex inside) and of its diagonal allee
+     * ({@link CampusPlan#pavilionSite}), so the boxes hold its floor exactly. One box round the allee would take in a
+     * great square of the garden between the halls and the pavilions, and reach the promenade ring.
+     */
+    private static List<int[]> pavilionBoxes(int site, int cx, int cz, int fx, int fz) {
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : CampusPlan.rowBoxes(CampusPlan.pavilionSite(site))) {
+            int[] p = CampusPlan.toWorld(b[0], b[1], fx, fz), q = CampusPlan.toWorld(b[2], b[3], fx, fz);
+            out.add(
+                new int[] { cx + Math.min(p[0], q[0]), cz + Math.min(p[1], q[1]), cx + Math.max(p[0], q[0]),
+                    cz + Math.max(p[1], q[1]) });
+        }
+        return out;
+    }
+
+    /**
      * The boxes {x0, y0, z0, x1, y1, z1} in which nothing but the module's own jobs takes a block down once it stands
-     * on the site: a hall's {@link #siteBox} from bedrock to the sky, an axis module's own space
-     * ({@link Envelope#protect}).
+     * on the site: a hall's {@link #siteBox} from bedrock to the sky, a pavilion's keep-out boxes from bedrock to the
+     * sky (0.13.0), an axis module's own space ({@link Envelope#protect}).
      */
     public List<int[]> protect(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.protect(site, cx, y0, cz, fx, fz);
+        if (family == SiteFamily.PAVILION) {
+            List<int[]> out = new ArrayList<>();
+            for (int[] b : pavilionBoxes(site, cx, cz, fx, fz)) out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+            return out;
+        }
         int[] b = siteBox(plan, site, cx, y0, cz, fx, fz);
         return Collections.singletonList(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
     }

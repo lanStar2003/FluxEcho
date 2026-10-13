@@ -23,6 +23,7 @@ import org.lwjgl.opengl.GL11;
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
+import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
@@ -58,10 +59,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * The masterplan: round every active campus within 256 blocks, faint outlines lying on its floor of what the campus
  * will hold, so a player sees where things go before anything is built there: the graded disc's edge, the forum and
  * the promenade ring, the gate (site 0), each hall site's envelope (the Echo Archive's footprint, its door marked on
- * the side facing the nexus) and the reserved diagonal sites (dashed), with each site's number on a sign turned to the
- * camera. A site with a module on it is brighter, in the module's colour; the site of the current job is cyan; an empty
- * hall site names the module the campus plans there and where it stands (0.10.1: 「回响书库（需研究）」), so a player
- * sees what comes next and how to unlock it.
+ * the side facing the nexus) and the diagonal sites' pavilion octagons (dashed while empty), with each site's number on
+ * a sign turned to the camera. A site with a module on it is brighter, in the module's colour, and named by it; the
+ * site of the current job is cyan; an empty hall site (0.13.0: a diagonal too) names the module the campus plans there
+ * and where it stands (0.10.1: 「回响书库（需研究）」), so a player sees what comes next and how to unlock it.
  * <p>
  * The two sites on the nexus's axis (0.12.0): the zenith ({@link SiteFamily#ZENITH_SITE}) as the pod's octagon dashed
  * on the forum, drawn again up at the pod's floor (Y0 + 40), and the squares of its six legs' feet, its sign under the
@@ -249,7 +250,7 @@ public final class Masterplan {
                     if (through) GL11.glEnable(GL11.GL_DEPTH_TEST);
                 }
                 for (int s = 0; s < SITES; s++) {
-                    double[] at = signAt(s);
+                    double[] at = signAt(s, sites[s].ring);
                     double[] r = f.at(at[0], at[1]);
                     signs.add(new Sign(r[0], oy + at[2], r[1], sites[s].title, sites[s].caption, sites[s].rgb, 2f));
                 }
@@ -267,6 +268,11 @@ public final class Masterplan {
     private static final class Site {
 
         boolean occupied, job;
+        /**
+         * Whether a module that is no pavilion stands on a diagonal (a 0.9.2 module on its old inner-ring slot, docked
+         * there or turned away by the nexus), so the sign keeps off the allee that module stands over.
+         */
+        boolean ring;
         int rgb = DIM;
         float alpha = 0.2f;
         String title = "", caption = "";
@@ -286,12 +292,19 @@ public final class Masterplan {
         }
         String[] names = new String[SITES];
         int[] colours = new int[SITES];
-        boolean[] standing = new boolean[SITES];
+        boolean[] standing = new boolean[SITES], pavilion = new boolean[SITES], ringStanding = new boolean[SITES];
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            ModuleSpec spec = ModuleSpecs.get(mod.moduleKey());
+            boolean isPavilion = spec != null && spec.family == SiteFamily.PAVILION;
+            // A formed module that is no pavilion on a diagonal's old inner-ring slot (a 0.9.2 module, docked or
+            // turned away) keeps that diagonal's sign in the octagon's middle, clear of its walls, as in 0.12.0. It
+            // is kept apart from standing, so the site's caption and colour stay as they were.
+            int[] mc = mod.centre();
+            int k = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz);
+            if (k % 2 == 1 && mod.formed() && !isPavilion) ringStanding[k] = true;
             int s = axisSiteOf(mod, c, fx, fz);
             if (s < 0) {
-                int[] mc = mod.centre();
                 int[] l = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
                 if (Math.abs(mc[1] - c[1]) > 8) continue;
                 s = siteOf(l[0], l[1]);
@@ -302,6 +315,7 @@ public final class Masterplan {
             }
             if (s >= SITES) continue;
             standing[s] = true;
+            pavilion[s] |= isPavilion;
             if (names[s] == null) {
                 names[s] = mod.moduleKey();
                 colours[s] = mod.moduleColor();
@@ -313,6 +327,11 @@ public final class Masterplan {
             boolean docked = !axis && (n.clientDockedMask & 1 << s) != 0;
             st.occupied = s != 0 && (docked || standing[s]);
             st.job = s == jobSite;
+            st.ring = s % 2 == 1 && !axis
+                && !st.job
+                && !pavilion[s]
+                && !v.pavilionBuilt(s)
+                && (st.occupied || ringStanding[s]);
             st.title = EchoText.t(SiteFamily.labelKey(s), s);
             if (s == 0) {
                 st.rgb = CYAN;
@@ -328,12 +347,12 @@ public final class Masterplan {
                 st.alpha = 0.28f;
                 st.caption = names[s] != null ? EchoText.t("module." + names[s]) : EchoText.t("build.masterplan.taken");
             } else {
-                // a hall site and an axis site name what the campus plans there; a diagonal is reserved still
-                boolean plans = s % 2 == 0 || axis;
+                // every site names what the campus plans there (0.13.0: the diagonals too, for the pavilions); a
+                // diagonal nothing is planned on is reserved still
                 st.rgb = DIM;
                 st.alpha = s % 2 == 0 ? 0.2f : 0.15f;
                 st.caption = EchoText.t(s % 2 == 0 && !axis ? "build.masterplan.hall" : "build.masterplan.reserved");
-                Campus.ModuleState planned = plans ? planned(v, s) : null;
+                Campus.ModuleState planned = planned(v, s);
                 if (planned != null) {
                     // the module planned here and where it stands: 「回响书库（需研究）」
                     st.caption = EchoText.t(
@@ -387,8 +406,13 @@ public final class Masterplan {
         return -1;
     }
 
-    /** Where a site's sign stands: {A, R, height over the floor}. */
-    private static double[] signAt(int site) {
+    /**
+     * Where a site's sign stands: {A, R, height over the floor}. A diagonal's stands on its allee in front of the
+     * pavilion's inner portal ({@link CampusPlan#pavilionSign}, 0.13.0), at eye height as a hall's before its door, so
+     * the pavilion planned, rising or standing there never shuts it in; only a diagonal a 0.9.2 module stands on by
+     * its old inner-ring slot ({@code ring}, that module over the allee) keeps it in the octagon's middle.
+     */
+    private static double[] signAt(int site, boolean ring) {
         if (site == 0) return new double[] { 31, 0, 4.2 };
         // the zenith's under the pod (off the lift's shaft, below its own plate), seen from the forum; the root's
         // behind the nexus
@@ -400,8 +424,12 @@ public final class Masterplan {
             double d = CampusPlan.HALL_FRONT - 3.5;
             return new double[] { ax[0] * d, ax[1] * d, 3.2 };
         }
-        int[] dc = CampusPlan.diagonalCentre(site);
-        return new double[] { dc[0], dc[1], 3.0 };
+        if (ring) {
+            int[] dc = CampusPlan.diagonalCentre(site);
+            return new double[] { dc[0], dc[1], 3.0 };
+        }
+        int[] at = CampusPlan.pavilionSign(site);
+        return new double[] { at[0], at[1], 3.2 };
     }
 
     /** A hall site's envelope: the Archive's footprint, front row at {@link CampusPlan#HALL_FRONT}. */
