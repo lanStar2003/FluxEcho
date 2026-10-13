@@ -70,7 +70,7 @@ public final class Config {
     public static boolean campusEnabled = true, archiveEnabled = true;
     public static double buildBlocksPerTick = 2.0, buildCostScale = 1.0;
     public static int buildClearPerTick = 8, buildEuPerBlock = 256, buildEuPerClear = 64, buildClearHeight = 24,
-        buildFillDepth = 4, buildMinSpacing = 144;
+        buildFillDepth = 4, buildMinSpacing = 312;
     public static boolean buildRequireSky = true, buildKeepSpoils = true;
     /** 0.10.1: the campus builder empties every cell it clears (machines and chests too, into the recycle store). */
     public static boolean buildClearAll = true;
@@ -89,7 +89,7 @@ public final class Config {
     public static int gateDimension = 7270, gateProvider = 7270, gateViewRange = 32;
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
-    private static final String VERSION = "0.10.1";
+    private static final String VERSION = "0.15.0";
 
     private Config() {}
 
@@ -535,7 +535,7 @@ public final class Config {
             buildMinSpacing,
             0,
             100_000,
-            "Blocks (along x or z) a nexus core placed on the ground must keep from the centre of another nexus's campus, so two campuses never overlap. 0 turns the check off.");
+            "Blocks (along x or z) a new nexus core placed on the ground must keep from the centre of another nexus's campus, so two campuses never overlap: 312 leaves room for both campuses' outer rings. A core put back where it stood, and an older nexus laying its forum, keep only the old 144 (their outer rings share the ground between them). 0 turns the check off.");
         buildRequireSky = c.getBoolean(
             "buildRequireSky",
             NEXUS,
@@ -694,6 +694,20 @@ public final class Config {
                     .getString()))
                 n.remove("buildFillDepth");
         }
+        // 0.15.0: new campuses keep room for their outer rings (312, it was 144); a file that kept the old default gets
+        // the new one, a spacing a player chose stays
+        if (older(was, "0.15.0") && c.hasCategory(NEXUS)) {
+            ConfigCategory n = c.getCategory(NEXUS);
+            if (n.containsKey("buildMinSpacing") && bumpsMinSpacing(
+                n.get("buildMinSpacing")
+                    .getString()))
+                n.remove("buildMinSpacing");
+        }
+    }
+
+    /** Whether a saved {@code buildMinSpacing} is the default up to 0.14.2, 144, which 0.15.0 raises to 312. */
+    static boolean bumpsMinSpacing(String saved) {
+        return saved != null && "144".equals(saved.trim());
     }
 
     /** Whether a saved {@code buildFillDepth} is the 0.10.0 default, 2, which 0.10.1 raises to 4. */

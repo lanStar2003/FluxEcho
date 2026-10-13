@@ -1636,4 +1636,394 @@ class CampusEngineTest {
         assertFalse(BuildPlan.formReads(BuildPlan.DIG));
         assertFalse(BuildPlan.formReads(BuildPlan.DRAIN));
     }
+
+    /**
+     * The outer establish (0.15.0) saves the neighbouring campuses it shares the ground with ({@code Nb}) beside its
+     * keep-out boxes, and grades as the campus jobs do; every other job saves no {@code Nb}, as before.
+     */
+    @Test
+    void theOuterEstablishKeepsItsNeighbours() {
+        List<int[]> boxes = Collections.singletonList(new int[] { CX + 70, CZ - 5, CX + 80, CZ + 5 });
+        List<int[]> near = Arrays.asList(new int[] { CX + 144, CZ }, new int[] { CX - 20, CZ - 150 });
+        BuildJob j = BuildJob.outer(boxes, near);
+        assertEquals(BuildPlan.OUTER, j.key());
+        assertEquals(BuildPlan.OUTER, j.planKey());
+        assertEquals(-1, j.site());
+        assertTrue(j.laysOuter());
+        assertTrue(j.grades());
+        assertFalse(j.campusJob(), "not the forum's: a refresh never takes it for its own");
+        NBTTagCompound t = j.write();
+        assertTrue(t.hasKey("Nb"));
+        BuildJob r = BuildJob.read(t);
+        assertTrue(r.laysOuter());
+        assertEquals(
+            2,
+            r.neighbours()
+                .size());
+        assertArrayEquals(
+            new int[] { CX - 20, CZ - 150 },
+            r.neighbours()
+                .get(1));
+        assertEquals(
+            1,
+            r.keepOut()
+                .size());
+        assertFalse(
+            BuildJob.establish(Collections.emptyList())
+                .write()
+                .hasKey("Nb"));
+        assertFalse(
+            BuildJob.establish(Collections.emptyList())
+                .laysOuter());
+        // a neighbour placed or gone before Start makes the plan again; the same ones leave it be
+        assertFalse(r.retarget(boxes, near));
+        assertTrue(r.retarget(boxes, Collections.singletonList(new int[] { CX + 144, CZ })));
+        assertEquals(
+            1,
+            r.neighbours()
+                .size());
+    }
+
+    /**
+     * The grounds a campus laid beyond the forum ({@code Gl}, 0.15.0) save as a list of plan keys and read back; a key
+     * no ground job has is dropped.
+     */
+    @Test
+    void theLaidGroundsSaveAndLoad() {
+        Set<String> laid = new java.util.LinkedHashSet<>(Arrays.asList(BuildPlan.OUTER, "establish:nowhere"));
+        NBTTagList l = Campus.grounds(laid);
+        assertEquals(2, l.tagCount());
+        Set<String> back = new java.util.LinkedHashSet<>();
+        Campus.readGrounds(l, back);
+        assertEquals(Collections.singleton(BuildPlan.OUTER), back);
+        Campus.readGrounds(null, back);
+        assertEquals(1, back.size());
+    }
+
+    /**
+     * The outer establish waits for the jobs still to run (0.15.0): its own and every other campus job, and a retire
+     * job of a 0.9.2 hall, so the ring lays the streets the hall stood on rather than keeping out of its box for good;
+     * a job that ended holds nothing up.
+     */
+    @Test
+    void theOuterEstablishWaitsForARetireJob() {
+        assertFalse(Campus.outerWaits(Collections.emptyList()));
+        int[] box = { CX + 20, CZ + 20, CX + 30, CZ + 30, Y0, Y0 + 12 };
+        BuildJob retire = BuildJob.retire(1, box);
+        assertTrue(Campus.outerWaits(Collections.singletonList(retire)));
+        retire.state = BuildState.State.DONE;
+        assertFalse(Campus.outerWaits(Collections.singletonList(retire)), "ended");
+        assertTrue(Campus.outerWaits(Collections.singletonList(BuildJob.forum(Collections.emptyList()))));
+        assertTrue(
+            Campus.outerWaits(Collections.singletonList(BuildJob.outer(Collections.emptyList(), null))),
+            "its own");
+        assertFalse(Campus.outerWaits(Collections.singletonList(BuildJob.grow(3))), "a growth is no campus job");
+    }
+
+    /**
+     * What 0.15.0's fixes add to a job is saved and read back, and the plan made from it is the same: the claims of
+     * the outer establish's neighbours ({@code Nc}), the neighbours a regaining job regains from ({@code Nr}), a retire
+     * job that lays the outer floor ({@code Ro}, with its neighbours); a job without them saves as before.
+     */
+    @Test
+    void theOuterFixesTravelWithTheJob() {
+        List<int[]> near = Arrays.asList(new int[] { CX + 144, CZ, 6 }, new int[] { CX - 150, CZ + 10 });
+        BuildJob outer = BuildJob.outer(Collections.emptyList(), near);
+        NBTTagCompound t = outer.write();
+        assertArrayEquals(new int[] { 6, 0 }, t.getIntArray("Nc"));
+        BuildJob back = BuildJob.read(t);
+        assertEquals(2, back.neighbours.size());
+        assertArrayEquals(new int[] { CX + 144, CZ, 6 }, back.neighbours.get(0));
+        assertArrayEquals(new int[] { CX - 150, CZ + 10 }, back.neighbours.get(1));
+        assertFalse(back.regains());
+
+        BuildJob regain = BuildJob.outerRegain(Collections.emptyList(), Collections.emptyList(), near);
+        BuildJob r2 = BuildJob.read(regain.write());
+        assertTrue(r2.regains());
+        assertEquals(2, r2.regainFrom.size());
+        CampusPlan cp = new CampusPlan(Mix.seed(CX, Y0 + 2, CZ));
+        BuildPlan.Plan a = BuildJob.planFor(
+            r2.planKey(),
+            cp,
+            CX,
+            Y0,
+            CZ,
+            0,
+            -1,
+            CX,
+            Y0 + 2,
+            CZ - 5,
+            r2.keepOut(),
+            r2.neighbours(),
+            r2.regainFrom(),
+            false);
+        assertEquals(BuildPlan.outerRegain(cp, CX, CZ, 0, -1, near, Collections.emptyList()), a.clear.size());
+
+        int[] box = { CX + 20, CZ + 20, CX + 30, CZ + 30, Y0, Y0 + 12 };
+        BuildJob plain = BuildJob.retire(1, box);
+        NBTTagCompound pt = plain.write();
+        assertFalse(pt.hasKey("Ro"), "saved as 0.14.2 saved it");
+        assertFalse(pt.hasKey("Nb"));
+        BuildJob withOuter = BuildJob.read(
+            BuildJob.retire(1, box, true, near)
+                .write());
+        assertTrue(withOuter.retiresOuter());
+        assertEquals(2, withOuter.neighbours.size());
+        assertFalse(
+            BuildJob.read(pt)
+                .retiresOuter());
+    }
+
+    /**
+     * The neighbours the outer ring was laid with (0.15.0, {@code Gn}) go with a broken core, and the outer sites are
+     * judged against them as well as against the campuses registered now, so a site the ring left to a neighbour is
+     * not taken as whole while its ground lies ungraded; a neighbour in both lists counts once, with the claims the
+     * registry has for it, and a gone one keeps the claims it had when the ring was laid.
+     */
+    @Test
+    void theRingsNeighboursAreRemembered() {
+        Campus.Carried c = new Campus.Carried();
+        c.core = new int[] { CX, Y0 + 2, CZ };
+        c.laid.add(BuildPlan.OUTER);
+        c.laidWith.add(new int[] { CX + 144, CZ });
+        Campus.Carried back = Campus.Carried.read(c.write());
+        assertEquals(1, back.laidWith.size());
+        assertArrayEquals(new int[] { CX + 144, CZ }, back.laidWith.get(0));
+        assertTrue(back.laid.contains(BuildPlan.OUTER));
+
+        List<int[]> live = Collections.singletonList(new int[] { CX + 144, CZ, 3 });
+        List<int[]> both = Campus.withLaid(live, Collections.singletonList(new int[] { CX + 144, CZ }));
+        assertEquals(1, both.size());
+        assertArrayEquals(new int[] { CX + 144, CZ, 3 }, both.get(0), "the registry's claims");
+        List<int[]> gone = Campus
+            .withLaid(Collections.emptyList(), Collections.singletonList(new int[] { CX - 144, CZ }));
+        assertEquals(1, gone.size(), "a neighbour gone from the registry still trims what the ring left it");
+        // so the site on its side keeps losing cells until the ground is regained, and is whole without it
+        int q = com.fluxecho.logic.CampusSplit.quadrant(-1, 1);
+        assertTrue(com.fluxecho.logic.CampusSplit.siteLoss(q, CX, CZ, 0, gone) > 0);
+        assertEquals(0, com.fluxecho.logic.CampusSplit.siteLoss(q, CX, CZ, 0, Collections.emptyList()));
+        // a gone neighbour keeps the claims the ring was laid with: the site overlapping the outer diagonal it had
+        // claimed (150 to the west, its +x +z one) stays held for good until the ground is regained
+        int[] claimer = { CX - 150, CZ, 1 << com.fluxecho.logic.CampusSplit.quadrant(1, 1) };
+        List<int[]> goneClaimer = Campus.withLaid(Collections.emptyList(), Collections.singletonList(claimer));
+        assertArrayEquals(claimer, goneClaimer.get(0), "the claims it was laid with");
+        assertEquals(-1, com.fluxecho.logic.CampusSplit.siteLoss(q, CX, CZ, 0, goneClaimer));
+        // and a registered one with the same centre but no claim now counts as the registry has it
+        List<int[]> live2 = Collections.singletonList(new int[] { CX - 150, CZ });
+        assertArrayEquals(
+            new int[] { CX - 150, CZ },
+            Campus.withLaid(live2, Collections.singletonList(claimer))
+                .get(0));
+        assertTrue(com.fluxecho.logic.CampusSplit.siteLoss(q, CX, CZ, 0, Campus.withLaid(live2, goneClaimer)) >= 0);
+    }
+
+    /**
+     * The client hears the neighbours the outer sites are judged against with the campus, not the job (0.15.0,
+     * {@code Ns} and the campus's own claims {@code Oc}), and the job's claims, regain list and retire flag: a view
+     * read from them has them all, with no job as well, so the masterplan splits the ring after the outer establish
+     * ended whether or not the client has the neighbours loaded.
+     */
+    @Test
+    void theSplitReachesTheClientWithTheCampus() {
+        List<int[]> near = Arrays.asList(new int[] { CX + 150, CZ, 5 }, new int[] { CX - 144, CZ });
+        NBTTagCompound t = new NBTTagCompound();
+        t.setBoolean("Ac", true);
+        t.setIntArray("Ns", Campus.triples(near));
+        t.setByte("Oc", (byte) 9);
+        Campus.View v = new Campus.View();
+        v.read(t);
+        assertFalse(v.hasJob());
+        assertEquals(2, v.split.size());
+        assertArrayEquals(new int[] { CX + 150, CZ, 5 }, v.split.get(0));
+        assertArrayEquals(new int[] { CX - 144, CZ }, v.split.get(1));
+        assertEquals(9, v.claims);
+        // with a job, its own lists too
+        t.setString("K", BuildPlan.OUTER);
+        t.setIntArray("Nb", BuildJob.centres(near));
+        t.setIntArray("Nc", BuildJob.claims(near));
+        t.setIntArray("Nr", BuildJob.centres(Collections.singletonList(new int[] { CX, CZ + 160 })));
+        t.setBoolean("Ro", true);
+        v.read(t);
+        assertArrayEquals(new int[] { CX + 150, CZ, 5 }, v.neighbours.get(0));
+        assertEquals(1, v.regainFrom.size());
+        assertTrue(v.retireOuter);
+        // a campus that never synced them reads none
+        Campus.View empty = new Campus.View();
+        empty.read(new NBTTagCompound());
+        assertTrue(empty.split.isEmpty());
+        assertEquals(0, empty.claims);
+    }
+
+    /**
+     * The campus itself writes the neighbours its outer sites are judged against ({@code Ns}, 0.15.0) with no job as
+     * well: a campus whose outer ring is laid syncs the neighbours the ring was laid with, with their claims, after
+     * its outer establish ended, so the masterplan splits the ring then too; one whose ground is not laid and whose
+     * nexus has not grown to the phase the outer ring opens at writes none until an outer establish is queued.
+     */
+    @Test
+    void aLaidCampusSyncsItsSplitWithoutAJob() {
+        List<int[]> with = Arrays.asList(new int[] { CX + 150, CZ, 5 }, new int[] { CX - 144, CZ });
+        Campus c = withGround(nexus(0), true, with, null);
+        assertNull(c.job());
+        NBTTagCompound t = new NBTTagCompound();
+        c.writeSync(t);
+        Campus.View v = new Campus.View();
+        v.read(t);
+        assertFalse(v.hasJob());
+        assertTrue(v.outerLaid);
+        assertEquals(2, v.split.size());
+        assertArrayEquals(new int[] { CX - 144, CZ }, v.split.get(0));
+        assertArrayEquals(new int[] { CX + 150, CZ, 5 }, v.split.get(1), "with the claims it was laid with");
+
+        TileNexus young = nexus(0);
+        assertTrue(young.phase() < SiteFamily.OUTER_DIAG.opens);
+        Campus none = withGround(young, false, with, null);
+        NBTTagCompound u = new NBTTagCompound();
+        none.writeSync(u);
+        assertFalse(u.hasKey("Ns"), "not laid, phase below the outer ring's");
+        assertFalse(u.hasKey("Oc"));
+        Campus queued = withGround(nexus(0), false, with, BuildJob.outer(Collections.emptyList(), with));
+        NBTTagCompound q = new NBTTagCompound();
+        queued.writeSync(q);
+        assertNull(queued.job());
+        assertTrue(q.hasKey("Ns"), "an outer establish queued");
+    }
+
+    /**
+     * An active campus loaded into the nexus with its outer ground laid or not ({@code Gl}), the neighbours the ring
+     * was laid with ({@code Gn}, {@code Gq}), no current job, and a queued job or none.
+     */
+    private static Campus withGround(TileNexus n, boolean laid, List<int[]> laidWith, BuildJob queued) {
+        NBTTagCompound t = new NBTTagCompound();
+        t.setString("St", "active");
+        NBTTagList q = new NBTTagList();
+        if (queued != null) q.appendTag(queued.write());
+        t.setTag("Queue", q);
+        if (laid) t.setTag("Gl", Campus.grounds(Collections.singleton(BuildPlan.OUTER)));
+        t.setIntArray("Gn", BuildJob.centres(laidWith));
+        t.setIntArray("Gq", BuildJob.claims(laidWith));
+        NBTTagCompound tile = new NBTTagCompound();
+        tile.setTag("Campus", t);
+        Campus c = n.campus();
+        c.readNBT(tile);
+        return c;
+    }
+
+    /**
+     * The module list says the outer ring's job waits for the jobs before it (0.15.0, {@code why.ground_waits}) only
+     * while that job is not queued and a campus job or a retire job holds its offer back.
+     */
+    @Test
+    void theGroundWaitsForTheJobsBeforeIt() {
+        assertFalse(Campus.groundWaits(BuildPlan.OUTER, Collections.emptyList()), "nothing holds it back");
+        int[] box = { CX + 20, CZ + 20, CX + 30, CZ + 30, Y0, Y0 + 12 };
+        BuildJob retire = BuildJob.retire(1, box);
+        assertTrue(Campus.groundWaits(BuildPlan.OUTER, Collections.singletonList(retire)));
+        assertTrue(Campus.groundWaits(BuildPlan.OUTER, Collections.singletonList(BuildJob.forum(null))));
+        assertFalse(
+            Campus.groundWaits(BuildPlan.OUTER, Arrays.asList(retire, BuildJob.outer(Collections.emptyList(), null))),
+            "queued: there is a job to start");
+        assertFalse(Campus.groundWaits("establish:third", Collections.singletonList(retire)), "another ground");
+        retire.state = BuildState.State.DONE;
+        assertFalse(Campus.groundWaits(BuildPlan.OUTER, Collections.singletonList(retire)), "ended");
+    }
+
+    /**
+     * The boxes the outer ring was laid round (0.15.0, {@code Gk}): an outer establish remembers the boxes of its
+     * keep-out that a module on no recorded site gave, not a recorded site's; once nothing on no site holds one and it
+     * lies in loaded chunks it is vacated, and the campus offers the outer establish again limited to it
+     * ({@link BuildJob#outerPatch}, {@code Op}), which saves, syncs and plans the same; a patch that ran forgets its
+     * boxes; the boxes go with a broken core.
+     */
+    @Test
+    void theBoxesTheRingWasLaidRoundArePatchedOnceVacated() {
+        int[] hall = { CX + 20, CZ + 20, CX + 34, CZ + 34 }, stray = { CX - 90, CZ + 5, CX - 76, CZ + 19 },
+            site = { CX - 10, CZ - 60, CX + 10, CZ - 40 };
+        int[] leg = { CX - 3, CZ - 3, CX + 3, CZ + 3, Y0 + 30, Y0 + 40 };
+        List<int[]> keepOut = Arrays.asList(hall, site, stray, leg);
+        List<int[]> round = Campus.laidRound(keepOut, Arrays.asList(site.clone(), leg.clone()));
+        assertEquals(2, round.size(), "the recorded site's box and the zenith's leg are not remembered");
+        assertArrayEquals(hall, round.get(0));
+        assertArrayEquals(stray, round.get(1));
+
+        // the hall still stands: held; gone: vacated; in a chunk not loaded: held
+        int[] hallNow = hall.clone();
+        assertTrue(
+            Campus.vacated(round, Arrays.asList(hallNow, stray.clone()), b -> true)
+                .isEmpty());
+        List<int[]> gone = Campus.vacated(round, Collections.singletonList(stray.clone()), b -> true);
+        assertEquals(1, gone.size());
+        assertArrayEquals(hall, gone.get(0));
+        assertTrue(
+            Campus.vacated(round, Collections.singletonList(stray.clone()), b -> false)
+                .isEmpty(),
+            "unloaded");
+
+        // the patch job saves, reads and plans its boxes
+        BuildJob patch = BuildJob.outerPatch(Collections.emptyList(), null, gone);
+        assertTrue(patch.patches());
+        assertTrue(patch.laysOuter());
+        assertFalse(patch.regains());
+        NBTTagCompound t = patch.write();
+        assertArrayEquals(hall, t.getIntArray("Op"));
+        BuildJob back = BuildJob.read(t);
+        assertTrue(back.patches());
+        assertArrayEquals(
+            hall,
+            back.patch()
+                .get(0));
+        assertFalse(
+            BuildJob.outer(Collections.emptyList(), null)
+                .write()
+                .hasKey("Op"),
+            "the outer establish saves as before");
+        CampusPlan cp = new CampusPlan(Mix.seed(CX, Y0 + 2, CZ));
+        BuildPlan.Plan a = BuildJob.planFor(
+            back.planKey(),
+            cp,
+            CX,
+            Y0,
+            CZ,
+            0,
+            -1,
+            CX,
+            Y0 + 2,
+            CZ - 5,
+            back.keepOut(),
+            back.neighbours(),
+            back.regainFrom(),
+            false,
+            back.patch());
+        BuildPlan.Plan b = BuildPlan.outer(cp, CX, Y0, CZ, 0, -1, Collections.emptyList(), null, null, gone);
+        assertEquals(b.clear.size(), a.clear.size());
+        assertEquals(b.steps.size(), a.steps.size());
+        // the client reads the boxes with the job
+        NBTTagCompound sync = new NBTTagCompound();
+        sync.setString("K", BuildPlan.OUTER);
+        sync.setIntArray("Op", BuildJob.boxes(gone, 4));
+        Campus.View v = new Campus.View();
+        v.read(sync);
+        assertEquals(1, v.patch.size());
+        assertArrayEquals(hall, v.patch.get(0));
+
+        // a patch that ran forgets its boxes, the others stay
+        List<int[]> laid = new ArrayList<>(round);
+        Campus.forgetBoxes(laid, back.patch());
+        assertEquals(1, laid.size());
+        assertArrayEquals(stray, laid.get(0));
+
+        // the boxes go with a broken core
+        Campus.Carried c = new Campus.Carried();
+        c.core = new int[] { CX, Y0 + 2, CZ };
+        c.laidBoxes.addAll(round);
+        Campus.Carried carried = Campus.Carried.read(c.write());
+        assertEquals(2, carried.laidBoxes.size());
+        assertArrayEquals(stray, carried.laidBoxes.get(1));
+        Campus.Carried none = new Campus.Carried();
+        none.core = new int[] { CX, Y0 + 2, CZ };
+        assertFalse(
+            none.write()
+                .hasKey("Gk"),
+            "nothing laid round, nothing saved");
+    }
 }

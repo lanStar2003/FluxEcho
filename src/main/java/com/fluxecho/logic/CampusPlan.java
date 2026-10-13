@@ -307,17 +307,25 @@ public final class CampusPlan {
 
     // ---- sites ----
 
-    /** The unit axis {da, dr} of a site: (1, 0) for the front, then clockwise; the diagonals are (+-1, +-1). */
+    /**
+     * The unit axis {da, dr} of a site: (1, 0) for the front, then clockwise; the diagonals are (+-1, +-1). Since
+     * 0.15.0 an outer site's is its family's ({@link OuterRing#axis}: an outer diagonal's the inner diagonal it stands
+     * beyond, an outer flanker's its avenue's); every other number keeps 0.14's (its number modulo 8).
+     */
     public static int[] siteAxis(int site) {
+        SiteFamily f = SiteFamily.of(site);
+        if (f == SiteFamily.OUTER_DIAG || f == SiteFamily.OUTER_FLANK) return OuterRing.axis(site);
         int[] ax = AXES[Math.floorMod(site, AXES.length)];
         return new int[] { ax[0], ax[1] };
     }
 
     /**
      * The centre {a, r} of a module at the site: on a cardinal site the middle of a footprint {@code depth} deep whose
-     * front row is at {@link #HALL_FRONT}; on a diagonal site the pavilion envelope's centre.
+     * front row is at {@link #HALL_FRONT}; on a diagonal site the pavilion envelope's centre; on an outer diagonal
+     * (0.15.0) its octagon's centre.
      */
     public static int[] moduleCentre(int site, int depth) {
+        if (SiteFamily.of(site) == SiteFamily.OUTER_DIAG) return OuterRing.diagCentre(site);
         int k = Math.floorMod(site, AXES.length);
         if (k % 2 == 1) return diagonalCentre(k);
         int d = HALL_FRONT + (depth - 1) / 2;
@@ -367,7 +375,9 @@ public final class CampusPlan {
     /**
      * Whether (a, r) lies in a module envelope of the site: a hall site's {@code width x depth} footprint
      * ({@link #inHall}), a pavilion's octagon ({@link #inPavilion}), the gatehouse ({@link #inGatehouse}), and on the
-     * axis (0.12.0) the zenith pod's octagon {@code oct(10, 14)} or the root's {@code oct(11, 15)} (seen from above).
+     * axis (0.12.0) the zenith pod's octagon {@code oct(10, 14)} or the root's {@code oct(11, 15)} (seen from above);
+     * since 0.15.0 an outer diagonal's octagon {@code oct(15, 20)} and an outer flanker's 27 x 31
+     * ({@link OuterRing}).
      */
     public static boolean inEnvelope(int site, int width, int depth, int a, int r) {
         switch (family(site)) {
@@ -379,6 +389,10 @@ public final class CampusPlan {
                 return oct(a, r, ZENITH_R, ZENITH_K);
             case ROOT:
                 return oct(a, r, ROOT_R, ROOT_K);
+            case OUTER_DIAG:
+                return OuterRing.inDiag(site, a, r);
+            case OUTER_FLANK:
+                return OuterRing.inFlank(site, a, r);
             default:
                 return inGatehouse(a, r);
         }
@@ -453,10 +467,13 @@ public final class CampusPlan {
      * the campus puts it ({@link #HALL_FRONT}); a diagonal's is a pavilion's inner portal ({@link #PAVILION_DOOR}) and
      * the gate's is the gatehouse's front ({@link #GATE_DOOR}, 0.14.0) only when the campus records a module of the
      * site's own family built there ({@code built}: a pavilion on a diagonal, 0.13.0, the gatehouse on site 0), for a
-     * module docked there without one is a 0.9.2 module on the old inner ring, which keeps its ring bridge (-1).
+     * module docked there without one is a 0.9.2 module on the old inner ring, which keeps its ring bridge (-1). An
+     * outer diagonal (0.15.0) is no ring slot: a module docked there is always the building of its family, and its
+     * bridge runs out to its inner chamfer portal ({@link OuterRing#DIAG_DOOR}).
      */
     public static double siteDoor(int site, boolean built) {
         for (int s : HALL_SITES) if (s == site) return HALL_FRONT - 0.5;
+        if (family(site) == SiteFamily.OUTER_DIAG) return OuterRing.DIAG_DOOR;
         if (built && family(site) == SiteFamily.PAVILION) return PAVILION_DOOR;
         if (built && family(site) == SiteFamily.GATE) return GATE_DOOR;
         return -1;
@@ -749,6 +766,135 @@ public final class CampusPlan {
         return Collections.unmodifiableMap(floor);
     }
 
+    /**
+     * The floor the outer establish lays (0.15.0, CITY.md §2.3, {@link OuterRing#paved}), as cell key to deck part code
+     * for the Y0 cell: the four 井 streets, the outer promenade, the four avenues, the outer gate and the pavilions'
+     * outer allées (3,579 cells), less any cell of the establish floor (none lies there: the streets start outside the
+     * promenade ring, the front avenue past the gate road). Light only on lines: a dashed lit line down the middle of
+     * every street and avenue (the gate road's seam continued) and of every outer allée, a lit mark on the promenade in
+     * front of each outer flanker's doors; trim along the outer gate's sides and as curbs wherever a path meets the
+     * unpaved garden; then the paving's seams and dark clusters, and plain deck. The plan leaves out the cells a
+     * standing module or a neighbouring campus takes ({@link BuildPlan#outer}); the tiles themselves are the same
+     * whatever stands, so the client and the server always agree. The seams run on seed points spread further out than
+     * the inner city's ({@link #outerSeam}), so the inner city's floors keep theirs.
+     */
+    public Map<Long, Integer> outerFloor() {
+        long ck = 1L << 60;
+        synchronized (sites) {
+            Map<Long, Integer> floor = sites.get(ck);
+            if (floor == null) {
+                floor = buildOuterFloor();
+                sites.put(ck, floor);
+            }
+            return floor;
+        }
+    }
+
+    private Map<Long, Integer> buildOuterFloor() {
+        Set<Long> cells = new LinkedHashSet<>(OuterRing.paved());
+        // monotone growth: the establish floor (and anything in its disc) is never touched again
+        cells.removeIf(k -> paved.contains(k) || establishCell(keyA(k), keyR(k)));
+        Set<Long> all = new HashSet<>(paved);
+        all.addAll(cells);
+        Map<Long, Integer> floor = new LinkedHashMap<>();
+        for (long k : cells) floor.put(k, outerTile(keyA(k), keyR(k), all));
+        return Collections.unmodifiableMap(floor);
+    }
+
+    /** The deck code of a cell of the outer establish's floor, by the rules of {@link #outerFloor} in order. */
+    private int outerTile(int a, int r, Set<Long> all) {
+        if (OuterRing.doorMark(a, r)) return LIT;
+        boolean gate = OuterRing.inOuterGate(a, r);
+        if (gate && r == 0 && a % 2 == 0) return LIT;
+        if (gate && Math.abs(r) == OuterRing.GATE_WIDE) return TRIM;
+        int[] avenue = OuterRing.onAvenue(a, r);
+        if (avenue != null && avenue[1] == 0 && avenue[0] % 2 == 0) return LIT;
+        // a street's middle line, |R| 19 along A and |A| 19 along R, lit on every other cell; the 井 plazas where two
+        // streets cross keep the dashes of neither
+        int aa = Math.abs(a), ar = Math.abs(r), mid = (STREET_FROM + STREET_TO) / 2;
+        if (avenue == null && aa <= STREET_REACH
+            && ar <= STREET_REACH
+            && (ar == mid && (aa < STREET_FROM || aa > STREET_TO) && aa % 2 == 0
+                || aa == mid && (ar < STREET_FROM || ar > STREET_TO) && ar % 2 == 0))
+            return LIT;
+        // a pavilion's outer allée: its middle line (|a| = |r|, every other step of |a| + |r|)
+        if (aa == ar && aa + ar >= OuterRing.ALLEE_FROM && aa + ar <= OuterRing.ALLEE_TO) return LIT;
+        for (int[] d : SIDES) {
+            int na = a + d[0], nr = r + d[1];
+            if (!all.contains(key(na, nr)) && !inBase(na, nr)) return TRIM;
+        }
+        if (outerSeam(a, r)) return TRIM;
+        double rad = StrictMath.hypot(a, r);
+        double chance = Math.max(0, Math.min(DARK_MAX, (rad - DARK_FROM) / DARK_SPAN));
+        if (Mix.unit(seed, Math.floorDiv(a, 3), Math.floorDiv(r, 3), S_DARK) < chance) return DARK;
+        return DECK;
+    }
+
+    /**
+     * The floor an outer diagonal's job lays on its site (0.15.0, CITY.md §2.3), as cell key to deck part code for
+     * the Y0 cell: its apron ({@link OuterRing#diagApron}, 172 cells, its inner row round the building trim) and its
+     * allée from the outer promenade to its inner chamfer portal ({@link OuterRing#diagAllee}, 6 cells, three on the
+     * apron): chevrons on the allée's first rows, a lit threshold before the portal, as a pavilion's allée ends; the
+     * rest takes the paving's seams and dark clusters (175 cells on every outer diagonal). Like every site floor it
+     * only ever grows: it never holds a cell of the establish floor nor of the outer establish's, nor of the
+     * building's envelope.
+     *
+     * @throws IllegalArgumentException if the site is not an outer diagonal
+     */
+    public Map<Long, Integer> outerDiagFloor(int site) {
+        OuterRing.diagCentre(site);
+        long ck = (1L << 59) | site;
+        synchronized (sites) {
+            Map<Long, Integer> floor = sites.get(ck);
+            if (floor == null) {
+                floor = buildOuterDiagFloor(site);
+                sites.put(ck, floor);
+            }
+            return floor;
+        }
+    }
+
+    private Map<Long, Integer> buildOuterDiagFloor(int site) {
+        Set<Long> apron = OuterRing.diagApron(site), allee = OuterRing.diagAllee(site);
+        Set<Long> cells = new LinkedHashSet<>(apron);
+        cells.addAll(allee);
+        Set<Long> outer = OuterRing.paved();
+        cells.removeIf(k -> paved.contains(k) || establishCell(keyA(k), keyR(k)) || outer.contains(k));
+        Set<Long> all = new HashSet<>(paved);
+        all.addAll(outer);
+        all.addAll(cells);
+        Map<Long, Integer> floor = new LinkedHashMap<>();
+        for (long k : cells)
+            floor.put(k, outerDiagTile(keyA(k), keyR(k), all, site, apron.contains(k), allee.contains(k)));
+        return Collections.unmodifiableMap(floor);
+    }
+
+    /** The deck code of a cell of an outer diagonal's floor, by the rules of {@link #outerDiagFloor} in order. */
+    private int outerDiagTile(int a, int r, Set<Long> all, int site, boolean apron, boolean allee) {
+        if (allee) {
+            int t = Math.abs(a) + Math.abs(r), d = Math.abs(a) - Math.abs(r);
+            if (t >= OuterRing.DIAG_ALLEE_TO - 1) return LIT;
+            if (t >= OuterRing.DIAG_ALLEE_TO - (ALLEE_TO - ALLEE_CHEVRONS)) return CHEVRON;
+            if (d == 0) return LIT;
+        }
+        if (apron) {
+            // the shadow gap round the building, as a pavilion's apron has it
+            for (int da = -1; da <= 1; da++) for (int dr = -1; dr <= 1; dr++) {
+                if (OuterRing.inDiag(site, a + da, r + dr)) return TRIM;
+            }
+        } else {
+            for (int[] d : SIDES) {
+                int na = a + d[0], nr = r + d[1];
+                if (!all.contains(key(na, nr)) && !OuterRing.inDiag(site, na, nr)) return TRIM;
+            }
+        }
+        if (outerSeam(a, r)) return TRIM;
+        double rad = StrictMath.hypot(a, r);
+        double chance = Math.max(0, Math.min(DARK_MAX, (rad - DARK_FROM) / DARK_SPAN));
+        if (Mix.unit(seed, Math.floorDiv(a, 3), Math.floorDiv(r, 3), S_DARK) < chance) return DARK;
+        return DECK;
+    }
+
     /** The deck code of a cell of the gatehouse's apron: trim beside a wing, then the seams and the dark clusters. */
     private int gatehouseTile(int a, int r) {
         for (int da = -1; da <= 1; da++) for (int dr = -1; dr <= 1; dr++) {
@@ -938,6 +1084,60 @@ public final class CampusPlan {
             }
         }
         return d1 - d0 < SEAM;
+    }
+
+    /**
+     * The polar rings of Voronoi seed points the outer ring's paving uses (0.15.0): the inner city's eleven rings and
+     * six more out to radial 104, made by the same rule from the same seed, so a seam on the outer floor runs on as it
+     * would across the inner city, while the inner city's floors keep their own points (and their tiles). Made on
+     * first use.
+     */
+    private static final int INNER_SEED_RINGS = 12, OUTER_SEED_RINGS = 18;
+    private double[] outerSeedA, outerSeedR;
+
+    /** Whether the cell's two nearest outer seed points are about equally far: a seam of the outer paving. */
+    private boolean outerSeam(int a, int r) {
+        double[][] pts = outerSeeds();
+        double[] sa = pts[0], sr = pts[1];
+        double d0 = Double.MAX_VALUE, d1 = Double.MAX_VALUE;
+        for (int i = 0; i < sa.length; i++) {
+            double d = StrictMath.hypot(a - sa[i], r - sr[i]);
+            if (d < d0) {
+                d1 = d0;
+                d0 = d;
+            } else if (d < d1) {
+                d1 = d;
+            }
+        }
+        return d1 - d0 < SEAM;
+    }
+
+    /** The outer paving's seed points {a[], r[]}: the inner city's and the rings beyond them. */
+    private double[][] outerSeeds() {
+        synchronized (sites) {
+            if (outerSeedA == null) {
+                List<double[]> points = new ArrayList<>();
+                for (int i = 0; i < seedA.length; i++) points.add(new double[] { seedA[i], seedR[i] });
+                for (int ring = INNER_SEED_RINGS; ring < OUTER_SEED_RINGS; ring++) {
+                    int rr = 2 + 6 * ring;
+                    int n = Math.max(6, (int) (2 * Math.PI * rr / 7));
+                    for (int k = 0; k < n; k++) {
+                        double angle = 2 * Math.PI * (k + Mix.unit(seed, ring, k, S_SEED_ANGLE)) / n;
+                        points.add(
+                            new double[] { rr * StrictMath.cos(angle) + (Mix.unit(seed, ring, k, S_SEED_A) * 4 - 2),
+                                rr * StrictMath.sin(angle) + (Mix.unit(seed, ring, k, S_SEED_R) * 4 - 2) });
+                    }
+                }
+                double[] a = new double[points.size()], r = new double[points.size()];
+                for (int i = 0; i < a.length; i++) {
+                    a[i] = points.get(i)[0];
+                    r[i] = points.get(i)[1];
+                }
+                outerSeedA = a;
+                outerSeedR = r;
+            }
+            return new double[][] { outerSeedA, outerSeedR };
+        }
     }
 
     /** Forum ribs: the axes and the diagonals. */

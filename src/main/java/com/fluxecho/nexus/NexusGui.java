@@ -163,6 +163,12 @@ public final class NexusGui {
          * Whether the job is free ({@code Fe}, 「创造模式：免费」) and whether the nexus builds everything free ({@code Fb}).
          */
         public boolean free, freeBuild;
+        /**
+         * The outer establish's give-up to its neighbouring campuses (0.15.0, {@link Campus#outerTrim}): the columns of
+         * the outer ring left to them ({@code Ot}) of all its columns ({@code Oa}), and how many campuses share the
+         * ground ({@code On}); all 0 for every other job.
+         */
+        public int trimLost, trimAll, trimNeighbours;
         /** The modules the nexus can build and where they stand ({@code Md}), for the list shown without a job. */
         public List<Campus.ModuleState> modules = Collections.emptyList();
         /** The bill (at most {@link #BILL_MAX} lines, the module's core first) and the queued jobs {key, plan key}. */
@@ -203,6 +209,9 @@ public final class NexusGui {
             wrong = WrongCell.decode(t.getString("Wc"));
             free = t.getBoolean("Fe");
             freeBuild = t.getBoolean("Fb");
+            trimLost = t.getInteger("Ot");
+            trimAll = t.getInteger("Oa");
+            trimNeighbours = t.getByte("On");
             modules = Campus.ModuleState.read(t.getTagList("Md", 10));
             List<Row> rows = new ArrayList<>();
             NBTTagList b = t.getTagList("B", 10);
@@ -783,6 +792,14 @@ public final class NexusGui {
         String wrong = WrongCell.encode(c.incompleteCell());
         if (!wrong.isEmpty()) t.setString("Wc", wrong);
         t.setBoolean("Fe", c.free(j));
+        // the outer establish (0.15.0): how much of the ring its neighbouring campuses take, and how many of them
+        // take any (not every campus near enough to share the ground)
+        int[] trim = c.outerTrim();
+        if (trim != null && trim[0] > 0) {
+            t.setInteger("Ot", trim[0]);
+            t.setInteger("Oa", trim[1]);
+            t.setByte("On", (byte) Math.min(127, trim[2]));
+        }
         t.setLong("Eu", eu);
         t.setLong("Et", ended ? 0 : c.etaTicks());
         t.setBoolean("Go", j.started());
@@ -876,8 +893,11 @@ public final class NexusGui {
      * of the nexus (clearing, the new stage, forming) and {@code build.stage.z<n>} for the zenith's Echo Dome Generator
      * (clearing, the legs, the floor, the shell, the roof, the fittings, commissioning), {@code build.stage.r<n>} for
      * the root's Tidal Well (the caisson sinking, draining, the floor, the fittings, commissioning); since 0.14.1
-     * {@code build.stage.d<n>} for the retirement of a 0.9.2 hall (taking it down, the forum's floor, its fixtures). A
-     * job past its last stage (a module waiting for its structure to form, a finished job) shows its last stage.
+     * {@code build.stage.d<n>} for the retirement of a 0.9.2 hall (taking it down, the forum's floor, its fixtures);
+     * since 0.15.0 {@code build.stage.o<n>} for the outer establish (grading the outer ring, its paving, the outer
+     * gate's pylons) and {@code build.stage.s<n>} for the Sophon Array, whose stages run in its own order (its racks,
+     * then its struts and lattice sphere, {@link com.fluxecho.logic.SophonArrayShape#STAGE_ORDER}). A job past its
+     * last stage (a module waiting for its structure to form, a finished job) shows its last stage.
      */
     public static String stageKey(String planKey, int stage) {
         String family;
@@ -898,6 +918,13 @@ public final class NexusGui {
         } else if (BuildPlan.retireSlot(planKey) >= 0) {
             family = "d";
             last = BuildPlan.D_FIXTURE;
+        } else if (BuildPlan.OUTER.equals(planKey)) {
+            family = "o";
+            last = BuildPlan.O_FIXTURE;
+        } else if (spec != null && com.fluxecho.logic.SophonArrayShape.KEY.equals(spec.key)) {
+            // the Sophon Array's own order (0.15.0): its racks, then its struts and lattice
+            family = "s";
+            last = BuildPlan.M_COMMISSION;
         } else {
             String module = ModuleSpecs.moduleOf(planKey);
             family = module == null || BuildPlan.LIBRARY.equals(module) ? "m" : "c";

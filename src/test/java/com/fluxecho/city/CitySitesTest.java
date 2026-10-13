@@ -22,8 +22,9 @@ import com.fluxecho.logic.CityOffer;
 import com.fluxecho.logic.SiteFamily;
 
 /**
- * The sites of the real module specs (0.14.1): every building may stand on any site of its family (its preference list
- * holds them all), and wherever each stands, no module on one site keeps out another's footprint or protects a cell of
+ * The sites of the real module specs (0.14.1; 0.15.0 the outer diagonals' two): every building may stand on any site of
+ * its family (its preference list holds them all), and wherever each stands, no module on one site keeps out another's
+ * footprint or protects a cell of
  * another's plan, for every facing; so a building moved onto its family's other site, or taking it because its
  * favourite was taken, never blocks or breaks a neighbour, and the offer's candidates are all real.
  */
@@ -43,7 +44,9 @@ class CitySitesTest {
             CityModule.huntingGround(),
             CityModule.manaFountain(),
             CityModule.resonanceGate(),
-            CityModule.dualFoilVault());
+            CityModule.dualFoilVault(),
+            CityModule.sophonArray(),
+            CityModule.holoTable());
     }
 
     @Test
@@ -54,7 +57,11 @@ class CitySitesTest {
             for (int site : s.family.sites()) family.add(site);
             assertEquals(family, pref, s.key);
             assertEquals(s.sites.length, pref.size(), s.key + " lists a site twice");
-            assertArrayEquals(s.sites, s.candidates(2, g -> false), s.key + "'s candidates at phase II");
+            // the inner city's buildings at phase II; the outer diagonals' (0.15.0) at phase III, on laid ground
+            int phase = SiteFamily.opensAt(s.sites[0]);
+            assertArrayEquals(s.sites, s.candidates(Math.max(2, phase), g -> true), s.key + "'s candidates");
+            if (s.family.ground() == null) assertArrayEquals(s.sites, s.candidates(2, g -> false), s.key);
+            else assertEquals(0, s.candidates(phase, g -> false).length, s.key + " waits for its ground");
             for (int site : s.family.sites()) assertTrue(s.hasSite(site), s.key + " on " + site);
         }
         // the inner ring's room: the halls at phase I, every ring site from phase II

@@ -401,6 +401,16 @@ public final class BuildClient {
             for (int i = 0; i < b.length; i++) sig.append(i == 0 ? "" : ",")
                 .append(b[i]);
         }
+        // the outer establish's neighbours (0.15.0): its plan leaves their side of the split out; with their claims,
+        // the neighbours a regaining job regains from, and whether a retire job lays the outer floor
+        for (int[] o : v.neighbours) sig.append("|n")
+            .append(java.util.Arrays.toString(o));
+        for (int[] o : v.regainFrom) sig.append("|r")
+            .append(java.util.Arrays.toString(o));
+        if (v.retireOuter) sig.append("|ro");
+        // an outer establish that patches the ring: the boxes it lays inside
+        for (int[] b : v.patch) sig.append("|p")
+            .append(java.util.Arrays.toString(b));
         Key k = new Key(n.getWorldObj().provider.dimensionId, n.xCoord, n.yCoord, n.zCoord);
         String s = sig.toString();
         CachedPlan cached = PLANS.get(k);
@@ -419,7 +429,11 @@ public final class BuildClient {
                 n.xCoord,
                 n.yCoord,
                 n.zCoord,
-                v.keepOut);
+                v.keepOut,
+                v.neighbours,
+                v.regainFrom,
+                v.retireOuter,
+                v.patch);
         } catch (RuntimeException e) {
             com.fluxecho.FluxEcho.LOG.warn("Could not compute the build plan {} of the nexus at {}", v.planKey, k, e);
             p = null;

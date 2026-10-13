@@ -45,10 +45,10 @@ import com.gtnewhorizon.structurelib.structure.StructureUtility;
  * runs the same check on its own copy of the blocks, so both sides agree on where each part is.
  * <p>
  * A multiblock may stand as one of several shapes ({@link #shapes}): the Echo Library forms as the Echo Archive or as
- * the 0.9.2 hall. Formation tries the shape it stood as last, then the others in order, and remembers the one that
- * matched ({@link #shapeName}, saved as {@code Shape} and sent to the client as {@code Sh}); everything that maps
- * blueprint cells to blocks follows that shape ({@link #current}). A multiblock that names no shapes has one,
- * {@link #MAIN}.
+ * the 0.9.2 hall. Formation tries the shape it stood as last, then the others in order (or in the order the subclass
+ * gives, {@link #matchOrder}), and remembers the one that matched ({@link #shapeName}, saved as {@code Shape} and sent
+ * to the client as {@code Sh}); everything that maps blueprint cells to blocks follows that shape ({@link #current}).
+ * A multiblock that names no shapes has one, {@link #MAIN}.
  */
 public abstract class TileMultiblock extends TileEntity implements ISurvivalConstructable, FrameEvents.Watcher {
 
@@ -354,13 +354,26 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     }
 
     /**
-     * The shape the structure stands as: the remembered one first, then the others in order (those {@link #tries}
-     * allows); null when none does. After a match {@link #seen} holds that shape's parts.
+     * The order formation tries the shapes in (server side; {@link #tries} still rules each out or in): by default the
+     * remembered one, then the others in the order of {@link #shapes()}. A multiblock whose shapes hold one another
+     * (the nexus: each phase is the one below with a stage on top) overrides it, so the fullest shape that stands is
+     * the one it is found as rather than the one it stood as last.
+     */
+    protected List<Shape> matchOrder(Shape cur) {
+        List<Shape> all = shapes();
+        if (all.size() == 1 && all.get(0) == cur) return all;
+        List<Shape> out = new ArrayList<>(all.size());
+        out.add(cur);
+        for (Shape s : all) if (s != cur) out.add(s);
+        return out;
+    }
+
+    /**
+     * The shape the structure stands as: the first of {@link #matchOrder} that {@link #tries} allows and that checks
+     * out; null when none does. After a match {@link #seen} holds that shape's parts.
      */
     private Shape match() {
-        Shape cur = currentShape();
-        if (tries(cur) && check(cur)) return cur;
-        for (Shape s : shapes()) if (s != cur && tries(s) && check(s)) return s;
+        for (Shape s : matchOrder(currentShape())) if (tries(s) && check(s)) return s;
         return null;
     }
 

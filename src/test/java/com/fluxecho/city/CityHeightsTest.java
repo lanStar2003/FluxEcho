@@ -34,13 +34,15 @@ class CityHeightsTest {
         out.add(CityModule.manaFountain());
         out.add(CityModule.resonanceGate());
         out.add(CityModule.dualFoilVault());
+        out.add(CityModule.sophonArray());
+        out.add(CityModule.holoTable());
         return out;
     }
 
     @Test
     void everyBuildingHasRoomAcrossTheCampusBand() {
         List<ModuleSpec> all = specs();
-        assertEquals(10, all.size());
+        assertEquals(12, all.size());
         for (ModuleSpec spec : all) for (int y0 = CampusBand.LOWEST; y0 <= CampusBand.HIGHEST; y0++)
             assertNull(spec.noRoom(y0), spec.key + " at Y0 " + y0);
         // out of the band (a 0.9.2 nexus may stand anywhere), the reasons stay

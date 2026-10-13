@@ -31,6 +31,11 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
         default int order(int x, int y, int z, char ch) {
             return 0;
         }
+
+        /** The order its stages are built in ({@link BuildPlan.ModuleBuild#stageOrder}); null for the generic one. */
+        default int[] stageOrder() {
+            return null;
+        }
     }
 
     private final String key;
@@ -148,6 +153,11 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
     @Override
     public int order(int x, int y, int z, char ch) {
         return stages.order(x, y, z, ch);
+    }
+
+    @Override
+    public int[] stageOrder() {
+        return stages.stageOrder();
     }
 
     @Override

@@ -115,6 +115,37 @@ class GrowPlanTest {
         assertEquals(0, BuildPlan.growPhase("grow:x"));
     }
 
+    /**
+     * The growth to phase III (0.15.0, offered from now on): the third stage alone, 16 pillars, 16 ring segments, 3
+     * conduits and the seat, bottom-up and with no lift pad (the pad came with phase II and stays where it is); it
+     * clears the base's columns from Y0 + 11 to Y0 + 17.
+     */
+    @Test
+    void phaseThreeAddsItsStageWithoutAPad() {
+        for (int[] f : FACINGS) {
+            int[] c = ctrl(f);
+            Plan plan = BuildPlan.grow(3, CX, Y0, CZ, f[0], f[1], c[0], c[1], c[2]);
+            assertEquals("grow:3", plan.key);
+            assertEquals(36, plan.steps.size());
+            java.util.Map<Character, Integer> counts = new java.util.HashMap<>();
+            for (Step s : plan.steps) {
+                assertTrue(s.part != Parts.fitting(Parts.F_LIFT), "no pad");
+                assertTrue(s.y >= Y0 + 11 && s.y <= Y0 + 15, "in the third stage: " + s.y);
+                counts.merge(charOf(s.part), 1, Integer::sum);
+            }
+            assertEquals(16, (int) counts.get(NexusShape.PILLAR), "pillars");
+            assertEquals(16, (int) counts.get(NexusShape.RING), "ring segments");
+            assertEquals(3, (int) counts.get(NexusShape.CONDUIT), "conduits");
+            assertEquals(1, (int) counts.get(NexusShape.SEAT), "the seat");
+            assertEquals(4, counts.size(), "nothing else");
+            for (BuildPlan.Column col : plan.clear) {
+                assertEquals(Y0 + 11, col.yFrom);
+                assertEquals(Y0 + 17, col.yTo);
+            }
+            assertEquals(BuildPlan.growKey(3), BuildPlan.growKey(BuildPlan.growPhase(plan.key)));
+        }
+    }
+
     @Test
     void phaseOneIsUnchanged() {
         assertEquals(0, NexusShape.PHASE_1.count(NexusShape.LIFT), "the lift pad is only in phase II and up");

@@ -5,7 +5,8 @@ import javax.imageio.ImageIO;
 /**
  * Draws the textures of the Flux Nexus era (0.9.0): the flux frame's parts, the nexus's and the library's cores, the
  * flux materials and the library's index cards; (0.11.0) the frame's cladding anchor and the city's module cores;
- * (0.12.0) the phase's materials, phase alloy and resonant glass; and (0.13.0) the four pavilions' module cores.
+ * (0.12.0) the phase's materials, phase alloy and resonant glass; (0.13.0) the four pavilions' module cores; and
+ * (0.15.0) phase III's material, memory filament, and the phase alloy wire it is coated from.
  * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
  */
@@ -34,6 +35,10 @@ public class NexusTextures {
     static final int GATE_TEAL = 0x5CF2C2;
     /** The Dual-foil Vault's accent (0.14.0), as {@code TileDualFoilVault.COLOR}: parchment. */
     static final int VAULT_PARCHMENT = 0xF2EBDD;
+    /** The Sophon Array's accent (0.15.0), as {@code TileSophonArray.COLOR}. */
+    static final int SOPHON_PINK = 0xFF8CE6;
+    /** The Holo Sand Table's accent (0.15.0), as {@code TileHoloTable.COLOR}. */
+    static final int HOLO_CYAN = 0x66F0FF;
     static final int FRAMES = 8;
 
     interface Px {
@@ -138,12 +143,27 @@ public class NexusTextures {
         anim(vault + "front_on", (x, y, f) -> coreFront(x, y, f, true, VAULT_PARCHMENT, NexusTextures::vaultEmblem));
         still(vault + "side", (x, y, f) -> coreSide(x, y, VAULT_PARCHMENT));
         still(vault + "top", (x, y, f) -> coreTop(x, y, VAULT_PARCHMENT));
+        // the Sophon Array's (0.15.0): pink, the lattice sphere on its struts over the podium, the light point lit
+        String sophon = "blocks/module_core/sophon_array/";
+        still(sophon + "front", (x, y, f) -> coreFront(x, y, f, false, SOPHON_PINK, NexusTextures::sphereEmblem));
+        anim(sophon + "front_on", (x, y, f) -> coreFront(x, y, f, true, SOPHON_PINK, NexusTextures::sphereEmblem));
+        still(sophon + "side", (x, y, f) -> coreSide(x, y, SOPHON_PINK));
+        still(sophon + "top", (x, y, f) -> coreTop(x, y, SOPHON_PINK));
+        // the Holo Sand Table's (0.15.0): cyan, the rotunda's shallow dome over the ring light and the hologram on the
+        // table, lit
+        String holo = "blocks/module_core/holo_table/";
+        still(holo + "front", (x, y, f) -> coreFront(x, y, f, false, HOLO_CYAN, NexusTextures::tableEmblem));
+        anim(holo + "front_on", (x, y, f) -> coreFront(x, y, f, true, HOLO_CYAN, NexusTextures::tableEmblem));
+        still(holo + "side", (x, y, f) -> coreSide(x, y, HOLO_CYAN));
+        still(holo + "top", (x, y, f) -> coreTop(x, y, HOLO_CYAN));
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
         still("items/echo_crystal", NexusTextures::echoCrystal);
         still("items/phase_alloy", NexusTextures::phaseAlloy);
         still("items/resonant_glass", NexusTextures::resonantGlass);
+        still("items/phase_alloy_wire", NexusTextures::phaseAlloyWire);
+        anim("items/memory_filament", NexusTextures::memoryFilament);
         still("items/library_card", (x, y, f) -> card(x, y, false));
         still("items/library_card_written", (x, y, f) -> card(x, y, true));
     }
@@ -580,6 +600,35 @@ public class NexusTextures {
         return x == 3 || x == 12 || y == 4 || y == 13 ? 1 : 0;
     }
 
+    /**
+     * The Sophon Array's emblem (0.15.0): the lattice sphere's outline crossed by two parallels, on two struts over
+     * the podium's roof line, the light point at the sphere's heart lit.
+     */
+    static int sphereEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 6);
+        if (d < 1.2) return 2;
+        if (d >= 3.7 && d < 4.7) return 1;
+        if (d < 3.7 && (y == 4 || y == 8)) return 1;
+        if ((x == 5 || x == 10) && y >= 11 && y <= 12) return 1;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        return 0;
+    }
+
+    /**
+     * The Holo Sand Table's emblem (0.15.0): the rotunda's shallow dome on its drum, the ring light hanging inside and
+     * the hologram over the table, lit; the table's line under them.
+     */
+    static int tableEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 9);
+        if (y <= 6 && d >= 5.6 && d < 6.6) return 1;
+        if ((x == 2 || x == 13) && y >= 7 && y <= 13) return 1;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        if (y == 7 && x >= 5 && x <= 10) return 2;
+        if (y == 12 && x >= 4 && x <= 11) return 1;
+        if (x == 6 && y >= 10 && y <= 11 || x == 9 && y >= 9 && y <= 11 || (x == 7 || x == 8) && y == 11) return 2;
+        return 0;
+    }
+
     static int coreFront(int x, int y, int f, boolean on, int accent, Emblem e) {
         int base = coreSide(x, y, accent);
         if (x < 2 || x > 13 || y < 2 || y > 13) return base;
@@ -704,6 +753,67 @@ public class NexusTextures {
         if (x + y == 6 || x + y == 7 && x >= 3 && x <= 4) return WHITE;
         if (x == 2 || y == 2) return 0xA8E8F4;
         return 0;
+    }
+
+    /** How many turns the coiled wire of the phase III materials makes before its tail runs off to a corner. */
+    static final double TURNS = 2.5;
+    /** Where along the wire its coil ends and its tail begins, and the angle on the last turn where it does. */
+    static final double TAIL = 0.88, END = -0.75;
+
+    /**
+     * A point of the coiled wire at {@code s} (0 to 1): {x, y, depth}, depth above 0 on the coil's near side. A loose
+     * coil of {@link #TURNS} turns drifting up and to the right like a spring, then a short tail to the top right corner.
+     */
+    static double[] wireAt(double s) {
+        if (s <= TAIL) {
+            double u = s / TAIL, th = END - 2 * Math.PI * TURNS * (1 - u);
+            return new double[] { 5.4 + 4.6 * u + 4.3 * Math.cos(th), 10.4 - 4.2 * u + 3.2 * Math.sin(th),
+                Math.sin(th + 0.9) };
+        }
+        double u = (s - TAIL) / (1 - TAIL);
+        double x0 = 10.0 + 4.3 * Math.cos(END), y0 = 6.2 + 3.2 * Math.sin(END);
+        return new double[] { x0 + (14.6 - x0) * u, y0 + (1.4 - y0) * u, 1 };
+    }
+
+    /**
+     * The wire under a pixel: {depth, s} of the nearest side of it that passes within 0.6 of the pixel's middle, or
+     * null where there is none.
+     */
+    static double[] wire(int x, int y) {
+        double[] best = null;
+        for (int i = 0; i <= 900; i++) {
+            double s = i / 900.0;
+            double[] p = wireAt(s);
+            if (Math.hypot(x + 0.5 - p[0], y + 0.5 - p[1]) >= 0.6) continue;
+            if (best == null || p[2] > best[0]) best = new double[] { p[2], s };
+        }
+        return best;
+    }
+
+    /**
+     * Phase alloy wire (0.15.0, BLUEPRINT 3.6): the alloy drawn as fine as a hair and coiled, deep blue metal lit on the
+     * coil's near side and dark on its far side.
+     */
+    static int phaseAlloyWire(int x, int y, int f) {
+        double[] w = wire(x, y);
+        if (w == null) return 0;
+        if (w[0] <= 0) return mix(0x1A2F52, 0x24406A, w[0] + 1);
+        int c = mix(0x3E6496, 0x87A9D8, w[0]);
+        // a glint where the near side faces the light most
+        return w[0] > 0.92 ? mix(c, WHITE, 0.35) : c;
+    }
+
+    /**
+     * Memory filament (0.15.0, BLUEPRINT 3.6): the same coil glowing like a string of light, near white on its near side
+     * and a dim violet-cyan (the echo crystal's coating) on its far side, a bright pulse running along it from the coil
+     * to the tail through the animation.
+     */
+    static int memoryFilament(int x, int y, int f) {
+        double[] w = wire(x, y);
+        if (w == null) return 0;
+        double run = (w[1] - f / (double) FRAMES + 1) % 1, pulse = Math.max(0, 1 - Math.min(run, 1 - run) * 9);
+        int c = w[0] <= 0 ? mix(mix(0x1C6F84, VIOLET, 0.35), 0x2F9FC0, w[0] + 1) : mix(0x3FC8E8, 0x9AF4FF, w[0]);
+        return mix(c, WHITE, pulse * (w[0] <= 0 ? 0.6 : 0.95));
     }
 
     static int card(int x, int y, boolean written) {

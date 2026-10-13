@@ -1,6 +1,7 @@
 package com.fluxecho.core;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -13,12 +14,16 @@ import net.minecraftforge.oredict.ShapelessOreRecipe;
 import com.fluxecho.FluxEcho;
 
 import cpw.mods.fml.common.registry.GameRegistry;
+import gregtech.api.enums.GTValues;
+import gregtech.api.recipe.RecipeMaps;
 import gregtech.api.util.GTModHandler;
 
 /**
  * FluxEcho's crafting recipes, through GT so that GT's ore unification works in them. GT drops a recipe without a
  * word when it does not like it; then the same recipe goes in as a plain Forge ore recipe, and {@link RecipeCheck}
- * puts it back at the end of loading if anything took it out again. Every step that goes wrong says so in the log.
+ * puts it back at the end of loading if anything took it out again. Every step that goes wrong says so in the log. A
+ * recipe in one of GT's machines that a material needs ({@link #wiremill}, 0.15.0) has a crafting recipe to stand in
+ * when GT cannot take it.
  */
 public final class EchoRecipes {
 
@@ -106,5 +111,32 @@ public final class EchoRecipes {
     /** A shaped recipe for a machine. */
     public static void machine(MachineId m, Object... recipe) {
         shaped(m.english, Machines.get(m), recipe);
+    }
+
+    /**
+     * A recipe in GT's wiremill (0.15.0: phase alloy drawn into the wire memory filament is coated from). When GT's
+     * recipe API is not the one this build was made against, or the wiremill takes nothing, the shaped crafting recipe
+     * {@code byHand} for {@code handOutput} stands in for it (its GT tool letters, such as {@code x} the wire cutter,
+     * work as in any GT crafting recipe), so the material can still be made; either way the log says what happened.
+     */
+    public static void wiremill(String what, ItemStack input, ItemStack output, int ticks, int eut,
+        ItemStack handOutput, Object... byHand) {
+        if (input == null || input.getItem() == null || output == null || output.getItem() == null) {
+            FluxEcho.LOG.warn("No wiremill recipe for {}: an item is not registered", what);
+            return;
+        }
+        try {
+            Collection<?> added = GTValues.RA.stdBuilder()
+                .itemInputs(input.copy())
+                .itemOutputs(output.copy())
+                .duration(ticks)
+                .eut(eut)
+                .addTo(RecipeMaps.wiremillRecipes);
+            if (added != null && !added.isEmpty()) return;
+            FluxEcho.LOG.warn("GregTech's wiremill did not take the recipe of {}; adding it by hand instead", what);
+        } catch (Throwable t) {
+            FluxEcho.LOG.warn("GregTech's wiremill is not available for {}; adding it by hand instead", what, t);
+        }
+        if (byHand.length > 0) shaped(what, handOutput, byHand);
     }
 }

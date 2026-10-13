@@ -179,4 +179,51 @@ class NexusShapeTest {
             assertEquals(Math.max(b.width(), Math.max(b.depth(), b.height())) + 1, NexusShape.reach(p));
         }
     }
+
+    /**
+     * A phase holds the one below it whole (0.15.0): every cell of phase II's blueprint is the same in phase III, and
+     * so on up, and phase I differs from phase II only in the lift pad. So a phase-II nexus with stage 3 standing on it
+     * still checks out as phase II (stage 3 lies over its blueprint), which is why the nexus tries its highest
+     * researched phase first ({@link NexusShape#tryOrder}).
+     */
+    @Test
+    void aPhaseHoldsTheOneBelowWhole() {
+        for (int p = 1; p < NexusShape.PHASES; p++) {
+            Blueprint low = NexusShape.phase(p), high = NexusShape.phase(p + 1);
+            int differ = 0;
+            for (int y = 0; y < low.height(); y++) for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) {
+                char was = at(low, dx, y, dz);
+                if (was == ' ') continue;
+                if (at(high, dx, y, dz) != was) {
+                    differ++;
+                    assertEquals(1, p, "only phase I's lit middle gives way, to the lift pad");
+                    assertEquals(NexusShape.LIFT, at(high, dx, y, dz));
+                    assertEquals(0, y + dx * dx + dz * dz);
+                }
+            }
+            assertEquals(p == 1 ? 1 : 0, differ, "phase " + p + " in phase " + (p + 1));
+        }
+    }
+
+    /**
+     * The phases a nexus tries to stand as, highest first (0.15.0): from the highest researched down to the one it grew
+     * to, never under it, never past the last phase; with nothing higher researched only the one it grew to.
+     */
+    @Test
+    void theNexusTriesItsHighestResearchedPhaseFirst() {
+        assertArrayEquals(new int[] { 3, 2 }, NexusShape.tryOrder(2, 3));
+        assertArrayEquals(new int[] { 2 }, NexusShape.tryOrder(2, 2));
+        assertArrayEquals(new int[] { 2 }, NexusShape.tryOrder(2, 1), "never under the phase it grew to");
+        assertArrayEquals(new int[] { 1 }, NexusShape.tryOrder(1, 1));
+        assertArrayEquals(new int[] { 3, 2, 1 }, NexusShape.tryOrder(1, 3));
+        assertArrayEquals(new int[] { 5, 4 }, NexusShape.tryOrder(4, 9), "never past the last phase");
+        assertArrayEquals(new int[] { 1 }, NexusShape.tryOrder(0, 0), "clamped");
+        // what a nexus may stand as with every phase's research is held to what this version reaches
+        int all = ResearchTree.researchedPhase(id -> true);
+        assertEquals(ResearchTree.PHASE_NOW, all);
+        assertArrayEquals(new int[] { 3, 2 }, NexusShape.tryOrder(2, all));
+        assertArrayEquals(new int[] { 3 }, NexusShape.tryOrder(3, all));
+        // with only phase II's research a phase-II nexus tries phase II alone
+        assertArrayEquals(new int[] { 2 }, NexusShape.tryOrder(2, ResearchTree.researchedPhase("phase_2"::equals)));
+    }
 }

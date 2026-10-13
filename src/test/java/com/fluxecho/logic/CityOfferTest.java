@@ -18,6 +18,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
 
@@ -586,5 +587,645 @@ class CityOfferTest {
         return java.util.regex.Pattern.compile("(?<!\\d)" + n + "(?!\\d)")
             .matcher(text)
             .find();
+    }
+
+    /**
+     * The outer diagonals (0.15.0): before the outer establish ran their kinds say {@link CityOffer#GROUND} (the
+     * phase is reached; only the ground is missing), and once it ran a site not wholly the campus's own (a neighbour's
+     * side of the split) is never offered nor moved to: the kind takes its family's other sites, and says
+     * {@link CityOffer#TRIMMED} when none is left.
+     */
+    @Test
+    void theOuterSitesWaitForTheirGroundAndKeepToTheSplit() {
+        CityOffer.Kind sophon = new CityOffer.Kind("s", "s", SiteFamily.OUTER_DIAG, new int[] { 11 }, 3, true, null);
+        CityOffer.Kind table = new CityOffer.Kind("t", "t", SiteFamily.OUTER_DIAG, new int[] { 13 }, 3, true, null);
+        List<CityOffer.Kind> kinds = Arrays.asList(sophon, table);
+        CityOffer.Sites free = (k, s) -> CityOffer.FREE;
+        List<CityOffer.Offer> l = CityOffer
+            .look(kinds, 3, r -> true, Collections.emptySet(), free, null, 0, g -> false);
+        assertEquals(CityOffer.GROUND, l.get(0).reason);
+        assertEquals(11, l.get(0).site, "where it will go");
+        assertEquals(CityOffer.GROUND, l.get(1).reason);
+        l = CityOffer.look(kinds, 2, r -> true, Collections.emptySet(), free, null, 0, g -> false);
+        assertEquals(CityOffer.PHASE, l.get(0).reason, "the phase comes first");
+
+        // laid: both offered where they like it
+        l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), free, null, 0, SiteFamily.OUTER_GROUND::equals);
+        assertEquals(
+            "s@11",
+            l.get(0)
+                .toString());
+        assertEquals(
+            "t@13",
+            l.get(1)
+                .toString());
+
+        // a neighbour takes O1 and O3: the buildings take O5 and O7
+        CityOffer.Sites split = new Whole(15, 17);
+        l = CityOffer
+            .look(kinds, 3, r -> true, Collections.emptySet(), split, null, 0, SiteFamily.OUTER_GROUND::equals);
+        assertEquals(
+            "s@15",
+            l.get(0)
+                .toString());
+        assertEquals(
+            "t@17",
+            l.get(1)
+                .toString());
+        assertEquals(17, CityOffer.move(sophon, 15, 1, 3, SiteFamily.OUTER_GROUND::equals, split));
+        assertEquals(17, CityOffer.move(sophon, 15, -1, 3, SiteFamily.OUTER_GROUND::equals, split), "never O1 or O3");
+
+        // nothing whole, every site held for good by a neighbour: trimmed, not "something stands there"
+        CityOffer.Sites none = new Whole();
+        l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), none, null, 0, SiteFamily.OUTER_GROUND::equals);
+        assertEquals(CityOffer.TRIMMED, l.get(0).reason);
+        assertEquals(-1, l.get(0).site);
+        assertEquals(-1, CityOffer.move(sophon, 11, 1, 3, SiteFamily.OUTER_GROUND::equals, none));
+        // another kind took the only whole site, and the rest are held for good: something stands there
+        l = CityOffer
+            .look(kinds, 3, r -> true, Collections.emptySet(), new Whole(17), null, 0, SiteFamily.OUTER_GROUND::equals);
+        assertEquals(
+            "s@17",
+            l.get(0)
+                .toString());
+        assertEquals(CityOffer.NO_SITE, l.get(1).reason);
+    }
+
+    /**
+     * Nothing whole but the sites a neighbour holds only by the split (0.15.0, the standing rule that every researched
+     * building can be built): each kind adapts instead of refusing and takes the free site the split takes the fewest
+     * cells of (ties in its order), a whole site first whenever one shares as much ground with the neighbours' outer
+     * diagonals (here none says it shares any), and one that shares none of it before either; a site a neighbour
+     * holds for good is never taken; {@link CityOffer#move} goes the same way.
+     */
+    @Test
+    void withNothingWholeTheBuildingsTakeTheLeastTrimmedSites() {
+        CityOffer.Kind sophon = new CityOffer.Kind("s", "s", SiteFamily.OUTER_DIAG, new int[] { 11 }, 3, true, null);
+        CityOffer.Kind table = new CityOffer.Kind("t", "t", SiteFamily.OUTER_DIAG, new int[] { 17 }, 3, true, null);
+        List<CityOffer.Kind> kinds = Arrays.asList(sophon, table);
+        Predicate<String> laid = SiteFamily.OUTER_GROUND::equals;
+        // two neighbours at the old spacing on opposite sides took a part of every site
+        Lost trimmed = new Lost().set(11, 40)
+            .set(13, 10)
+            .set(15, 25)
+            .set(17, 10);
+        List<CityOffer.Offer> l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), trimmed, null, 0, laid);
+        assertEquals(
+            "s@13",
+            l.get(0)
+                .toString(),
+            "the least taken, the first of those");
+        assertEquals(
+            "t@17",
+            l.get(1)
+                .toString());
+        assertEquals(17, CityOffer.move(sophon, 13, 1, 3, laid, trimmed), "the least taken of the others");
+        assertEquals(17, CityOffer.move(sophon, 13, -1, 3, laid, trimmed));
+        // a whole site goes first; the other kind adapts
+        Lost one = new Lost().set(11, 40)
+            .set(13, 0)
+            .set(15, -1)
+            .set(17, 30);
+        l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), one, null, 0, laid);
+        assertEquals(
+            "s@13",
+            l.get(0)
+                .toString());
+        assertEquals(
+            "t@17",
+            l.get(1)
+                .toString());
+        assertEquals(13, CityOffer.move(table, 17, 1, 3, laid, one), "a whole one before a trimmed one");
+        // with the Sophon Array standing elsewhere the table takes the whole one, though it likes 17 better
+        l = CityOffer.look(kinds, 3, r -> true, Collections.singleton("s"), one, null, 0, laid);
+        assertEquals(1, l.size());
+        assertEquals(
+            "t@13",
+            l.get(0)
+                .toString());
+        // a site held for good is never taken
+        Lost held = new Lost().set(11, 40)
+            .set(13, -1)
+            .set(15, -1)
+            .set(17, -1);
+        l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), held, null, 0, laid);
+        assertEquals(
+            "s@11",
+            l.get(0)
+                .toString());
+        assertEquals(CityOffer.NO_SITE, l.get(1).reason, "the last one taken by the other kind");
+        assertEquals(-1, CityOffer.move(sophon, 11, 1, 3, laid, held));
+        // a site no neighbour may want goes first, then the one that shares the least, whole or not
+        Lost shared = new Lost().set(11, 0)
+            .share(11, 3)
+            .set(13, 20)
+            .share(13, 1)
+            .set(15, 0)
+            .share(15, 0)
+            .set(17, -1);
+        l = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), shared, null, 0, laid);
+        assertEquals(
+            "s@15",
+            l.get(0)
+                .toString(),
+            "nobody else's ground");
+        assertEquals(
+            "t@13",
+            l.get(1)
+                .toString(),
+            "one neighbour's site before three, though the split takes cells of it");
+        assertEquals(13, CityOffer.move(sophon, 15, 1, 3, laid, shared));
+        assertEquals(13, CityOffer.move(sophon, 15, -1, 3, laid, shared));
+        assertEquals(15, CityOffer.move(sophon, 11, 1, 3, laid, shared));
+    }
+
+    /**
+     * The outer buildings wait for their ground (0.15.0): the reason says the outer ring's job lays it, or, for a day
+     * after a member cancelled it, that it is offered again later, or, while jobs before it hold its offer back (a
+     * retire job of a 0.9.2 hall, the forum), that it is offered once they are done: in neither case is there a job of
+     * the ground to press 开始 on.
+     */
+    @Test
+    void aDeclinedGroundJobSaysSo() {
+        CityOffer.Kind sophon = new CityOffer.Kind("s", "s", SiteFamily.OUTER_DIAG, new int[] { 11 }, 3, true, null);
+        List<CityOffer.Kind> kinds = Collections.singletonList(sophon);
+        CityOffer.Sites free = (k, s) -> CityOffer.FREE;
+        Map<String, Long> declined = new HashMap<>();
+        declined.put(SiteFamily.OUTER_GROUND, 101L);
+        List<CityOffer.Offer> l = CityOffer.look(kinds, 3, r -> true, null, free, declined, 100, g -> false);
+        assertEquals(CityOffer.GROUND_DECLINED, l.get(0).reason);
+        assertEquals(11, l.get(0).site, "where it will go");
+        l = CityOffer.look(kinds, 3, r -> true, null, free, declined, 101, g -> false);
+        assertEquals(CityOffer.GROUND, l.get(0).reason, "a day later the job is offered again");
+        l = CityOffer.look(kinds, 3, r -> true, null, free, new HashMap<>(), 100, g -> false);
+        assertEquals(CityOffer.GROUND, l.get(0).reason);
+        l = CityOffer.look(kinds, 2, r -> true, null, free, declined, 100, g -> false);
+        assertEquals(CityOffer.PHASE, l.get(0).reason, "the phase comes first");
+        // the jobs before it hold the ground's job back: it is not there to start
+        Predicate<String> waits = SiteFamily.OUTER_GROUND::equals;
+        l = CityOffer.look(kinds, 3, r -> true, null, free, new HashMap<>(), 100, g -> false, waits);
+        assertEquals(CityOffer.GROUND_WAITS, l.get(0).reason);
+        assertEquals(11, l.get(0).site, "where it will go");
+        l = CityOffer.look(kinds, 3, r -> true, null, free, declined, 100, g -> false, waits);
+        assertEquals(CityOffer.GROUND_DECLINED, l.get(0).reason, "cancelled lately comes first");
+        l = CityOffer.look(kinds, 3, r -> true, null, free, new HashMap<>(), 100, g -> false, g -> false);
+        assertEquals(CityOffer.GROUND, l.get(0).reason);
+        l = CityOffer
+            .look(kinds, 3, r -> true, null, free, new HashMap<>(), 100, SiteFamily.OUTER_GROUND::equals, waits);
+        assertTrue(
+            l.get(0)
+                .offered(),
+            "laid: nothing waits");
+    }
+
+    /**
+     * Free sites, each with how many of its cells the split takes ({@link CityOffer.Sites#lost}) and how many of the
+     * neighbours' outer diagonals it shares ground with ({@link CityOffer.Sites#contested}).
+     */
+    private static final class Lost implements CityOffer.Sites {
+
+        private final Map<Integer, Integer> lost = new HashMap<>(), contested = new HashMap<>();
+
+        Lost set(int site, int cells) {
+            lost.put(site, cells);
+            return this;
+        }
+
+        Lost share(int site, int diagonals) {
+            contested.put(site, diagonals);
+            return this;
+        }
+
+        @Override
+        public int contested(CityOffer.Kind kind, int site) {
+            return contested.getOrDefault(site, 0);
+        }
+
+        @Override
+        public int blocker(CityOffer.Kind kind, int site) {
+            return CityOffer.FREE;
+        }
+
+        @Override
+        public int lost(CityOffer.Kind kind, int site) {
+            return lost.getOrDefault(site, 0);
+        }
+    }
+
+    /** Free sites of which only the listed ones are wholly the campus's own. */
+    private static final class Whole implements CityOffer.Sites {
+
+        private final Set<Integer> whole = new HashSet<>();
+
+        Whole(int... sites) {
+            for (int s : sites) whole.add(s);
+        }
+
+        @Override
+        public int blocker(CityOffer.Kind kind, int site) {
+            return CityOffer.FREE;
+        }
+
+        @Override
+        public boolean whole(CityOffer.Kind kind, int site) {
+            return whole.contains(site);
+        }
+    }
+
+    /**
+     * Both outer buildings find a site between neighbours placed at the old spacing (0.15.0, the standing rule that
+     * every researched building can be built): with the campus's sites judged by the split as the campus judges them
+     * ({@link CampusSplit#siteLoss} against its neighbours and the claims each has made), neighbours on opposite sides
+     * at 144 and at 150, one beside it and one in front, and an L of three leave both kinds offered on two different
+     * sites, whichever way the campus faces; once a neighbour has claimed the site over one of them, the kind takes
+     * another, and with all four held for good it says {@link CityOffer#TRIMMED}.
+     */
+    @Test
+    void theOuterBuildingsFindSitesBetweenOldSpacedNeighbours() {
+        CityOffer.Kind sophon = new CityOffer.Kind("s", "s", SiteFamily.OUTER_DIAG, new int[] { 11 }, 3, true, null);
+        CityOffer.Kind table = new CityOffer.Kind("t", "t", SiteFamily.OUTER_DIAG, new int[] { 17 }, 3, true, null);
+        List<CityOffer.Kind> kinds = Arrays.asList(sophon, table);
+        Predicate<String> laid = SiteFamily.OUTER_GROUND::equals;
+        int[][][] layouts = { { { 150, 0 }, { -150, 0 } }, { { 144, 0 }, { -144, 0 } }, { { 0, 144 }, { 0, -144 } },
+            { { 150, 0 }, { 0, -150 } }, { { 144, 0 }, { 0, 144 }, { 144, 144 } },
+            { { 144, 0 }, { -144, 0 }, { 0, 144 }, { 0, -144 } } };
+        int[][] fronts = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };
+        for (int[][] l : layouts) for (int[] f : fronts) {
+            List<int[]> near = Arrays.asList(l);
+            List<CityOffer.Offer> o = CityOffer
+                .look(kinds, 3, r -> true, Collections.emptySet(), split(f, 0, near), null, 0, laid);
+            assertTrue(
+                o.get(0)
+                    .offered(),
+                Arrays.deepToString(l) + " " + o.get(0));
+            assertTrue(
+                o.get(1)
+                    .offered(),
+                Arrays.deepToString(l) + " " + o.get(1));
+            assertTrue(o.get(0).site != o.get(1).site);
+        }
+        // a neighbour claimed the site over O1 (facing north O1 is +x -z, its outer diagonal there is its -x -z one):
+        // the Sophon Array takes another
+        int[] f = fronts[0];
+        int q = CampusSplit.siteQuadrant(11, f[0], f[1]);
+        int sx = (q & 1) != 0 ? -1 : 1, sz = (q & 2) != 0 ? -1 : 1;
+        int[] claimer = { 144 * sx, 0, 1 << CampusSplit.quadrant(-sx, sz) };
+        List<CityOffer.Offer> o = CityOffer.look(
+            kinds,
+            3,
+            r -> true,
+            Collections.emptySet(),
+            split(f, 0, Collections.singletonList(claimer)),
+            null,
+            0,
+            laid);
+        assertTrue(
+            o.get(0)
+                .offered());
+        assertTrue(o.get(0).site != 11, "O1 is held for good: " + o.get(0));
+        // eight neighbours that claimed every site they have: nothing is left
+        List<int[]> grid = new ArrayList<>();
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++) if (dx != 0 || dz != 0) grid.add(new int[] { 144 * dx, 144 * dz, 15 });
+        o = CityOffer.look(kinds, 3, r -> true, Collections.emptySet(), split(f, 0, grid), null, 0, laid);
+        assertEquals(CityOffer.TRIMMED, o.get(0).reason);
+        assertEquals(CityOffer.TRIMMED, o.get(1).reason);
+    }
+
+    /** A campus at the origin facing (fx, fz), its free outer sites judged by the split as the campus judges them. */
+    private static CityOffer.Sites split(int[] f, int claims, List<int[]> near) {
+        return new CityOffer.Sites() {
+
+            @Override
+            public int blocker(CityOffer.Kind kind, int site) {
+                return CityOffer.FREE;
+            }
+
+            @Override
+            public int lost(CityOffer.Kind kind, int site) {
+                return CampusSplit.siteLoss(CampusSplit.siteQuadrant(site, f[0], f[1]), 0, 0, claims, near);
+            }
+        };
+    }
+
+    /**
+     * Every campus of a grid placed at the old spacing gets both outer buildings (0.15.0, the standing rule that every
+     * researched building can be built): four campuses in a square 144 or 150 apart, and five in a plus 144 apart,
+     * each looking in turn with the split as the campuses judge it ({@link CampusSplit#siteLoss}, the claims each look
+     * made before, {@link CampusSplit#contested}). Whatever order they look in, whichever way each faces, and whether
+     * a campus has both researched at once or one after the other, each gets both kinds on two sites, and no two
+     * claimed sites share a cell. Taking the first whole site in order, as the look did before it ranked the sites by
+     * the ground they share, left the campus that looked last in a square of four with one building in about half of
+     * the orders: its neighbours had taken the sites it needed while each had a site of its own no one else could use.
+     * A denser grid (two rows of three at 144) has exactly as many sites the campuses can share out as buildings, and
+     * campuses that look one after the other can still leave one of them a single building there (BLUEPRINT §七).
+     */
+    @Test
+    void everyCampusOfAnOldSpacedGridGetsBothOuterBuildings() {
+        int[][][] layouts = { { { 0, 0 }, { 144, 0 }, { 0, 144 }, { 144, 144 } },
+            { { 0, 0 }, { 150, 0 }, { 0, 150 }, { 150, 150 } },
+            { { 0, 0 }, { 144, 0 }, { -144, 0 }, { 0, 144 }, { 0, -144 } } };
+        for (int[][] layout : layouts) {
+            Grid g = new Grid(layout);
+            int n = layout.length;
+            // every order of looking and every facing, both kinds researched at once
+            for (int[] order : permutations(n)) for (int fs = 0; fs < 1 << 2 * n; fs++) {
+                int[] facing = new int[n];
+                for (int i = 0; i < n; i++) facing[i] = fs >> 2 * i & 3;
+                int[][] events = new int[n][];
+                for (int i = 0; i < n; i++) events[i] = new int[] { order[i], 2 };
+                g.run(facing, events);
+            }
+            // one kind after the other, the looks of the campuses interleaved at random (a fixed seed), each campus
+            // researching its first kind before its second
+            Random r = new Random(15L);
+            for (int t = 0; t < 3000; t++) {
+                int[] facing = new int[n], first = new int[n], next = new int[n];
+                for (int i = 0; i < n; i++) {
+                    facing[i] = r.nextInt(4);
+                    first[i] = r.nextInt(2);
+                }
+                List<Integer> turns = new ArrayList<>();
+                for (int i = 0; i < n; i++) {
+                    turns.add(i);
+                    turns.add(i);
+                }
+                Collections.shuffle(turns, r);
+                int[][] events = new int[turns.size()][];
+                for (int e = 0; e < events.length; e++) {
+                    int c = turns.get(e);
+                    events[e] = new int[] { c, next[c]++ == 0 ? first[c] : 1 - first[c] };
+                }
+                g.run(facing, events);
+            }
+        }
+    }
+
+    /** Every order of 0..n-1. */
+    private static List<int[]> permutations(int n) {
+        List<int[]> out = new ArrayList<>();
+        permute(new int[n], new boolean[n], 0, out);
+        return out;
+    }
+
+    private static void permute(int[] a, boolean[] used, int at, List<int[]> out) {
+        if (at == a.length) {
+            out.add(a.clone());
+            return;
+        }
+        for (int i = 0; i < a.length; i++) {
+            if (used[i]) continue;
+            used[i] = true;
+            a[at] = i;
+            permute(a, used, at + 1, out);
+            used[i] = false;
+        }
+    }
+
+    /**
+     * Campuses at the old spacing looking at their outer diagonals in turn, each judging its sites by the split
+     * against the others and the claims they made; what the split says is worked out once per campus, site and claims.
+     */
+    private static final class Grid {
+
+        static final CityOffer.Kind SOPHON = new CityOffer.Kind(
+            "sophon_array",
+            "sophon_array",
+            SiteFamily.OUTER_DIAG,
+            new int[] { 11 },
+            3,
+            true,
+            null);
+        static final CityOffer.Kind TABLE = new CityOffer.Kind(
+            "holo_table",
+            "holo_table",
+            SiteFamily.OUTER_DIAG,
+            new int[] { 17 },
+            3,
+            true,
+            null);
+        static final List<CityOffer.Kind> KINDS = Arrays.asList(SOPHON, TABLE);
+
+        final int[][] centres;
+        /** Which outer diagonals (campus * 4 + quadrant) share a cell. */
+        final boolean[][] shares;
+        final Map<Long, Integer> known = new HashMap<>();
+        int[] claims;
+
+        Grid(int[][] centres) {
+            this.centres = centres;
+            int n = centres.length;
+            List<Set<Long>> cells = new ArrayList<>();
+            for (int[] c : centres) for (int q = 0; q < 4; q++) {
+                Set<Long> s = new HashSet<>();
+                for (int[] w : CampusSplit.siteCells(c[0], c[1], q)) s.add(CampusPlan.key(w[0], w[1]));
+                cells.add(s);
+            }
+            shares = new boolean[4 * n][4 * n];
+            for (int a = 0; a < 4 * n; a++) for (int b = 0; b < 4 * n; b++) {
+                if (a / 4 == b / 4) continue;
+                for (long k : cells.get(a)) if (cells.get(b)
+                    .contains(k)) {
+                        shares[a][b] = true;
+                        break;
+                    }
+            }
+        }
+
+        /** The other campuses near enough to share ground, with the claims they made. */
+        List<int[]> others(int i) {
+            List<int[]> out = new ArrayList<>();
+            for (int j = 0; j < centres.length; j++) {
+                int d = Math.max(Math.abs(centres[j][0] - centres[i][0]), Math.abs(centres[j][1] - centres[i][1]));
+                if (j == i || d > CampusSplit.REACH) continue;
+                out.add(new int[] { centres[j][0], centres[j][1], claims[j] });
+            }
+            return out;
+        }
+
+        /** What the split says of campus i's quadrant q now: its loss ({@code what} 0) or how contested it is (1). */
+        int judge(int i, int q, int what) {
+            long key = what;
+            for (int c : claims) key = key << 4 | c;
+            key = (key << 3 | i) << 2 | q;
+            Integer v = known.get(key);
+            if (v != null) return v;
+            List<int[]> near = others(i);
+            int[] c = centres[i];
+            int out = what == 0 ? CampusSplit.siteLoss(q, c[0], c[1], claims[i], near)
+                : CampusSplit.contested(q, c[0], c[1], near);
+            known.put(key, out);
+            return out;
+        }
+
+        /**
+         * Runs the looks: each event {campus, kind} researches that kind (2: both) and looks; asserts every campus
+         * ends with both kinds on two sites and no two claimed sites share a cell.
+         */
+        void run(int[] facing, int[][] events) {
+            int n = centres.length;
+            claims = new int[n];
+            List<Set<String>> researched = new ArrayList<>(), standing = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                researched.add(new HashSet<>());
+                standing.add(new HashSet<>());
+            }
+            for (int[] e : events) {
+                int i = e[0];
+                int[] f = FACINGS[facing[i]];
+                for (int k = 0; k < KINDS.size(); k++) if (e[1] == 2 || e[1] == k) researched.get(i)
+                    .add(KINDS.get(k).research);
+                CityOffer.Sites sites = new CityOffer.Sites() {
+
+                    @Override
+                    public int blocker(CityOffer.Kind kind, int site) {
+                        int q = CampusSplit.siteQuadrant(site, f[0], f[1]);
+                        return (claims[i] >> q & 1) != 0 ? CityOffer.OTHER : CityOffer.FREE;
+                    }
+
+                    @Override
+                    public int lost(CityOffer.Kind kind, int site) {
+                        return judge(i, CampusSplit.siteQuadrant(site, f[0], f[1]), 0);
+                    }
+
+                    @Override
+                    public int contested(CityOffer.Kind kind, int site) {
+                        return judge(i, CampusSplit.siteQuadrant(site, f[0], f[1]), 1);
+                    }
+                };
+                List<CityOffer.Offer> l = CityOffer.look(
+                    KINDS,
+                    3,
+                    researched.get(i)::contains,
+                    standing.get(i),
+                    sites,
+                    null,
+                    0,
+                    SiteFamily.OUTER_GROUND::equals);
+                for (CityOffer.Offer o : l) {
+                    if (!o.offered()) continue;
+                    claims[i] |= 1 << CampusSplit.siteQuadrant(o.site, f[0], f[1]);
+                    standing.get(i)
+                        .add(o.kind.key);
+                }
+            }
+            String at = Arrays.deepToString(centres) + " facing "
+                + Arrays.toString(facing)
+                + " looks "
+                + Arrays.deepToString(events);
+            for (int i = 0; i < n; i++) {
+                assertEquals(2, Integer.bitCount(claims[i]), "campus " + i + " of " + at);
+                assertEquals(
+                    2,
+                    standing.get(i)
+                        .size(),
+                    "campus " + i + " of " + at);
+            }
+            for (int a = 0; a < 4 * n; a++) for (int b = a + 1; b < 4 * n; b++)
+                if ((claims[a / 4] >> (a & 3) & 1) != 0 && (claims[b / 4] >> (b & 3) & 1) != 0)
+                    assertFalse(shares[a][b], "two claimed sites share ground: " + at);
+        }
+    }
+
+    /**
+     * A neighbour's outer diagonal building keeps its whole site clear of this campus's (0.15.0), but its site is
+     * judged against this campus's site cell for cell ({@link CityOffer#siteBlocker}), not against the square round
+     * the site, whose corners reach past the octagon: with the neighbour 150 or 148 away diagonally and its building
+     * on its site facing this campus, the two sites share no cell and the split leaves this one whole, and the site
+     * is free and offered (the square called it taken, "something else stands on its site"). For neighbours at the
+     * old spacing every way round, the neighbour's standing building is in the way of a site exactly when the two
+     * sites share a cell, so it never takes a site the split leaves to the campus.
+     */
+    @Test
+    void aNeighboursBuildingAcrossTheCornerLeavesTheSiteFree() {
+        int aq = CampusSplit.quadrant(1, 1), bq = CampusSplit.quadrant(-1, -1);
+        for (int d : new int[] { 150, 148 }) {
+            List<int[]> near = Collections.singletonList(new int[] { d, d, 1 << bq });
+            assertEquals(0, CampusSplit.siteLoss(aq, 0, 0, 0, near), "whole");
+            Set<Long> theirs = new HashSet<>();
+            for (int[] c : CampusSplit.siteCells(d, d, bq)) theirs.add(CampusPlan.key(c[0], c[1]));
+            for (int[] c : CampusSplit.siteCells(0, 0, aq))
+                assertFalse(theirs.contains(CampusPlan.key(c[0], c[1])), "a cell of both");
+            List<CityOffer.Stray> strays = standing(d - OuterRing.DIAG_CENTRE, d - OuterRing.DIAG_CENTRE, d, d);
+            int half = OuterRing.DIAG_SIZE / 2 + 1;
+            int[] square = { OuterRing.DIAG_CENTRE - half, OuterRing.DIAG_CENTRE - half, OuterRing.DIAG_CENTRE + half,
+                OuterRing.DIAG_CENTRE + half };
+            assertEquals(CityOffer.OTHER, CityOffer.blocker(square, Collections.emptyList(), strays), "the square");
+            assertEquals(
+                CityOffer.FREE,
+                CityOffer.siteBlocker(CampusSplit.siteCells(0, 0, aq), Collections.emptyList(), strays));
+            for (int[] f : FACINGS) {
+                int site = -1;
+                for (int s : OuterRing.DIAG_SITES) if (CampusSplit.siteQuadrant(s, f[0], f[1]) == aq) site = s;
+                CityOffer.Kind k = new CityOffer.Kind(
+                    "s",
+                    "s",
+                    SiteFamily.OUTER_DIAG,
+                    new int[] { site },
+                    3,
+                    true,
+                    null);
+                CityOffer.Sites sites = new CityOffer.Sites() {
+
+                    @Override
+                    public int blocker(CityOffer.Kind kind, int s) {
+                        int q = CampusSplit.siteQuadrant(s, f[0], f[1]);
+                        return CityOffer.siteBlocker(CampusSplit.siteCells(0, 0, q), Collections.emptyList(), strays);
+                    }
+
+                    @Override
+                    public int lost(CityOffer.Kind kind, int s) {
+                        return CampusSplit.siteLoss(CampusSplit.siteQuadrant(s, f[0], f[1]), 0, 0, 0, near);
+                    }
+                };
+                List<CityOffer.Offer> l = CityOffer.look(
+                    Collections.singletonList(k),
+                    3,
+                    r -> true,
+                    Collections.emptySet(),
+                    sites,
+                    null,
+                    0,
+                    SiteFamily.OUTER_GROUND::equals);
+                assertEquals(
+                    "s@" + site,
+                    l.get(0)
+                        .toString());
+            }
+        }
+        // every way round: the standing building is in the way exactly where the sites share a cell
+        int[][] offsets = { { 150, 150 }, { 148, 148 }, { 144, 25 }, { 144, 33 }, { 144, -30 }, { -150, 150 },
+            { 160, 100 }, { 144, 0 }, { 144, 144 }, { -144, -70 } };
+        for (int[] o : offsets) for (int q2 = 0; q2 < 4; q2++) {
+            int sx = (q2 & 1) != 0 ? -1 : 1, sz = (q2 & 2) != 0 ? -1 : 1;
+            List<CityOffer.Stray> strays = standing(
+                o[0] + sx * OuterRing.DIAG_CENTRE,
+                o[1] + sz * OuterRing.DIAG_CENTRE,
+                o[0],
+                o[1]);
+            Set<Long> theirs = new HashSet<>();
+            for (int[] c : CampusSplit.siteCells(o[0], o[1], q2)) theirs.add(CampusPlan.key(c[0], c[1]));
+            List<int[]> near = Collections.singletonList(new int[] { o[0], o[1], 1 << q2 });
+            for (int q = 0; q < 4; q++) {
+                boolean share = false;
+                for (int[] c : CampusSplit.siteCells(0, 0, q)) share |= theirs.contains(CampusPlan.key(c[0], c[1]));
+                int b = CityOffer.siteBlocker(CampusSplit.siteCells(0, 0, q), Collections.emptyList(), strays);
+                String at = Arrays.toString(o) + " theirs " + q2 + " ours " + q;
+                assertEquals(share ? CityOffer.OTHER : CityOffer.FREE, b, at);
+                if (CampusSplit.siteLoss(q, 0, 0, 0, near) >= 0) assertEquals(CityOffer.FREE, b, at);
+            }
+        }
+    }
+
+    /**
+     * The stray entries a neighbour's outer diagonal building gives (its whole site,
+     * {@link CampusSplit#strayDiagBoxes}, as a campus sees a building on no site of its): its module centred at
+     * (x, z), its campus centred at (cx, cz).
+     */
+    private static List<CityOffer.Stray> standing(int x, int z, int cx, int cz) {
+        List<CityOffer.Stray> out = new ArrayList<>();
+        for (int[] box : CampusSplit.strayDiagBoxes(x, z, Arrays.asList(new int[] { cx, cz }, new int[] { 0, 0 })))
+            out.add(new CityOffer.Stray(box, x, z, -1));
+        return out;
     }
 }

@@ -7,13 +7,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
- * The research star map of the Flux Nexus (blueprint 3.5): six constellations, one per branch, around the anchor in
- * the middle. A node costs flux compute (run off the nexus over time) and items (taken when it starts); some also want
- * a number of entries in the team's Echo Codex, and some only open with a later phase of the nexus.
+ * The research star map of the Flux Nexus (blueprint 3.5): six constellations, one per branch, around the frame's
+ * spine. A node costs flux compute (run off the nexus over time) and items (taken when it starts); some also want a
+ * number of entries in the team's Echo Codex, and some only open with a later phase of the nexus.
  * <p>
- * Map positions are in star-map units: {@link #WIDTH} x {@link #HEIGHT}, the anchor in the middle.
+ * Map positions are in star-map units: {@link #WIDTH} x {@link #HEIGHT}. The frame's nodes stand on the spine down the
+ * middle, the guard's dome at its foot; since 0.15.0 the spine climbs from the anchor in the lower half through the
+ * inner ring and the phases to the outer ring at the top (six stars a name apart fill it), and the other branches stand
+ * on either side of it.
  */
 public final class ResearchTree {
 
@@ -124,25 +128,35 @@ public final class ResearchTree {
         }
     }
 
-    /** The highest phase a nexus reaches in this version (0.12.0: phase II, CITY.md §5.1). */
-    public static final int PHASE_NOW = 2;
+    /**
+     * The highest phase a nexus reaches in this version (0.12.0: phase II; 0.15.0: phase III, CITY.md §3 and §5.1).
+     */
+    public static final int PHASE_NOW = 3;
 
     public static final String ANCHOR = "anchor", INNER_RING = "inner_ring", PHASE_2 = "phase_2",
         ECHO_CRYSTAL = "echo_crystal", LIBRARY = "library", LIBRARY_REACH = "library_reach", COMPUTE_1 = "compute_1",
         UPKEEP_1 = "upkeep_1", TIDAL_WELL = "tidal_well", GRIT_YIELD = "grit_yield", DOME = "dome",
         ECO_DOME = "eco_dome", ARCANE_COURT = "arcane_court", BLOOD_COVENANT = "blood_covenant",
         HUNTING_GROUND = "hunting_ground", MANA_FOUNTAIN = "mana_fountain", RESONANCE_GATE = "resonance_gate",
-        DUAL_FOIL_VAULT = "dual_foil_vault";
+        DUAL_FOIL_VAULT = "dual_foil_vault", PHASE_3 = "phase_3", OUTER_RING = "outer_ring",
+        SOPHON_ARRAY = "sophon_array", HOLO_TABLE = "holo_table";
 
     private static final Map<String, Node> NODES = new LinkedHashMap<>();
 
     static {
-        add(ANCHOR, Branch.FRAME, 180, 110, new String[0], 0, new String[0], 0, 1);
+        // 0.15.0: the frame's spine down the middle of the map holds six stars now (the outer ring, phase III, phase
+        // II, the inner ring, the anchor and the guard's dome at its foot), each a star and a name below the one over
+        // it, as close as the smallest GUI lets them stand. So the anchor moved down from (180, 110), the inner ring
+        // from (180, 66), phase II from (180, 30) and the dome from (180, 168), and the stars beside the spine
+        // moved out of their names' way and their lines' (ResearchTreeTest): the echo crystal from (232, 88), the
+        // library from (268, 62), its reach from (312, 76), compute calibration from (228, 136), the tidal well
+        // from (92, 160), grit enrichment from (132, 84) and the Arcane Court from (290, 110).
+        add(ANCHOR, Branch.FRAME, 180, 156, new String[0], 0, new String[0], 0, 1);
         add(
             INNER_RING,
             Branch.FRAME,
             180,
-            66,
+            124,
             new String[] { ANCHOR },
             3_000,
             new String[] { "ore:gemFluxCrystal*16", "ore:plateStainlessSteel*8" },
@@ -154,21 +168,21 @@ public final class ResearchTree {
             PHASE_2,
             Branch.FRAME,
             180,
-            30,
+            92,
             new String[] { INNER_RING },
             40_000,
             new String[] { "ore:plateTitanium*32", "ore:circuitEV*8", "ore:ingotPhaseAlloy*16",
                 "ore:gemFluxCrystal*32" },
             0,
             2);
-        // 0.13.0: the echo crystal, the library and its reach stand a little right of where 0.9.0 put them, so the
-        // English names under them ("Echo Crystallization", "Echo Library") keep off the anchor's and the reach's arms
-        // at the smallest GUI (ResearchTreeTest)
+        // 0.13.0: the echo crystal, the library and its reach stood a little right of where 0.9.0 put them, so the
+        // English names under them ("Echo Crystallization", "Echo Library") kept off the anchor's and the reach's arms
+        // at the smallest GUI (ResearchTreeTest); 0.15.0 moved all three up and right with the spine
         add(
             ECHO_CRYSTAL,
             Branch.ECHO,
-            232,
-            88,
+            234,
+            72,
             new String[] { ANCHOR },
             6_000,
             new String[] { "ore:gemFluxCrystal*8", "item:minecraft:ender_pearl*4" },
@@ -177,8 +191,8 @@ public final class ResearchTree {
         add(
             LIBRARY,
             Branch.ECHO,
-            268,
-            62,
+            278,
+            52,
             new String[] { ECHO_CRYSTAL, INNER_RING },
             12_000,
             new String[] { "ore:gemEchoCrystal*4", "item:minecraft:book*16" },
@@ -187,8 +201,8 @@ public final class ResearchTree {
         add(
             LIBRARY_REACH,
             Branch.ECHO,
-            312,
-            76,
+            322,
+            62,
             new String[] { LIBRARY },
             24_000,
             new String[] { "ore:gemEchoCrystal*8", "item:minecraft:ender_eye*4" },
@@ -197,8 +211,8 @@ public final class ResearchTree {
         add(
             COMPUTE_1,
             Branch.COMPUTE,
-            228,
-            136,
+            236,
+            134,
             new String[] { ANCHOR },
             4_000,
             new String[] { "ore:circuitHV*4", "ore:gemFluxCrystal*4" },
@@ -219,7 +233,7 @@ public final class ResearchTree {
             TIDAL_WELL,
             Branch.ENERGY,
             92,
-            160,
+            152,
             new String[] { PHASE_2, UPKEEP_1 },
             30_000,
             new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "ore:glassResonant*8",
@@ -229,8 +243,8 @@ public final class ResearchTree {
         add(
             GRIT_YIELD,
             Branch.DEPTHS,
-            132,
-            84,
+            130,
+            82,
             new String[] { ANCHOR },
             8_000,
             new String[] { "ore:dustFluxGrit*32", "ore:gemFluxCrystal*4" },
@@ -241,7 +255,7 @@ public final class ResearchTree {
             DOME,
             Branch.GUARD,
             180,
-            168,
+            186,
             new String[] { PHASE_2 },
             30_000,
             new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8", "ore:glassResonant*16",
@@ -272,7 +286,7 @@ public final class ResearchTree {
             ARCANE_COURT,
             Branch.ECHO,
             290,
-            110,
+            100,
             new String[] { PHASE_2, ECHO_CRYSTAL },
             30_000,
             new String[] { "ore:plateTitanium*16", "ore:circuitEV*4", "ore:ingotPhaseAlloy*8",
@@ -344,6 +358,63 @@ public final class ResearchTree {
                 "item:minecraft:paper*32" },
             0,
             2);
+        // 0.15.0: the nexus grows to phase III (IV: tungstensteel hull plates, IV circuits, the phase alloy and the
+        // phase's own material, memory filament, which the table coats from phase II on; CITY.md §3, §5.2, Appendix B,
+        // BLUEPRINT 3.6). It continues the frame's spine up the map over phase II, and the outer ring tops it.
+        add(
+            PHASE_3,
+            Branch.FRAME,
+            180,
+            60,
+            new String[] { PHASE_2 },
+            80_000,
+            new String[] { "ore:plateTungstenSteel*32", "ore:circuitIV*8", "ore:ingotPhaseAlloy*32",
+                "ore:wireMemoryFilament*16" },
+            0,
+            3);
+        // 0.15.0: the outer ring (CITY.md §2.3, Appendix B): the campus job that grades and paves the ground beyond
+        // the halls and opens the outer diagonal sites, researched on a nexus of phase III with the phase's costs
+        add(
+            OUTER_RING,
+            Branch.FRAME,
+            180,
+            28,
+            new String[] { PHASE_3 },
+            60_000,
+            new String[] { "ore:plateTungstenSteel*16", "ore:circuitIV*4", "ore:ingotPhaseAlloy*16",
+                "ore:wireMemoryFilament*8" },
+            0,
+            3);
+        // 0.15.0: the two buildings of the outer diagonals (CITY.md §4.10, §4.11, Appendix B), compute nodes after the
+        // outer ring, with the phase's IV costs, resonant glass (which their cores leave out, so the manifestation
+        // table keeps a slot for a second record's echo crystals), memory filament and one themed vanilla item each:
+        // the Sophon Array's comparators, the vanilla logic its racks compute with (it also needs compute calibration),
+        // the Holo Sand Table's maps, the base it shows on its table. Both stand on the compute branch's side in its
+        // lower half: the Sophon Array under compute calibration, right of the dome, the Holo Sand Table in the bottom
+        // right corner by the branch's name, the two spots there where their names keep off every other and their long
+        // lines from the outer ring at the top pass no star (ResearchTreeTest).
+        add(
+            SOPHON_ARRAY,
+            Branch.COMPUTE,
+            224,
+            166,
+            new String[] { OUTER_RING, COMPUTE_1 },
+            50_000,
+            new String[] { "ore:plateTungstenSteel*16", "ore:circuitIV*4", "ore:ingotPhaseAlloy*8",
+                "ore:glassResonant*8", "ore:wireMemoryFilament*16", "item:minecraft:comparator*16" },
+            0,
+            3);
+        add(
+            HOLO_TABLE,
+            Branch.COMPUTE,
+            342,
+            202,
+            new String[] { OUTER_RING },
+            50_000,
+            new String[] { "ore:plateTungstenSteel*16", "ore:circuitIV*4", "ore:ingotPhaseAlloy*8",
+                "ore:glassResonant*8", "ore:wireMemoryFilament*8", "item:minecraft:map*16" },
+            0,
+            3);
     }
 
     private ResearchTree() {}
@@ -401,10 +472,32 @@ public final class ResearchTree {
     }
 
     /**
-     * The id of the node that opens a phase: {@code phase_N} (0.12.0: {@code phase_2}).
+     * The id of the node that opens a phase: {@code phase_N} (0.12.0: {@code phase_2}; 0.15.0: {@code phase_3}).
      */
     public static String phaseResearch(int phase) {
         return "phase_" + phase;
+    }
+
+    /**
+     * The highest phase a nexus may stand as with the research its teams have: from phase I up through every
+     * {@code phase_N} done in turn, never past {@link #PHASE_NOW} (a phase's node needs the one before it, so a gap
+     * stops the count). The nexus tries the shapes up to this one ({@code TileNexus.tries}).
+     */
+    public static int researchedPhase(Predicate<String> done) {
+        int p = 1;
+        while (p < PHASE_NOW && done.test(phaseResearch(p + 1))) p++;
+        return p;
+    }
+
+    /**
+     * The phase a formed nexus of {@code phase} is offered to grow to now ({@code grow:<phase>}, CITY.md §3), or 0: the
+     * next phase, when this version reaches it ({@link #PHASE_NOW}) and its teams have that phase's research. So a
+     * nexus of phase II with {@code phase_3} done is offered {@code grow:3} (0.15.0), and a nexus of phase III is
+     * offered nothing until a later version opens phase IV.
+     */
+    public static int nextGrowth(int phase, Predicate<String> done) {
+        int next = phase + 1;
+        return next >= 2 && next <= PHASE_NOW && done.test(phaseResearch(next)) ? next : 0;
     }
 
     /**

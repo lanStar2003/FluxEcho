@@ -14,6 +14,7 @@ import com.fluxecho.logic.BloodCovenantShape;
 import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.DualFoilVaultShape;
 import com.fluxecho.logic.EcoDomeShape;
+import com.fluxecho.logic.HoloTableShape;
 import com.fluxecho.logic.HuntingGroundShape;
 import com.fluxecho.logic.ManaFountainShape;
 import com.fluxecho.logic.ModuleCores;
@@ -22,6 +23,7 @@ import com.fluxecho.logic.ResonanceGateShape;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.ShapeKit;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SophonArrayShape;
 import com.fluxecho.matter.MatterModule;
 import com.fluxecho.nexus.Manifests;
 import com.fluxecho.nexus.NexusModule;
@@ -35,9 +37,10 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * block {@code fluxecho:module_core}, the units used by hand, the module window) and the modules built on it: the Eco
  * Dome (0.11.0), the zenith's Echo Dome Generator and the root's Tidal Well (0.12.0), the four pavilions on the
  * diagonals (0.13.0: the Arcane Court, the Blood Covenant Altar, the Echo Hunting Ground and the Mana Fountain Array,
- * each a {@link #pavilion}), the gate's Resonance Gate (0.14.0, the gate family's {@link #resonanceGate}) and the
- * Dual-foil Vault (0.14.0, the third hall, {@link #dualFoilVault}). Its specs are registered after the library's, so a
- * nexus offers the Archive first.
+ * each a {@link #pavilion}), the gate's Resonance Gate (0.14.0, the gate family's {@link #resonanceGate}), the
+ * Dual-foil Vault (0.14.0, the third hall, {@link #dualFoilVault}) and the outer diagonals' Sophon Array and Holo Sand
+ * Table (0.15.0, each an {@link #outerDiag}). Its specs are registered after the library's, so a nexus offers the
+ * Archive first.
  */
 public final class CityModule {
 
@@ -60,6 +63,8 @@ public final class CityModule {
         GameRegistry.registerTileEntity(TileManaFountain.class, "fluxecho:" + ManaFountainShape.KEY);
         GameRegistry.registerTileEntity(TileResonanceGate.class, "fluxecho:" + ResonanceGateShape.KEY);
         GameRegistry.registerTileEntity(TileDualFoilVault.class, "fluxecho:" + DualFoilVaultShape.KEY);
+        GameRegistry.registerTileEntity(TileSophonArray.class, "fluxecho:" + SophonArrayShape.KEY);
+        GameRegistry.registerTileEntity(TileHoloTable.class, "fluxecho:" + HoloTableShape.KEY);
     }
 
     public static void init() {
@@ -98,6 +103,13 @@ public final class CityModule {
             TileDualFoilVault.class,
             NexusModule.infoContainer(DualFoilVaultShape.KEY + ".structure"));
         NexusModule.previewModule(core, ModuleCores.DUAL_FOIL_VAULT, TileDualFoilVault::new);
+        // the outer diagonals' Sophon Array and Holo Sand Table (0.15.0)
+        IMultiblockInfoContainer
+            .registerTileClass(TileSophonArray.class, NexusModule.infoContainer(SophonArrayShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.SOPHON_ARRAY, TileSophonArray::new);
+        IMultiblockInfoContainer
+            .registerTileClass(TileHoloTable.class, NexusModule.infoContainer(HoloTableShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.HOLO_TABLE, TileHoloTable::new);
         BlockFrame.onUse(UnitUse::use);
         BlockFitting.onUse(UnitUse::use);
         // a unit may be made of canvas panels (0.14.0)
@@ -111,6 +123,8 @@ public final class CityModule {
         ModuleSpecs.register(manaFountain());
         ModuleSpecs.register(resonanceGate());
         ModuleSpecs.register(dualFoilVault());
+        ModuleSpecs.register(sophonArray());
+        ModuleSpecs.register(holoTable());
     }
 
     /**
@@ -351,6 +365,63 @@ public final class CityModule {
     }
 
     /**
+     * The Sophon Array as the campus builder raises it (0.15.0): a building of the outer diagonals (31 x 31, 33 high)
+     * on O1, else O7, O3, O5 (sites 11, 17, 13, 15), opened by the {@code sophon_array} research at phase III on the
+     * ground the outer establish laid, commissioned with its module core on the console at its centre.
+     */
+    public static ModuleSpec sophonArray() {
+        return outerDiag(
+            SophonArrayShape.KEY,
+            Research.SOPHON_ARRAY,
+            SophonArrayShape.HEIGHT,
+            SophonArrayShape.SITES,
+            ModuleCores.SOPHON_ARRAY,
+            TileSophonArray.COLOR,
+            SophonArrayShape::plan,
+            SophonArrayShape::controller);
+    }
+
+    /**
+     * The Holo Sand Table as the campus builder raises it (0.15.0): a building of the outer diagonals (31 x 31, 16
+     * high) on O7, else O1, O5, O3 (sites 17, 11, 15, 13), opened by the {@code holo_table} research at phase III on
+     * the ground the outer establish laid, commissioned with its module core on the console at the table's front.
+     */
+    public static ModuleSpec holoTable() {
+        return outerDiag(
+            HoloTableShape.KEY,
+            Research.HOLO_TABLE,
+            HoloTableShape.HEIGHT,
+            HoloTableShape.SITES,
+            ModuleCores.HOLO_TABLE,
+            TileHoloTable.COLOR,
+            HoloTableShape::plan,
+            HoloTableShape::controller);
+    }
+
+    /**
+     * An outer diagonal building's spec (0.15.0, the OUTER_DIAG family, CITY.md §2.1, §2.3): 31 x 31 on the outer
+     * diagonals in the order it prefers them, its controller where the building puts it facing along A toward the
+     * nexus, what it takes of the campus its apron and allée ({@link ModuleSpec#keepOut}). It takes no room on the
+     * inner ring and is offered only on the outer establish's ground.
+     */
+    static ModuleSpec outerDiag(String key, String research, int height, int[] sites, int meta, int colour,
+        ModuleSpec.PlanFactory plans, ModuleSpec.ControllerFactory controllers) {
+        return new ModuleSpec(
+            SiteFamily.OUTER_DIAG,
+            key,
+            research,
+            ShapeKit.OUT_SIZE,
+            ShapeKit.OUT_SIZE,
+            height,
+            sites,
+            Parts.moduleCore(meta),
+            colour,
+            plans,
+            controllers,
+            () -> true);
+    }
+
+    /**
      * A pavilion's spec (0.13.0, the PAVILION family, CITY.md §2.1): 25 x 25 on its diagonal sites in the order it
      * prefers them, its controller on the central console, what it takes of the campus its apron and allee
      * ({@link ModuleSpec#keepOut}). Every pavilion is this and its shape.
@@ -376,7 +447,10 @@ public final class CityModule {
      * Manifested at the nexus once the Eco Dome is researched: its core from echo crystals, saplings and seeds (the
      * garden it will keep), HV circuits and glass; at phase II (0.12.0) the Echo Dome Generator's and the Tidal Well's
      * cores from phase alloy and resonant glass, the materials of the phase, and (0.13.0) the four pavilions' cores
-     * and (0.14.0) the Resonance Gate's and the Dual-foil Vault's from the same with one themed vanilla item each.
+     * and (0.14.0) the Resonance Gate's and the Dual-foil Vault's from the same with one themed vanilla item each;
+     * (0.15.0) the outer diagonals' cores at phase III from IV circuits, phase alloy and memory filament, again with
+     * one themed vanilla item each (five kinds, so the table keeps a slot for a second record's echo crystals; the
+     * resonant glass is their research's).
      */
     public static void postInit() {
         Manifests.register(
@@ -473,6 +547,31 @@ public final class CityModule {
                     "ore:" + MatterModule.RESONANT_GLASS + "*4", "ore:circuitEV*2", "item:minecraft:painting*4" },
                 () -> new ItemStack(core, 1, ModuleCores.DUAL_FOIL_VAULT),
                 1600,
+                false));
+        // the Sophon Array's core (0.15.0) at phase III: IV circuits, phase alloy, memory filament, the stuff of its
+        // racks' memory cores, and comparators, the logic its circuit over the sky draws. Five kinds, like every core
+        // before it: the table has six input slots and echo crystals of different records do not stack, so the sixth
+        // slot is the one that lets the eight crystals come from two records (4 + 4) rather than eight pressings of
+        // one; the resonant glass its research takes instead
+        Manifests.register(
+            new Manifests.Recipe(
+                "sophon_array_core",
+                Research.SOPHON_ARRAY,
+                new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.PHASE_ALLOY + "*16",
+                    "ore:" + MatterModule.MEMORY_FILAMENT + "*16", "ore:circuitIV*2", "item:minecraft:comparator*8" },
+                () -> new ItemStack(core, 1, ModuleCores.SOPHON_ARRAY),
+                2400,
+                false));
+        // the Holo Sand Table's core (0.15.0): the same phase III materials in five kinds, and empty maps, the cards
+        // its table keeps
+        Manifests.register(
+            new Manifests.Recipe(
+                "holo_table_core",
+                Research.HOLO_TABLE,
+                new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.PHASE_ALLOY + "*16",
+                    "ore:" + MatterModule.MEMORY_FILAMENT + "*8", "ore:circuitIV*2", "item:minecraft:map*8" },
+                () -> new ItemStack(core, 1, ModuleCores.HOLO_TABLE),
+                2400,
                 false));
     }
 }

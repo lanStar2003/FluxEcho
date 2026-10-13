@@ -38,6 +38,8 @@ public final class ModuleLook {
     public static final double BASIN_TOP = 10 / 16.0, LIP_TOP = 12 / 16.0, LIP_MIN = 6 / 16.0, LIP_MAX = 10 / 16.0;
     /** A player's eye over the floor they stand on. */
     public static final double EYE = 1.62;
+    /** The most sides of a socket turned to a camera at once (0.15.0): one of each pair of opposite sides. */
+    public static final int SOCKET_SIDES_SEEN = 2;
 
     /** The top of still water in a block: a source among sources, as the game draws it (one ninth below the top). */
     public static final double WATER_TOP = 8 / 9.0;
@@ -51,6 +53,17 @@ public final class ModuleLook {
     public static int tier(boolean inside, double boxDistance, double near, double range) {
         if (inside || boxDistance <= near) return NEAR;
         return boxDistance <= range ? MID : FAR;
+    }
+
+    /**
+     * Whether the side of a socket facing {@code (ox, oz)} (a unit step) is turned to a camera {@code (dx, dz)} from
+     * the socket's middle (0.15.0): the camera lies out past the plane its recess's picture floats in, half a block
+     * less {@link #RECESS_IN} from the middle. Otherwise the socket's column stands between the camera and that
+     * recess, so its sample is not drawn there. Of two opposite sides at most one is, so at most
+     * {@link #SOCKET_SIDES_SEEN} sides of a socket are.
+     */
+    public static boolean socketSideFacing(int ox, int oz, double dx, double dz) {
+        return dx * ox + dz * oz > 0.5 - RECESS_IN;
     }
 
     /**
@@ -236,7 +249,8 @@ public final class ModuleLook {
     public static final double BELLY = 2.2;
 
     /**
-     * Every name plate of a module, {x, y, z} each in its frame ({@link #plate} for one with a portal). A module
+     * Every name plate of a module, {x, y, z} each in its frame ({@link #plate} for one with a portal; the Holo Sand
+     * Table's over its middle, {@link HoloLook#plate}, 0.15.0). A module
      * entered by the light lift (CITY.md §1.1: the zenith's pod, the root; its shape holds a lift pad) has no portal:
      * its plate floats over the controller on its console, under the ceiling, {@link #OVER_CONSOLE} over the
      * controller block's foot. One that hangs in the air (its blueprint reaches down below its own floor, as the pod's
@@ -244,6 +258,12 @@ public final class ModuleLook {
      */
     public static List<double[]> plates(CityBuild b) {
         List<double[]> out = new ArrayList<>();
+        // the Holo Sand Table's console stands at the table's front, off its middle (0.15.0): its plate floats over
+        // the middle above the ring light, clear of the miniature over the table (HoloLook.plate)
+        if (HoloTableShape.KEY.equals(b.key())) {
+            out.add(HoloLook.plate());
+            return Collections.unmodifiableList(out);
+        }
         int[] pad = liftPad(b);
         if (pad == null) {
             out.add(plate(b));
@@ -287,9 +307,9 @@ public final class ModuleLook {
      * The most quads the drawing every city module shares takes a frame for one module at a tier (0.13.0, CITY.md §1.3,
      * {@link #tier}): the forming sweep while it forms ({@link #sweepQuads}); within the effect range its name plates
      * ({@link #plates}, seen within 48 blocks) and its plinth line ({@link #course}: a core a face, near a two-quad
-     * halo
-     * too); near, the samples in its sockets (on each of a socket's four sides a glow and up to two pictures). A module
-     * kind's own visuals come on top; the sum must stay within 2,000 near, 300 mid and 64 far.
+     * halo too); near, the samples in its sockets (on each side of a socket turned to the camera, at most
+     * {@link #SOCKET_SIDES_SEEN} of its four since 0.15.0, {@link #socketSideFacing}: a glow and up to two pictures).
+     * A module kind's own visuals come on top; the sum must stay within 2,000 near, 300 mid and 64 far.
      */
     public static int baseQuads(CityBuild b, UnitLayout layout, int tier) {
         int n = sweepQuads(b);
@@ -299,6 +319,6 @@ public final class ModuleLook {
         if (tier == MID) return n + faces;
         int sockets = 0;
         for (UnitLayout.Unit u : layout.units()) sockets += u.sockets.size();
-        return n + faces * 3 + sockets * 4 * 3;
+        return n + faces * 3 + sockets * SOCKET_SIDES_SEEN * 3;
     }
 }

@@ -376,14 +376,22 @@ public final class CityScreen {
                 return;
             }
             int n = c.unitFill(u), slots = c.unitSlots(u)[1];
-            String fill = EchoText.t("city.gui.fill", n, slots);
-            right(fill, w, 1, n >= slots ? c.moduleColor() : n > 0 ? CYAN : DIM, 1f);
+            String fill = fill(n, slots);
+            right(fill, w, 1, slots == 0 ? DIM : n >= slots ? c.moduleColor() : n > 0 ? CYAN : DIM, 1f);
             String title = EchoText.t("unit." + c.unitKind(u)) + " " + c.unitName(u);
             text(fit(title, (int) w - font().getStringWidth(fill) - 4), 0, 1, WHITE, 1f);
             small(fit(where(v, u), (int) (w / 0.75f)), 0, 11.5, 0.75f, DIM, 1f);
         } finally {
             GL11.glPopMatrix();
         }
+    }
+
+    /**
+     * A unit's fill in words: how many of its slots hold a sample, or that it keeps none (0.15.0: the Holo Sand
+     * Table's layer consoles have no slots).
+     */
+    static String fill(int n, int slots) {
+        return slots == 0 ? EchoText.t("city.gui.fill_none") : EchoText.t("city.gui.fill", n, slots);
     }
 
     /** Where a unit stands, in words: its storey and its height. */
@@ -397,6 +405,12 @@ public final class CityScreen {
         if (!UnitBrowse.valid(u, c.unitCount())) return new ArrayList<>();
         List<String> out = new ArrayList<>();
         int[] s = c.unitSlots(u);
+        if (s[1] == 0) {
+            // a unit without slots (0.15.0, the layer consoles): its name and what it is for
+            out.add(EnumChatFormatting.AQUA + EchoText.t("unit." + c.unitKind(u)) + " " + c.unitName(u));
+            out.add(EnumChatFormatting.GRAY + EchoText.t("city.gui.hint_none"));
+            return out;
+        }
         out.add(
             EchoText.t("city.gui.unit.tip", EchoText.t("unit." + c.unitKind(u)), c.unitName(u), c.unitFill(u), s[1]));
         for (int i = 0; i < s[1]; i++) {
@@ -408,21 +422,19 @@ public final class CityScreen {
         return out;
     }
 
-    /** Under the grid: how to fill it, or that it is full. */
+    /**
+     * Under the grid: how to fill it, or that it is full; for a unit without slots (0.15.0, the layer consoles) what it
+     * is for instead.
+     */
     public static void hint(TileCityModule c, CityGui.View v, float x, float y, float w, float h) {
         int u = v.unit;
         if (!UnitBrowse.valid(u, c.unitCount())) return;
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);
         try {
-            boolean full = c.firstFree(u) < 0;
-            smallCentered(
-                fit(EchoText.t(full ? "city.gui.hint_full" : "city.gui.hint"), (int) (w / 0.75f)),
-                w / 2.0,
-                2,
-                0.75f,
-                full ? c.moduleColor() : DIM,
-                1f);
+            boolean none = c.unitSlots(u)[1] == 0, full = !none && c.firstFree(u) < 0;
+            String key = none ? "city.gui.hint_none" : full ? "city.gui.hint_full" : "city.gui.hint";
+            smallCentered(fit(EchoText.t(key), (int) (w / 0.75f)), w / 2.0, 2, 0.75f, full ? c.moduleColor() : DIM, 1f);
         } finally {
             GL11.glPopMatrix();
         }
@@ -648,7 +660,7 @@ public final class CityScreen {
             text(fit(c.unitName(u), (int) w), 0, 0, WHITE, 1f);
             small(fit(EchoText.t("unit." + c.unitKind(u)), (int) (w / 0.75f)), 0, 10, 0.75f, CYAN, 1f);
             small(fit(where(v, u), (int) (w / 0.75f)), 0, 18, 0.75f, DIM, 1f);
-            smallRight(EchoText.t("city.gui.fill", n, s[1]), w, 1.5, 0.75f, n >= s[1] ? c.moduleColor() : DIM, 1f);
+            smallRight(fill(n, s[1]), w, 1.5, 0.75f, s[1] > 0 && n >= s[1] ? c.moduleColor() : DIM, 1f);
             int shown = Math.min(s[1], 6);
             begin();
             for (int i = 0; i < shown; i++) {

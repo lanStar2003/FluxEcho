@@ -8,6 +8,7 @@ import java.util.function.BooleanSupplier;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.CityOffer;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.SiteFamily;
 
@@ -233,14 +234,44 @@ public final class ModuleSpec {
      * {@link #siteBox} as whole columns {x0, z0, x1, z1}, a pavilion's apron and allee row by row (0.13.0), the
      * gatehouse's worked columns from the lowest height it works them (0.14.0, {@link BuildPlan#gateKeepOut}: the
      * passage under its bridge height-ranged, so the gate road and its pylons stay the nexus's), an axis module's own
-     * boxes ({@link Envelope#keepOut}, which may be height-ranged {x0, z0, x1, z1, yFrom, yTo}).
+     * boxes ({@link Envelope#keepOut}, which may be height-ranged {x0, z0, x1, z1, yFrom, yTo}), an outer diagonal's
+     * apron and allée row by row as a pavilion's (0.15.0).
      */
     public List<int[]> keepOut(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.keepOut(site, cx, y0, cz, fx, fz);
         if (family == SiteFamily.PAVILION) return pavilionBoxes(site, cx, cz, fx, fz);
+        if (family == SiteFamily.OUTER_DIAG) return rowBoxes(OuterRing.diagSiteCells(site), cx, cz, fx, fz);
         if (family == SiteFamily.GATE)
             return BuildPlan.gateKeepOut(plan(plan, site, cx, y0, cz, fx, fz), cx, y0, cz, fx, fz);
         return Collections.singletonList(siteBox(plan, site, cx, y0, cz, fx, fz));
+    }
+
+    /**
+     * The keep-out boxes the outer establish leaves alone once the module stands on the site (0.15.0): a hall's exact
+     * ground, every column its own plan clears or lays a cell on (its footprint and margin, its forecourt and apron,
+     * its canopy), row by row; every other family's {@link #keepOut}. A hall's whole {@link #siteBox} rectangle takes
+     * in garden cells of the 井 streets' edge row beside its forecourt, which the outer establish paves, so it would
+     * leave a notch of grass in the street beside every standing hall. The jobs of 0.10 to 0.14 keep the rectangle.
+     */
+    public List<int[]> outerKeepOut(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
+        if (family != SiteFamily.HALL || envelope != null) return keepOut(plan, site, cx, y0, cz, fx, fz);
+        BuildPlan.Plan p = plan(plan, site, cx, y0, cz, fx, fz);
+        java.util.Set<Long> cells = new java.util.LinkedHashSet<>();
+        for (BuildPlan.Column c : p.clear) cells.add(CampusPlan.key(c.x, c.z));
+        for (BuildPlan.Step s : p.steps) cells.add(CampusPlan.key(s.x, s.z));
+        return CampusPlan.rowBoxes(cells);
+    }
+
+    /**
+     * The boxes {x0, y0, z0, x1, y1, z1} the outer establish never takes a block down in once the module stands on the
+     * site (0.15.0): {@link #outerKeepOut} from bedrock to the sky for a hall; every other family's {@link #protect}.
+     */
+    public List<int[]> outerProtect(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
+        if (family != SiteFamily.HALL || envelope != null) return protect(plan, site, cx, y0, cz, fx, fz);
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : outerKeepOut(plan, site, cx, y0, cz, fx, fz))
+            out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+        return out;
     }
 
     /**
@@ -250,8 +281,17 @@ public final class ModuleSpec {
      * great square of the garden between the halls and the pavilions, and reach the promenade ring.
      */
     private static List<int[]> pavilionBoxes(int site, int cx, int cz, int fx, int fz) {
+        return rowBoxes(CampusPlan.pavilionSite(site), cx, cz, fx, fz);
+    }
+
+    /**
+     * Campus cells (keys of {@link CampusPlan#key}) as whole-column world boxes {x0, z0, x1, z1}, one per run of a
+     * row ({@link CampusPlan#rowBoxes}): a pavilion's site (0.13.0) and an outer diagonal's (0.15.0,
+     * {@link OuterRing#diagSiteCells}: its apron {@code oct(17, 22)} and its allée from the outer promenade).
+     */
+    private static List<int[]> rowBoxes(java.util.Set<Long> cells, int cx, int cz, int fx, int fz) {
         List<int[]> out = new ArrayList<>();
-        for (int[] b : CampusPlan.rowBoxes(CampusPlan.pavilionSite(site))) {
+        for (int[] b : CampusPlan.rowBoxes(cells)) {
             int[] p = CampusPlan.toWorld(b[0], b[1], fx, fz), q = CampusPlan.toWorld(b[2], b[3], fx, fz);
             out.add(
                 new int[] { cx + Math.min(p[0], q[0]), cz + Math.min(p[1], q[1]), cx + Math.max(p[0], q[0]),
@@ -264,13 +304,15 @@ public final class ModuleSpec {
      * The boxes {x0, y0, z0, x1, y1, z1} in which nothing but the module's own jobs takes a block down once it stands
      * on the site: a hall's {@link #siteBox} from bedrock to the sky, a pavilion's keep-out boxes from bedrock to the
      * sky (0.13.0), the gatehouse's keep-out boxes over their heights (0.14.0, {@link BuildPlan#gateProtect}), an axis
-     * module's own space ({@link Envelope#protect}).
+     * module's own space ({@link Envelope#protect}), an outer diagonal's keep-out boxes from bedrock to the sky
+     * (0.15.0).
      */
     public List<int[]> protect(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz) {
         if (envelope != null) return envelope.protect(site, cx, y0, cz, fx, fz);
-        if (family == SiteFamily.PAVILION) {
+        if (family == SiteFamily.PAVILION || family == SiteFamily.OUTER_DIAG) {
             List<int[]> out = new ArrayList<>();
-            for (int[] b : pavilionBoxes(site, cx, cz, fx, fz)) out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+            for (int[] b : keepOut(plan, site, cx, y0, cz, fx, fz))
+                out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
             return out;
         }
         if (family == SiteFamily.GATE) return BuildPlan.gateProtect(keepOut(plan, site, cx, y0, cz, fx, fz));
@@ -351,15 +393,17 @@ public final class ModuleSpec {
     /**
      * The world box {x0, z0, x1, z1} (inclusive) its footprint takes on the site, with {@code margin} cells round it,
      * for a nexus centred at {@code (cx, cz)} facing {@code (fx, fz)}: a hall's {@code width x depth} from its front
-     * row, a pavilion's octagon round its centre, the gatehouse's envelope across the gate road (0.14.0).
+     * row, a pavilion's octagon round its centre, the gatehouse's envelope across the gate road (0.14.0), an outer
+     * diagonal's octagon {@code oct(15, 20)} round its centre (0.15.0).
      *
      * @throws UnsupportedOperationException for a family this version does not build on
      */
     public int[] footprint(int site, int cx, int cz, int fx, int fz, int margin) {
         if (envelope != null) return envelope.footprint(site, cx, cz, fx, fz, margin);
-        if (family == SiteFamily.PAVILION) {
-            int[] c = CampusPlan.diagonalCentre(site);
-            int half = CampusPlan.DIAGONAL_SIZE / 2 + margin;
+        if (family == SiteFamily.PAVILION || family == SiteFamily.OUTER_DIAG) {
+            boolean outer = family == SiteFamily.OUTER_DIAG;
+            int[] c = outer ? OuterRing.diagCentre(site) : CampusPlan.diagonalCentre(site);
+            int half = (outer ? OuterRing.DIAG_SIZE : CampusPlan.DIAGONAL_SIZE) / 2 + margin;
             int[] a = CampusPlan.toWorld(c[0] - half, c[1] - half, fx, fz),
                 b = CampusPlan.toWorld(c[0] + half, c[1] + half, fx, fz);
             return new int[] { cx + Math.min(a[0], b[0]), cz + Math.min(a[1], b[1]), cx + Math.max(a[0], b[0]),

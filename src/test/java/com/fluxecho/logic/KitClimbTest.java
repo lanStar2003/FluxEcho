@@ -57,9 +57,9 @@ class KitClimbTest {
     }
 
     /**
-     * Every shape of the city with a walk: the nine modules (the Dome Generator's pod as its generator draws it and as
-     * it is built), the shallower Tidal Wells over low ground (0.14.1), and the Tidal Well's later shapes, the deep
-     * root and the ley core, from their top pads.
+     * Every shape of the city with a walk: the eleven modules (the Dome Generator's pod as its generator draws it and
+     * as it is built; 0.15.0 the Sophon Array and the Holo Sand Table), the shallower Tidal Wells over low ground
+     * (0.14.1), and the Tidal Well's later shapes, the deep root and the ley core, from their top pads.
      */
     private static List<Case> cases() {
         List<Case> out = new ArrayList<>();
@@ -96,6 +96,10 @@ class KitClimbTest {
                 ResonanceGateShape.SHAPE,
                 ResonanceGateShape.walkStarts(),
                 ResonanceGateShape.PASSES));
+        // the outer diagonals' buildings (0.15.0): the array's hall, the table's double ramp up to its gallery
+        out.add(
+            new Case("sophon_array", SophonArrayShape.SHAPE, SophonArrayShape.walkStarts(), SophonArrayShape.PASSES));
+        out.add(new Case("holo_table", HoloTableShape.SHAPE, HoloTableShape.walkStarts(), HoloTableShape.PASSES));
         out.add(
             new Case("dome_pod", DomeGeneratorShape.RAW, DomeGeneratorShape.walkStarts(), DomeGeneratorShape.PASSES));
         out.add(

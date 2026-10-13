@@ -16,8 +16,9 @@ import java.util.TreeMap;
  * The kit the City of Echoes' building shapes are drawn with (0.11.0): a port of the scratch generators' shared
  * {@code city/gen/kit.py} and of the helpers the hall generator ({@code b_hall.py}) and (0.13.0) the pavilion
  * generator ({@code b_pav.py}: the octagonal plan, its chamfer portals, the shell with its pilaster rhythm, the centre
- * controller, the octagon norm, the back gate niche) use, so every building's {@code XShape} can port its generator
- * line by line, the way {@link ArchiveShape} ported {@code archive.py}.
+ * controller, the octagon norm, the back gate niche) and (0.15.0) the outer generator ({@code b_outer.py}: its own
+ * octagonal shell, {@link #octoShell}) use, so every building's {@code XShape} can port its generator line by line,
+ * the way {@link ArchiveShape} ported {@code archive.py}.
  * <p>
  * A {@link Shape} is a box of characters in the local frame every module uses: {@code x} across {@code 0..W-1}
  * ({@code MID} the middle), {@code y} up ({@code y0} the foundation layer people stand on), {@code z} from the front
@@ -537,6 +538,99 @@ public final class ShapeKit {
         int[][] s = { { 1, 1, 2 }, { 2, 0, 2 }, { 23, 1, 2 }, { 1, 23, 2 }, { 23, 23, 2 } };
         for (int[] p : s) out.add(p.clone());
         return out;
+    }
+
+    // ---- the outer diagonal helpers (b_outer.py, 0.15.0) ----
+
+    /**
+     * The outer diagonals' box (CITY.md §2.1, the OUTER_DIAG family): {@code OUT_SIZE} across and deep
+     * ({@code b_outer.N}), its middle {@code OUT_C} ({@code C}), and the octagon {@code oct(OUT_HALF, OUT_K)} of their
+     * plan ({@code HALF}, {@code K}) round it, the outer diagonal sites' {@code oct(15, 20)}.
+     */
+    public static final int OUT_SIZE = 31, OUT_C = 15, OUT_HALF = 15, OUT_K = 20;
+
+    /**
+     * An octagonal building's shell ({@code b_outer.octo_shell}), the outer generator's own variant of the pavilions'
+     * {@link #shell}: the plan {@code oct(half, k)} round {@code (c, c)} in an {@code n} square box, the foundation
+     * ring ({@code F}) on its thick edge and soft deck inside at y0; walls on the edge from y1 to {@code top}: the
+     * plinth course at y1, lit pilasters every {@code rhythm} cells along the four flat faces and on the eight 0 and 45
+     * degree lines (the flat faces' middles and the chamfers' diagonals), glazing in {@code glazeRows} on every face,
+     * panels elsewhere. With {@code chamferDoors}, four chamfer portals: the edge cells of the chamfers within two of
+     * the diagonals and at least 6 out ({@code |du| + |dv| >= k - 1}), and one more cell inward from each kept near
+     * the diagonal, must be air from y1 to y4 under a cornice lintel at y5 (no lit jambs, unlike the pavilions').
+     */
+    public static Shell octoShell(Shape s, int n, int c, int half, int k, int top, int rhythm, int[] glazeRows,
+        boolean chamferDoors, char plinth) {
+        Set<Long> plan = new LinkedHashSet<>();
+        for (int x = 0; x < n; x++) for (int z = 0; z < n; z++) if (octo(x - c, z - c, half, k)) plan.add(key(x, z));
+        Set<Long> edge = thickBoundary(plan);
+        Set<Long> doors = new LinkedHashSet<>();
+        if (chamferDoors) {
+            for (long e : edge) {
+                int du = Math.abs(keyX(e) - c), dv = Math.abs(keyZ(e) - c);
+                if (du + dv >= k - 1 && Math.abs(du - dv) <= 2 && Math.min(du, dv) >= 6) doors.add(e);
+            }
+            // one more cell inward so the opening is two deep and walkable on the diagonal
+            Set<Long> more = new LinkedHashSet<>();
+            for (long d : doors) {
+                int x = keyX(d), z = keyZ(d);
+                int sx = x > c ? 1 : -1, sz = z > c ? 1 : -1;
+                int[][] in = { { x - sx, z }, { x, z - sz }, { x - sx, z - sz } };
+                for (int[] p : in) {
+                    if (Math.abs(Math.abs(p[0] - c) - Math.abs(p[1] - c)) <= 2) more.add(key(p[0], p[1]));
+                }
+            }
+            doors.addAll(more);
+        }
+        for (long p : plan) s.set(keyX(p), 0, keyZ(p), edge.contains(p) ? 'F' : '.');
+        for (long e : edge) {
+            int x = keyX(e), z = keyZ(e);
+            int du = x - c, dv = z - c;
+            boolean flat = Math.abs(du) == half || Math.abs(dv) == half;
+            int along = Math.abs(du) == half ? dv : du;
+            boolean door = doors.contains(e);
+            for (int y = 1; y <= top; y++) {
+                if (door && y <= 4) continue;
+                char ch = 'W';
+                if (y == 1) ch = plinth;
+                else if (door && y == 5) ch = 'n';
+                else if (flat && along % rhythm == 0 || du == 0 || dv == 0 || Math.abs(du) == Math.abs(dv)) ch = 'L';
+                else if (contains(glazeRows, y)) ch = 'G';
+                s.set(x, y, z, ch);
+            }
+        }
+        for (long d : doors) {
+            int x = keyX(d), z = keyZ(d);
+            for (int y = 1; y < 5; y++) s.set(x, y, z, AIR);
+            s.set(x, 5, z, 'n');
+        }
+        return new Shell(plan, edge, doors);
+    }
+
+    /**
+     * The standing states {x, z, h} the outer generator's self-check walks its 31 x 31 octagons from
+     * ({@code b_outer.st31}): outside the four chamfer portals at ground level.
+     */
+    public static List<int[]> outerStarts() {
+        List<int[]> out = new ArrayList<>();
+        int[][] s = { { 1, 1, 2 }, { 29, 1, 2 }, { 1, 29, 2 }, { 29, 29, 2 } };
+        for (int[] p : s) out.add(p.clone());
+        return out;
+    }
+
+    /**
+     * The generators' {@code math.degrees} of an angle in radians: Python multiplies by {@code 180 / pi} once, which
+     * the explicit factor gives on every Java runtime ({@link Math#toDegrees} divides by pi after multiplying on Java
+     * 8).
+     */
+    public static double degrees(double radians) {
+        return radians * (180.0 / Math.PI);
+    }
+
+    /** Python's float {@code a % m} for a positive {@code m}: the remainder taken toward the divisor's sign. */
+    public static double pyMod(double a, double m) {
+        double r = a % m;
+        return r < 0 ? r + m : r;
     }
 
     /**

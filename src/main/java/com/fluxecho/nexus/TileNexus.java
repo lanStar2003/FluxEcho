@@ -37,6 +37,7 @@ import com.fluxecho.logic.Blueprint;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.DockOrder;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.PreviewSites;
 import com.fluxecho.logic.ResearchTree;
@@ -62,9 +63,10 @@ import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
  * It grows (0.12.0, CITY.md §3): it stands as one of five shapes, {@code phase1} to {@code phase5}
  * ({@link NexusShape}), and its phase ({@link #phase}) is the highest it has formed as ({@link #grown}, saved as
  * {@code Grown} and sent as {@code Gr}). The campus raises each stage (a growth job,
- * {@link com.fluxecho.logic.BuildPlan#grow}); the structure check tries the phase it grew to first, and the next one
- * only once its teams have that phase's research, never a lower one, so a grown nexus that lost a block comes apart
- * (and is repaired as it was) instead of falling back a phase.
+ * {@link com.fluxecho.logic.BuildPlan#grow}); the structure check tries the highest phase its teams have the research
+ * for first and goes down to the phase it grew to (0.15.0, {@link #matchOrder}: a phase holds the one below it whole),
+ * never a lower one, so a grown nexus that lost a block comes apart (and is repaired as it was) instead of falling
+ * back a phase.
  */
 public class TileNexus extends TileMultiblock implements ISidedInventory, ITileWithModularUI {
 
@@ -129,6 +131,12 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     /** Slot -> module colour for the docked ones; drawn as bridges. */
     public int[] clientModuleColor = new int[RingSlots.SLOTS];
     /**
+     * The outer diagonals a module is docked on (0.15.0), a bit per site in the order of {@link OuterRing#DIAG_SITES},
+     * and their modules' colours: the light bridges out to their portals.
+     */
+    public int clientOuterDocked;
+    public int[] clientOuterColor = new int[OuterRing.DIAG_SITES.length];
+    /**
      * The client's copy of the campus (its job, state, projection inputs), from the description packet; replaced
      * wholesale on every update so the renderers never see it half-read.
      */
@@ -182,11 +190,27 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         return p == grown || p <= researchedPhase();
     }
 
-    /** The highest phase its teams have the research for, up to the phase this version reaches. */
+    /**
+     * Tries the highest phase it may stand as first, down to the one it grew to (0.15.0, {@link NexusShape#tryOrder}):
+     * a phase holds the one below it whole, so a phase-II nexus with stage 3 raised on it still checks out as phase
+     * II, and trying the remembered phase first would never see it grown. While no higher phase is researched this is
+     * the one check it always ran.
+     */
+    @Override
+    protected List<Shape> matchOrder(Shape cur) {
+        List<Shape> all = shapes();
+        int[] order = NexusShape.tryOrder(grown, researchedPhase());
+        List<Shape> out = new ArrayList<>(order.length);
+        for (int p : order) out.add(all.get(p - 1));
+        return out;
+    }
+
+    /**
+     * The highest phase its teams have the research for, up to the phase this version reaches
+     * ({@link ResearchTree#researchedPhase}: phase III since 0.15.0).
+     */
     private int researchedPhase() {
-        int p = 1;
-        while (p < ResearchTree.PHASE_NOW && has(ResearchTree.phaseResearch(p + 1))) p++;
-        return p;
+        return ResearchTree.researchedPhase(this::has);
     }
 
     @Override
@@ -782,15 +806,16 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     /**
      * The site of an active campus a module stands on, or -1: a hall site ({@link #hallSite}), a pavilion site
-     * ({@link #pavilionSite}, 0.13.0), or for a module on the nexus's axis (0.12.0) or the gatehouse on the gate
-     * (0.14.0: its kiosk lies within the 0.9.2 ring's slot 0, so only its exact controller tells it from a module on
-     * that slot) a site of its spec whose controller cell and front are exactly the module's.
+     * ({@link #pavilionSite}, 0.13.0), or for a module on the nexus's axis (0.12.0), the gatehouse on the gate (0.14.0:
+     * its kiosk lies within the 0.9.2 ring's slot 0, so only its exact controller tells it from a module on that slot)
+     * and a building on an outer diagonal (0.15.0) a site of its spec whose controller cell and front are exactly the
+     * module's.
      */
     private static int campusSite(TileModule m, int[] mc, int[] c, int fx, int fz) {
         ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
         if (spec == null) return -1;
         if (spec.family == SiteFamily.PAVILION) return pavilionSite(m, mc, c, fx, fz);
-        if (!spec.axis() && spec.family != SiteFamily.GATE) return hallSite(m, mc, c, fx, fz);
+        if (spec.family == SiteFamily.HALL) return hallSite(m, mc, c, fx, fz);
         for (int site : spec.family.sites()) {
             // the zenith or the root where 0.14.0 put it too (0.14.1): one built there by hand over ground the builder
             // now adapts to (a lower pod, a shallower well) still docks
@@ -946,7 +971,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             | (manifest.isEmpty() ? 0 : MANIFESTING);
         int mask = 0;
         for (TileModule m : docked()) if (onRing(m)) mask |= 1 << m.slot();
-        int key = a | mask << 3 | openSlots() << 11 | grown << 15;
+        int key = a | mask << 3 | openSlots() << 11 | grown << 15 | outerDocked() << 18;
         activity = a;
         if (key != lastSent) {
             lastSent = key;
@@ -957,6 +982,26 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     /** Whether a docked module stands on the inner ring (the bridges, the docked mask), not on the axis. */
     private static boolean onRing(TileModule m) {
         return SiteFamily.ringSite(m.slot());
+    }
+
+    /**
+     * The outer diagonals a module is docked on (0.15.0), one bit each in the order of {@link OuterRing#DIAG_SITES}:
+     * their light bridges run out along the diagonal to the inner chamfer portal ({@code Do},
+     * {@link #clientOuterDocked}).
+     */
+    private int outerDocked() {
+        int bits = 0;
+        for (TileModule m : docked()) {
+            int i = outerIndex(m.slot());
+            if (i >= 0) bits |= 1 << i;
+        }
+        return bits;
+    }
+
+    /** The index of an outer diagonal in {@link OuterRing#DIAG_SITES}, or -1 for any other site. */
+    public static int outerIndex(int site) {
+        for (int i = 0; i < OuterRing.DIAG_SITES.length; i++) if (OuterRing.DIAG_SITES[i] == site) return i;
+        return -1;
     }
 
     /**
@@ -987,6 +1032,19 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         }
         t.setByte("D", (byte) mask);
         t.setIntArray("DC", colors);
+        // the outer diagonals' docked modules and their colours (0.15.0), only once one docks there
+        int outer = 0;
+        int[] outerColors = new int[OuterRing.DIAG_SITES.length];
+        for (TileModule m : docked()) {
+            int i = outerIndex(m.slot());
+            if (i < 0) continue;
+            outer |= 1 << i;
+            outerColors[i] = m.moduleColor();
+        }
+        if (outer != 0) {
+            t.setByte("Do", (byte) outer);
+            t.setIntArray("DoC", outerColors);
+        }
         t.setByte("Op", (byte) openSlots());
         t.setBoolean("H", hologram);
         t.setInteger("C", (int) Math.round(computeRate() * 10));
@@ -1007,6 +1065,9 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         clientDockedMask = t.getByte("D") & 0xFF;
         int[] c = t.getIntArray("DC");
         if (c.length == RingSlots.SLOTS) clientModuleColor = c;
+        clientOuterDocked = t.getByte("Do") & 0xFF;
+        int[] oc = t.getIntArray("DoC");
+        clientOuterColor = oc.length == OuterRing.DIAG_SITES.length ? oc : new int[OuterRing.DIAG_SITES.length];
         clientOpen = t.getByte("Op");
         clientHologram = t.getBoolean("H");
         clientCompute10 = t.getInteger("C");

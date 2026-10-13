@@ -158,12 +158,19 @@ public enum SiteFamily {
     /**
      * The lang key (under {@code fluxecho.}) a window or a sign names a site with: the inner ring's sites by number
      * ({@code build.gui.site}, "%s 号位", given the site) but the gate by name (0.14.0: 大门, where the gatehouse
-     * stands, and the 0.9.2 ring's slot 0 on the gate road), the axis sites by name: 天顶 the zenith, 根位 the root.
+     * stands, and the 0.9.2 ring's slot 0 on the gate road), the axis sites by name: 天顶 the zenith, 根位 the root;
+     * since 0.15.0 the outer ring's sites by their CITY.md names, the outer diagonals O1, O3, O5, O7
+     * ({@code build.gui.site_o1}…) and the reserved flankers O0+, O0−, O2+ … O6− ({@code build.gui.site_o0p}, with
+     * {@code p} for the + side and {@code m} for the − side). The site's number is given to every key; only the inner
+     * ring's uses it.
      */
     public static String labelKey(int site) {
         if (site == ZENITH_SITE) return "build.gui.site_zenith";
         if (site == ROOT_SITE) return "build.gui.site_root";
         if (site == 0) return "build.gui.site_gate";
+        SiteFamily f = of(site);
+        if (f == OUTER_DIAG) return "build.gui.site_o" + (site - 10);
+        if (f == OUTER_FLANK) return "build.gui.site_o" + (site - 20) / 2 * 2 + ((site - 20) % 2 == 0 ? "p" : "m");
         return "build.gui.site";
     }
 

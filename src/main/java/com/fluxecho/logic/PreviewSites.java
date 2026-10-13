@@ -13,7 +13,9 @@ import java.util.Set;
  * out rather than put anywhere else. A kind the campus does not build stands on the first free inner ring slot, as in
  * 0.9.2. Sites and ring slots are different places and are counted apart: hall site 2 is a footprint from radial 24
  * out on the nexus's right, ring slot 2 a point at the inner radius. A kind on the nexus's axis (0.12.0: the zenith's
- * site 8, the root's 9, {@link SiteFamily#axis}) takes no room on the ring: it stands whenever its site is free.
+ * site 8, the root's 9, {@link SiteFamily#axis}) takes no room on the ring: it stands whenever its site is free; so
+ * since 0.15.0 does any kind whose sites lie off the inner ring (the outer diagonals 11, 13, 15, 17, and the families
+ * further out), as the campus counts them ({@link SiteFamily#ringSite}).
  */
 public final class PreviewSites {
 
@@ -47,8 +49,8 @@ public final class PreviewSites {
      * The places of the module kinds in their order until {@code room} of them stand: {@code preferred.get(i)} is kind
      * {@code i}'s sites in order of preference, or null for a kind the campus does not build. The list holds a place
      * for every kind looked at before the room ran out (so it may be shorter than {@code preferred}); a kind left out
-     * takes no room, nor does a kind standing on an axis site; once the room is out, the axis kinds after it still
-     * stand (the kinds between them are left out).
+     * takes no room, nor does a kind standing off the inner ring (an axis site, an outer site); once the room is out,
+     * the kinds off the ring after it still stand (the kinds between them are left out).
      */
     public static List<Place> places(List<int[]> preferred, int room) {
         List<Place> out = new ArrayList<>();
@@ -56,12 +58,12 @@ public final class PreviewSites {
         boolean[] slots = new boolean[RingSlots.SLOTS];
         int placed = 0;
         int lastAxis = -1;
-        for (int i = 0; i < preferred.size(); i++) if (axis(preferred.get(i))) lastAxis = i;
+        for (int i = 0; i < preferred.size(); i++) if (offRing(preferred.get(i))) lastAxis = i;
         for (int i = 0; i < preferred.size(); i++) {
             int[] pref = preferred.get(i);
-            boolean axis = axis(pref);
+            boolean axis = offRing(pref);
             if (placed >= room && !axis) {
-                // the ring is full: only the axis kinds still to come stand
+                // the ring is full: only the kinds off the ring still to come stand
                 if (i > lastAxis) break;
                 out.add(new Place(-1, -1));
                 continue;
@@ -84,9 +86,12 @@ public final class PreviewSites {
         return Collections.unmodifiableList(out);
     }
 
-    /** Whether a kind's sites are on the nexus's axis (its first preferred site's family tells, 0.14.1). */
-    private static boolean axis(int[] pref) {
+    /**
+     * Whether a kind's sites lie off the inner ring (its first preferred site tells, 0.14.1): on the nexus's axis
+     * (0.12.0) or since 0.15.0 out on the outer ring and beyond. Such a kind takes no ring room.
+     */
+    private static boolean offRing(int[] pref) {
         SiteFamily f = pref != null && pref.length > 0 ? SiteFamily.of(pref[0]) : null;
-        return f != null && f.axis();
+        return f != null && !SiteFamily.ringSite(pref[0]);
     }
 }

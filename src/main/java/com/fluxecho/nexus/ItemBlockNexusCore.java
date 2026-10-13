@@ -192,7 +192,8 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         if (Config.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z))
             return new ChatComponentTranslation("fluxecho.build.no_sky");
         if (onModule(w, box(b, x, cy, z, f))) return new ChatComponentTranslation("fluxecho.build.on_module");
-        int[] near = tooClose(w, c);
+        // a core put back where it stood keeps the spacing its campus was placed at (0.15.0, Campus.innerSpacing)
+        int[] near = tooClose(w, c, putBack ? Campus.innerSpacing() : Config.buildMinSpacing);
         if (near != null)
             return new ChatComponentTranslation("fluxecho.build.too_close", near[0] + ", " + near[1] + ", " + near[2]);
         return null;
@@ -250,10 +251,11 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
 
     /**
      * The centre of a campus, or of a loaded nexus that has none yet (a 0.9.2 nexus may lay its forum later), closer
-     * than {@code Config.buildMinSpacing} (Chebyshev) to the centre {@code c}; null when there is none.
+     * than {@code spacing} (Chebyshev) to the centre {@code c}; null when there is none. A new core keeps
+     * {@code Config.buildMinSpacing} (312 by default since 0.15.0, room for both outer rings); a core put back where it
+     * stood only the inner discs' spacing ({@link Campus#innerSpacing}).
      */
-    static int[] tooClose(World w, int[] c) {
-        int spacing = Config.buildMinSpacing;
+    static int[] tooClose(World w, int[] c, int spacing) {
         if (spacing <= 0) return null;
         int[] near = CampusRegistry.tooClose(w, c[0], c[2], spacing);
         if (near != null) return near;

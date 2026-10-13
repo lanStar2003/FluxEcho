@@ -34,10 +34,12 @@ import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileDomeGenerator;
 import com.fluxecho.city.TileDualFoilVault;
 import com.fluxecho.city.TileEcoDome;
+import com.fluxecho.city.TileHoloTable;
 import com.fluxecho.city.TileHuntingGround;
 import com.fluxecho.city.TileManaFountain;
 import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.city.TileRoot;
+import com.fluxecho.city.TileSophonArray;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.core.EchoText;
@@ -56,7 +58,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link DomeGeneratorRender}, whose dome is a landmark drawn past the effects' range too, {@link #landmark}, and
  * {@link RootRender}; 0.13.0 the pavilions' {@link ArcaneCourtRender}, {@link BloodCovenantRender},
  * {@link HuntingGroundRender} and {@link ManaFountainRender}; 0.14.0 the Dual-foil Vault's {@link VaultRender} and
- * the Resonance Gate's {@link ResonanceGateRender}, whose floating spire is a landmark too).
+ * the Resonance Gate's {@link ResonanceGateRender}, whose floating spire is a landmark too; 0.15.0 the Sophon
+ * Array's {@link SophonRender}, whose frame, light point and circuit canopy are a landmark, and the Holo Sand
+ * Table's {@link HoloTableRender}).
  * <ul>
  * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
  * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
@@ -68,7 +72,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * light lift enters, and under the floor of one hanging in the air, 0.12.0), turned to the camera within
  * {@link #PLATE_RANGE} blocks: its name in its colour and, under it, its state.</li>
  * <li>Near it (the camera inside or within {@link #NEAR} blocks of its box): the sample each socket keeps, floating in
- * the socket's lit recess on every side that is open, with a soft glow behind it; the nearest {@link #ITEMS} within
+ * the socket's lit recess on every side that is open and turned to the camera (0.15.0: the column hides the recesses
+ * of the far sides), with a soft glow behind it; the nearest {@link #ITEMS} within
  * {@link #NEAR} blocks of the camera. And (0.14.0) the item each unit made of canvas holds, painted large on its
  * canvas, or a faint grid on an empty one ({@link CanvasRender}), under the same rule.</li>
  * </ul>
@@ -195,6 +200,8 @@ public final class CityRender {
                 else if (m instanceof TileDualFoilVault v) VaultRender.draw(v, f, t, fade * appear, tier);
                 else if (m instanceof TileResonanceGate rg)
                     ResonanceGateRender.draw(rg, f, t, fade * appear, cam, tier, appear);
+                else if (m instanceof TileSophonArray sa) SophonRender.draw(sa, f, t, fade * appear, cam, tier, appear);
+                else if (m instanceof TileHoloTable ht) HoloTableRender.draw(ht, f, t, fade * appear, tier);
             } catch (Throwable x) {
                 recover();
                 fail(OWN, x);
@@ -226,14 +233,16 @@ public final class CityRender {
 
     /**
      * What a city module shows past the range the rest of it is drawn in (0.12.0): its landmark, if it has one (the
-     * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"; 0.14.0 the Resonance Gate's floating spire);
-     * nothing for the others. Called by the nexus's renderer for a module beyond its effects' range.
+     * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"; 0.14.0 the Resonance Gate's floating spire; 0.15.0
+     * the Sophon Array's frame, light point and circuit canopy); nothing for the others. Called by the nexus's
+     * renderer for a module beyond its effects' range.
      */
     public static void landmark(TileCityModule m, double t) {
         if (OFF[ALL] || OFF[OWN]) return;
         try {
             if (m instanceof TileDomeGenerator g) DomeGeneratorRender.landmark(g, t);
             else if (m instanceof TileResonanceGate rg) ResonanceGateRender.landmark(rg, t);
+            else if (m instanceof TileSophonArray sa) SophonRender.landmark(sa, t);
         } catch (Throwable x) {
             recover();
             fail(OWN, x);
@@ -402,10 +411,12 @@ public final class CityRender {
 
     /**
      * The samples in the sockets: each one floating in the lit recess of every side of its socket that is open (not
-     * against a whole cube or another socket), bobbing a little, its picture facing out of the recess with a soft
-     * glow of the module's colour behind it. The nearest {@link #ITEMS} sockets within {@link #NEAR} blocks of the
-     * camera; blocks' pictures first and then items', each render pass in its colour. A picture that cannot be had
-     * here is left out.
+     * against a whole cube or another socket) and turned to the camera, bobbing a little, its picture facing out of
+     * the recess with a soft glow of the module's colour behind it. The recesses on the far sides are left out
+     * (0.15.0): the socket's column stands between them and the camera, so at most two sides of a socket are drawn
+     * (the Sophon Array's 144 sockets would else take 1,728 quads). The nearest {@link #ITEMS} sockets within
+     * {@link #NEAR} blocks of the camera; blocks' pictures first and then items', each render pass in its colour. A
+     * picture that cannot be had here is left out.
      */
     private static void sockets(TileCityModule m, double t, float p) {
         if (p <= 0.02f) return;
@@ -420,7 +431,7 @@ public final class CityRender {
         for (int i = 0; i < n; i++) {
             int[] s = near[i];
             for (int side = 2; side < 6; side++) {
-                if (!open(w, s[1], s[2], s[3], side)) continue;
+                if (!facing(s, side, camX, camZ) || !open(w, s[1], s[2], s[3], side)) continue;
                 double[] c = recess(s, side, t);
                 Motes.add(c[0] - camX, c[1] - camY, c[2] - camZ, 0.2, accent, 0.35f * p);
             }
@@ -446,7 +457,7 @@ public final class CityRender {
                     if (st.getItem()
                         .getSpriteNumber() != sheet) continue;
                     for (int side = 2; side < 6; side++) {
-                        if (!open(w, s[1], s[2], s[3], side)) continue;
+                        if (!facing(s, side, camX, camZ) || !open(w, s[1], s[2], s[3], side)) continue;
                         double[] c = recess(s, side, t);
                         int[] o = OFFSETS[side];
                         // the picture's right, for someone looking at this side of the socket
@@ -515,6 +526,15 @@ public final class CityRender {
         Block b = w.getBlock(x + o[0], y, z + o[2]);
         if (b.isOpaqueCube()) return false;
         return !(b instanceof BlockFitting && w.getBlockMetadata(x + o[0], y, z + o[2]) == Parts.F_SOCKET);
+    }
+
+    /**
+     * Whether a socket's side is turned to the camera (0.15.0): the camera lies out past the plane its recess's
+     * picture floats in ({@link ModuleLook#socketSideFacing}), so the column does not hide it.
+     */
+    private static boolean facing(int[] s, int side, double camX, double camZ) {
+        int[] o = OFFSETS[side];
+        return ModuleLook.socketSideFacing(o[0], o[2], camX - (s[1] + 0.5), camZ - (s[3] + 0.5));
     }
 
     /** The middle of a socket's recess on a side, where its picture floats this frame: {x, y, z} in the world. */

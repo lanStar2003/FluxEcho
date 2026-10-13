@@ -32,4 +32,21 @@ class ConfigTest {
         assertFalse(Config.bumpsFillDepth(null));
         assertTrue(Config.older("0.10.0", "0.10.1"));
     }
+
+    /**
+     * 0.15.0: new campuses keep room for both outer rings (312); a file that kept the old default 144 gets the new
+     * one, a spacing a player chose stays.
+     */
+    @Test
+    void campusSpacingOf0150() {
+        assertEquals(312, Config.buildMinSpacing);
+        assertEquals(com.fluxecho.logic.CampusSplit.DEFAULT_SPACING, Config.buildMinSpacing);
+        assertTrue(Config.bumpsMinSpacing("144"));
+        assertTrue(Config.bumpsMinSpacing(" 144 "));
+        assertFalse(Config.bumpsMinSpacing("200"));
+        assertFalse(Config.bumpsMinSpacing("0"));
+        assertFalse(Config.bumpsMinSpacing(null));
+        assertTrue(Config.older("0.10.1", "0.15.0"));
+        assertFalse(Config.older("0.15.0", "0.15.0"));
+    }
 }

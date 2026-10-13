@@ -429,9 +429,12 @@ public final class Builder {
         return used;
     }
 
-    /** The top of a clear column: grading and dais columns are clipped to the configured height. */
+    /**
+     * The top of a clear column: the campus jobs' grading and dais columns, and since 0.15.0 the outer establish's
+     * grading, are clipped to the configured height; a building's own box is cleared to its full height.
+     */
     private static int top(BuildJob job, BuildPlan.Column c, int y0) {
-        if (!job.campusJob()) return c.yTo;
+        if (!job.grades()) return c.yTo;
         return Math.min(c.yTo, y0 + Math.max(0, Config.buildClearHeight));
     }
 
@@ -448,8 +451,9 @@ public final class Builder {
                 // past the last stage: the cells left for an entity are tried again, then a module waits for its
                 // structure and the campus jobs are done
                 if (!touchUp(job, plan, now, o)) return o;
-                // a retire job (0.14.1) raises nothing: it is done once the hall is down and its ground laid
-                if (job.campusJob() || job.grows() || job.retires()) finish(job, now);
+                // a retire job (0.14.1) and the outer establish (0.15.0) raise nothing: they are done once their
+                // ground is laid
+                if (job.campusJob() || job.grows() || job.retires() || job.laysOuter()) finish(job, now);
                 else waitForm(job, plan, now, o);
                 return o;
             }
@@ -679,9 +683,12 @@ public final class Builder {
         return te instanceof TileMultiblock m ? m : null;
     }
 
-    /** Where the multiblocks are told about a finished stage: the nexus controller, or the module's controller. */
+    /**
+     * Where the multiblocks are told about a finished stage: the nexus controller (the campus jobs, a growth, the outer
+     * establish), or the module's controller.
+     */
     private int[] anchor(BuildJob job) {
-        if (job.campusJob() || job.grows()) return campus.controller();
+        if (job.campusJob() || job.grows() || job.laysOuter()) return campus.controller();
         return campus.moduleController(job);
     }
 

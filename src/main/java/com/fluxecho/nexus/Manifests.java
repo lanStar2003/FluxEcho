@@ -46,6 +46,9 @@ public final class Manifests {
         }
     }
 
+    /** The id of memory filament's recipe (0.15.0). */
+    public static final String MEMORY_FILAMENT = "memory_filament";
+
     private static final List<Recipe> ALL = new ArrayList<>();
 
     private Manifests() {}
@@ -80,6 +83,18 @@ public final class Manifests {
                 Research.PHASE_2,
                 new String[] { "ore:" + MatterModule.PHASE_ALLOY + "*1", "ore:ingotBorosilicateGlass*4" },
                 () -> MatterModule.resonantGlass(4),
+                400,
+                false));
+        // memory filament (0.15.0, BLUEPRINT 3.6): the wiremill's phase alloy wire coated with an echo crystal (any,
+        // whatever it holds), an ingot's eight wires a crystal. It opens with phase II, so the phase III research that
+        // takes it can be paid for; the wiremill's IV power is what holds it back until then.
+        register(
+            new Recipe(
+                MEMORY_FILAMENT,
+                Research.PHASE_2,
+                new String[] { "ore:" + MatterModule.PHASE_ALLOY_WIRE + "*" + MatterModule.WIRES_PER_INGOT,
+                    "ore:" + MatterModule.ECHO_CRYSTAL + "*1" },
+                () -> MatterModule.memoryFilament(MatterModule.WIRES_PER_INGOT),
                 400,
                 false));
     }

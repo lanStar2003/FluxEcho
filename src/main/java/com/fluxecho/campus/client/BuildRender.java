@@ -55,22 +55,31 @@ import cpw.mods.fml.relauncher.SideOnly;
  * what hangs, dashed on the ground under it and drawn again at its underside, with plumb lines dropped from its
  * outermost corners, so a player on the forum sees where the ghost overhead stands.
  * <p>
+ * The outer establish (0.15.0) is drawn as the forum is: the ghost of its paving and pylons near the viewer, the
+ * yellow boxes round the machines and chests it will take down, the edge of the ground it grades in amber (no x-ray of
+ * the graded annulus); and where a neighbouring campus shares the outer ring, the ground left to the neighbour is
+ * outlined in violet dashes just over the floor, faintly through the terrain too, while the job is on
+ * ({@link BuildScan.Ghost#trim}), so a player sees where the ring stops and why.
+ * <p>
  * It only streams what {@link BuildScan} worked out in the client tick (the selected cells, their faces' corners and
  * texture coordinates), so a frame drawn several times (the light gates draw the world again, {@link FarDraw}) costs no
  * world reads and looks the same each time; animation follows the world time alone. Shader-safe: drawn after the
  * world, skipped in the shadow pass, relative to {@code RenderManager.renderPos*}, quads only, a normal on every vertex
  * (a ghost face's own axis turned to the viewer; effect geometry facing the viewer as {@link Shapes} does), the block
  * atlas bound for the ghost as {@code LibraryRender} does, no depth writes, lighting, fog and alpha test off. Each part
- * (ghost, its creases, scan plane, lowest layer, blocked boxes, machine boxes, outlines, grading edge, completion
- * ring, well light) fails on its own: an error is logged once and turns that part off for the session, and the GL state
- * is restored whatever happens.
+ * (ghost, its creases, scan plane, lowest layer, blocked boxes, machine boxes, outlines, grading edge, the neighbours'
+ * ground, completion ring, well light) fails on its own: an error is logged once and turns that part off for the
+ * session, and the GL state is restored whatever happens.
  */
 @SideOnly(Side.CLIENT)
 public final class BuildRender {
 
     private static final int CYAN = 0x4FE3FF, AMBER = 0xFFB347, RED = 0xFF4A4A, LIGHT = 0xE8FBFF;
-    /** The machines and chests a job will dismantle (0.10.1), and the light over the campus's wells. */
-    private static final int YELLOW = 0xFFD24A, WELL_LIGHT = 0x9AF4FF;
+    /**
+     * The machines and chests a job will dismantle (0.10.1), the light over the campus's wells, and the outer ring's
+     * ground left to a neighbouring campus (0.15.0).
+     */
+    private static final int YELLOW = 0xFFD24A, WELL_LIGHT = 0x9AF4FF, TRIM = 0xB98CFF;
     /** How far (blocks) a well's light is drawn, how tall its column stands, the half-width of its 3x3 tiles. */
     private static final double WELL_RANGE = 160, WELL_HEIGHT = 7, WELL_HALF = 1.5;
     /** Ticks the scan plane takes to rise through a new projection, and the completion ring to spread. */
@@ -91,9 +100,10 @@ public final class BuildRender {
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
     private static final int GHOST = 0, PLANE = 1, LAYER = 2, BLOCKED = 3, OUTLINES = 4, EDGE = 5, RING = 6,
-        CREASES = 7, MACHINES = 8, WELLS = 9, XRAY = 10, AIR = 11, ALL = 12;
+        CREASES = 7, MACHINES = 8, WELLS = 9, XRAY = 10, AIR = 11, TRIMMED = 12, ALL = 13;
     private static final String[] NAMES = { "ghost", "scan plane", "lowest layer", "blocked boxes", "outlines",
-        "grading edge", "completion ring", "creases", "machine boxes", "well light", "x-ray", "shadow", "drawing" };
+        "grading edge", "completion ring", "creases", "machine boxes", "well light", "x-ray", "shadow",
+        "neighbours' ground", "drawing" };
     /**
      * The x-ray's alphas at the top of a breath: through the terrain and where nothing covers it, the whole plan's and
      * the current stage's (0.12.0).
@@ -258,6 +268,15 @@ public final class BuildRender {
         } catch (Throwable x) {
             recover();
             fail(EDGE, x);
+        } finally {
+            close();
+        }
+        // the outer establish's ground left to a neighbouring campus (0.15.0), outlined while the job is on
+        if (!ended && g != null && g.trim.length > 0 && !OFF[TRIMMED]) try {
+            trim(g, t);
+        } catch (Throwable x) {
+            recover();
+            fail(TRIMMED, x);
         } finally {
             close();
         }
@@ -689,6 +708,37 @@ public final class BuildRender {
             quads += line(tes, e[k] - camX, y, e[k + 1] - camZ, e[k + 2] - camX, y, e[k + 3] - camZ, LINE * 1.5);
             if (quads >= FLUSH) {
                 tes = restart(tes);
+                quads = 0;
+            }
+        }
+        finish(tes);
+    }
+
+    /**
+     * The outline of the outer establish's ground left to a neighbouring campus (0.15.0), violet dashes just over the
+     * floor level (Y0 + 1) running slowly along it, faintly through the hills between and brighter where nothing
+     * covers them.
+     */
+    private static void trim(BuildScan.Ghost g, double t) {
+        double y = g.oy + 1.08 - camY, run = (t * 0.04) % (1.6 + 1.0);
+        Shapes.begin(true);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        trimPass(g, y, run, 0.15f);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        trimPass(g, y, run, 0.5f);
+        Shapes.end();
+    }
+
+    private static void trimPass(BuildScan.Ghost g, double y, double run, float a) {
+        Tessellator tes = start();
+        int quads = 0, ai = alpha255(a);
+        int[] e = g.trim;
+        tes.setColorRGBA_I(TRIM, ai);
+        for (int k = 0; k + 3 < e.length; k += 4) {
+            quads += dashed(tes, e[k] - camX, y, e[k + 1] - camZ, e[k + 2] - camX, y, e[k + 3] - camZ, 1.6, 1.0, run);
+            if (quads >= FLUSH) {
+                tes = restart(tes);
+                tes.setColorRGBA_I(TRIM, ai);
                 quads = 0;
             }
         }

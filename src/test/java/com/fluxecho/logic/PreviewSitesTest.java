@@ -194,7 +194,8 @@ class PreviewSitesTest {
      * The preview's heaviest tier at each phase stays within its budget with the modules of this version standing: the
      * nexus's phase, the Archive, the Eco Dome, the dome generator (moored, or floating from phase IV), the Tidal Well
      * and, from phase II, all four pavilions and (0.14.0) the gatehouse and the Dual-foil Vault (all of them stand from
-     * phase II since 0.14.1, {@link #phaseTwoStandsTheWholeCity}).
+     * phase II since 0.14.1, {@link #phaseTwoStandsTheWholeCity}), and (0.15.0) from phase III the Sophon Array and the
+     * Holo Sand Table on the outer diagonals.
      */
     @Test
     void thePreviewStaysWithinItsBudget() {
@@ -222,6 +223,11 @@ class PreviewSitesTest {
                 + ResonanceGateShape.BLUEPRINT.cells()
                     .size()
                 + DualFoilVaultShape.BLUEPRINT.cells()
+                    .size();
+            // 0.15.0: from phase III the outer diagonals' Sophon Array and Holo Sand Table
+            if (phase >= 3) cells += SophonArrayShape.BLUEPRINT.cells()
+                .size()
+                + HoloTableShape.BLUEPRINT.cells()
                     .size();
             assertTrue(cells <= PREVIEW_BUDGET, "phase " + phase + ": " + cells + " cells");
         }
@@ -256,6 +262,43 @@ class PreviewSitesTest {
                 .size());
     }
 
+    /**
+     * The outer diagonals' buildings (0.15.0) in the preview from phase III (tier 8): after the whole inner city, the
+     * Sophon Array on O1 (site 11) and the Holo Sand Table on O7 (17), their first preferences, taking no ring room;
+     * their cells count toward the budget ({@link #thePreviewStaysWithinItsBudget}).
+     */
+    @Test
+    void phaseThreeStandsTheOuterDiagonals() {
+        int[] zenith = DomeGeneratorShape.SITES, root = { SiteFamily.ROOT_SITE };
+        List<int[]> all = Arrays.asList(
+            LIBRARY,
+            ECO_DOME,
+            zenith,
+            root,
+            ArcaneCourtShape.SITES,
+            BloodCovenantShape.SITES,
+            HuntingGroundShape.SITES,
+            ManaFountainShape.SITES,
+            new int[] { 0 },
+            VAULT,
+            SophonArrayShape.SITES,
+            HoloTableShape.SITES);
+        List<PreviewSites.Place> p = PreviewSites.places(all, SiteFamily.openRingSites(3));
+        assertEquals(12, p.size());
+        int[] want = { 4, 2, SiteFamily.ZENITH_SITE, SiteFamily.ROOT_SITE, 7, 5, 3, 1, 0, 6, 11, 17 };
+        for (int i = 0; i < want.length; i++) assertEquals(want[i], p.get(i).site, "kind " + i);
+        assertEquals(
+            2397 + 128,
+            SophonArrayShape.BLUEPRINT.cells()
+                .size(),
+            "the array's checked cells and its portals' air");
+        assertEquals(
+            2148 + 150,
+            HoloTableShape.BLUEPRINT.cells()
+                .size(),
+            "the table's checked cells and its portals' air");
+    }
+
     @Test
     void theRoomTheyDockStopsThem() {
         List<PreviewSites.Place> p = PreviewSites.places(Arrays.asList(LIBRARY, ECO_DOME, VAULT), RingSlots.open(1));
@@ -264,5 +307,24 @@ class PreviewSitesTest {
             0,
             PreviewSites.places(Arrays.asList(LIBRARY), 0)
                 .size());
+    }
+
+    /**
+     * The outer diagonals' kinds (0.15.0) lie off the inner ring as the axis kinds do: they take no ring room and
+     * still stand once the ring is full, each on the first of its sites no kind before it took.
+     */
+    @Test
+    void outerKindsTakeNoRoom() {
+        int[] sophon = { 11, 13, 15, 17 }, table = { 13, 11, 15, 17 }, again = { 11, 13, 15, 17 };
+        List<PreviewSites.Place> p = PreviewSites.places(Arrays.asList(LIBRARY, ECO_DOME, sophon, table, again), 1);
+        assertEquals(5, p.size());
+        assertEquals(4, p.get(0).site);
+        assertFalse(
+            p.get(1)
+                .placed(),
+            "the ring is full");
+        assertEquals(11, p.get(2).site);
+        assertEquals(13, p.get(3).site);
+        assertEquals(15, p.get(4).site, "the next free outer diagonal");
     }
 }

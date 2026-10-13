@@ -21,7 +21,9 @@ public final class Research {
         PHASE_2 = ResearchTree.PHASE_2, DOME = ResearchTree.DOME, TIDAL_WELL = ResearchTree.TIDAL_WELL,
         ARCANE_COURT = ResearchTree.ARCANE_COURT, BLOOD_COVENANT = ResearchTree.BLOOD_COVENANT,
         HUNTING_GROUND = ResearchTree.HUNTING_GROUND, MANA_FOUNTAIN = ResearchTree.MANA_FOUNTAIN,
-        RESONANCE_GATE = ResearchTree.RESONANCE_GATE, DUAL_FOIL_VAULT = ResearchTree.DUAL_FOIL_VAULT;
+        RESONANCE_GATE = ResearchTree.RESONANCE_GATE, DUAL_FOIL_VAULT = ResearchTree.DUAL_FOIL_VAULT,
+        PHASE_3 = ResearchTree.PHASE_3, OUTER_RING = ResearchTree.OUTER_RING, SOPHON_ARRAY = ResearchTree.SOPHON_ARRAY,
+        HOLO_TABLE = ResearchTree.HOLO_TABLE;
 
     private Research() {}
 

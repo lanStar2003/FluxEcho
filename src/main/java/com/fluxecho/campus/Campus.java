@@ -1,6 +1,7 @@
 package com.fluxecho.campus;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,9 +38,11 @@ import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.CampusSplit;
 import com.fluxecho.logic.CityOffer;
 import com.fluxecho.logic.FxCodec;
 import com.fluxecho.logic.Mix;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
@@ -75,6 +78,11 @@ import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
  * current one at once ({@link #finishNow}). A campus whose floor was laid by an older plan is offered one 整修园区 job
  * ({@link BuildJob#refresh}). The 建造 page and the masterplan show every module the nexus can build and where it
  * stands ({@link #modules()}).
+ * <p>
+ * 0.15.0: a nexus of phase III whose teams researched the outer ring is offered the outer establish
+ * ({@link BuildJob#outer}, {@code establish:outer}), which grades and paves the outer ring; once it has run the outer
+ * families' sites stand on laid ground ({@link #groundLaid}) and their modules are offered there. A campus whose outer
+ * disc reaches a neighbouring campus's shares the ground with it instead of being refused ({@link CampusSplit}).
  */
 public final class Campus {
 
@@ -128,6 +136,25 @@ public final class Campus {
     private final Map<Integer, String> siteKinds = new HashMap<>();
     /** Module keys whose job a member cancelled, until when they are not offered again. */
     private final Map<String, Long> declined = new HashMap<>();
+    /**
+     * The plan keys of the campus jobs that laid ground beyond the forum (0.15.0, {@link SiteFamily#ground}: the outer
+     * establish once it ran to its end), saved as {@code Gl} and carried by a broken core.
+     */
+    private final Set<String> laid = new LinkedHashSet<>();
+    /**
+     * The neighbours {x, z} (or {x, z, claims}) the outer ring was laid with (0.15.0), saved as {@code Gn} (their
+     * claims {@code Gq}) and carried by a broken core: the outer sites are judged against them as well as against the
+     * campuses registered now ({@link #splitNeighbours}), so a site the ring left to a neighbour stays trimmed, and
+     * once one of them is gone the campus offers to regain its side ({@link #offerOuter}).
+     */
+    private final List<int[]> laidWith = new ArrayList<>();
+    /**
+     * The keep-out boxes {x0, z0, x1, z1} (by their columns) of the modules on no site of the campus that the outer
+     * ring was laid round (0.15.0: a 0.9.2 hall, a stray core, another campus's building), saved as {@code Gk} and
+     * carried by a broken core: once one of them is gone and nothing holds its box, the campus offers to lay the ring
+     * there too ({@link #offerPatch}), and the box is forgotten.
+     */
+    private final List<int[]> laidBoxes = new ArrayList<>();
     private CampusPlan plan;
     /**
      * A campus resumed by a core put back where it stood ({@link #resume}): the world tick it looks whether the nexus
@@ -142,7 +169,21 @@ public final class Campus {
     private Map<String, Long> need = Collections.emptyMap();
     private long nexusUnformedSince = -1;
     private final Map<Integer, Long> siteUnformedSince = new HashMap<>();
-    private List<int[]> liveKeepOut = new ArrayList<>(), protectedBoxes = new ArrayList<>();
+    private List<int[]> liveKeepOut = new ArrayList<>(), liveOuterKeepOut = new ArrayList<>(),
+        protectedBoxes = new ArrayList<>();
+    /**
+     * The boxes of {@link #liveOuterKeepOut} that the modules on no recorded site give (0.15.0, {@link #offerPatch}).
+     */
+    private List<int[]> liveOuterStrays = new ArrayList<>();
+    /** The radius the campus registry holds for this campus (0: not written since the load). */
+    private int registeredRadius;
+    /** The outer diagonals the campus registry holds as claimed by this campus ({@link #claims}, 0.15.0). */
+    private int registeredClaims = -1;
+    /** The neighbours the client was last told of ({@code Ns}, 0.15.0), as a signature. */
+    private String syncedNeighbours = "";
+    /** The outer establish's give-up for the 建造 page ({@link #outerTrim}), and the job and neighbours it was for. */
+    private int[] outerTrim;
+    private String outerTrimFor = "";
     private long keepOutAt = Long.MIN_VALUE, protectedAt = Long.MIN_VALUE, etaAt = Long.MIN_VALUE;
     private long eta;
     private long lastStateKey = Long.MIN_VALUE, lastStateSent = Long.MIN_VALUE, lastBlockedHash, hintAt;
@@ -269,6 +310,144 @@ public final class Campus {
         return out;
     }
 
+    /**
+     * The keep-out boxes of the outer establish (0.15.0): {@link #keepOut()}, but the loaded modules on no recorded
+     * site are looked for out to the outer disc ({@link #OUTER_REACH}), not only round the inner one.
+     */
+    public List<int[]> outerKeepOut() {
+        refreshKeepOut();
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : liveOuterKeepOut) out.add(b.clone());
+        return out;
+    }
+
+    /**
+     * How far from the nexus centre (Chebyshev) a module standing on no recorded site is kept out of the outer
+     * establish and keeps its keep-out box round it in the campus's look at the outer sites: the outer disc and the
+     * margin the inner disc has ({@link CampusPlan#GRADE_R} + 24).
+     */
+    static final int OUTER_REACH = OuterRing.OUTER_R + 24;
+
+    /**
+     * The centres {x, z} of the other campuses near enough to share the outer ring's ground (0.15.0,
+     * {@link CampusSplit#REACH}), from the campus registry; with {@code drop} the entries whose nexus is gone are
+     * dropped first (the outer establish would else leave them ground for ever).
+     */
+    List<int[]> neighbours(boolean drop) {
+        World w = world();
+        List<int[]> out = new ArrayList<>();
+        // only a server world has a registry (a bare test world has no provider either)
+        if (w == null || w.isRemote || w.provider == null) return out;
+        int[] c = centre();
+        if (drop) CampusRegistry.dropStale(w, c[0], c[2], CampusSplit.REACH);
+        for (int[] o : CampusRegistry.centres(w)) {
+            if (o[0] == c[0] && o[1] == c[1] && o[2] == c[2]) continue;
+            if (Math.max(Math.abs(o[0] - c[0]), Math.abs(o[2] - c[2])) > CampusSplit.REACH) continue;
+            // with the outer diagonals it claimed (0.15.0): the split gives a claimed site wholly to its campus
+            out.add(o[3] != 0 ? new int[] { o[0], o[2], o[3] } : new int[] { o[0], o[2] });
+        }
+        out.sort((a, b) -> a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
+        return out;
+    }
+
+    /**
+     * The neighbours the campus's outer sites are judged against (0.15.0): those registered now
+     * ({@link #neighbours}, with their claims), and those the outer ring was laid with that are gone from the
+     * registry ({@link #laidWith}, with the claims they had when it was laid), so a site the ring left to a neighbour
+     * is not offered as whole while its ground is still ungraded: a site that shares a cell with an outer diagonal a
+     * gone neighbour had claimed stays held for good ({@link CityOffer#TRIMMED}), as the ring left it, until the ground
+     * is regained ({@link #offerOuter}, offered as soon as the neighbour is gone); then they are dropped.
+     */
+    List<int[]> splitNeighbours() {
+        List<int[]> out = neighbours(false);
+        return withLaid(out, laidWith);
+    }
+
+    /** The registered neighbours and the ones the ring was laid with that are not among them, sorted, each once. */
+    static List<int[]> withLaid(List<int[]> live, List<int[]> laidWith) {
+        List<int[]> out = new ArrayList<>(live);
+        for (int[] o : laidWith) {
+            boolean known = false;
+            for (int[] n : live) known |= n[0] == o[0] && n[1] == o[1];
+            if (!known) out.add(o.clone());
+        }
+        out.sort((a, b) -> a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
+        return out;
+    }
+
+    /**
+     * The outer diagonals the campus has claimed (0.15.0, {@link CampusSplit}): a bit per world quadrant
+     * ({@link CampusSplit#quadrant}) for each outer diagonal a module stands on (a recorded site) or a module job not
+     * ended is for, queued or not. The registry keeps them ({@link #syncRegistry}), so the split of every campus gives
+     * those sites wholly to this one.
+     */
+    int claims() {
+        int[] f = front();
+        int out = 0;
+        for (int site : sites.keySet())
+            if (OuterRing.diagSite(site)) out |= 1 << CampusSplit.siteQuadrant(site, f[0], f[1]);
+        for (BuildJob j : jobs()) if (!BuildState.ended(j.state) && j.module() != null && OuterRing.diagSite(j.site))
+            out |= 1 << CampusSplit.siteQuadrant(j.site, f[0], f[1]);
+        return out;
+    }
+
+    /**
+     * Whether the campus job that lays a family's ground has run here ({@link SiteFamily#ground}): since 0.15.0 the
+     * outer establish once it ran to its end; the third ring's later. The outer families' sites are offered only then.
+     */
+    public boolean groundLaid(String job) {
+        return job != null && laid.contains(job);
+    }
+
+    /**
+     * The radius the campus registry keeps for this campus (0.15.0): the outer disc's once the outer establish has
+     * begun (it touched the ground) or ran, else the inner disc's. Another campus's jobs keep out of the outer part
+     * only where the split gives it to this one ({@link CampusSplit#owns}).
+     */
+    int registryRadius() {
+        if (groundLaid(BuildPlan.OUTER)) return OuterRing.OUTER_R;
+        for (BuildJob j : jobs())
+            if (j.laysOuter() && j.touched && !BuildState.ended(j.state)) return OuterRing.OUTER_R;
+        return CampusPlan.GRADE_R;
+    }
+
+    /**
+     * Writes the campus into the registry again when the radius it keeps or the outer diagonals it claims changed (or
+     * were never written).
+     */
+    private void syncRegistry() {
+        World w = world();
+        // only a server world has a registry (a bare test world has no provider either)
+        if (w == null || w.isRemote || w.provider == null || !active) return;
+        int want = registryRadius(), claims = claims();
+        if (want == registeredRadius && claims == registeredClaims) return;
+        int[] c = centre();
+        if (want != registeredRadius) CampusRegistry.add(world(), c[0], c[1], c[2], want);
+        CampusRegistry.setClaims(world(), c[0], c[1], c[2], claims);
+        registeredRadius = want;
+        registeredClaims = claims;
+    }
+
+    /**
+     * How much of the outer ring the neighbouring campuses take from the current outer establish, {lost, all, takers}
+     * in columns and campuses ({@link BuildPlan#outerTrimmed}); null when the job is not the outer establish. Worked
+     * out once per job and neighbours (the 建造 page asks every half second).
+     */
+    public int[] outerTrim() {
+        // a patch (0.15.0) lays a few boxes again: what the ring left to the neighbours is the first job's to say
+        if (job == null || !job.laysOuter() || job.patches()) return null;
+        StringBuilder sig = new StringBuilder().append(System.identityHashCode(job));
+        for (int[] n : job.neighbours) sig.append('|')
+            .append(Arrays.toString(n));
+        if (outerTrim == null || !sig.toString()
+            .equals(outerTrimFor)) {
+            int[] c = centre(), f = front();
+            outerTrim = BuildPlan.outerTrimmed(plan(), c[0], c[2], f[0], f[1], job.neighbours);
+            outerTrimFor = sig.toString();
+        }
+        return outerTrim.clone();
+    }
+
     /** Whether blocked cells of the structure are skipped instead of pausing the job (跳过受阻). */
     public boolean skipBlocked() {
         return skipBlocked;
@@ -320,8 +499,10 @@ public final class Campus {
         if (resumeCheckAt >= 0 && now >= resumeCheckAt) afterResume();
         if (now % 20 == 0) watchStructures(now);
         if (now % 100 == 0) {
+            syncRegistry();
             autoJobs(now);
             watchModules();
+            watchNeighbours();
         }
         if (job == null && !queue.isEmpty()) nextJob();
         if (job != null) {
@@ -398,7 +579,10 @@ public final class Campus {
         if (active) {
             int[] c = centre();
             CampusRegistry.dropStale(w, c[0], c[2], 2 * CampusPlan.GRADE_R);
-            if (!CampusRegistry.has(w, c[0], c[1], c[2])) CampusRegistry.add(w, c[0], c[1], c[2], CampusPlan.GRADE_R);
+            // the radius it keeps (0.15.0): the outer disc's once the outer ring was begun or laid
+            int radius = registryRadius();
+            if (CampusRegistry.radiusOf(w, c[0], c[1], c[2]) != radius) CampusRegistry.add(w, c[0], c[1], c[2], radius);
+            registeredRadius = radius;
         }
         List<BuildJob> all = new ArrayList<>(queue);
         if (job != null) all.add(job);
@@ -475,6 +659,8 @@ public final class Campus {
         if (!nexus.formed() || !nexus.dockKnown()) return;
         offerRefresh();
         offerGrowth(now);
+        offerOuter(now);
+        withdraw(staleOuterOffers());
         Set<Integer> halls = new LinkedHashSet<>();
         for (CityOffer.Offer o : look(now)) {
             if (o.hall >= 0 && CityOffer.LEGACY_HALL.equals(o.reason)) halls.add(o.hall);
@@ -535,6 +721,35 @@ public final class Campus {
         if (gone.contains(job)) nextJob();
         needDirty = true;
         stateChanged();
+        syncRegistry();
+    }
+
+    /**
+     * The buildings offered on outer diagonals, not begun, whose site a neighbour's claim now holds a cell of (0.15.0):
+     * two campuses that offered buildings on overlapping sites in the same look both claimed them, and the split
+     * gives the pair to the first by its centre; the other's job is taken back, and its kind is offered on another
+     * site at the next look.
+     */
+    private List<BuildJob> staleOuterOffers() {
+        List<BuildJob> out = new ArrayList<>();
+        List<int[]> near = null;
+        int own = 0;
+        int[] c = centre(), f = front();
+        for (BuildJob j : jobs()) {
+            if (j.module() == null || j.repair() || !OuterRing.diagSite(j.site) || !yields(j)) continue;
+            if (near == null) {
+                near = splitNeighbours();
+                own = claims();
+            }
+            if (near.isEmpty()) return out;
+            int q = CampusSplit.siteQuadrant(j.site, f[0], f[1]);
+            for (int[] cell : CampusSplit.siteCells(c[0], c[2], q)) {
+                if (CampusSplit.ours(cell[0], cell[1], c[0], c[2], own, near)) continue;
+                out.add(j);
+                break;
+            }
+        }
+        return out;
     }
 
     /** A site as every window names it: "4 号位" by number, 大门, 天顶 and 根位 by name. */
@@ -555,16 +770,198 @@ public final class Campus {
             kinds.add(spec.kind(y0));
             if (exists(spec)) standing.add(spec.key);
         }
-        return CityOffer
-            .look(kinds, nexus.phase(), nexus::has, standing, new SiteView(), declined, now, Campus::groundLaid);
+        List<BuildJob> all = jobs();
+        return CityOffer.look(
+            kinds,
+            nexus.phase(),
+            nexus::has,
+            standing,
+            new SiteView(),
+            declined,
+            now,
+            this::groundLaid,
+            g -> groundWaits(g, all));
     }
 
     /**
-     * Whether the campus job that lays a family's ground has run ({@link SiteFamily#ground}): the outer establish and
-     * the third ring's come with 0.15.0 and later, so no site out there opens yet.
+     * Whether the job that lays a family's ground waits for the jobs before it (0.15.0,
+     * {@link CityOffer#GROUND_WAITS}): the outer establish is not queued, and a campus job or a retire job of a 0.9.2
+     * hall still to run holds its offer back ({@link #outerWaits}), so the module list names those rather than a job
+     * that is not there.
      */
-    static boolean groundLaid(String job) {
+    static boolean groundWaits(String ground, List<BuildJob> jobs) {
+        if (!BuildPlan.OUTER.equals(ground)) return false;
+        for (BuildJob j : jobs) if (j.laysOuter() && !BuildState.ended(j.state)) return false;
+        return outerWaits(jobs);
+    }
+
+    /**
+     * Offers the outer establish (0.15.0, CITY.md §2.3, {@link BuildJob#outer}) once the nexus has grown to phase III
+     * and its teams have the outer ring's research, while its ground is not laid: a job that waits for 开始 like any
+     * other, made with the keep-out boxes of the modules standing round the nexus out to the outer disc and the
+     * centres of the neighbouring campuses it shares the ground with. Not while it or another campus job (the
+     * establish, the forum, a refresh, a repair of the nexus) is still to run, so the forum's grading is never offered
+     * again over the outer ring's streets; not while a retire job of a 0.9.2 hall is still to run, so the streets the
+     * hall stands on are laid by the ring rather than left round it; nor for a day after a member cancelled it.
+     * <p>
+     * Once the ring is laid, a neighbour it was laid with that is gone from the registry (its core broken) left its
+     * side of the split: the same job is offered again to regain that ground only ({@link BuildJob#outerRegain}),
+     * and when nothing came back the campus just forgets the neighbour. Failing that, a module on no site of the
+     * campus that the ring was laid round and that has gone since (a 0.9.2 hall broken by hand) left a gap in the
+     * streets: the same job is offered again to lay the ring in its box only ({@link #offerPatch}).
+     */
+    private void offerOuter(long now) {
+        if (nexus.phase() < SiteFamily.OUTER_DIAG.opens || !nexus.has(Research.OUTER_RING)) return;
+        if (outerWaits(jobs())) return;
+        Long until = declined.get(BuildPlan.OUTER);
+        if (until != null && now < until) return;
+        if (groundLaid(BuildPlan.OUTER)) {
+            if (!offerRegain()) offerPatch();
+            return;
+        }
+        keepOutAt = Long.MIN_VALUE;
+        enqueue(BuildJob.outer(outerKeepOut(), neighbours(true)));
+        tell(new ChatComponentTranslation(P + "outer_offered"));
+    }
+
+    /**
+     * Whether the outer establish waits for the jobs queued now (0.15.0): one of its own or another campus job (the
+     * establish, the forum, a refresh, a repair of the nexus) still to run, or a retire job of a 0.9.2 hall still to
+     * run (the ring then lays the streets the hall stood on rather than keeping out of its box for good).
+     */
+    static boolean outerWaits(List<BuildJob> jobs) {
+        for (BuildJob j : jobs)
+            if (!BuildState.ended(j.state) && (j.laysOuter() || j.campusJob() || j.retires())) return true;
         return false;
+    }
+
+    /**
+     * The outer ring is laid and a neighbour it was laid with is gone (0.15.0): offers the job that regains the ground
+     * that neighbour had ({@link BuildPlan#outer} with {@code regainFrom}), or, when it gives nothing back, forgets
+     * it. Returns whether it offered the job.
+     */
+    private boolean offerRegain() {
+        if (laidWith.isEmpty()) return false;
+        List<int[]> now = neighbours(true);
+        boolean gone = false;
+        for (int[] o : laidWith) {
+            boolean still = false;
+            for (int[] n : now) still |= n[0] == o[0] && n[1] == o[1];
+            gone |= !still;
+        }
+        if (!gone) return false;
+        int[] c = centre(), f = front();
+        if (BuildPlan.outerRegain(plan(), c[0], c[2], f[0], f[1], laidWith, now) == 0) {
+            laidWith.clear();
+            for (int[] n : now) laidWith.add(n.clone());
+            dirty();
+            return false;
+        }
+        keepOutAt = Long.MIN_VALUE;
+        enqueue(BuildJob.outerRegain(outerKeepOut(), now, laidWith));
+        tell(new ChatComponentTranslation(P + "outer_regain_offered"));
+        return true;
+    }
+
+    /**
+     * The outer ring is laid and a module on no site of the campus that it was laid round is gone (0.15.0,
+     * {@link #laidBoxes}: a 0.9.2 hall broken by hand, whose retire job was then withdrawn, a stray core taken away,
+     * another campus's building gone): offers the job that lays the ring in the boxes nothing on no site holds now
+     * ({@link BuildJob#outerPatch}), keeping out of every module standing and the ground of every module job, so the
+     * streets the module stood on are laid rather than left a gap for good; when the split and the keep-out leave
+     * nothing there to lay, it forgets the boxes. Only boxes wholly in loaded chunks count (a module there may stand
+     * unseen). Returns whether it offered the job.
+     */
+    private boolean offerPatch() {
+        if (laidBoxes.isEmpty()) return false;
+        World w = world();
+        if (w == null) return false;
+        refreshKeepOut();
+        int y = centre()[1];
+        List<int[]> gone = vacated(laidBoxes, liveOuterStrays, b -> boxLoaded(w, b, y));
+        if (gone.isEmpty()) return false;
+        List<int[]> keep = patchKeepOut(), near = neighbours(true);
+        int[] c = centre(), f = front();
+        BuildPlan.Plan p = BuildPlan.outer(plan(), c[0], c[1], c[2], f[0], f[1], keep, near, null, gone);
+        if (p.clear.isEmpty() && p.steps.isEmpty()) {
+            forgetBoxes(laidBoxes, gone);
+            dirty();
+            return false;
+        }
+        enqueue(BuildJob.outerPatch(keep, near, gone));
+        tell(new ChatComponentTranslation(P + "outer_patch_offered"));
+        return true;
+    }
+
+    /**
+     * The boxes of {@code laid} that no module on no site holds now (0.15.0, {@link #offerPatch}): none of
+     * {@code strays} (the boxes the modules on no recorded site give now) overlaps it, and {@code loaded} says it lies
+     * wholly in loaded chunks.
+     */
+    static List<int[]> vacated(List<int[]> laid, List<int[]> strays, Predicate<int[]> loaded) {
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : laid) {
+            boolean held = false;
+            for (int[] k : strays) held |= CityOffer.overlap(b, k);
+            if (!held && loaded.test(b)) out.add(b.clone());
+        }
+        return out;
+    }
+
+    /**
+     * The boxes of an outer establish's keep-out that the modules on no recorded site gave (0.15.0,
+     * {@link #laidBoxes}): the whole-column ones that are none of the recorded sites' {@code recorded}.
+     */
+    static List<int[]> laidRound(List<int[]> keepOut, List<int[]> recorded) {
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : keepOut) {
+            if (b.length != 4) continue;
+            boolean site = false;
+            for (int[] r : recorded) site |= Arrays.equals(b, r);
+            if (!site) out.add(b.clone());
+        }
+        return out;
+    }
+
+    /** Takes the boxes equal to one of {@code gone} out of {@code boxes}. */
+    static void forgetBoxes(List<int[]> boxes, List<int[]> gone) {
+        boxes.removeIf(b -> {
+            for (int[] g : gone) if (Arrays.equals(b, g)) return true;
+            return false;
+        });
+    }
+
+    /** Whether every chunk the box's columns {x0, z0, x1, z1} lie in is loaded. */
+    private static boolean boxLoaded(World w, int[] b, int y) {
+        int x0 = Math.min(b[0], b[2]), x1 = Math.max(b[0], b[2]), z0 = Math.min(b[1], b[3]), z1 = Math.max(b[1], b[3]);
+        int yy = Math.max(0, Math.min(255, y));
+        for (int x = x0;; x = Math.min(x1, x + 16)) {
+            for (int z = z0;; z = Math.min(z1, z + 16)) {
+                if (!w.blockExists(x, yy, z)) return false;
+                if (z == z1) break;
+            }
+            if (x == x1) break;
+        }
+        return true;
+    }
+
+    /**
+     * The keep-out of an outer establish that patches the ring (0.15.0, {@link #offerPatch}): the outer establish's
+     * ({@link #outerKeepOut}), and the ground of every module job still to run, whose module stands on no recorded
+     * site yet, as the outer establish keeps out of it once the module stands ({@link ModuleSpec#outerKeepOut} and
+     * the columns of {@link ModuleSpec#outerProtect}: a hall's exact ground, so the streets beside it are laid).
+     */
+    private List<int[]> patchKeepOut() {
+        List<int[]> keep = outerKeepOut();
+        int[] c = centre(), f = front();
+        for (BuildJob j : jobs()) {
+            ModuleSpec spec = BuildState.ended(j.state) || j.retires() ? null : ModuleSpecs.get(j.module());
+            if (spec == null || !spec.hasSite(j.site)) continue;
+            keep.addAll(spec.outerKeepOut(plan(), j.site, c[0], c[1], c[2], f[0], f[1]));
+            for (int[] p : spec.outerProtect(plan(), j.site, c[0], c[1], c[2], f[0], f[1]))
+                keep.add(new int[] { p[0], p[2], p[3], p[5] });
+        }
+        return keep;
     }
 
     /**
@@ -580,18 +977,31 @@ public final class Campus {
         final List<int[]> recorded = new ArrayList<>();
         final List<CityOffer.Stray> strays = new ArrayList<>();
         final List<TileModule> modules = new ArrayList<>();
+        /**
+         * The neighbouring campuses' centres with their claims, and the campus's own claims (0.15.0), looked up the
+         * first time an outer site is asked about.
+         */
+        private List<int[]> near;
+        private int claimed;
+        /** What {@link #lost} and {@link #contested} worked out for an outer site in this look, by site. */
+        private final Map<Integer, Integer> lostAt = new HashMap<>(), contestedAt = new HashMap<>();
 
         SiteView() {
             for (int site : sites.keySet()) recorded.addAll(siteKeepOut(site));
             World w = world();
-            int reach = CampusPlan.GRADE_R + 24;
+            // out to the outer disc (0.15.0): a module standing there keeps its box clear of the outer sites too
+            int reach = OUTER_REACH;
             if (w != null) for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
                 if (m.isInvalid() || m.getWorldObj() != w) continue;
                 modules.add(m);
                 int[] mc = m.centre();
                 boolean near = Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) <= reach;
-                int[] keep = near && !onRecordedSite(m) ? BuildPlan.moduleKeepOut(mc) : null;
-                strays.add(new CityOffer.Stray(keep, mc[0], mc[2], legacyHallSlot(m)));
+                if (!near || onRecordedSite(m)) {
+                    strays.add(new CityOffer.Stray(null, mc[0], mc[2], legacyHallSlot(m)));
+                    continue;
+                }
+                // another campus's outer diagonal building keeps its whole site clear of ours (0.15.0)
+                for (int[] keep : strayBoxes(m)) strays.add(new CityOffer.Stray(keep, mc[0], mc[2], legacyHallSlot(m)));
             }
         }
 
@@ -609,7 +1019,63 @@ public final class Campus {
                     if (m.xCoord == at[0] && m.yCoord == at[1] && m.zCoord == at[2]) return CityOffer.OTHER;
                 return CityOffer.FREE;
             }
+            // an outer diagonal (0.15.0) cell for cell: the corners of its square reach past its octagon to where a
+            // neighbour's outer diagonal building may stand, its whole site kept clear, without the two sharing a cell
+            if (spec.family == SiteFamily.OUTER_DIAG) return CityOffer.siteBlocker(
+                CampusSplit.siteCells(c[0], c[2], CampusSplit.siteQuadrant(site, f[0], f[1])),
+                recorded,
+                strays);
             return CityOffer.blocker(spec.footprint(site, c[0], c[2], f[0], f[1], 1), recorded, strays);
+        }
+
+        /**
+         * Whether the campus owns the whole of an outer site's ground (0.15.0): every cell of an outer diagonal's
+         * apron and allée lies on this campus's side of the split with its neighbours ({@link #lost} is 0).
+         */
+        @Override
+        public boolean whole(CityOffer.Kind kind, int site) {
+            return lost(kind, site) == 0;
+        }
+
+        /**
+         * How much of an outer diagonal's apron and allée the split gives to the neighbours (0.15.0,
+         * {@link CampusSplit#siteLoss} against {@link #splitNeighbours} with the campus's own claims): 0 for a whole
+         * site, the cells it would take from them for one the campus may still claim, -1 for one a neighbour holds
+         * part of for good (its inner square, an outer diagonal it claimed). Every site of the inner city and the
+         * axis is whole.
+         */
+        @Override
+        public int lost(CityOffer.Kind kind, int site) {
+            if (SiteFamily.of(site) != SiteFamily.OUTER_DIAG || near().isEmpty()) return 0;
+            Integer known = lostAt.get(site);
+            if (known != null) return known;
+            int n = CampusSplit.siteLoss(CampusSplit.siteQuadrant(site, f[0], f[1]), c[0], c[2], claimed, near);
+            lostAt.put(site, n);
+            return n;
+        }
+
+        /**
+         * How many of the neighbours' unclaimed outer diagonals an outer diagonal of this campus shares ground with
+         * (0.15.0, {@link CampusSplit#contested}): the look takes a site that shares none first. 0 for every other
+         * site.
+         */
+        @Override
+        public int contested(CityOffer.Kind kind, int site) {
+            if (SiteFamily.of(site) != SiteFamily.OUTER_DIAG || near().isEmpty()) return 0;
+            Integer known = contestedAt.get(site);
+            if (known != null) return known;
+            int n = CampusSplit.contested(CampusSplit.siteQuadrant(site, f[0], f[1]), c[0], c[2], near);
+            contestedAt.put(site, n);
+            return n;
+        }
+
+        /** The neighbours and the campus's own claims, looked up the first time an outer site is asked about. */
+        private List<int[]> near() {
+            if (near == null) {
+                near = splitNeighbours();
+                claimed = claims();
+            }
+            return near;
         }
     }
 
@@ -638,7 +1104,9 @@ public final class Campus {
         TileModule hall = null;
         for (TileModule m : nexus.docked()) if (legacyHallSlot(m) == slot) hall = m;
         if (hall == null) return;
-        enqueue(BuildJob.retire(slot, retireBox(hall)));
+        // once the outer ring is laid (0.15.0) the job also lays its floor in the box, which the ring kept out of
+        boolean outer = groundLaid(BuildPlan.OUTER);
+        enqueue(BuildJob.retire(slot, retireBox(hall), outer, outer ? neighbours(false) : null));
         tell(new ChatComponentTranslation(P + "retire_offered", siteLabel(slot)));
     }
 
@@ -674,7 +1142,9 @@ public final class Campus {
     private void freshRetireBox() {
         TileModule hall = null;
         for (TileModule m : nexus.docked()) if (legacyHallSlot(m) == job.site) hall = m;
-        if (hall == null || !job.retarget(Collections.singletonList(retireBox(hall)))) return;
+        // the outer ring may have been laid since the job was offered (0.15.0): its floor in the box comes with it
+        boolean outer = groundLaid(BuildPlan.OUTER);
+        if (hall == null || !job.retargetRetire(retireBox(hall), outer, outer ? neighbours(false) : null)) return;
         builder.reset();
         needDirty = true;
         etaAt = Long.MIN_VALUE;
@@ -683,12 +1153,13 @@ public final class Campus {
 
     /**
      * Offers the growth of the nexus to its next phase (0.12.0, CITY.md §3) once its teams have that phase's research
-     * and this version reaches it ({@link ResearchTree#PHASE_NOW}): a {@code grow:<phase>} job that waits for 开始 like
-     * any other, queued after the repairs. Not while one is still to run, nor for a day after a member cancelled it.
+     * and this version reaches it ({@link ResearchTree#nextGrowth}: {@code grow:2} on a nexus of phase I, and since
+     * 0.15.0 {@code grow:3} on one of phase II): a {@code grow:<phase>} job that waits for 开始 like any other, queued
+     * after the repairs. Not while one is still to run, nor for a day after a member cancelled it.
      */
     private void offerGrowth(long now) {
-        int next = nexus.phase() + 1;
-        if (next > ResearchTree.PHASE_NOW || !nexus.has(ResearchTree.phaseResearch(next))) return;
+        int next = ResearchTree.nextGrowth(nexus.phase(), nexus::has);
+        if (next == 0) return;
         for (BuildJob j : jobs()) if (j.grows() && !BuildState.ended(j.state)) return;
         Long until = declined.get(BuildPlan.growKey(next));
         if (until != null && now < until) return;
@@ -975,6 +1446,8 @@ public final class Campus {
         }
         needDirty = true;
         stateChanged();
+        // a building offered on an outer diagonal claims it at once (0.15.0), before the next campus looks
+        if (j.module() != null && OuterRing.diagSite(j.site)) syncRegistry();
     }
 
     /**
@@ -1066,22 +1539,58 @@ public final class Campus {
         long now = w == null ? 0 : w.getTotalWorldTime();
         if (now - keepOutAt < 100 && keepOutAt != Long.MIN_VALUE) return;
         keepOutAt = now;
-        List<int[]> out = new ArrayList<>();
+        List<int[]> out = new ArrayList<>(), outer = new ArrayList<>(), strays = new ArrayList<>();
         int[] c = centre();
         int reach = CampusPlan.GRADE_R + 24;
-        // the loaded modules that are not on a recorded site (0.9.2 halls), then the recorded sites, loaded or not
+        // the loaded modules that are not on a recorded site (0.9.2 halls), then the recorded sites, loaded or not;
+        // the outer establish's (0.15.0) looks for them out to the outer disc
         if (w != null) for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
             if (m.isInvalid() || m.getWorldObj() != w || onRecordedSite(m)) continue;
             int[] mc = m.centre();
-            if (Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) > reach) continue;
-            out.add(BuildPlan.moduleKeepOut(mc));
+            int d = Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2]));
+            if (d > OUTER_REACH) continue;
+            // another campus's outer diagonal building keeps its whole site (0.15.0), any other the box round it
+            for (int[] box : strayBoxes(m)) {
+                if (d <= reach) out.add(box);
+                outer.add(box.clone());
+                strays.add(box.clone());
+            }
         }
-        for (Map.Entry<Integer, int[]> e : sites.entrySet()) out.addAll(siteKeepOut(e.getKey()));
+        for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
+            out.addAll(siteKeepOut(e.getKey()));
+            // the outer establish keeps out of a hall's exact ground (0.15.0), so the streets beside it are paved
+            outer.addAll(siteOuterKeepOut(e.getKey()));
+        }
         liveKeepOut = out;
+        liveOuterKeepOut = outer;
+        liveOuterStrays = strays;
     }
 
-    /** The keep-out boxes and the protected boxes of the recorded sites so far, by module key, site, centre, front. */
-    private final Map<String, List<int[]>> siteKeepOuts = new HashMap<>(), siteProtects = new HashMap<>();
+    /**
+     * The keep-out boxes {x0, z0, x1, z1} the campus jobs leave round a module standing on no site this campus
+     * recorded: the box round the centre of its foundation ({@link BuildPlan#moduleKeepOut}), and for an outer diagonal
+     * building (0.15.0, another campus's) its whole site as its own campus keeps it
+     * ({@link CampusSplit#strayDiagBoxes}: its apron, annex and allée), so an outer establish here never grades round
+     * it even where the split moved after it was built.
+     */
+    private List<int[]> strayBoxes(TileModule m) {
+        int[] mc = m.centre();
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        if (spec == null || spec.family != SiteFamily.OUTER_DIAG)
+            return Collections.singletonList(BuildPlan.moduleKeepOut(mc));
+        List<int[]> centres = new ArrayList<>();
+        World w = world();
+        if (w != null && !w.isRemote && w.provider != null)
+            for (int[] o : CampusRegistry.centres(w)) centres.add(new int[] { o[0], o[2] });
+        return CampusSplit.strayDiagBoxes(mc[0], mc[2], centres);
+    }
+
+    /**
+     * The keep-out boxes and the protected boxes of the recorded sites so far, by module key, site, centre, front; and
+     * the outer establish's (0.15.0).
+     */
+    private final Map<String, List<int[]>> siteKeepOuts = new HashMap<>(), siteProtects = new HashMap<>(),
+        siteOuterKeepOuts = new HashMap<>(), siteOuterProtects = new HashMap<>();
 
     /**
      * The keep-out boxes the campus jobs leave alone for the module recorded on a site ({@link ModuleSpec#keepOut}: a
@@ -1089,7 +1598,21 @@ public final class Campus {
      * {x0, z0, x1, z1, yFrom, yTo}, 0.12.0); empty when the site's module is not known.
      */
     List<int[]> siteKeepOut(int site) {
-        return siteBoxes(site, siteKeepOuts, false);
+        return siteBoxes(site, siteKeepOuts, 0);
+    }
+
+    /**
+     * The keep-out boxes the outer establish leaves alone for the module recorded on a site (0.15.0,
+     * {@link ModuleSpec#outerKeepOut}): a hall's exact ground row by row rather than its site box, so the 井 streets
+     * beside it are paved to its forecourt.
+     */
+    List<int[]> siteOuterKeepOut(int site) {
+        return siteBoxes(site, siteOuterKeepOuts, 2);
+    }
+
+    /** The protected boxes of a recorded site for the outer establish (0.15.0, {@link ModuleSpec#outerProtect}). */
+    List<int[]> siteOuterProtect(int site) {
+        return siteBoxes(site, siteOuterProtects, 3);
     }
 
     /**
@@ -1098,10 +1621,14 @@ public final class Campus {
      * empty when the site's module is not known.
      */
     List<int[]> siteProtect(int site) {
-        return siteBoxes(site, siteProtects, true);
+        return siteBoxes(site, siteProtects, 1);
     }
 
-    private List<int[]> siteBoxes(int site, Map<String, List<int[]>> cache, boolean protect) {
+    /**
+     * A recorded site's boxes, cached by module, site, centre and front: {@code which} 0 its keep-out, 1 its
+     * protection, 2 and 3 the outer establish's (0.15.0).
+     */
+    private List<int[]> siteBoxes(int site, Map<String, List<int[]>> cache, int which) {
         ModuleSpec spec = ModuleSpecs.get(siteKinds.get(site));
         if (spec == null || !spec.hasSite(site)) return Collections.emptyList();
         int[] c = centre();
@@ -1109,8 +1636,19 @@ public final class Campus {
         String key = spec.key + "@" + site + ":" + c[0] + "," + c[1] + "," + c[2] + ":" + f[0] + "," + f[1];
         List<int[]> boxes = cache.get(key);
         if (boxes == null) {
-            boxes = protect ? spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1])
-                : spec.keepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+            switch (which) {
+                case 1:
+                    boxes = spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+                    break;
+                case 2:
+                    boxes = spec.outerKeepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+                    break;
+                case 3:
+                    boxes = spec.outerProtect(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+                    break;
+                default:
+                    boxes = spec.keepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+            }
             if (cache.size() > 16) cache.clear();
             cache.put(key, boxes);
         }
@@ -1338,8 +1876,8 @@ public final class Campus {
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
             if (job != null && job.module() != null && job.site == e.getKey()) continue;
             // the whole site: the building, its forecourt, apron and canopy (0.10.1; the footprint alone before); an
-            // axis module only the space it takes (0.12.0)
-            out.addAll(siteProtect(e.getKey()));
+            // axis module only the space it takes (0.12.0); for the outer establish a hall's exact ground (0.15.0)
+            out.addAll(job != null && job.laysOuter() ? siteOuterProtect(e.getKey()) : siteProtect(e.getKey()));
         }
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (m == nexus) continue;
@@ -1355,6 +1893,13 @@ public final class Campus {
                 int[] mc = tm.centre();
                 int[] k = BuildPlan.moduleKeepOut(mc);
                 out.add(new int[] { k[0], mc[1] - 1, k[1], k[2], mc[1] + 16, k[3] });
+            }
+            // another campus's outer diagonal building (0.15.0): its whole site from bedrock to the sky, so no job
+            // here digs under or fills over its apron, annex or allée
+            if (m instanceof TileModule tm && !onRecordedSite(tm)) {
+                ModuleSpec spec = ModuleSpecs.get(tm.moduleKey());
+                if (spec != null && spec.family == SiteFamily.OUTER_DIAG)
+                    for (int[] k : strayBoxes(tm)) out.add(new int[] { k[0], 0, k[1], k[2], 255, k[3] });
             }
         }
         // the job's keep-out boxes: whole columns, or a height-ranged box over its heights (0.12.0)
@@ -1379,6 +1924,34 @@ public final class Campus {
     /** A job came to its end: tell the members (and an operator who finished it at once, how it went). */
     void finished(BuildJob j) {
         tell(new ChatComponentTranslation(P + "done", j.name()));
+        // the outer establish ran to its end (0.15.0): the outer families' sites stand on laid ground now, judged
+        // against the neighbours it was laid with (a job that regained ground: those it was made with now)
+        if (j.laysOuter()) {
+            if (j.patches()) {
+                // a patch laid the boxes it was made for: they are forgotten, the neighbours the ring was laid with
+                // kept (a regain may be still to come)
+                forgetBoxes(laidBoxes, j.patch);
+            } else {
+                laidWith.clear();
+                for (int[] n : j.neighbours) laidWith.add(n.clone());
+                // the boxes of the modules on no site it was laid round, to lay once they are gone
+                List<int[]> recorded = new ArrayList<>();
+                for (int site : sites.keySet()) recorded.addAll(siteOuterKeepOut(site));
+                if (!j.regains()) laidBoxes.clear();
+                for (int[] b : laidRound(j.keepOut, recorded)) {
+                    boolean known = false;
+                    for (int[] k : laidBoxes) known |= Arrays.equals(k, b);
+                    if (!known) laidBoxes.add(b);
+                }
+            }
+            laid.add(BuildPlan.OUTER);
+            syncRegistry();
+            dirty();
+            stateChanged();
+        }
+        // a retire job that laid the outer floor in its box (0.15.0) laid the ring the hall kept out of there
+        int[] retired = j.retiresOuter() ? j.retireBox() : null;
+        if (retired != null && laidBoxes.removeIf(b -> CityOffer.overlap(b, retired))) dirty();
         if (j != instantJob) return;
         instantJob = null;
         report(
@@ -1507,7 +2080,8 @@ public final class Campus {
         active = true;
         hinted = true;
         int[] c = centre();
-        CampusRegistry.add(world(), c[0], c[1], c[2], CampusPlan.GRADE_R);
+        registeredRadius = registryRadius();
+        CampusRegistry.add(world(), c[0], c[1], c[2], registeredRadius);
         keepOutAt = Long.MIN_VALUE;
         enqueue(BuildJob.establish(keepOut()));
         return P + "placed_lifted";
@@ -1515,9 +2089,11 @@ public final class Campus {
 
     /**
      * 铺设广场 on a legacy nexus: the campus becomes active and the forum job is made (grading, floor, fixtures).
-     * Refused, like a lifted core, when another campus lies within {@code Config.buildMinSpacing}: the campuses would
-     * overlap; and since 0.14.1 when its base lies outside the campus band ({@link CampusBand}): a nexus built by hand
-     * may stand anywhere, but a campus over Y0 225 could not grow, one under Y0 14 has no room for its well.
+     * Refused when another campus lies so near that their inner discs would overlap ({@link #innerSpacing}; up to
+     * 0.14.2 the whole {@code Config.buildMinSpacing}, whose default 0.15.0 raised for new campuses: the nexus stands
+     * here already, and the outer rings share their ground, {@link CampusSplit}); and since 0.14.1 when its base lies
+     * outside the campus band ({@link CampusBand}): a nexus built by hand may stand anywhere, but a campus over Y0 225
+     * could not grow, one under Y0 14 has no room for its well.
      */
     public String layForum(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
@@ -1525,13 +2101,25 @@ public final class Campus {
         int[] c = centre();
         String band = CampusBand.refusal(c[1], false);
         if (band != null) return "fluxecho." + band;
-        if (CampusRegistry.tooClose(world(), c[0], c[2], Config.buildMinSpacing) != null) return P + "forum_too_close";
+        if (CampusRegistry.tooClose(world(), c[0], c[2], innerSpacing()) != null) return P + "forum_too_close";
         active = true;
         hinted = true;
-        CampusRegistry.add(world(), c[0], c[1], c[2], CampusPlan.GRADE_R);
+        registeredRadius = registryRadius();
+        CampusRegistry.add(world(), c[0], c[1], c[2], registeredRadius);
         keepOutAt = Long.MIN_VALUE;
         enqueue(BuildJob.forum(keepOut()));
         return P + "forum_laid";
+    }
+
+    /**
+     * The spacing a campus that already stands keeps from the others (0.15.0): a core put back where it stood
+     * ({@link #resume}) and a 0.9.2 nexus laying its forum ({@link #layForum}) only need room for their inner disc,
+     * {@link CampusSplit#INNER_SPACING} (144, the spacing every campus was placed at before 0.15.0), or less when the
+     * config asks for less ({@code buildMinSpacing}, 0 turning the check off). The default 312 is for new cores
+     * ({@code ItemBlockNexusCore}); refusing a campus that stands would only take its campus away.
+     */
+    public static int innerSpacing() {
+        return Config.buildMinSpacing <= 0 ? 0 : Math.min(Config.buildMinSpacing, CampusSplit.INNER_SPACING);
     }
 
     /**
@@ -1584,13 +2172,18 @@ public final class Campus {
     /**
      * Before a campus job that has touched nothing starts: its plan is made again with the keep-out boxes of now
      * ({@link BuildJob#retarget}). It was made with the modules loaded when it was offered; by 开始 more of them may be
-     * loaded round the player, or a module may have been built meanwhile.
+     * loaded round the player, or a module may have been built meanwhile. The outer establish (0.15.0) also takes the
+     * neighbouring campuses of now: one may have been placed or have gone since.
      */
     private void freshKeepOut() {
         if (job != null && job.retires()) freshRetireBox();
-        if (job == null || !job.campusJob()) return;
+        if (job == null || !job.campusJob() && !job.laysOuter()) return;
         keepOutAt = Long.MIN_VALUE;
-        if (job.retarget(keepOut())) {
+        // the outer establish (0.15.0) takes its boxes out to the outer disc, and its neighbours of now
+        boolean changed = job.laysOuter()
+            ? job.retarget(job.patches() ? patchKeepOut() : outerKeepOut(), neighbours(true))
+            : job.retarget(keepOut());
+        if (changed) {
             builder.reset();
             needDirty = true;
             etaAt = Long.MIN_VALUE;
@@ -1679,11 +2272,13 @@ public final class Campus {
             declined.put(job.module(), world().getTotalWorldTime() + DECLINE_TICKS);
         // a retire job cancelled is offered again a day later too (0.14.1)
         if (job.retires()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
-        // a growth cancelled is offered again a day later, as a module is (0.12.0)
-        if (job.grows()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
+        // a growth cancelled is offered again a day later, as a module is (0.12.0); so is the outer establish (0.15.0)
+        if (job.grows() || job.laysOuter()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
         if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.GRADE_V);
         if (job == instantJob) instantJob = null;
         stateChanged();
+        // a building cancelled on an outer diagonal drops its claim at once (0.15.0), as an offer makes it
+        if (job.module() != null && OuterRing.diagSite(job.site)) syncRegistry();
     }
 
     /**
@@ -1706,11 +2301,16 @@ public final class Campus {
         ModuleSpec spec = ModuleSpecs.get(job.module());
         if (spec == null || job.repair() || job.touched || !job.flights.isEmpty()) return P + "site_locked";
         int site = CityOffer
-            .move(spec.kind(centre()[1]), job.site, dir, nexus.phase(), Campus::groundLaid, new SiteView());
+            .move(spec.kind(centre()[1]), job.site, dir, nexus.phase(), this::groundLaid, new SiteView());
         if (site < 0) return P + "site_locked";
+        int from = job.site;
         job.moveTo(spec, site);
         builder.reset();
         stateChanged();
+        // a building moved onto or off an outer diagonal moves its claim at once (0.15.0), as an offer makes it: the
+        // registry would else hold the old site until the next look, and a neighbour looking first could offer its
+        // own building on ground overlapping the new one
+        if (OuterRing.diagSite(from) || OuterRing.diagSite(site)) syncRegistry();
         return P + "site_moved";
     }
 
@@ -1897,6 +2497,9 @@ public final class Campus {
         c.graded = gradedVersion;
         c.free = freeBuild;
         c.phase = nexus.grown();
+        c.laid.addAll(laid);
+        for (int[] n : laidWith) c.laidWith.add(n.clone());
+        for (int[] b : laidBoxes) c.laidBoxes.add(b.clone());
         return c.write();
     }
 
@@ -1931,7 +2534,7 @@ public final class Campus {
         if (nexus.front()
             .ordinal() != c.front) nexus.place(nexus.owner(), nexus.ownerName(), c.front);
         int[] ce = centre();
-        if (CampusRegistry.tooClose(w, ce[0], ce[2], Config.buildMinSpacing) != null) {
+        if (CampusRegistry.tooClose(w, ce[0], ce[2], innerSpacing()) != null) {
             resumeRefused = true;
             return P + "resume_too_close";
         }
@@ -1947,11 +2550,20 @@ public final class Campus {
         declined.putAll(c.declined);
         gradedVersion = c.graded;
         freeBuild = c.free;
+        laid.clear();
+        laid.addAll(c.laid);
+        laidWith.clear();
+        for (int[] n : c.laidWith) laidWith.add(n.clone());
+        laidBoxes.clear();
+        for (int[] b : c.laidBoxes) laidBoxes.add(b.clone());
         // the nexus put back is the phase it had grown to (0.12.0): it forms as that phase, a repair builds that phase
         nexus.regrow(c.phase);
         resumeJob = c.unfinished;
         resumeCheckAt = w.getTotalWorldTime() + RESUME_CHECK;
-        CampusRegistry.add(w, ce[0], ce[1], ce[2], CampusPlan.GRADE_R);
+        registeredRadius = registryRadius();
+        CampusRegistry.add(w, ce[0], ce[1], ce[2], registeredRadius);
+        registeredClaims = claims();
+        CampusRegistry.setClaims(w, ce[0], ce[1], ce[2], registeredClaims);
         keepOutAt = Long.MIN_VALUE;
         stateChanged();
         return P + "resumed";
@@ -1998,6 +2610,12 @@ public final class Campus {
         final Map<String, Long> declined = new HashMap<>();
         String unfinished = "";
         int graded;
+        /** The grounds laid beyond the forum (0.15.0, {@code Gl}): the outer establish's plan key once it ran. */
+        final Set<String> laid = new LinkedHashSet<>();
+        /** The neighbours {x, z} or {x, z, claims} the outer ring was laid with (0.15.0, {@code Gn} and {@code Gq}). */
+        final List<int[]> laidWith = new ArrayList<>();
+        /** The boxes of the modules on no site the outer ring was laid round (0.15.0, {@code Gk}). */
+        final List<int[]> laidBoxes = new ArrayList<>();
 
         NBTTagCompound write() {
             NBTTagCompound t = new NBTTagCompound();
@@ -2022,6 +2640,11 @@ public final class Campus {
             t.setInteger("Pv", graded);
             t.setBoolean("Fb", free);
             t.setInteger("Ph", phase);
+            if (!laid.isEmpty()) t.setTag("Gl", grounds(laid));
+            if (!laidWith.isEmpty()) t.setIntArray("Gn", BuildJob.centres(laidWith));
+            int[] laidClaims = BuildJob.claims(laidWith);
+            if (laidClaims.length > 0) t.setIntArray("Gq", laidClaims);
+            if (!laidBoxes.isEmpty()) t.setIntArray("Gk", BuildJob.boxes(laidBoxes, 4));
             return t;
         }
 
@@ -2051,6 +2674,10 @@ public final class Campus {
             c.graded = t.getInteger("Pv");
             c.free = t.getBoolean("Fb");
             c.phase = Math.max(1, t.getInteger("Ph"));
+            readGrounds(t.getTagList("Gl", 8), c.laid);
+            BuildJob.readCentres(t.getIntArray("Gn"), c.laidWith);
+            BuildJob.readClaims(t.getIntArray("Gq"), c.laidWith);
+            BuildJob.readFlat(t.getIntArray("Gk"), c.laidBoxes);
             return c;
         }
 
@@ -2315,6 +2942,13 @@ public final class Campus {
         t.setTag("Recycle", recycle.write());
         t.setBoolean("Fb", freeBuild);
         t.setInteger("Pv", gradedVersion);
+        // the grounds laid beyond the forum (0.15.0), only once there is one, and the neighbours the ring was laid with
+        if (!laid.isEmpty()) t.setTag("Gl", grounds(laid));
+        if (!laidWith.isEmpty()) t.setIntArray("Gn", BuildJob.centres(laidWith));
+        int[] laidClaims = BuildJob.claims(laidWith);
+        if (laidClaims.length > 0) t.setIntArray("Gq", laidClaims);
+        // the boxes of the modules on no site the outer ring was laid round (0.15.0), only once there are any
+        if (!laidBoxes.isEmpty()) t.setIntArray("Gk", BuildJob.boxes(laidBoxes, 4));
         NBTTagCompound d = new NBTTagCompound();
         for (Map.Entry<String, Long> e : declined.entrySet()) d.setLong(e.getKey(), e.getValue());
         t.setTag("Declined", d);
@@ -2331,6 +2965,11 @@ public final class Campus {
         siteKinds.clear();
         queue.clear();
         declined.clear();
+        laid.clear();
+        laidWith.clear();
+        laidBoxes.clear();
+        registeredRadius = 0;
+        registeredClaims = -1;
         job = null;
         loaded = false;
         needDirty = true;
@@ -2355,6 +2994,10 @@ public final class Campus {
         skipBlocked = t.getBoolean("Skip");
         freeBuild = t.getBoolean("Fb");
         gradedVersion = t.getInteger("Pv");
+        readGrounds(t.getTagList("Gl", 8), laid);
+        BuildJob.readCentres(t.getIntArray("Gn"), laidWith);
+        BuildJob.readClaims(t.getIntArray("Gq"), laidWith);
+        BuildJob.readFlat(t.getIntArray("Gk"), laidBoxes);
         NBTTagList s = t.getTagList("Sites", 10);
         for (int i = 0; i < s.tagCount(); i++) {
             NBTTagCompound c = s.getCompoundTagAt(i);
@@ -2415,6 +3058,18 @@ public final class Campus {
         t.setBoolean("Sk", skipBlocked);
         t.setBoolean("Fb", freeBuild);
         if (active) t.setTag("Md", ModuleState.write(modules()));
+        // the outer ring's ground is laid (0.15.0): the masterplan and the projection show it as the campus's
+        if (groundLaid(BuildPlan.OUTER)) t.setBoolean("Ol", true);
+        // the neighbours the outer sites are judged against, with their claims, and the campus's own claims
+        // (0.15.0): with the campus, not the job, so the masterplan draws the same split before, during and after the
+        // outer establish whether or not the client has those nexuses loaded
+        if (active && showsSplit()) {
+            List<int[]> near = splitNeighbours();
+            syncedNeighbours = signature(near);
+            if (!near.isEmpty()) t.setIntArray("Ns", triples(near));
+            int own = claims();
+            if (own != 0) t.setByte("Oc", (byte) own);
+        }
         if (job == null) return;
         lastBlockedHash = job.blockedShownHash();
         t.setString("K", job.key);
@@ -2455,6 +3110,81 @@ public final class Campus {
         t.setIntArray("Ko", BuildJob.boxes(job.keepOut));
         int[] ranged = BuildJob.boxes(job.keepOut, 6);
         if (ranged.length > 0) t.setIntArray("Kr", ranged);
+        // the outer establish's neighbours (0.15.0): the client plans the same split, with their claims; an outer
+        // establish that regains ground, and a retire job that lays the outer floor, plan as theirs do
+        if (!job.neighbours.isEmpty()) t.setIntArray("Nb", BuildJob.centres(job.neighbours));
+        int[] claims = BuildJob.claims(job.neighbours);
+        if (claims.length > 0) t.setIntArray("Nc", claims);
+        if (!job.regainFrom.isEmpty()) t.setIntArray("Nr", BuildJob.centres(job.regainFrom));
+        int[] regainClaims = BuildJob.claims(job.regainFrom);
+        if (regainClaims.length > 0) t.setIntArray("Nq", regainClaims);
+        if (job.retireOuter) t.setBoolean("Ro", true);
+        if (!job.patch.isEmpty()) t.setIntArray("Op", BuildJob.boxes(job.patch, 4));
+    }
+
+    /**
+     * Whether the client is told the neighbours the outer sites are judged against ({@code Ns}, 0.15.0): once the
+     * nexus has grown to the phase the outer ring opens at, the ring is laid, or an outer establish is queued; older
+     * campuses sync as before.
+     */
+    private boolean showsSplit() {
+        if (groundLaid(BuildPlan.OUTER) || nexus.phase() >= SiteFamily.OUTER_DIAG.opens) return true;
+        for (BuildJob j : jobs()) if (j.laysOuter()) return true;
+        return false;
+    }
+
+    /** The neighbours {x, z} or {x, z, claims} flat as triples {x, z, claims} ({@code Ns}). */
+    static int[] triples(List<int[]> near) {
+        int[] out = new int[3 * near.size()];
+        for (int i = 0; i < near.size(); i++) {
+            int[] n = near.get(i);
+            out[3 * i] = n[0];
+            out[3 * i + 1] = n[1];
+            out[3 * i + 2] = CampusSplit.claims(n);
+        }
+        return out;
+    }
+
+    /** Reads the triples of {@link #triples} into {x, z} or {x, z, claims} each. */
+    static List<int[]> readTriples(int[] flat) {
+        List<int[]> out = new ArrayList<>();
+        if (flat == null) return out;
+        for (int i = 0; i + 2 < flat.length; i += 3) out.add(
+            flat[i + 2] != 0 ? new int[] { flat[i], flat[i + 1], flat[i + 2] } : new int[] { flat[i], flat[i + 1] });
+        return out;
+    }
+
+    /** A list of neighbours as a string, to tell when it changed. */
+    private static String signature(List<int[]> near) {
+        StringBuilder s = new StringBuilder();
+        for (int[] n : near) s.append(Arrays.toString(n));
+        return s.toString();
+    }
+
+    /**
+     * Tells the clients again when the neighbours the outer sites are judged against changed (0.15.0): a campus
+     * placed or gone, a claim made or dropped, which change no state of this campus. Looked at with the registry,
+     * every 100 ticks.
+     */
+    private void watchNeighbours() {
+        if (!showsSplit()) return;
+        if (!signature(splitNeighbours()).equals(syncedNeighbours)) stateChanged();
+    }
+
+    /** The plan keys of laid grounds as a list of strings ({@code Gl}, 0.15.0). */
+    static NBTTagList grounds(Set<String> keys) {
+        NBTTagList l = new NBTTagList();
+        for (String k : keys) l.appendTag(new net.minecraft.nbt.NBTTagString(k));
+        return l;
+    }
+
+    /** Reads the grounds a list from {@link #grounds} holds into {@code into}: only the known ground job keys. */
+    static void readGrounds(NBTTagList l, Set<String> into) {
+        if (l == null) return;
+        for (int i = 0; i < l.tagCount(); i++) {
+            String k = l.getStringTagAt(i);
+            if (SiteFamily.OUTER_GROUND.equals(k) || SiteFamily.THIRD_GROUND.equals(k)) into.add(k);
+        }
     }
 
     /** World cells {x, y, z} packed relative to the centre ({@link FxCodec}); cells too far out are left out. */
@@ -2492,12 +3222,34 @@ public final class Campus {
         public int[] blocked = new int[0];
         /** The keep-out boxes {x0, z0, x1, z1} the job's plan was made with. */
         public List<int[]> keepOut = new ArrayList<>();
+        /**
+         * The neighbouring campuses' centres {x, z} (or {x, z, claims}) the job's plan was made with ({@code Nb} and
+         * {@code Nc}, 0.15.0): the outer establish's, and a retire job's that lays the outer floor.
+         */
+        public List<int[]> neighbours = new ArrayList<>();
+        /** The neighbours an outer establish that regains ground regains it from ({@code Nr}, 0.15.0). */
+        public List<int[]> regainFrom = new ArrayList<>();
+        /** Whether the retire job lays the outer ring's floor in its box too ({@code Ro}, 0.15.0). */
+        public boolean retireOuter;
+        /** The boxes an outer establish that patches the ring lays inside ({@code Op}, 0.15.0). */
+        public List<int[]> patch = new ArrayList<>();
+        /** Whether the outer establish has laid the outer ring's ground ({@code Ol}, 0.15.0, {@link #groundLaid}). */
+        public boolean outerLaid;
+        /**
+         * The neighbours the campus's outer sites are judged against, {x, z} or {x, z, claims} ({@code Ns}, 0.15.0,
+         * {@link Campus#splitNeighbours}): sent with the campus, job or not, so the masterplan draws the split and
+         * signs the sites as the server offers them.
+         */
+        public List<int[]> split = new ArrayList<>();
+        /** The outer diagonals the campus has claimed ({@code Oc}, 0.15.0, a bit per world quadrant). */
+        public int claims;
 
         public void read(NBTTagCompound t) {
             active = t.getBoolean("Ac");
             skipBlocked = t.getBoolean("Sk");
             freeBuild = t.getBoolean("Fb");
             free = t.getBoolean("Fe");
+            outerLaid = t.getBoolean("Ol");
             modules = ModuleState.read(t.getTagList("Md", 10));
             machines = t.getIntArray("Te");
             job = t.getString("K");
@@ -2528,6 +3280,17 @@ public final class Campus {
             blocked = t.getIntArray("Bl");
             keepOut = new ArrayList<>();
             BuildJob.readBoxes(t, keepOut);
+            neighbours = new ArrayList<>();
+            BuildJob.readCentres(t.getIntArray("Nb"), neighbours);
+            BuildJob.readClaims(t.getIntArray("Nc"), neighbours);
+            regainFrom = new ArrayList<>();
+            BuildJob.readCentres(t.getIntArray("Nr"), regainFrom);
+            BuildJob.readClaims(t.getIntArray("Nq"), regainFrom);
+            retireOuter = t.getBoolean("Ro");
+            patch = new ArrayList<>();
+            BuildJob.readFlat(t.getIntArray("Op"), patch);
+            split = readTriples(t.getIntArray("Ns"));
+            claims = t.getByte("Oc") & 15;
         }
 
         /** Whether there is a job. */

@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -35,9 +37,12 @@ import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.CampusSplit;
 import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.LiftRule;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.OuterLook;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.SiteFamily;
@@ -71,6 +76,16 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link DomeGeneratorShape#datum}), and the squares of its six legs' feet, its sign under the pod; the root
  * ({@link SiteFamily#ROOT_SITE}) as the well's octagon dashed on the forum over it, its sign behind the nexus. Their
  * signs name them (天顶, 根位) and what stands, is built or is planned there, as a hall site's do.
+ * <p>
+ * The outer ring (0.15.0, CITY.md §2.3), once the nexus has grown to phase III, the outer establish is the job or its
+ * ground is laid ({@link OuterLook}): the outer disc's edge, the four 井 streets, the outer promenade, the four avenues
+ * and the outer gate with its pylons, dashed until the ground is laid; the outer diagonals' octagons (sites 11, 13,
+ * 15, 17, dashed while empty, coloured and signed as the inner sites) and the reserved outer flankers' envelopes
+ * (20 to 27, dim dashes, signed 预留); and the split with every neighbouring campus near enough to share the ring (the
+ * ones the server judges the outer sites against, sent with the campus, the job's own, and any other campus the client
+ * has within {@link CampusSplit#REACH}), an amber dashed line where it crosses the outer disc. An outer diagonal a
+ * neighbour holds part of for good (its inner square, or an outer diagonal it claimed) is signed as left to the
+ * neighbours.
  * <p>
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
@@ -124,9 +139,21 @@ public final class Masterplan {
         WELL = octagon(RootShape.WELL_R, RootShape.WELL_K), FOOT = octagon(0, 1);
     private static final List<int[]> FEET = DomeGeneratorShape.feet();
 
+    /** The outer ring's sites (0.15.0): the outer diagonals, then the reserved outer flankers. */
+    private static final int[] OUTER_SITES = { 11, 13, 15, 17, 20, 21, 22, 23, 24, 25, 26, 27 };
+    /** The outer ring's lines, campus frame (0.15.0, {@link OuterLook}). */
+    private static final List<OuterLook.Path> OUTER_DISC = OuterLook.disc(), OUTER_PROM = OuterLook.promenade(),
+        STREETS = OuterLook.streets(), AVENUES = OuterLook.avenues(), OUTER_PYLONS = OuterLook.pylons();
+    /**
+     * Which outer diagonals are left to a campus's neighbours, by the campus's centre, front, claims and neighbours: a
+     * cache (the answer never changes for the same question), cleared when it grows large.
+     */
+    private static final Map<String, boolean[]> TRIMMED = new ConcurrentHashMap<>();
+
     /** The parts that fail on their own. */
-    private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2;
-    private static final String[] NAMES = { "masterplan", "masterplan signs", "placement preview" };
+    private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2, OUTER = 3;
+    private static final String[] NAMES = { "masterplan", "masterplan signs", "placement preview",
+        "masterplan's outer ring" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     private float nx, ny = 1, nz;
@@ -227,6 +254,13 @@ public final class Masterplan {
                 Frame up = new Frame(ox, oy + datum, oz, f.fx, f.fz);
                 Site[] sites = sites(n, v, tiles, c, f.fx, f.fz);
                 float breath = 0.85f + 0.15f * (float) Math.sin(t * 0.06);
+                // the outer ring (0.15.0), its own part: an error there leaves the inner city's plan drawn
+                Outer outer = null;
+                if (!OFF[OUTER]) try {
+                    outer = outer(n, v, tiles, c, f.fx, f.fz);
+                } catch (Throwable x) {
+                    fail(OUTER, x);
+                }
                 for (int pass = 0; pass < 2; pass++) {
                     boolean through = pass == 0;
                     if (through) GL11.glDisable(GL11.GL_DEPTH_TEST);
@@ -260,6 +294,12 @@ public final class Masterplan {
                     outline(tes, up, POD, 0, 0, true, 0.14, zen.rgb, Math.min(0.35f, za * 1.3f), false);
                     for (int[] foot : FEET) outline(tes, f, FOOT, foot[0], foot[1], true, 0.1, zen.rgb, za, false);
                     outline(tes, f, WELL, 0, 0, true, 0.12, root.rgb, ra, true);
+                    if (outer != null && !OFF[OUTER]) try {
+                        outerLines(tes, f, outer, k, breath);
+                    } catch (Throwable x) {
+                        // the batch stays open for the inner plan's draw below
+                        fail(OUTER, x);
+                    }
                     drawing = false;
                     tes.draw();
                     if (through) GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -268,6 +308,12 @@ public final class Masterplan {
                     double[] at = signAt(s, sites[s].ring, datum);
                     double[] r = f.at(at[0], at[1]);
                     signs.add(new Sign(r[0], oy + at[2], r[1], sites[s].title, sites[s].caption, sites[s].rgb, 2f));
+                }
+                if (outer != null && !OFF[OUTER]) for (int i = 0; i < OUTER_SITES.length; i++) {
+                    Site st = outer.sites[i];
+                    double[] at = OuterLook.signAt(OUTER_SITES[i]);
+                    double[] r = f.at(at[0], at[1]);
+                    signs.add(new Sign(r[0], oy + at[2], r[1], st.title, st.caption, st.rgb, 2f));
                 }
             }
         } catch (Throwable x) {
@@ -517,6 +563,206 @@ public final class Masterplan {
             { 29.5, 5.5 }, { 24.5, 5.5 }, { 24.5, 3.5 }, { from, 3.5 } };
     }
 
+    // ---- the outer ring (0.15.0)
+
+    /**
+     * What the masterplan shows of a campus's outer ring: whether its ground is laid, the neighbours it shares the
+     * ring with ({x, z} centres) and the state of each outer site ({@link #OUTER_SITES}).
+     */
+    private static final class Outer {
+
+        final boolean laid;
+        final List<int[]> neighbours;
+        final int cx, cz;
+        final Site[] sites;
+
+        Outer(boolean laid, List<int[]> neighbours, int cx, int cz, Site[] sites) {
+            this.laid = laid;
+            this.neighbours = neighbours;
+            this.cx = cx;
+            this.cz = cz;
+            this.sites = sites;
+        }
+    }
+
+    /**
+     * The campus's outer ring as the masterplan shows it, or null while it shows none: before the nexus has grown to
+     * the phase that opens the outer ring ({@link SiteFamily#OUTER_DIAG}'s), unless the outer establish is the job or
+     * has laid the ground already.
+     */
+    private static Outer outer(TileNexus n, Campus.View v, List<TileMultiblock> tiles, int[] c, int fx, int fz) {
+        boolean job = v.hasJob() && BuildPlan.OUTER.equals(v.planKey) && !BuildState.ended(v.stateEnum());
+        if (n.phase() < SiteFamily.OUTER_DIAG.opens && !v.outerLaid && !job) return null;
+        List<int[]> near = neighbours(n, v, tiles, c);
+        boolean[] trimmed = trimmed(c, fx, fz, v.claims, near);
+        int jobSite = -1;
+        String jobModule = null;
+        if (v.hasJob() && !BuildState.ended(v.stateEnum())) {
+            jobModule = ModuleSpecs.moduleOf(v.planKey);
+            jobSite = jobModule == null ? -1 : v.site;
+        }
+        // the outer diagonals' buildings that stand, by the octagon their foundation's centre stands on
+        String[] names = new String[OuterRing.DIAG_SITES.length];
+        int[] colours = new int[names.length];
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            ModuleSpec spec = ModuleSpecs.get(mod.moduleKey());
+            if (spec == null || spec.family != SiteFamily.OUTER_DIAG) continue;
+            int[] mc = mod.centre();
+            if (Math.abs(mc[1] - c[1]) > 8) continue;
+            int[] l = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
+            int site = OuterRing.diagSiteAt(l[0], l[1]);
+            for (int i = 0; i < names.length; i++) if (OuterRing.DIAG_SITES[i] == site && names[i] == null) {
+                names[i] = mod.moduleKey();
+                colours[i] = mod.moduleColor();
+            }
+        }
+        Site[] out = new Site[OUTER_SITES.length];
+        for (int i = 0; i < OUTER_SITES.length; i++) {
+            int s = OUTER_SITES[i];
+            Site st = new Site();
+            st.title = EchoText.t(SiteFamily.labelKey(s), s);
+            out[i] = st;
+            if (!OuterRing.diagSite(s)) {
+                // a reserved outer flanker (opened from phase IV)
+                st.rgb = DIM;
+                st.alpha = 0.1f;
+                st.caption = EchoText.t("build.masterplan.reserved");
+                continue;
+            }
+            boolean docked = (n.clientOuterDocked & 1 << i) != 0;
+            st.occupied = docked || names[i] != null;
+            st.job = s == jobSite;
+            if (st.job) {
+                st.rgb = CYAN;
+                st.alpha = 0.3f;
+                st.caption = EchoText.t("build.masterplan.building", EchoText.t("module." + jobModule));
+            } else if (st.occupied) {
+                int col = docked && n.clientOuterColor[i] != 0 ? n.clientOuterColor[i] : colours[i];
+                st.rgb = col == 0 ? WHITE : col;
+                st.alpha = 0.28f;
+                st.caption = names[i] != null ? EchoText.t("module." + names[i]) : EchoText.t("build.masterplan.taken");
+            } else if (trimmed[i]) {
+                // it reaches over the split: the campus offers no building there (why.trimmed)
+                st.rgb = DIM;
+                st.alpha = 0.12f;
+                st.caption = EchoText.t("build.masterplan.trimmed");
+            } else {
+                st.rgb = DIM;
+                st.alpha = 0.15f;
+                st.caption = EchoText.t("build.masterplan.reserved");
+                Campus.ModuleState planned = planned(v, s);
+                if (planned != null) {
+                    st.caption = EchoText.t(
+                        "build.masterplan.planned",
+                        EchoText.t("module." + planned.key),
+                        EchoText.t(
+                            "build.masterplan.status." + planned.status.name()
+                                .toLowerCase(Locale.ROOT)));
+                    st.rgb = planned.status == Campus.ModuleStatus.NEEDS_RESEARCH ? AMBER
+                        : planned.status == Campus.ModuleStatus.QUEUED ? CYAN : DIM;
+                    st.alpha = 0.24f;
+                }
+            }
+        }
+        return new Outer(v.outerLaid, near, c[0], c[2], out);
+    }
+
+    /**
+     * The neighbouring campuses a campus shares its outer ring with, {x, z} or {x, z, claims} each
+     * ({@link OuterLook#neighbours}): those the server judges its outer sites against ({@link Campus.View#split},
+     * sent with the campus, 0.15.0), those its job was planned with ({@link Campus.View#neighbours}), and any other
+     * active campus the client has loaded whose centre lies within {@link CampusSplit#REACH}. Sorted, each once.
+     */
+    private static List<int[]> neighbours(TileNexus n, Campus.View v, List<TileMultiblock> tiles, int[] c) {
+        List<int[]> loaded = new ArrayList<>();
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileNexus x) || x == n || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            Campus.View xv = x.clientCampus;
+            if (xv == null || !xv.active) continue;
+            int[] o = x.centre();
+            loaded.add(new int[] { o[0], o[2] });
+        }
+        return OuterLook.neighbours(v.split, v.neighbours, loaded, c[0], c[2]);
+    }
+
+    /**
+     * Which outer diagonals the neighbours hold part of for good ({@link OuterLook#siteTrimmed}, with the campus's own
+     * claims), cached.
+     */
+    private static boolean[] trimmed(int[] c, int fx, int fz, int claims, List<int[]> near) {
+        if (near.isEmpty()) return new boolean[OuterRing.DIAG_SITES.length];
+        StringBuilder key = new StringBuilder().append(c[0])
+            .append(',')
+            .append(c[2])
+            .append(',')
+            .append(fx)
+            .append(',')
+            .append(fz)
+            .append(',')
+            .append(claims);
+        for (int[] o : near) key.append('|')
+            .append(java.util.Arrays.toString(o));
+        String k = key.toString();
+        boolean[] got = TRIMMED.get(k);
+        if (got != null) return got;
+        boolean[] out = new boolean[OuterRing.DIAG_SITES.length];
+        for (int i = 0; i < out.length; i++)
+            out[i] = OuterLook.siteTrimmed(OuterRing.DIAG_SITES[i], c[0], c[2], fx, fz, claims, near);
+        if (TRIMMED.size() > 64) TRIMMED.clear();
+        TRIMMED.put(k, out);
+        return out;
+    }
+
+    /**
+     * The outer ring's lines into the open batch ({@code k} the pass's share of alpha): the disc's edge, the promenade,
+     * the streets, the avenues and the outer gate with its pylons, dashed until the ground is laid; the outer
+     * diagonals' octagons as their sites' state has them (dashed while empty), the reserved flankers in dim dashes;
+     * the split with each neighbour, amber dashes.
+     */
+    private static void outerLines(Tessellator tes, Frame f, Outer o, float k, float breath) {
+        boolean dashed = !o.laid;
+        float a = (o.laid ? 0.18f : 0.12f) * k;
+        for (OuterLook.Path p : OUTER_DISC) outline(tes, f, p.pts, 0, 0, p.closed, 0.2, DISC, 0.16f * k, dashed);
+        for (OuterLook.Path p : OUTER_PROM) outline(tes, f, p.pts, 0, 0, p.closed, 0.12, CYAN, a, dashed);
+        for (OuterLook.Path p : STREETS) outline(tes, f, p.pts, 0, 0, p.closed, 0.12, CYAN, a, dashed);
+        for (OuterLook.Path p : AVENUES) outline(tes, f, p.pts, 0, 0, p.closed, 0.12, CYAN, a, dashed);
+        for (OuterLook.Path p : OUTER_PYLONS) outline(tes, f, p.pts, 0, 0, p.closed, 0.1, CYAN, 1.4f * a, false);
+        for (int i = 0; i < OUTER_SITES.length; i++) {
+            int s = OUTER_SITES[i];
+            Site st = o.sites[i];
+            float sa = st.alpha * k * (st.job ? breath : 1f);
+            if (OuterRing.diagSite(s))
+                outline(tes, f, OuterLook.diagOutline(s), 0, 0, true, 0.12, st.rgb, sa, !st.occupied);
+            else outline(tes, f, OuterLook.flankOutline(s), 0, 0, true, 0.1, st.rgb, sa, true);
+        }
+        float sa = 0.32f * k;
+        tes.setColorRGBA_I(AMBER & 0xFFFFFF, (int) (Math.max(0, Math.min(1, sa)) * 255));
+        for (int[] nb : o.neighbours) {
+            double[] l = OuterLook.splitLine(o.cx, o.cz, nb[0], nb[1]);
+            if (l == null) continue;
+            dashes(
+                tes,
+                l[0] - RenderManager.renderPosX,
+                l[1] - RenderManager.renderPosZ,
+                l[2] - RenderManager.renderPosX,
+                l[3] - RenderManager.renderPosZ,
+                f.oy,
+                0.2);
+        }
+    }
+
+    /** A dashed line along the floor between two camera-relative points {@code (x, z)}, as {@link #outline} dashes. */
+    private static void dashes(Tessellator t, double x0, double z0, double x1, double z1, double y, double w) {
+        double len = Math.hypot(x1 - x0, z1 - z0);
+        if (len < 1e-6) return;
+        for (double s = 0; s < len; s += 2.0) {
+            double e = Math.min(len, s + 1.2);
+            double f0 = s / len, f1 = e / len;
+            band(t, x0 + (x1 - x0) * f0, x0 + (x1 - x0) * f1, z0 + (z1 - z0) * f0, z0 + (z1 - z0) * f1, y, w);
+        }
+    }
+
     // ---- the placement preview
 
     /** The placement preview of the core in hand, when it would be a lifted placement. */
@@ -607,7 +853,8 @@ public final class Masterplan {
             if (m instanceof TileModule mod && !m.isInvalid() && m.getWorldObj() == w && overlaps(box, moduleBox(mod)))
                 return EchoText.t("build.on_module");
         }
-        int spacing = Config.buildMinSpacing;
+        // a core put back where it stood keeps only the inner discs' spacing (0.15.0), as the item's check does
+        int spacing = putBack ? com.fluxecho.campus.Campus.innerSpacing() : Config.buildMinSpacing;
         if (spacing <= 0) return null;
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileNexus n) || m.isInvalid() || m.getWorldObj() != w) continue;

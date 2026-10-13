@@ -116,6 +116,22 @@ public final class NexusShape {
     }
 
     /**
+     * The phases a nexus that grew to {@code grown} tries to stand as, highest first (0.15.0): from the highest its
+     * teams have the research for ({@code researched}, already held to what this version reaches) down to the one it
+     * grew to, never under it, and never past {@link #PHASES}. The highest comes first because each phase holds every
+     * cell of the one below ({@link #stageCells} only adds; the lift pad is in every phase from II on): a phase-II
+     * blueprint ends at the top of stage 2, so a nexus with stage 3 standing on it still checks out as phase II, and
+     * trying the remembered phase first would never find it grown.
+     */
+    public static int[] tryOrder(int grown, int researched) {
+        int lo = Math.max(1, Math.min(PHASES, grown));
+        int hi = Math.max(lo, Math.min(PHASES, researched));
+        int[] out = new int[hi - lo + 1];
+        for (int i = 0; i < out.length; i++) out[i] = hi - i;
+        return out;
+    }
+
+    /**
      * The phase of a shape name {@code phaseN} (the nexus's multi-shape names), or 0 for any other name.
      */
     public static int phaseOf(String shape) {

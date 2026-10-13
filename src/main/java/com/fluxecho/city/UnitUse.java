@@ -14,7 +14,9 @@ import com.fluxecho.nexus.TileMultiblock;
  * as a whole, so clicking any of its cells means that unit. An empty hand opens the module's window at the unit (on
  * its Units page, {@code CityGui}); an item in hand goes into the unit's first empty slot (one item); sneaking with an
  * empty hand on a socket takes the item that socket shows, and (0.14.0) anywhere on a unit without sockets (a canvas,
- * whose one item shows over its whole field) its last item ({@link TileCityModule#takeSlot}). Registered for the frame
+ * whose one item shows over its whole field) its last item ({@link TileCityModule#takeSlot}). A unit without slots
+ * (0.15.0: the Holo Sand Table's layer consoles, which keep nothing and each open a layer) opens the window at itself
+ * whatever the hand holds, so a click never tries to store an item there. Registered for the frame
  * blocks, the campus fittings and (0.14.0) the campus deck, whose canvas panels a unit may be made of: the parts units
  * are made of; the Archive's bookcases keep their own use.
  * <p>
@@ -49,6 +51,11 @@ public final class UnitUse {
         ItemStack held = p.getHeldItem();
         String name = c.unitName(unit);
         int[] slots = c.unitSlots(unit);
+        if (slots[1] == 0) {
+            // a unit without slots keeps nothing: any click opens its page
+            open(c, unit, p);
+            return;
+        }
         if (held == null) {
             int slot = c.takeSlot(unit, x, y, z);
             ItemStack s = slot >= 0 ? c.samples.getStackInSlot(slot) : null;
@@ -59,9 +66,7 @@ public final class UnitUse {
                 p.inventoryContainer.detectAndSendChanges();
                 return;
             }
-            c.selectUnit(unit);
-            c.openOnUnit = true;
-            BlockNexus.open(c, p);
+            open(c, unit, p);
             return;
         }
         int free = c.firstFree(unit);
@@ -80,6 +85,13 @@ public final class UnitUse {
         }
         tell(p, "put", one.getDisplayName(), name, c.unitFill(unit), slots[1]);
         p.inventoryContainer.detectAndSendChanges();
+    }
+
+    /** Opens the module's window on its Units page at the unit. */
+    private static void open(TileCityModule c, int unit, EntityPlayer p) {
+        c.selectUnit(unit);
+        c.openOnUnit = true;
+        BlockNexus.open(c, p);
     }
 
     private static void tell(EntityPlayer p, String key, Object... args) {

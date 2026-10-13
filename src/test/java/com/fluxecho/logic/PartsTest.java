@@ -159,10 +159,23 @@ class PartsTest {
         assertEquals(ModuleCores.DUAL_FOIL_VAULT, ModuleCores.meta(DualFoilVaultShape.KEY));
         assertTrue(ModuleCores.built(ModuleCores.DUAL_FOIL_VAULT));
         assertEquals(65, Parts.moduleCore(ModuleCores.DUAL_FOIL_VAULT));
+        // 0.15.0: the outer diagonals' Sophon Array, meta 9, code 73, and Holo Sand Table, meta 10, code 74
+        assertEquals(9, ModuleCores.SOPHON_ARRAY);
+        assertEquals(10, ModuleCores.HOLO_TABLE);
+        assertEquals("sophon_array", ModuleCores.key(ModuleCores.SOPHON_ARRAY));
+        assertEquals("holo_table", ModuleCores.key(ModuleCores.HOLO_TABLE));
+        assertEquals(ModuleCores.SOPHON_ARRAY, ModuleCores.meta(SophonArrayShape.KEY));
+        assertEquals(ModuleCores.HOLO_TABLE, ModuleCores.meta(HoloTableShape.KEY));
+        assertTrue(ModuleCores.built(ModuleCores.SOPHON_ARRAY));
+        assertTrue(ModuleCores.built(ModuleCores.HOLO_TABLE));
+        assertEquals(73, Parts.moduleCore(ModuleCores.SOPHON_ARRAY));
+        assertEquals(74, Parts.moduleCore(ModuleCores.HOLO_TABLE));
+        assertFalse(ModuleCores.built(ModuleCores.SKY_SAILS), "the sky ring's are still reserved");
         assertArrayEquals(
             new int[] { ModuleCores.ECO_DOME, ModuleCores.DUAL_FOIL_VAULT, ModuleCores.ARCANE_COURT,
                 ModuleCores.BLOOD_COVENANT, ModuleCores.HUNTING_GROUND, ModuleCores.MANA_FOUNTAIN,
-                ModuleCores.RESONANCE_GATE, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT },
+                ModuleCores.RESONANCE_GATE, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT, ModuleCores.SOPHON_ARRAY,
+                ModuleCores.HOLO_TABLE },
             ModuleCores.built());
         int last = -1;
         for (int m : ModuleCores.built()) {

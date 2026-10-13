@@ -439,8 +439,25 @@ public final class NexusScreen {
         smallRight(EchoText.t("build.gui.blocked", b.blocked), w - 2, 52, 0.75f, b.blocked > 0 ? AMBER : DIM, 1f);
         small(EchoText.t("build.gui.skipped", b.skipped), 2, 60, 0.75f, b.skipped > 0 ? AMBER : DIM, 1f);
         smallRight(EchoText.t("build.gui.unloaded", b.unloaded), w - 2, 60, 0.75f, b.unloaded > 0 ? AMBER : DIM, 1f);
+        // the outer establish (0.15.0): how much of the ring the neighbouring campuses take, on the same line; before
+        // Start it takes turns with the machines to take down every three seconds when there are any
+        boolean trim = b.trimLost > 0 && b.live()
+            && (b.started || b.machines == 0 || System.currentTimeMillis() / 3000 % 2 == 1);
+        if (trim) small(
+            fit(
+                EchoText.t(
+                    "build.gui.outer_trim",
+                    b.trimLost * 100 / Math.max(1, b.trimAll),
+                    b.trimLost,
+                    Math.max(1, b.trimNeighbours)),
+                sw),
+            2,
+            68,
+            0.75f,
+            AMBER,
+            1f);
         // before Start: the machines and chests the job will take down (into the recycle bin), on a line of its own
-        if (!b.started && b.live()) small(
+        else if (!b.started && b.live()) small(
             fit(EchoText.t("build.gui.to_dismantle", b.machines), sw),
             2,
             68,

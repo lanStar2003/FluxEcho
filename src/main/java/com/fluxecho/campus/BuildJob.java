@@ -27,14 +27,16 @@ import com.fluxecho.logic.SiteFamily;
 /**
  * One construction job of a nexus campus and how far it has got: which plan it builds (the establish job, the forum of
  * a 0.9.2 nexus, a module on a site, a repair of one of those, the 0.10.1 refresh of a campus laid out by an older
- * plan, since 0.12.0 the growth of the nexus to its next phase, or since 0.14.1 the retirement of a docked 0.9.2
- * hall), where it is in its life ({@link BuildState}), which stage it is in, which steps are done or skipped, how far
- * the clearing has dug, which cells are in flight, and the counts the GUI shows.
+ * plan, since 0.12.0 the growth of the nexus to its next phase, since 0.14.1 the retirement of a docked 0.9.2 hall, or
+ * since 0.15.0 the outer establish that lays the outer ring's ground), where it is in its life ({@link BuildState}),
+ * which stage it is in, which steps are done or skipped, how far the clearing has dug, which cells are in flight, and
+ * the counts the GUI shows.
  * <p>
  * The plan itself is never saved: {@link #planFor} recomputes it from the job key, the nexus's position and front, the
- * {@link CampusPlan} seeded with the nexus controller's position, and the keep-out boxes saved with the job, so the
- * client can compute the same plan from the synced key ({@link Campus.View}). The done and skipped sets are indexes
- * into that plan and are only valid for the plan version {@link #V} they were saved with.
+ * {@link CampusPlan} seeded with the nexus controller's position, the keep-out boxes saved with the job and (0.15.0,
+ * the outer establish) the neighbouring campuses' centres saved with it, so the client can compute the same plan from
+ * the synced key ({@link Campus.View}). The done and skipped sets are indexes into that plan and are only valid for
+ * the plan version {@link #V} they were saved with.
  */
 public final class BuildJob {
 
@@ -110,6 +112,32 @@ public final class BuildJob {
     int site;
     int version = V;
     final List<int[]> keepOut = new ArrayList<>();
+    /**
+     * The centres {x, z} of the other campuses near enough to share the outer ring's ground (0.15.0, the outer
+     * establish, {@link com.fluxecho.logic.CampusSplit}): its plan grades and paves only its own side of the split.
+     * Each is {x, z, claims} with the outer diagonals that campus had claimed (saved apart, {@code Nc}, only when
+     * one has). Saved ({@code Nb}) and synced, as the keep-out boxes are, so both sides make the same plan; empty for
+     * every other job but a retire job on a campus whose outer ring is laid ({@link #retireOuter}).
+     */
+    final List<int[]> neighbours = new ArrayList<>();
+    /**
+     * The neighbours the outer ring was laid with, for an outer establish that only regains the ground they had
+     * ({@link BuildPlan#outer} with {@code regainFrom}, 0.15.0), {x, z} or {x, z, claims}: saved ({@code Nr}, their
+     * claims {@code Nq}) and synced; empty for every other job, the first outer establish too.
+     */
+    final List<int[]> regainFrom = new ArrayList<>();
+    /**
+     * Whether a retire job lays the outer ring's floor inside its box as well (0.15.0, {@link BuildPlan#retire} with
+     * {@code outerLaid}): offered once the outer ring was laid. Saved ({@code Ro}) and synced only when set, so a
+     * retire job saved by 0.14.2 makes the same plan as it did.
+     */
+    boolean retireOuter;
+    /**
+     * The boxes {x0, z0, x1, z1} an outer establish that only patches the ring lays inside (0.15.0,
+     * {@link BuildPlan#outer} with {@code only}, {@link #outerPatch}): the ground a module that stood on no site of
+     * the campus kept the ring out of and has left since. Saved ({@code Op}) and synced; empty for every other job.
+     */
+    final List<int[]> patch = new ArrayList<>();
 
     // ---- where it is
     BuildState.State state = BuildState.initial();
@@ -253,10 +281,115 @@ public final class BuildJob {
      * boxes do and both sides make the same plan. Its site is the slot, which the 建造 page names.
      */
     public static BuildJob retire(int slot, int[] box) {
+        return retire(slot, box, false, null);
+    }
+
+    /**
+     * {@link #retire(int, int[])} on a campus whose outer ring is laid ({@code outerLaid}, 0.15.0): the job also lays
+     * the outer ring's floor inside its box, which the outer establish kept out of while the hall stood, leaving the
+     * ground of the {@code neighbours} (their centres {x, z}, or {x, z, claims}) to them.
+     */
+    public static BuildJob retire(int slot, int[] box, boolean outerLaid, List<int[]> neighbours) {
         String k = BuildPlan.retireKey(slot);
         BuildJob j = new BuildJob(k, k, slot);
         j.setKeepOut(Collections.singletonList(box));
+        j.retireOuter = outerLaid;
+        if (outerLaid) j.setNeighbours(neighbours);
         return j;
+    }
+
+    /**
+     * Makes a retire job's plan again with the hall's box, the outer ring's state and the neighbours of now (0.15.0):
+     * the outer ring may have been laid since the job was offered. Only for a job that has touched nothing and has
+     * nothing in flight; returns whether anything changed (the job then starts its survey over).
+     */
+    boolean retargetRetire(int[] box, boolean outerLaid, List<int[]> centres) {
+        if (touched || !flights.isEmpty() || BuildState.ended(state)) return false;
+        List<int[]> near = new ArrayList<>();
+        if (outerLaid && centres != null) for (int[] c : centres) if (c != null && c.length >= 2) near.add(centre(c));
+        List<int[]> boxes = Collections.singletonList(box);
+        if (outerLaid == retireOuter && sameBoxes(boxes, keepOut) && sameBoxes(near, neighbours)) return false;
+        setKeepOut(boxes);
+        setNeighbours(near);
+        retireOuter = outerLaid;
+        restart(keepClear);
+        return true;
+    }
+
+    /**
+     * The outer establish of a campus whose ring is laid, run again only to regain ground (0.15.0,
+     * {@link BuildPlan#outer} with {@code regainFrom}): a neighbour whose core was broken after the ring was laid
+     * leaves its side of the split, which this job grades and paves; it touches nothing the first one laid.
+     *
+     * @param laidWith the neighbours the outer ring was laid with
+     */
+    public static BuildJob outerRegain(List<int[]> keepOut, List<int[]> neighbours, List<int[]> laidWith) {
+        BuildJob j = outer(keepOut, neighbours);
+        if (laidWith != null) for (int[] c : laidWith) if (c != null && c.length >= 2) j.regainFrom.add(centre(c));
+        return j;
+    }
+
+    /**
+     * The outer establish of a campus whose ring is laid, run again only inside the boxes a module that stood on no
+     * site of the campus kept the ring out of and has left since (0.15.0, {@link BuildPlan#outer} with {@code only}):
+     * a 0.9.2 hall broken by hand, a stray core taken away, another campus's building gone. It grades and paves the
+     * ring's columns in those boxes that the split leaves to the campus and nothing standing keeps out now.
+     *
+     * @param boxes the vacated boxes {x0, z0, x1, z1}
+     */
+    public static BuildJob outerPatch(List<int[]> keepOut, List<int[]> neighbours, List<int[]> boxes) {
+        BuildJob j = outer(keepOut, neighbours);
+        if (boxes != null)
+            for (int[] b : boxes) if (b != null && b.length >= 4) j.patch.add(new int[] { b[0], b[1], b[2], b[3] });
+        return j;
+    }
+
+    /** Whether it is an outer establish that only lays the ring inside vacated boxes again (0.15.0). */
+    public boolean patches() {
+        return laysOuter() && !patch.isEmpty();
+    }
+
+    /** The boxes an outer establish that patches the ring lays inside (read-only; empty for the others). */
+    public List<int[]> patch() {
+        return Collections.unmodifiableList(patch);
+    }
+
+    /** A neighbour's centre with its claims, as the plans take it: {x, z} or {x, z, claims}. */
+    private static int[] centre(int[] c) {
+        return c.length >= 3 && c[2] != 0 ? new int[] { c[0], c[1], c[2] } : new int[] { c[0], c[1] };
+    }
+
+    /** Whether it is an outer establish that only regains the ground of neighbours that went (0.15.0). */
+    public boolean regains() {
+        return laysOuter() && !regainFrom.isEmpty();
+    }
+
+    /** Whether it is a retire job that lays the outer ring's floor in its box too (0.15.0). */
+    public boolean retiresOuter() {
+        return retires() && retireOuter;
+    }
+
+    /** The neighbours an outer establish that regains ground regains it from (read-only; empty for the others). */
+    public List<int[]> regainFrom() {
+        return Collections.unmodifiableList(regainFrom);
+    }
+
+    /**
+     * The outer establish (0.15.0, {@code establish:outer}, {@link BuildPlan#outer}): it grades the outer ring's
+     * annulus and paves its streets, promenade, avenues, outer gate and allées, keeping out the boxes of the modules
+     * standing round the nexus and leaving the ground nearer to a neighbouring campus ({@code neighbours}, their
+     * centres {x, z}) to that one. It waits for 开始 like any job and raises nothing: it is done once its last stage is.
+     */
+    public static BuildJob outer(List<int[]> keepOut, List<int[]> neighbours) {
+        BuildJob j = new BuildJob(BuildPlan.OUTER, BuildPlan.OUTER, -1);
+        j.setKeepOut(keepOut);
+        j.setNeighbours(neighbours);
+        return j;
+    }
+
+    private void setNeighbours(List<int[]> centres) {
+        neighbours.clear();
+        if (centres != null) for (int[] c : centres) if (c != null && c.length >= 2) neighbours.add(centre(c));
     }
 
     private void setKeepOut(List<int[]> boxes) {
@@ -279,11 +412,23 @@ public final class BuildJob {
      * and then the job starts its survey over (keeping whether it was started).
      */
     boolean retarget(List<int[]> boxes) {
+        return retarget(boxes, neighbours);
+    }
+
+    /**
+     * {@link #retarget(List)} with the neighbouring campuses of now as well (0.15.0, the outer establish): a campus
+     * may have been placed or have gone since the job was offered. Returns whether either changed (the job then starts
+     * its survey over).
+     */
+    boolean retarget(List<int[]> boxes, List<int[]> centres) {
         if (touched || !flights.isEmpty() || BuildState.ended(state)) return false;
         List<int[]> next = new ArrayList<>();
         if (boxes != null) for (int[] b : boxes) if (keepOutBox(b)) next.add(b);
-        if (sameBoxes(next, keepOut)) return false;
+        List<int[]> near = new ArrayList<>();
+        if (centres != null) for (int[] c : centres) if (c != null && c.length >= 2) near.add(centre(c));
+        if (sameBoxes(next, keepOut) && sameBoxes(near, neighbours)) return false;
         setKeepOut(next);
+        setNeighbours(near);
         restart(keepClear);
         return true;
     }
@@ -368,6 +513,27 @@ public final class BuildJob {
      */
     public List<int[]> keepOut() {
         return Collections.unmodifiableList(keepOut);
+    }
+
+    /**
+     * The centres {x, z} of the neighbouring campuses its plan leaves their side of the split to (0.15.0, the outer
+     * establish; read-only, empty for every other job).
+     */
+    public List<int[]> neighbours() {
+        return Collections.unmodifiableList(neighbours);
+    }
+
+    /** Whether it is the outer establish (0.15.0, {@code establish:outer}): it lays the outer ring's ground. */
+    public boolean laysOuter() {
+        return BuildPlan.OUTER.equals(planKey);
+    }
+
+    /**
+     * Whether it grades the ground the way the campus jobs do, its clearing clipped to {@code buildClearHeight}: the
+     * establish and forum plans (and their repairs and the refresh), and since 0.15.0 the outer establish.
+     */
+    public boolean grades() {
+        return campusJob() || laysOuter();
     }
 
     /** Whether it builds the establish or forum plan (the campus round the nexus) rather than a module. */
@@ -482,6 +648,7 @@ public final class BuildJob {
         if (grow > 0) return new ChatComponentTranslation(
             "fluxecho.build.job.grow",
             new ChatComponentTranslation("fluxecho.nexus.phase." + grow));
+        if (BuildPlan.OUTER.equals(planKey)) return new ChatComponentTranslation("fluxecho.build.job.outer");
         String module = ModuleSpecs.moduleOf(planKey);
         if (key.startsWith(REPAIR)) {
             IChatComponent what = module != null ? new ChatComponentTranslation("fluxecho.module." + module)
@@ -502,10 +669,69 @@ public final class BuildJob {
      * the repair of a grown nexus), {@code forum}, {@code grow:<phase>} or {@code module:<module>@<site>} for a nexus
      * whose base centre is {@code (cx, y0, cz)}, whose front is {@code (fx, fz)} and whose controller is at
      * {@code ctrl}, with the campus plan seeded from that controller. Null when the plan key names a module this game
-     * does not know.
+     * does not know. The outer establish is planned with no neighbour here ({@link #planFor(String, CampusPlan, int,
+     * int, int, int, int, int, int, int, List, List)} gives them).
      */
     public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
         int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut) {
+        return planFor(planKey, cp, cx, y0, cz, fx, fz, ctrlX, ctrlY, ctrlZ, keepOut, null);
+    }
+
+    /**
+     * {@link #planFor(String, CampusPlan, int, int, int, int, int, int, int, int, List)} with the centres {x, z} of
+     * the neighbouring campuses the outer establish ({@code establish:outer}, 0.15.0) leaves their side of the split
+     * to; every other plan ignores them.
+     */
+    public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
+        int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut, List<int[]> neighbours) {
+        return planFor(planKey, cp, cx, y0, cz, fx, fz, ctrlX, ctrlY, ctrlZ, keepOut, neighbours, null, false);
+    }
+
+    /**
+     * {@link #planFor(String, CampusPlan, int, int, int, int, int, int, int, int, List, List)} with what 0.15.0's
+     * fixes add to a job: the neighbours an outer establish that regains ground regains it from ({@code regainFrom},
+     * {@link #regains}), and whether a retire job lays the outer ring's floor in its box ({@code retireOuter}, with the
+     * neighbours as the split's).
+     */
+    public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
+        int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut, List<int[]> neighbours, List<int[]> regainFrom,
+        boolean retireOuter) {
+        return planFor(
+            planKey,
+            cp,
+            cx,
+            y0,
+            cz,
+            fx,
+            fz,
+            ctrlX,
+            ctrlY,
+            ctrlZ,
+            keepOut,
+            neighbours,
+            regainFrom,
+            retireOuter,
+            null);
+    }
+
+    /**
+     * {@link #planFor(String, CampusPlan, int, int, int, int, int, int, int, int, List, List, List, boolean)} with the
+     * boxes an outer establish that patches the ring lays inside ({@code patch}, {@link #patches}, 0.15.0).
+     */
+    public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
+        int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut, List<int[]> neighbours, List<int[]> regainFrom,
+        boolean retireOuter, List<int[]> patch) {
+        if (BuildPlan.OUTER.equals(planKey)) return BuildPlan.outer(
+            cp,
+            cx,
+            y0,
+            cz,
+            fx,
+            fz,
+            keepOut,
+            neighbours,
+            regainFrom == null || regainFrom.isEmpty() ? null : regainFrom,
+            patch == null || patch.isEmpty() ? null : patch);
         int raise = BuildPlan.establishPhase(planKey);
         if (raise > 0)
             return BuildPlan.establish(cp, cx, y0, cz, fx, fz, NexusShape.phase(raise), ctrlX, ctrlY, ctrlZ, keepOut);
@@ -513,8 +739,10 @@ public final class BuildJob {
         if (grow > 0) return BuildPlan.grow(grow, cx, y0, cz, fx, fz, ctrlX, ctrlY, ctrlZ);
         if (BuildPlan.FORUM.equals(planKey)) return BuildPlan.forum(cp, cx, y0, cz, fx, fz, keepOut);
         if (BuildPlan.retireSlot(planKey) >= 0) {
-            // a retire job's one box is the hall's ground it works (0.14.1)
-            for (int[] b : keepOut) if (b.length == 6) return BuildPlan.retire(cp, planKey, cx, y0, cz, fx, fz, b);
+            // a retire job's one box is the hall's ground it works (0.14.1), and since 0.15.0 the outer ring's floor
+            // there once that is laid
+            for (int[] b : keepOut)
+                if (b.length == 6) return BuildPlan.retire(cp, planKey, cx, y0, cz, fx, fz, b, retireOuter, neighbours);
             return null;
         }
         ModuleSpec spec = ModuleSpecs.ofJob(planKey);
@@ -529,7 +757,22 @@ public final class BuildJob {
             int[] ce = c.centre();
             int[] f = c.front();
             int[] ctrl = c.controller();
-            plan = planFor(planKey, c.plan(), ce[0], ce[1], ce[2], f[0], f[1], ctrl[0], ctrl[1], ctrl[2], keepOut);
+            plan = planFor(
+                planKey,
+                c.plan(),
+                ce[0],
+                ce[1],
+                ce[2],
+                f[0],
+                f[1],
+                ctrl[0],
+                ctrl[1],
+                ctrl[2],
+                keepOut,
+                neighbours,
+                regainFrom,
+                retireOuter,
+                patch);
             index = null;
         }
         return plan;
@@ -824,6 +1067,18 @@ public final class BuildJob {
         // the height-ranged boxes (0.12.0) apart, so the whole-column ones are saved exactly as before
         int[] ranged = boxes(keepOut, 6);
         if (ranged.length > 0) t.setIntArray("Kr", ranged);
+        // the outer establish's neighbours (0.15.0), only when it has any, so every other job saves as before; their
+        // claims apart, only when one claims an outer diagonal
+        if (!neighbours.isEmpty()) t.setIntArray("Nb", centres(neighbours));
+        int[] claims = claims(neighbours);
+        if (claims.length > 0) t.setIntArray("Nc", claims);
+        // the neighbours an outer establish regains ground from, and a retire job that lays the outer floor (0.15.0)
+        if (!regainFrom.isEmpty()) t.setIntArray("Nr", centres(regainFrom));
+        int[] regainClaims = claims(regainFrom);
+        if (regainClaims.length > 0) t.setIntArray("Nq", regainClaims);
+        if (retireOuter) t.setBoolean("Ro", true);
+        // the boxes an outer establish that patches the ring lays inside, only when it has any (0.15.0)
+        if (!patch.isEmpty()) t.setIntArray("Op", boxes(patch, 4));
         t.setIntArray("D", bits(done));
         t.setIntArray("Sk", bits(skipped));
         t.setInteger("Cc", clearColumn);
@@ -901,6 +1156,12 @@ public final class BuildJob {
         j.projectedAt = t.getLong("Pa");
         j.finishedAt = t.getLong("Ft");
         readBoxes(t, j.keepOut);
+        readCentres(t.getIntArray("Nb"), j.neighbours);
+        readClaims(t.getIntArray("Nc"), j.neighbours);
+        readCentres(t.getIntArray("Nr"), j.regainFrom);
+        readClaims(t.getIntArray("Nq"), j.regainFrom);
+        j.retireOuter = t.getBoolean("Ro");
+        readFlat(t.getIntArray("Op"), j.patch);
         unbits(t.getIntArray("D"), j.done);
         unbits(t.getIntArray("Sk"), j.skipped);
         j.clearColumn = t.getInteger("Cc");
@@ -957,6 +1218,45 @@ public final class BuildJob {
         return out;
     }
 
+    /** The centres {x, z} of the list, flat ({@code Nb}, 0.15.0). */
+    static int[] centres(List<int[]> l) {
+        int[] out = new int[2 * l.size()];
+        for (int i = 0; i < l.size(); i++) {
+            out[2 * i] = l.get(i)[0];
+            out[2 * i + 1] = l.get(i)[1];
+        }
+        return out;
+    }
+
+    /** Reads the centres saved flat by {@link #centres} into {@code into}. */
+    static void readCentres(int[] flat, List<int[]> into) {
+        if (flat == null) return;
+        for (int i = 0; i + 1 < flat.length; i += 2) into.add(new int[] { flat[i], flat[i + 1] });
+    }
+
+    /**
+     * The outer diagonals each neighbour {x, z, claims} claims, one number each in the list's order ({@code Nc},
+     * 0.15.0); empty when none claims any, so a list without claims saves as before.
+     */
+    static int[] claims(List<int[]> l) {
+        boolean any = false;
+        int[] out = new int[l.size()];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = com.fluxecho.logic.CampusSplit.claims(l.get(i));
+            any |= out[i] != 0;
+        }
+        return any ? out : new int[0];
+    }
+
+    /** Gives the centres read by {@link #readCentres} the claims {@link #claims} saved, in order. */
+    static void readClaims(int[] flat, List<int[]> centres) {
+        if (flat == null) return;
+        for (int i = 0; i < flat.length && i < centres.size(); i++) {
+            int[] c = centres.get(i);
+            if (flat[i] != 0 && c.length >= 2) centres.set(i, new int[] { c[0], c[1], flat[i] });
+        }
+    }
+
     /** The whole-column keep-out boxes {x0, z0, x1, z1} of the list, flat ({@code Ko}). */
     static int[] boxes(List<int[]> l) {
         return boxes(l, 4);
@@ -973,6 +1273,13 @@ public final class BuildJob {
             at += size;
         }
         return out;
+    }
+
+    /** Reads whole-column boxes saved flat, four numbers each ({@code Op}, 0.15.0), into {@code into}. */
+    static void readFlat(int[] flat, List<int[]> into) {
+        if (flat == null) return;
+        for (int i = 0; i + 3 < flat.length; i += 4)
+            into.add(new int[] { flat[i], flat[i + 1], flat[i + 2], flat[i + 3] });
     }
 
     /**

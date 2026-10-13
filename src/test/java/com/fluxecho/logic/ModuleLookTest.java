@@ -242,9 +242,35 @@ class ModuleLookTest {
         assertFalse(ModuleLook.beeName(null));
     }
 
+    /**
+     * A socket's sample shows only on the sides turned to the camera (0.15.0): of two opposite sides one at most, none
+     * while the camera stands level with the recess's plane or behind it, where the column hides it.
+     */
+    @Test
+    void aSocketShowsOnTheSidesTurnedToTheCamera() {
+        int[][] sides = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } };
+        for (int i = 0; i < 200; i++) {
+            double a = i * 0.0314159 * 2, d = 0.4 + (i % 7) * 3;
+            double dx = d * Math.cos(a), dz = d * Math.sin(a);
+            int seen = 0;
+            for (int[] o : sides) if (ModuleLook.socketSideFacing(o[0], o[1], dx, dz)) seen++;
+            assertTrue(seen <= ModuleLook.SOCKET_SIDES_SEEN, "at most two sides at " + dx + "," + dz);
+            assertFalse(
+                ModuleLook.socketSideFacing(1, 0, dx, dz) && ModuleLook.socketSideFacing(-1, 0, dx, dz),
+                "never two opposite sides");
+        }
+        // straight in front of the east side, a little off and far away: the east side only
+        assertTrue(ModuleLook.socketSideFacing(1, 0, 5, 0.2));
+        assertFalse(ModuleLook.socketSideFacing(0, 1, 5, 0.2));
+        // level with the picture's plane or behind it: hidden by the column
+        assertFalse(ModuleLook.socketSideFacing(1, 0, 0.5 - ModuleLook.RECESS_IN, 3));
+        assertFalse(ModuleLook.socketSideFacing(1, 0, -4, 0));
+    }
+
     @Test
     void theSharedDrawingsQuadsAreCountedByTier() {
-        // the Eco Dome: 125 plinth faces, one plate, 36 sockets (CityRender's own sums)
+        // the Eco Dome: 125 plinth faces, one plate, 36 sockets, each seen from two sides at most (0.15.0: the column
+        // hides the far ones; CityRender's own sums)
         int faces = ModuleLook.course(B)
             .size();
         assertEquals(125, faces);
@@ -258,7 +284,7 @@ class ModuleLookTest {
             ModuleLook.baseQuads(B, EcoDomeShape.UNITS, ModuleLook.MID),
             "mid");
         assertEquals(
-            sweep + ModuleLook.PLATE_QUADS + 3 * faces + 36 * 4 * 3,
+            sweep + ModuleLook.PLATE_QUADS + 3 * faces + 36 * ModuleLook.SOCKET_SIDES_SEEN * 3,
             ModuleLook.baseQuads(B, EcoDomeShape.UNITS, ModuleLook.NEAR),
             "near");
         // a 25 x 25 pavilion's sweep: four pieces a side

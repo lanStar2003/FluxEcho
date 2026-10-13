@@ -41,7 +41,8 @@ class ResearchTreeTest {
 
     /**
      * What an operator's {@code /fluxecho research all} grants: every node the star map lets a team research in this
-     * version (0.12.0: phase II, the tidal well and the dome too), never the greyed placeholders of later phases.
+     * version (0.12.0: phase II, the tidal well and the dome too; 0.15.0: phase III, the outer ring, the Sophon Array
+     * and the Holo Sand Table), never the greyed placeholders of later phases.
      */
     @Test
     void onlyTheNodesOfThisVersionAreAvailable() {
@@ -50,6 +51,8 @@ class ResearchTreeTest {
         assertTrue(now.contains(ResearchTree.PHASE_2));
         assertTrue(now.contains(ResearchTree.TIDAL_WELL));
         assertTrue(now.contains(ResearchTree.DOME));
+        for (String id : new String[] { ResearchTree.PHASE_3, ResearchTree.OUTER_RING, ResearchTree.SOPHON_ARRAY,
+            ResearchTree.HOLO_TABLE }) assertTrue(now.contains(id), id + ": research all grants it");
         assertTrue(now.contains(ResearchTree.ANCHOR));
         assertTrue(now.contains(ResearchTree.LIBRARY), "the library's research opens the Echo Archive");
         for (ResearchTree.Node n : ResearchTree.all()) {
@@ -285,7 +288,7 @@ class ResearchTreeTest {
         assertNotNull(n);
         assertEquals(ResearchTree.Branch.ECHO, n.branch);
         assertEquals(1, n.phase);
-        assertEquals(2, ResearchTree.PHASE_NOW, "0.12.0 opens phase II");
+        assertEquals(3, ResearchTree.PHASE_NOW, "0.15.0 opens phase III");
         assertTrue(ResearchTree.availableNow(n));
         assertEquals(java.util.Arrays.asList(ResearchTree.INNER_RING, ResearchTree.ECHO_CRYSTAL), n.requires);
         assertEquals(16_000, n.compute);
@@ -512,6 +515,192 @@ class ResearchTreeTest {
         assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 2, 999));
         assertEquals(ResearchTree.DUAL_FOIL_VAULT, DualFoilVaultShape.KEY, "the module is its node");
         assertTrue(n.x < ResearchTree.WIDTH / 2, "on the left, the depths branch's side");
+    }
+
+    /** The names of a node's costs; an item is always a vanilla one. */
+    private static Set<String> costNames(ResearchTree.Node n) {
+        Set<String> names = new HashSet<>();
+        for (ResearchTree.Cost c : n.costs) {
+            names.add(c.name);
+            if (!c.ore) assertTrue(c.name.startsWith("minecraft:"), n.id + ": a vanilla item: " + c.name);
+        }
+        return names;
+    }
+
+    /** Every node a node needs, however far back. */
+    private static Set<String> needs(ResearchTree.Node n) {
+        Set<String> out = new HashSet<>();
+        java.util.ArrayDeque<String> todo = new java.util.ArrayDeque<>(n.requires);
+        while (!todo.isEmpty()) {
+            String id = todo.pop();
+            if (out.add(id)) todo.addAll(ResearchTree.get(id).requires);
+        }
+        return out;
+    }
+
+    /**
+     * Phase III made real (0.15.0, CITY.md §3, §5.2 and Appendix B): its node continues the frame's spine over phase
+     * II, is researched on a nexus of phase II and opens phase III, with the real IV costs the contract names:
+     * tungstensteel hull plates, IV circuits, phase alloy and the phase's own material, memory filament.
+     */
+    @Test
+    void phaseThree() {
+        ResearchTree.Node p3 = ResearchTree.get(ResearchTree.PHASE_3), p2 = ResearchTree.get(ResearchTree.PHASE_2);
+        assertNotNull(p3);
+        assertEquals(ResearchTree.PHASE_3, ResearchTree.phaseResearch(3));
+        assertEquals(3, ResearchTree.phaseOf(ResearchTree.PHASE_3));
+        assertEquals(ResearchTree.Branch.FRAME, p3.branch);
+        assertEquals(3, p3.phase);
+        assertEquals(2, p3.nexusPhase(), "researched at phase II");
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_2), p3.requires);
+        assertTrue(p3.compute > p2.compute, "a later phase takes more compute");
+        assertEquals(
+            new HashSet<>(
+                java.util.Arrays.asList("plateTungstenSteel", "circuitIV", "ingotPhaseAlloy", "wireMemoryFilament")),
+            costNames(p3));
+        Set<String> done = new HashSet<>(java.util.Arrays.asList(ResearchTree.ANCHOR, ResearchTree.INNER_RING));
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(p3, done, 2, 999), "phase II first");
+        done.add(ResearchTree.PHASE_2);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(p3, done, 1, 999), "a nexus of phase II");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(p3, done, 2, 999));
+        // the spine: the frame's phases climb the middle of the map, phase III straight over phase II
+        assertEquals(p2.x, p3.x);
+        assertTrue(p3.y < p2.y, "over phase II");
+    }
+
+    /**
+     * The nexus grows to phase III (0.15.0): {@code grow:3} is offered to a formed nexus of phase II whose teams have
+     * {@code phase_3}, one phase at a time and never past the phase this version reaches; the nexus may stand as phase
+     * III only with both phase nodes done.
+     */
+    @Test
+    void theNexusGrowsToPhaseThree() {
+        Set<String> two = new HashSet<>(java.util.Arrays.asList(ResearchTree.PHASE_2));
+        Set<String> three = new HashSet<>(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.PHASE_3));
+        Set<String> gap = new HashSet<>(java.util.Arrays.asList(ResearchTree.PHASE_3));
+        assertEquals(2, ResearchTree.nextGrowth(1, two::contains), "grow:2 as in 0.12.0");
+        assertEquals(2, ResearchTree.nextGrowth(1, three::contains), "one phase at a time");
+        assertEquals(0, ResearchTree.nextGrowth(1, id -> false));
+        assertEquals(0, ResearchTree.nextGrowth(2, two::contains), "not without phase III's research");
+        assertEquals(3, ResearchTree.nextGrowth(2, three::contains), "grow:3");
+        assertEquals(0, ResearchTree.nextGrowth(3, id -> true), "phase IV waits for a later version");
+        assertEquals(0, ResearchTree.nextGrowth(0, id -> true));
+        assertEquals(1, ResearchTree.researchedPhase(id -> false));
+        assertEquals(2, ResearchTree.researchedPhase(two::contains));
+        assertEquals(3, ResearchTree.researchedPhase(three::contains));
+        assertEquals(1, ResearchTree.researchedPhase(gap::contains), "phase III's node alone opens nothing");
+        assertEquals(ResearchTree.PHASE_NOW, ResearchTree.researchedPhase(id -> true), "never past this version");
+    }
+
+    /**
+     * The outer ring's research (0.15.0, CITY.md §2.3 and Appendix B): a frame node after phase III, researched on a
+     * nexus of phase III, with the phase's IV costs and memory filament; it tops the frame's spine.
+     */
+    @Test
+    void theOuterRing() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.OUTER_RING), p3 = ResearchTree.get(ResearchTree.PHASE_3);
+        assertNotNull(n);
+        assertEquals("outer_ring", n.id);
+        assertEquals(ResearchTree.Branch.FRAME, n.branch);
+        assertEquals(3, n.phase);
+        assertEquals(3, n.nexusPhase());
+        assertEquals(0, ResearchTree.phaseOf(n.id), "it opens no phase");
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_3), n.requires);
+        assertTrue(n.compute > 0);
+        Set<String> names = costNames(n);
+        assertTrue(
+            names.containsAll(
+                java.util.Arrays.asList("plateTungstenSteel", "circuitIV", "ingotPhaseAlloy", "wireMemoryFilament")),
+            names.toString());
+        Set<String> done = new HashSet<>(
+            java.util.Arrays.asList(ResearchTree.ANCHOR, ResearchTree.INNER_RING, ResearchTree.PHASE_2));
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 3, 999), "phase III first");
+        done.add(ResearchTree.PHASE_3);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 2, 999), "a nexus of phase III");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 3, 999));
+        assertEquals(p3.x, n.x, "on the frame's spine");
+        assertTrue(n.y < p3.y, "over phase III");
+    }
+
+    /**
+     * The two outer diagonal buildings' research (0.15.0, CITY.md §4.10, §4.11 and Appendix B): compute nodes after the
+     * outer ring (the Sophon Array also after compute calibration), researched on a nexus of phase III, with the
+     * phase's IV costs, memory filament and one themed vanilla item each (comparators, maps); each node is its
+     * module's key, and both stand on the compute branch's side of the map.
+     */
+    @Test
+    void theSophonArrayAndTheHoloSandTable() {
+        ResearchTree.Node sophon = ResearchTree.get(ResearchTree.SOPHON_ARRAY),
+            holo = ResearchTree.get(ResearchTree.HOLO_TABLE);
+        assertNotNull(sophon);
+        assertNotNull(holo);
+        assertEquals("sophon_array", sophon.id);
+        assertEquals("holo_table", holo.id);
+        assertEquals(java.util.Arrays.asList(ResearchTree.OUTER_RING, ResearchTree.COMPUTE_1), sophon.requires);
+        assertEquals(java.util.Arrays.asList(ResearchTree.OUTER_RING), holo.requires);
+        String[] themed = { "minecraft:comparator", "minecraft:map" };
+        ResearchTree.Node[] both = { sophon, holo };
+        for (int i = 0; i < both.length; i++) {
+            ResearchTree.Node n = both[i];
+            assertEquals(ResearchTree.Branch.COMPUTE, n.branch, n.id);
+            assertEquals(3, n.phase, n.id);
+            assertEquals(3, n.nexusPhase(), n.id);
+            assertEquals(0, ResearchTree.phaseOf(n.id), "it opens no phase");
+            assertTrue(ResearchTree.availableNow(n), n.id);
+            assertTrue(n.compute > 0, n.id);
+            Set<String> names = costNames(n);
+            assertTrue(
+                names.containsAll(
+                    java.util.Arrays
+                        .asList("plateTungstenSteel", "circuitIV", "ingotPhaseAlloy", "wireMemoryFilament", themed[i])),
+                n.id + ": " + names);
+            assertTrue(n.x > ResearchTree.WIDTH / 2, n.id + ": on the right, the compute branch's side");
+            Set<String> done = new HashSet<>(
+                java.util.Arrays.asList(
+                    ResearchTree.ANCHOR,
+                    ResearchTree.INNER_RING,
+                    ResearchTree.PHASE_2,
+                    ResearchTree.PHASE_3,
+                    ResearchTree.COMPUTE_1));
+            assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 3, 999), "the outer ring first");
+            done.add(ResearchTree.OUTER_RING);
+            assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 2, 999), "a nexus of phase III");
+            assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 3, 999));
+        }
+        Set<String> uncalibrated = new HashSet<>(
+            java.util.Arrays.asList(
+                ResearchTree.ANCHOR,
+                ResearchTree.INNER_RING,
+                ResearchTree.PHASE_2,
+                ResearchTree.PHASE_3,
+                ResearchTree.OUTER_RING));
+        assertEquals(
+            ResearchTree.Block.REQUIRES,
+            ResearchTree.check(sophon, uncalibrated, 3, 999),
+            "the Sophon Array also needs compute calibration");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(holo, uncalibrated, 3, 999));
+    }
+
+    /**
+     * Memory filament (0.15.0) is coated at the manifestation table once phase II is researched
+     * ({@code Manifests}, {@code ManifestsTest}), so every node that takes it needs phase II first and can be paid for
+     * when it opens; phase II itself never takes it, and only nodes of phase III and later do (an IV material).
+     */
+    @Test
+    void memoryFilamentIsMadeBeforeItIsAskedFor() {
+        int asked = 0;
+        for (ResearchTree.Node n : ResearchTree.all()) {
+            boolean filament = false;
+            for (ResearchTree.Cost c : n.costs) filament |= c.ore && "wireMemoryFilament".equals(c.name);
+            if (!filament) continue;
+            asked++;
+            assertTrue(needs(n).contains(ResearchTree.PHASE_2), n.id + " takes memory filament before phase II");
+            assertTrue(n.phase >= 3, n.id + ": an IV material");
+        }
+        assertEquals(4, asked, "phase III, the outer ring and both buildings take it");
+        assertFalse(
+            costNames(ResearchTree.get(ResearchTree.PHASE_2)).contains("wireMemoryFilament"),
+            "phase II opens it");
     }
 
     @Test

@@ -31,6 +31,7 @@ import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.logic.SiteFamily;
@@ -494,6 +495,15 @@ public final class NexusRender {
                 Shapes.square(sx, base + 0.06, sz, 10.5, 0.12, SEAM, 0.5f);
             }
         }
+        // the outer diagonals' buildings (0.15.0): their bridges run along the diagonal to the inner chamfer portal,
+        // from the pavilion's outer portal when one stands on the inner diagonal before it (not through its hall)
+        if (active && !siteBridgesOff) for (int i = 0; i < OuterRing.DIAG_SITES.length; i++) {
+            if ((n.clientOuterDocked & 1 << i) == 0) continue;
+            int k = OuterRing.DIAG_SITES[i];
+            int col = n.clientOuterColor[i] == 0 ? CYAN : n.clientOuterColor[i];
+            double from = n.clientCampus.pavilionBuilt(k - 10) ? (OuterRing.ALLEE_FROM - 0.5) / Math.sqrt(2) : 5.6;
+            siteBridge(cx, base, cz, k, fx, fz, from, CampusPlan.siteDoor(k, true), t, col, p);
+        }
     }
 
     /**
@@ -562,10 +572,16 @@ public final class NexusRender {
      */
     private static void siteBridge(double cx, double base, double cz, int k, int fx, int fz, double door, double t,
         int col, float p) {
+        siteBridge(cx, base, cz, k, fx, fz, 5.6, door, t, col, p);
+    }
+
+    /** {@link #siteBridge} starting {@code from} blocks out along the site's axis (0.15.0: past a pavilion). */
+    private static void siteBridge(double cx, double base, double cz, int k, int fx, int fz, double from, double door,
+        double t, int col, float p) {
         int[] ax = CampusPlan.siteAxis(k);
         int[] w = CampusPlan.toWorld(ax[0], ax[1], fx, fz);
         double len = Math.hypot(w[0], w[1]), ux = w[0] / len, uz = w[1] / len;
-        double x0 = cx + ux * 5.6, z0 = cz + uz * 5.6, x1 = cx + ux * door, z1 = cz + uz * door;
+        double x0 = cx + ux * from, z0 = cz + uz * from, x1 = cx + ux * door, z1 = cz + uz * door;
         path(x0, base + 0.15, z0, x1, z1, 0.7, col, 0.35f * p);
         path(x0, base + 0.16, z0, x1, z1, 0.18, WHITE, 0.4f * p);
         for (int i = 0; i < 6; i++) {

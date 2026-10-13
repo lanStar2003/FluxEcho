@@ -13,6 +13,7 @@ import net.minecraft.world.WorldSavedData;
 import net.minecraftforge.common.DimensionManager;
 
 import com.fluxecho.logic.Blueprint;
+import com.fluxecho.logic.CampusSplit;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.nexus.TileNexus;
 
@@ -30,12 +31,17 @@ import com.fluxecho.nexus.TileNexus;
  * <p>
  * It also remembers every cell where a campus job placed its free supply port ({@link #portGifted}): the gift is given
  * once per spot, so breaking a nexus and placing it again on the same ground does not hand out another port.
+ * <p>
+ * Since 0.15.0 each campus also keeps the outer diagonals it has claimed ({@link #setClaims}: a building stands there
+ * or a job is queued for one), a bit per world quadrant ({@link CampusSplit#quadrant}), saved apart ({@code Q}) so an
+ * entry still reads as five numbers: the split gives a claimed site wholly to its campus ({@link CampusSplit}), first
+ * come, first served, and every campus sees the same claims.
  */
 public class CampusRegistry extends WorldSavedData {
 
     static final String NAME = "fluxecho_campus";
 
-    /** {dim, x, y, z, radius} per campus. */
+    /** {dim, x, y, z, radius, claims} per campus. */
     private final List<int[]> entries = new ArrayList<>();
     /** {dim, x, y, z} of every free supply port placed. */
     private final List<int[]> ports = new ArrayList<>();
@@ -56,14 +62,41 @@ public class CampusRegistry extends WorldSavedData {
         return d;
     }
 
-    /** Records (or updates) the campus centred at {@code (x, y, z)} in the world's dimension. */
+    /**
+     * Records (or updates) the campus centred at {@code (x, y, z)} in the world's dimension; the outer diagonals it
+     * claimed are kept.
+     */
     public static void add(World w, int x, int y, int z, int radius) {
         if (w == null || w.isRemote) return;
         CampusRegistry r = get();
         int dim = w.provider.dimensionId;
+        int claims = 0;
+        for (int[] e : r.entries) if (e[0] == dim && e[1] == x && e[2] == y && e[3] == z) claims = e[5];
         r.drop(dim, x, y, z);
-        r.entries.add(new int[] { dim, x, y, z, radius });
+        r.entries.add(new int[] { dim, x, y, z, radius, claims });
         r.markDirty();
+    }
+
+    /**
+     * Sets the outer diagonals the campus centred at {@code (x, y, z)} has claimed (0.15.0, a bit per world quadrant,
+     * {@link CampusSplit#quadrant}); nothing when it is not recorded.
+     */
+    public static void setClaims(World w, int x, int y, int z, int claims) {
+        if (w == null || w.isRemote) return;
+        CampusRegistry r = get();
+        int dim = w.provider.dimensionId;
+        for (int[] e : r.entries) if (e[0] == dim && e[1] == x && e[2] == y && e[3] == z && e[5] != (claims & 15)) {
+            e[5] = claims & 15;
+            r.markDirty();
+        }
+    }
+
+    /** The outer diagonals the campus centred at {@code (x, y, z)} has claimed (0.15.0); 0 when it is not recorded. */
+    public static int claimsOf(World w, int x, int y, int z) {
+        if (w == null || w.isRemote) return 0;
+        int dim = w.provider.dimensionId;
+        for (int[] e : get().entries) if (e[0] == dim && e[1] == x && e[2] == y && e[3] == z) return e[5];
+        return 0;
     }
 
     /** Forgets the campus centred at {@code (x, y, z)}. */
@@ -81,28 +114,50 @@ public class CampusRegistry extends WorldSavedData {
         return false;
     }
 
-    /** The centres {x, y, z} of every campus recorded in the world's dimension (copies). */
+    /**
+     * The centres {x, y, z, claims} of every campus recorded in the world's dimension (copies), with the outer
+     * diagonals each has claimed (0.15.0).
+     */
     public static List<int[]> centres(World w) {
         List<int[]> out = new ArrayList<>();
         if (w == null || w.isRemote) return out;
         int dim = w.provider.dimensionId;
-        for (int[] e : get().entries) if (e[0] == dim) out.add(new int[] { e[1], e[2], e[3] });
+        for (int[] e : get().entries) if (e[0] == dim) out.add(new int[] { e[1], e[2], e[3], e[5] });
         return out;
     }
 
     /**
      * The centre {x, y, z} of a campus whose area (Chebyshev {@code radius} round its centre) holds the column
      * {@code (x, z)}, other than the one centred at {@code exclude} (the asking nexus; null for none); null when there
-     * is none.
+     * is none. Since 0.15.0 a campus whose outer ring was begun keeps the outer disc's radius, and against an asking
+     * nexus it holds the part of it beyond its inner square only where the split gives the column to it
+     * ({@link CampusSplit#owns}, with the outer diagonals both have claimed): two campuses whose outer discs meet share
+     * that ground instead of both guarding it.
      */
     public static int[] ownerAt(World w, int x, int z, int[] exclude) {
         if (w == null || w.isRemote) return null;
         int dim = w.provider.dimensionId;
+        boolean asked = exclude != null && exclude.length >= 3;
+        int askerClaims = 0;
+        if (asked) for (int[] e : get().entries) if (e[0] == dim && same(e, exclude)) askerClaims = e[5];
         for (int[] e : get().entries) {
             if (e[0] != dim || same(e, exclude)) continue;
-            if (Math.max(Math.abs(x - e[1]), Math.abs(z - e[3])) <= e[4]) return new int[] { e[1], e[2], e[3] };
+            boolean owns = asked ? CampusSplit.owns(x, z, e[1], e[3], e[4], e[5], exclude[0], exclude[2], askerClaims)
+                : Math.max(Math.abs(x - e[1]), Math.abs(z - e[3])) <= e[4];
+            if (owns) return new int[] { e[1], e[2], e[3] };
         }
         return null;
+    }
+
+    /**
+     * The radius the registry keeps for the campus centred at {@code (x, y, z)} (0.15.0: the inner disc's, or the
+     * outer disc's once its outer ring was begun); 0 when it is not recorded.
+     */
+    public static int radiusOf(World w, int x, int y, int z) {
+        if (w == null || w.isRemote) return 0;
+        int dim = w.provider.dimensionId;
+        for (int[] e : get().entries) if (e[0] == dim && e[1] == x && e[2] == y && e[3] == z) return e[4];
+        return 0;
     }
 
     /**
@@ -196,9 +251,10 @@ public class CampusRegistry extends WorldSavedData {
         entries.clear();
         NBTTagList l = t.getTagList("Campuses", 10);
         for (int i = 0; i < l.tagCount(); i++) {
-            int[] e = l.getCompoundTagAt(i)
-                .getIntArray("E");
-            if (e.length == 5) entries.add(e);
+            NBTTagCompound c = l.getCompoundTagAt(i);
+            int[] e = c.getIntArray("E");
+            // the claims (0.15.0) apart, so an entry still reads as five numbers
+            if (e.length == 5) entries.add(new int[] { e[0], e[1], e[2], e[3], e[4], c.getInteger("Q") & 15 });
         }
         ports.clear();
         int[] p = t.getIntArray("Ports");
@@ -210,7 +266,8 @@ public class CampusRegistry extends WorldSavedData {
         NBTTagList l = new NBTTagList();
         for (int[] e : entries) {
             NBTTagCompound c = new NBTTagCompound();
-            c.setIntArray("E", e.clone());
+            c.setIntArray("E", Arrays.copyOf(e, 5));
+            if (e[5] != 0) c.setInteger("Q", e[5]);
             l.appendTag(c);
         }
         t.setTag("Campuses", l);

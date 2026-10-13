@@ -28,6 +28,9 @@ import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.GhostCells;
+import com.fluxecho.logic.Mix;
+import com.fluxecho.logic.OuterLook;
+import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.XRay;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileMultiblock;
@@ -67,6 +70,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * the whole plan's and the current stage's), again when the stage changes and at most every {@value #XRAY_TICKS}
  * ticks while cells get built, for an x-ray drawn through the ground. One that builds high in the air (the zenith's
  * pod, {@link XRay#hangs}) gets its shadow on the ground and the plumb lines down to it, worked out once.
+ * <p>
+ * The outer establish (0.15.0) gets the outline of the ground its neighbours keep ({@link OuterLook#trimOutline}: the
+ * part of the outer ring the split with the neighbouring campuses leaves to them), worked out once for its plan, and
+ * its completion ring spreads from the nexus out to the outer disc's edge.
  */
 @SideOnly(Side.CLIENT)
 public final class BuildScan {
@@ -170,9 +177,16 @@ public final class BuildScan {
          */
         public final int[] edge;
         /**
+         * The outline of the outer establish's ground its neighbouring campuses keep (0.15.0,
+         * {@link OuterLook#trimOutline}): segments {x0, z0, x1, z1} between world block corners; empty for every
+         * other plan and without neighbours.
+         */
+        public final int[] trim;
+        /**
          * Where the completion ring spreads from (world x, z) and how far: the nexus centre and the promenade's outer
-         * edge for the establish and forum plans (their box reaches out along the gate), the middle of the box and
-         * half its longer side for a module's.
+         * edge for the establish and forum plans (their box reaches out along the gate), the nexus centre and the
+         * outer disc's edge for the outer establish (0.15.0), the middle of the box and half its longer side for a
+         * module's.
          */
         public final double ringX, ringZ, ringR;
         /** Whether the plan builds under the ground (0.12.0): its projection is drawn through the terrain. */
@@ -220,6 +234,7 @@ public final class BuildScan {
             this.bounds = t.bounds.all;
             this.stageBounds = t.bounds.stages;
             this.edge = t.edge;
+            this.trim = t.trim;
             this.ringX = t.ringX;
             this.ringZ = t.ringZ;
             this.ringR = t.ringR;
@@ -269,7 +284,7 @@ public final class BuildScan {
         final GhostCells.Cells cells;
         final GhostCells.Index index;
         final GhostCells.Bounds bounds;
-        final int[] edge;
+        final int[] edge, trim;
         final int ox, oy, oz;
         final double ringX, ringZ, ringR;
         /** An underground plan's and a hanging plan's extras (0.12.0), the latter worked out once. */
@@ -300,7 +315,8 @@ public final class BuildScan {
         int rev;
         volatile Ghost ghost;
 
-        Track(BuildClient.Key key, BuildPlan.Plan plan, String planKey, int[] centre) {
+        Track(BuildClient.Key key, BuildPlan.Plan plan, String planKey, int[] centre, TileNexus n,
+            List<int[]> neighbours) {
             this.key = key;
             this.plan = plan;
             this.planKey = planKey;
@@ -317,8 +333,16 @@ public final class BuildScan {
             this.ox = centre[0];
             this.oy = centre[1];
             this.oz = centre[2];
+            boolean outer = BuildPlan.OUTER.equals(plan.key);
+            // the outer establish leaves its neighbours' side of the split: that ground outlined, worked out once
+            this.trim = outer ? trimOf(n, ox, oz, neighbours) : NO_INTS;
             int[] b = bounds.all;
-            if (BuildPlan.ESTABLISH.equals(plan.key) || BuildPlan.FORUM.equals(plan.key) || b == null) {
+            if (outer) {
+                // the outer ring's ground reaches out to the outer disc's edge round the nexus
+                ringX = ox + 0.5;
+                ringZ = oz + 0.5;
+                ringR = OuterRing.OUTER_R + 0.5;
+            } else if (BuildPlan.ESTABLISH.equals(plan.key) || BuildPlan.FORUM.equals(plan.key) || b == null) {
                 // these pave the forum and the promenade round the nexus; the gate strip pulls their box forward
                 ringX = ox + 0.5;
                 ringZ = oz + 0.5;
@@ -332,6 +356,26 @@ public final class BuildScan {
             hangY = XRay.hangs(cells, oy);
             shadow = XRay.shadow(cells, hangY);
             plumbs = XRay.plumbs(shadow);
+        }
+    }
+
+    /**
+     * The outline of the outer establish's ground its neighbouring campuses keep ({@link OuterLook#trimOutline}), or
+     * nothing without neighbours; should working it out fail, it is logged and the projection goes on without it.
+     */
+    private static int[] trimOf(TileNexus n, int cx, int cz, List<int[]> neighbours) {
+        if (neighbours == null || neighbours.isEmpty()) return NO_INTS;
+        try {
+            return OuterLook.trimOutline(
+                new CampusPlan(Mix.seed(n.xCoord, n.yCoord, n.zCoord)),
+                cx,
+                cz,
+                n.front().offsetX,
+                n.front().offsetZ,
+                neighbours);
+        } catch (RuntimeException e) {
+            FluxEcho.LOG.warn("Could not outline the outer ring's ground left to the neighbours of {}", n, e);
+            return NO_INTS;
         }
     }
 
@@ -501,7 +545,7 @@ public final class BuildScan {
             BuildClient.Key key = new BuildClient.Key(dim, n.xCoord, n.yCoord, n.zCoord);
             Track t = TRACKS.get(key);
             if (t == null || t.plan != plan) {
-                t = new Track(key, plan, v.planKey, c);
+                t = new Track(key, plan, v.planKey, c, n, v.neighbours);
                 TRACKS.put(key, t);
             }
             seen.add(key);

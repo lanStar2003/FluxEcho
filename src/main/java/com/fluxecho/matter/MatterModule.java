@@ -6,6 +6,7 @@ import net.minecraftforge.oredict.OreDictionary;
 
 import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.GTValues;
@@ -21,7 +22,9 @@ import gregtech.api.util.GTRecipeConstants;
  * flux crystal, grown from it in GT's autoclave; echo crystal, which only the Flux Nexus makes; and with phase II
  * (0.12.0, CITY.md §5.1, in their minimal form: one recipe each, used by the phase's research and module cores) phase
  * alloy, smelted in GT's electric blast furnace, and resonant glass, which the nexus manifests from it
- * ({@code nexus.Manifests}). Each is in the ore dictionary, so recipes and other machines can take them by name.
+ * ({@code nexus.Manifests}); with phase III (0.15.0, minimal as well) memory filament, phase alloy drawn into a fine
+ * wire in GT's wiremill and coated with an echo crystal at the manifestation table. Each is in the ore dictionary, so
+ * recipes and other machines can take them by name.
  */
 public final class MatterModule {
 
@@ -31,7 +34,18 @@ public final class MatterModule {
     /** Phase alloy in the blast furnace: EV power, the coil heat it needs (titanium's and a little more), its time. */
     public static final int PHASE_ALLOY_EUT = 1920, PHASE_ALLOY_HEAT = 2700, PHASE_ALLOY_TICKS = 600;
 
-    public static Item grit, crystal, echoCrystal, phaseAlloy, resonantGlass;
+    /**
+     * The phase-III material's ore names (0.15.0, BLUEPRINT 3.6): memory filament, and the bare phase alloy wire the
+     * wiremill draws for it (GT's own name for a fine wire of a material).
+     */
+    public static final String MEMORY_FILAMENT = "wireMemoryFilament", PHASE_ALLOY_WIRE = "wireFinePhaseAlloy";
+    /**
+     * Phase alloy in the wiremill (0.15.0): IV power, its time, and the wires an ingot gives (GT's wiremill draws eight
+     * fine wires from an ingot); by hand, if GT's wiremill cannot take the recipe, a wire cutter gets two.
+     */
+    public static final int WIRE_EUT = 7680, WIRE_TICKS = 200, WIRES_PER_INGOT = 8, WIRES_BY_HAND = 2;
+
+    public static Item grit, crystal, echoCrystal, phaseAlloy, resonantGlass, phaseAlloyWire, memoryFilament;
 
     private MatterModule() {}
 
@@ -52,14 +66,37 @@ public final class MatterModule {
         OreDictionary.registerOre(ECHO_CRYSTAL, new ItemStack(echoCrystal, 1, 0));
         OreDictionary.registerOre(PHASE_ALLOY, phaseAlloy);
         OreDictionary.registerOre(RESONANT_GLASS, resonantGlass);
+        // memory filament (0.15.0) and the bare wire it is coated from
+        phaseAlloyWire = new ItemMatter("phase_alloy_wire");
+        GameRegistry.registerItem(phaseAlloyWire, "phase_alloy_wire");
+        memoryFilament = new ItemMatter("memory_filament");
+        GameRegistry.registerItem(memoryFilament, "memory_filament");
+        OreDictionary.registerOre(PHASE_ALLOY_WIRE, phaseAlloyWire);
+        OreDictionary.registerOre(MEMORY_FILAMENT, memoryFilament);
     }
 
     /**
      * Flux crystal: grit, ender pearl dust and distilled water in GT's autoclave (MV). Phase alloy (0.12.0): two flux
-     * crystals, titanium dust and an echo crystal (any, whatever it holds) in GT's electric blast furnace at EV.
+     * crystals, titanium dust and an echo crystal (any, whatever it holds) in GT's electric blast furnace at EV. Phase
+     * alloy wire (0.15.0): an ingot drawn into eight in GT's wiremill at IV, the first half of memory filament's chain;
+     * the nexus coats it with an echo crystal ({@code nexus.Manifests}).
      */
     public static void postInit() {
         if (!Config.defaultRecipes) return;
+        try {
+            EchoRecipes.wiremill(
+                "phase alloy wire",
+                phaseAlloy(1),
+                phaseAlloyWire(WIRES_PER_INGOT),
+                WIRE_TICKS,
+                WIRE_EUT,
+                phaseAlloyWire(WIRES_BY_HAND),
+                "Ix",
+                'I',
+                PHASE_ALLOY);
+        } catch (Throwable t) {
+            FluxEcho.LOG.error("Failed to register the phase alloy wire recipe", t);
+        }
         try {
             GTValues.RA.stdBuilder()
                 .itemInputs(
@@ -103,5 +140,13 @@ public final class MatterModule {
 
     public static ItemStack resonantGlass(int n) {
         return new ItemStack(resonantGlass, n);
+    }
+
+    public static ItemStack phaseAlloyWire(int n) {
+        return new ItemStack(phaseAlloyWire, n);
+    }
+
+    public static ItemStack memoryFilament(int n) {
+        return new ItemStack(memoryFilament, n);
     }
 }

@@ -21,11 +21,24 @@ import java.util.function.Predicate;
  * it be built, no member cancelled it lately, and one of its candidate sites ({@link #candidates}) is free. Kinds are
  * looked at in their order (registration order); a kind offered takes its site, so the kinds after it look past it.
  * <p>
- * A kind that is not offered says why (a lang key under {@code fluxecho.}): {@link #PHASE}, the campus's height or
- * depth ({@link Kind#noRoom}), {@link #OFF}, {@link #DECLINED}, {@link #LEGACY_HALL} when a docked 0.9.2 library hall
- * is all that stands between it and a site (the campus then offers to retire the hall), {@link #NO_SITE} when anything
- * else does. What stands on a site is the campus's to say ({@link Sites}); {@link #blocker} works it out from the
- * boxes the campus knows.
+ * A kind that is not offered says why (a lang key under {@code fluxecho.}): {@link #PHASE}, {@link #GROUND} when its
+ * sites wait only for the campus job that lays their ground (0.15.0: the outer establish; {@link #GROUND_DECLINED}
+ * while that job was cancelled lately, {@link #GROUND_WAITS} while it waits for the jobs before it), the campus's
+ * height or depth ({@link Kind#noRoom}), {@link #OFF}, {@link #DECLINED}, {@link #LEGACY_HALL} when a docked 0.9.2
+ * library hall is all that stands between it and a site (the campus then offers to retire the hall), {@link #TRIMMED}
+ * when every site of its that is open reaches into ground a neighbouring campus holds for good (0.15.0: its inner
+ * square, or an outer diagonal it took first), {@link #NO_SITE} when anything else stands in the way. What stands on a
+ * site is the campus's to say ({@link Sites}); {@link #blocker} and {@link #siteBlocker} work it out from the boxes
+ * the campus knows.
+ * <p>
+ * Of a kind's free sites the one taken first is the one that shares no ground with a neighbouring campus's outer
+ * diagonal it has not claimed ({@link Sites#contested}), so a campus between neighbours placed at the old spacing does
+ * not take the ground one of them may need while it has ground of its own; then the one that shares the least, then
+ * the one the split takes the fewest cells of ({@link Sites#lost}), then the first in its order. So the kind adapts
+ * instead of refusing (0.15.0, the standing rule that every researched building can be built): when no site of its is
+ * whole, it is offered on one the split takes cells of, and the campus then claims that site, so the split gives the
+ * whole of it to this campus from then on ({@link CampusSplit}). Every site of the inner city shares and loses
+ * nothing, so there the first free site in order is taken, as before 0.15.0.
  */
 public final class CityOffer {
 
@@ -41,6 +54,28 @@ public final class CityOffer {
     public static final String LEGACY_HALL = WHY + "legacy_hall";
     /** Something else stands on every site it may take (a module of another kind, a stray core, another team's). */
     public static final String NO_SITE = WHY + "no_site";
+    /**
+     * Its sites are open at the phase, but the campus job that lays their ground has not run yet (0.15.0: the outer
+     * establish, {@link SiteFamily#ground}), which lays it once it is offered and started. The text gives no order:
+     * the job may not be offered yet (the nexus does not stand, the campus has not looked since the research).
+     */
+    public static final String GROUND = WHY + "ground";
+    /**
+     * As {@link #GROUND}, but a member cancelled the job that lays the ground lately (0.15.0): the campus offers it
+     * again a day after, so there is no job to press 开始 on until then.
+     */
+    public static final String GROUND_DECLINED = WHY + "ground_declined";
+    /**
+     * As {@link #GROUND}, but the job that lays the ground is not offered yet because jobs before it are still to run
+     * (0.15.0: the establish, the forum, a refresh, a repair of the nexus, or a retire job of a 0.9.2 hall), so there
+     * is no job of the ground to press 开始 on until they are done.
+     */
+    public static final String GROUND_WAITS = WHY + "ground_waits";
+    /**
+     * Every site of its open at the phase reaches into ground a neighbouring campus holds for good (0.15.0,
+     * {@link CampusSplit}: its inner square, or an outer diagonal it took first): no site is left to adapt to.
+     */
+    public static final String TRIMMED = WHY + "trimmed";
 
     /** What {@link Sites#blocker} says of a free site, and of a site something other than a 0.9.2 hall stands on. */
     public static final int FREE = -1, OTHER = -2;
@@ -95,6 +130,37 @@ public final class CityOffer {
          * 7) of the docked 0.9.2 library hall that alone stands in the way.
          */
         int blocker(Kind kind, int site);
+
+        /**
+         * Whether the whole of the site's ground is the campus's own (0.15.0): of two free sites that share as much
+         * ground with the neighbours' outer diagonals ({@link #contested}), an outer site that reaches across the
+         * split into a neighbouring campus's ground ({@link CampusSplit}) is taken after a whole one. Every site is
+         * whole unless the campus says otherwise.
+         */
+        default boolean whole(Kind kind, int site) {
+            return true;
+        }
+
+        /**
+         * How much of the site's ground the split gives to neighbouring campuses (0.15.0,
+         * {@link CampusSplit#siteLoss}): 0 for a whole site, the cells it would take from them for a site the campus
+         * may still claim, -1 for one it may not (a neighbour holds part of it for good). By default 0 for a
+         * {@link #whole} site and -1 for any other.
+         */
+        default int lost(Kind kind, int site) {
+            return whole(kind, site) ? 0 : -1;
+        }
+
+        /**
+         * How many outer diagonals of neighbouring campuses, not claimed yet, the site shares ground with (0.15.0,
+         * {@link CampusSplit#contested}): of the free sites a kind may take, one that shares ground with none is taken
+         * first, so a campus does not take the site a neighbour may need when it has one no neighbour can use. A site
+         * the split takes cells of is always contested (a cell is lost only on a neighbour's outer diagonal). 0 by
+         * default.
+         */
+        default int contested(Kind kind, int site) {
+            return 0;
+        }
     }
 
     /** One kind and where it stands now. */
@@ -166,6 +232,17 @@ public final class CityOffer {
      */
     public static List<Offer> look(List<Kind> kinds, int phase, Predicate<String> researched, Set<String> standing,
         Sites sites, Map<String, Long> declined, long now, Predicate<String> groundLaid) {
+        return look(kinds, phase, researched, standing, sites, declined, now, groundLaid, null);
+    }
+
+    /**
+     * {@link #look(List, int, Predicate, Set, Sites, Map, long, Predicate)}, told as well whether the job that lays a
+     * family's ground waits for the jobs before it ({@code groundWaits}, asked of {@link SiteFamily#ground}; null for
+     * never): a kind whose sites wait for that ground then says {@link #GROUND_WAITS}.
+     */
+    public static List<Offer> look(List<Kind> kinds, int phase, Predicate<String> researched, Set<String> standing,
+        Sites sites, Map<String, Long> declined, long now, Predicate<String> groundLaid,
+        Predicate<String> groundWaits) {
         List<Offer> out = new ArrayList<>();
         Set<Integer> claimed = new HashSet<>();
         for (Kind k : kinds) {
@@ -177,26 +254,42 @@ public final class CityOffer {
                 continue;
             }
             String why = null;
-            if (phase < k.researchPhase || open.length == 0) why = PHASE;
+            if (phase < k.researchPhase || candidates(k, phase, g -> true).length == 0) why = PHASE;
+            else if (open.length == 0) why = groundReason(k.family.ground(), declined, now, groundWaits);
             else if (k.noRoom != null) why = k.noRoom;
             else if (!k.enabled) why = OFF;
             else if (declined(declined, k.key, now)) why = DECLINED;
             if (why != null) {
-                // where it would go once nothing stops it (any of its sites, when the phase holds it back)
-                int s = firstFree(k, PHASE.equals(why) ? allSites(k) : open, claimed, sites);
+                // where it would go once nothing stops it: any of its sites when the phase or the ground holds it
+                boolean any = PHASE.equals(why) || GROUND.equals(why)
+                    || GROUND_DECLINED.equals(why)
+                    || GROUND_WAITS.equals(why);
+                int s = firstFree(k, any ? allSites(k) : open, claimed, sites);
                 out.add(new Offer(k, s, true, why, -1));
                 continue;
             }
-            int hallSite = -1, hall = -1;
-            int site = -1;
+            // the free site that shares the least ground with the neighbours' unclaimed outer diagonals, then the one
+            // the split takes the fewest cells of, then the first in its order (0.15.0); every site of the inner city
+            // shares none and loses none, so there it is the first free one, as before
+            int hallSite = -1, hall = -1, site = -1;
+            long best = Long.MAX_VALUE;
+            boolean anyClaimable = false;
             for (int s : open) {
+                int lost = sites.lost(k, s);
+                if (lost < 0) continue;
+                anyClaimable = true;
                 if (claimed.contains(s)) continue;
                 int b = sites.blocker(k, s);
                 if (b == FREE) {
-                    site = s;
-                    break;
+                    long rank = rank(sites, k, s, lost);
+                    if (rank < best) {
+                        best = rank;
+                        site = s;
+                    }
+                    if (rank == 0) break;
+                    continue;
                 }
-                if (b >= 0 && hall < 0) {
+                if (lost == 0 && b >= 0 && hall < 0) {
                     hall = b;
                     hallSite = s;
                 }
@@ -205,6 +298,7 @@ public final class CityOffer {
                 claimed.add(site);
                 out.add(new Offer(k, site, true, null, -1));
             } else if (hall >= 0) out.add(new Offer(k, hallSite, true, LEGACY_HALL, hall));
+            else if (!anyClaimable) out.add(new Offer(k, -1, true, TRIMMED, -1));
             else out.add(new Offer(k, -1, true, NO_SITE, -1));
         }
         return Collections.unmodifiableList(out);
@@ -213,17 +307,52 @@ public final class CityOffer {
     /**
      * The next free candidate of the kind from {@code from} in direction {@code dir} (◀ ▶ on the 建造 page, before the
      * job touched anything), cycling through its candidates at the phase; from a site that is no candidate, the first
-     * free one. -1 when no other is free.
+     * free one. -1 when no other is free. Of the free ones it goes to those that share the least ground with the
+     * neighbours' unclaimed outer diagonals ({@link Sites#contested}), and of those to the ones the split takes the
+     * fewest cells of ({@link Sites#lost}), the next of them in the direction; one a neighbour holds part of for good
+     * never.
      */
     public static int move(Kind k, int from, int dir, int phase, Predicate<String> groundLaid, Sites sites) {
         int[] c = candidates(k, phase, groundLaid);
         int n = c.length, start = -1;
         for (int i = 0; i < n; i++) if (c[i] == from) start = i;
+        int site = -1;
+        long best = Long.MAX_VALUE;
         for (int step = 1; step <= n; step++) {
             int s = c[start < 0 ? step - 1 : Math.floorMod(start + (dir < 0 ? -step : step), n)];
-            if (s != from && sites.blocker(k, s) == FREE) return s;
+            if (s == from || sites.blocker(k, s) != FREE) continue;
+            int lost = sites.lost(k, s);
+            if (lost < 0) continue;
+            long rank = rank(sites, k, s, lost);
+            if (rank == 0) return s;
+            if (rank < best) {
+                best = rank;
+                site = s;
+            }
         }
-        return -1;
+        return site;
+    }
+
+    /**
+     * How a free site the kind may claim ranks (0.15.0, the lower the better): by how many of the neighbours' unclaimed
+     * outer diagonals it shares ground with ({@link Sites#contested}), then by how many of its cells the split takes
+     * ({@link Sites#lost}, at least 0). 0 for a site no neighbour may want, which every site of the inner city is.
+     */
+    private static long rank(Sites sites, Kind k, int site, int lost) {
+        int contested = sites.contested(k, site);
+        return ((long) Math.max(0, contested) << 32) | Math.max(0, lost);
+    }
+
+    /**
+     * Why a kind whose sites wait for their family's ground is not offered (0.15.0): the job that lays it was cancelled
+     * lately ({@link #GROUND_DECLINED}), waits for the jobs before it ({@link #GROUND_WAITS}), or is to be started or
+     * offered ({@link #GROUND}).
+     */
+    private static String groundReason(String ground, Map<String, Long> declined, long now,
+        Predicate<String> groundWaits) {
+        if (declined(declined, ground, now)) return GROUND_DECLINED;
+        if (ground != null && groundWaits != null && groundWaits.test(ground)) return GROUND_WAITS;
+        return GROUND;
     }
 
     /**
@@ -267,6 +396,46 @@ public final class CityOffer {
     }
 
     /**
+     * What stands in the way of a module whose site is the world columns {@code cells} {x, z} (0.15.0, an outer
+     * diagonal: its apron and allée, {@link CampusSplit#siteCells}), cell for cell rather than by the site's square,
+     * whose corners reach past its octagon to where a neighbour's site may lie without the two sharing a cell:
+     * {@link #OTHER} when a keep-out box of a recorded site's module holds one of its cells, or a stray module that is
+     * no docked 0.9.2 hall does (its keep-out box holds one, or its centre is one); else the slot of the first docked
+     * 0.9.2 hall that does; else {@link #FREE}.
+     */
+    public static int siteBlocker(List<int[]> cells, List<int[]> keepOut, List<Stray> strays) {
+        if (cells == null || cells.isEmpty()) return FREE;
+        int[] bounds = { Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE };
+        Set<Long> at = new HashSet<>();
+        for (int[] c : cells) {
+            bounds[0] = Math.min(bounds[0], c[0]);
+            bounds[1] = Math.min(bounds[1], c[1]);
+            bounds[2] = Math.max(bounds[2], c[0]);
+            bounds[3] = Math.max(bounds[3], c[1]);
+            at.add(CampusPlan.key(c[0], c[1]));
+        }
+        if (keepOut != null) for (int[] k : keepOut) if (holdsAny(cells, bounds, k)) return OTHER;
+        int hall = FREE;
+        if (strays != null) for (Stray s : strays) {
+            boolean in = s.keepOut != null && holdsAny(cells, bounds, s.keepOut)
+                || at.contains(CampusPlan.key(s.x, s.z));
+            if (!in) continue;
+            if (s.hall < 0) return OTHER;
+            if (hall == FREE) hall = s.hall;
+        }
+        return hall;
+    }
+
+    /** Whether the box {x0, z0, x1, z1, ...} holds one of the columns, whose bounding box is {@code bounds}. */
+    private static boolean holdsAny(List<int[]> cells, int[] bounds, int[] box) {
+        if (!overlap(bounds, box)) return false;
+        int x0 = Math.min(box[0], box[2]), x1 = Math.max(box[0], box[2]), z0 = Math.min(box[1], box[3]),
+            z1 = Math.max(box[1], box[3]);
+        for (int[] c : cells) if (c[0] >= x0 && c[0] <= x1 && c[1] >= z0 && c[1] <= z1) return true;
+        return false;
+    }
+
+    /**
      * Whether two boxes {x0, z0, x1, z1} overlap (a height-ranged keep-out box {x0, z0, x1, z1, yFrom, yTo} by its
      * columns).
      */
@@ -294,9 +463,25 @@ public final class CityOffer {
         return out;
     }
 
-    /** The first of the sites no kind took in this look that nothing stands on, or -1. */
+    /**
+     * Of the sites no kind took in this look that nothing stands on and that the campus may claim, the one that ranks
+     * first ({@link #rank}: the least ground shared with the neighbours' unclaimed outer diagonals, then the fewest
+     * cells the split takes, then the first in order); -1 when there is none.
+     */
     private static int firstFree(Kind k, int[] candidates, Set<Integer> claimed, Sites sites) {
-        for (int s : candidates) if (!claimed.contains(s) && sites.blocker(k, s) == FREE) return s;
-        return -1;
+        int site = -1;
+        long best = Long.MAX_VALUE;
+        for (int s : candidates) {
+            if (claimed.contains(s) || sites.blocker(k, s) != FREE) continue;
+            int lost = sites.lost(k, s);
+            if (lost < 0) continue;
+            long rank = rank(sites, k, s, lost);
+            if (rank == 0) return s;
+            if (rank < best) {
+                best = rank;
+                site = s;
+            }
+        }
+        return site;
     }
 }
