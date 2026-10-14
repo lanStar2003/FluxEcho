@@ -224,7 +224,7 @@ class RootShapeTest {
             }
         }
         assertTrue(near.isEmpty(), "rings within reach: " + near);
-        assertEquals("R", RootShape.DISSOLVES);
+        assertEquals("RC", RootShape.DISSOLVES, "the rings, and (0.16.0) the deep root's conduits");
         // three rings of a cell's width over the pool at y6, y11 and y16
         int[] perRing = new int[3];
         for (int y = 0; y < 26; y++) for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
@@ -289,7 +289,8 @@ class RootShapeTest {
         for (int[] f : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
             List<int[]> p = RootShape.protect(cx, y0, cz, f[0], f[1]);
             assertEquals(1, p.size());
-            assertArrayEquals(new int[] { cx - 11, y0 - 26, cz - 11, cx + 11, y0 - 1, cz + 11 }, p.get(0));
+            // 0.16.0: over Y0 45 the box takes in the ground the deep root's chamber grows into
+            assertArrayEquals(new int[] { cx - 12, y0 - 39, cz - 12, cx + 12, y0 - 1, cz + 12 }, p.get(0));
             assertArrayEquals(
                 new int[] { cx - 12, cz - 12, cx + 12, cz + 12 },
                 RootShape.footprint(cx, cz, f[0], f[1], 1));
@@ -463,5 +464,324 @@ class RootShapeTest {
             }
             assertTrue(top / 2 + 2 <= w.lidY, "a head clear of the lid at depth " + w.depth);
         }
+    }
+
+    // ---- the deep root (0.16.0, "root by room")
+
+    /** The highest lift pad of a shape as the generator's walk start. */
+    private static List<int[]> topPad(ShapeKit.Shape s) {
+        int[] top = null;
+        for (int[] p : s.lifts) if (top == null || p[1] > top[1]) top = p;
+        return java.util.Collections.singletonList(new int[] { top[0], top[2], 2 * (top[1] + 1) });
+    }
+
+    /**
+     * Every form of the deep root is its generator's ({@code deep_root(h)}, {@code deep_root_in(D)}, b_root.py 0.16.0)
+     * cell for cell: the checksum of its layers, its height, its counts, mirror-symmetric; its units the well's taps on
+     * the well's cells as slots 0 to 7, then the eight bays as slots 8 to 15; the well's controller; and the
+     * generator's walk from its top pad reaching the controller and every unit, every tread stood on.
+     */
+    @Test
+    void theDeepFormsAreTheGenerators() {
+        // {chamber, well depth, zlib.crc32 of its layers, height, checked, soft, air, conduits, walk}
+        long[][] want = { { 13, 26, 2817673059L, 39, 5028, 238, 2, 48, 791 },
+            { 7, 26, 2020465489L, 33, 4428, 238, 2, 24, 791 }, { 0, 26, 3203471782L, 26, 3380, 238, 1, 96, 411 },
+            { 0, 20, 568924105L, 20, 2828, 237, 1, 72, 403 }, { 0, 14, 963591689L, 14, 2248, 230, 1, 48, 389 },
+            { 0, 8, 2007386574L, 8, 1640, 194, 1, 16, 305 } };
+        String[] names = { RootShape.DEEP, RootShape.ROOT_7, RootShape.ROOT_IN, RootShape.ROOT_IN_20,
+            RootShape.ROOT_IN_14, RootShape.ROOT_IN_8 };
+        assertEquals(
+            6,
+            RootShape.deeps()
+                .size());
+        for (int i = 0; i < want.length; i++) {
+            long[] w = want[i];
+            RootShape.Deep d = RootShape.deeps()
+                .get(i);
+            ShapeKit.Shape s = d.shape;
+            String at = " of " + names[i];
+            assertEquals(names[i], d.name);
+            assertSame(d, RootShape.deep(names[i]));
+            assertEquals(w[0], d.h, "chamber" + at);
+            assertEquals(w[1], d.well.depth, "well" + at);
+            assertEquals(w[2], crc(RootShape.rows(s)), "the generator's cells" + at);
+            assertEquals(w[3], s.H, "height" + at);
+            assertEquals(w[4], s.checkedCount(), "checked" + at);
+            assertEquals(w[5], s.softCount(), "soft" + at);
+            assertEquals(w[6], s.airCount(), "air" + at);
+            assertEquals(
+                w[7],
+                (long) s.counts()
+                    .get(RootShape.CONDUIT),
+                "conduits" + at);
+            assertTrue(
+                s.symmetric()
+                    .isEmpty(),
+                "mirror-symmetric" + at);
+            assertArrayEquals(new int[] { 12, d.h + 3, 10 }, s.controller, "the well's controller" + at);
+            assertArrayEquals(new int[] { 2, 0, 3 - d.well.depth }, d.toCampus(12, d.h + 3, 10));
+            assertArrayEquals(new int[] { 12, d.h + 3, 10 }, d.fromCampus(2, 0, 3 - d.well.depth));
+            UnitLayout u = d.units;
+            assertEquals(16, u.size());
+            assertEquals(RootShape.SLOTS, u.slots());
+            for (int k = 0; k < 8; k++) {
+                UnitLayout.Unit t = u.unit(k), wt = RootShape.UNITS.unit(k);
+                assertEquals(wt.name, t.name);
+                assertEquals("tap", t.kind);
+                int[] c = wt.cells.get(0);
+                assertArrayEquals(new int[] { c[0], c[1] + d.h, c[2] }, t.cells.get(0), "tap " + k + at);
+                assertEquals(k, u.slotOfSocket(c[0], c[1] + d.h, c[2]));
+                UnitLayout.Unit b = u.unit(8 + k);
+                assertEquals("bay-" + (k + 1), b.name);
+                assertEquals("bay", b.kind);
+                assertEquals(1, b.slots);
+                assertEquals(8 + k, b.firstSlot);
+                assertEquals(2, b.cells.size());
+                int[] plinth = b.cells.get(0), socket = b.cells.get(1);
+                assertEquals('p', s.get(plinth[0], plinth[1], plinth[2]));
+                assertEquals('o', s.get(socket[0], socket[1], socket[2]));
+                assertEquals(plinth[1] + 1, socket[1]);
+                assertEquals(d.h > 0 ? 1 : 2, plinth[1], "the bay's plinth" + at);
+                assertTrue(d.bay(plinth[0], plinth[1], plinth[2]));
+            }
+            // the walk from the top pad: the island's (and the chamber's floor below it by the lift)
+            Set<Long> reached = s.walk(topPad(s), 2);
+            assertEquals(w[8], reached.size(), "the generator's walk" + at);
+            assertTrue(s.controllerReach(reached), "the controller" + at);
+            assertTrue(
+                s.unitReach(reached)
+                    .isEmpty(),
+                "every unit" + at);
+            assertTrue(
+                s.idleTreads(reached)
+                    .isEmpty(),
+                "every tread stood on" + at);
+            // its blueprint is its box with the soft cells left out, its build's controller the shape's
+            assertEquals(s.H, d.blueprint.height());
+            assertEquals(
+                s.checkedCount() + s.airCount(),
+                d.blueprint.cells()
+                    .size());
+            assertArrayEquals(s.controller, d.build.controller());
+            assertEquals(RootShape.KEY, d.build.key());
+            assertEquals(d.h, RootShape.base(d.name));
+        }
+        assertSame(RootShape.deep(RootShape.DEEP).shape, RootShape.deepRoot(), "the deep root's data is its shape");
+        assertNull(RootShape.deep(RootShape.WELL), "a well is no deep root");
+        assertNull(RootShape.deep("root_in_9"));
+        assertEquals(0, RootShape.base(RootShape.WELL_20));
+        // the lift in the chamber forms: the chamber's pad under the island's, the axis open between them
+        for (RootShape.Deep d : RootShape.deeps()) {
+            List<Integer> pads = new ArrayList<>();
+            for (int[] p : d.shape.lifts) {
+                assertEquals(12, p[0]);
+                assertEquals(12, p[2]);
+                pads.add(p[1]);
+            }
+            java.util.Collections.sort(pads);
+            if (d.h == 0) assertEquals(java.util.Collections.singletonList(1), pads, "in-well: the island's pad alone");
+            else {
+                assertEquals(java.util.Arrays.asList(0, d.h + 1), pads, d.name);
+                for (int y = 1; y <= d.h; y++)
+                    assertTrue(" -".indexOf(d.cell(12, y, 12)) >= 0, d.name + ": the shaft open at y" + y);
+                assertEquals('-', d.cell(12, d.h, 12), "the well's floor slab open over the chamber's pad");
+            }
+        }
+    }
+
+    /**
+     * Every form holds its well whole (the RootShapeTest 0.12 check over every form): a chamber changes exactly the 24
+     * grate cells and the open centre of the well's floor slab, adds the 64-cell ring round that slab in cells the well
+     * leaves empty and its chamber under it; an in-well form changes no cell of the well and adds its bays and
+     * conduits in the well's empty cells only.
+     */
+    @Test
+    void everyFormHoldsItsWellWhole() {
+        // {changed B to ':', changed B to '-', new cells in blank well cells, cells under the well's slab}
+        int[][] want = { { 24, 1, 64, 1697 }, { 24, 1, 64, 1097 }, { 0, 0, 112, 0 }, { 0, 0, 88, 0 }, { 0, 0, 64, 0 },
+            { 0, 0, 32, 0 } };
+        for (int i = 0; i < want.length; i++) {
+            RootShape.Deep d = RootShape.deeps()
+                .get(i);
+            int grate = 0, centre = 0, blank = 0, under = 0;
+            for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
+                for (int y = 0; y < d.h; y++) if (d.cell(x, y, z) != ' ') under++;
+                for (int y = 0; y < d.well.depth; y++) {
+                    char w = d.well.cell(x, y, z), c = d.cell(x, y + d.h, z);
+                    assertEquals(w, d.wellCell(x, y + d.h, z));
+                    if (w == c) continue;
+                    if (w == ' ') {
+                        blank++;
+                        assertTrue(c == 'p' || c == 'o' || c == 'C' || c == 'B', d.name + ": what it adds " + c);
+                    } else if (w == 'B' && c == ':') {
+                        grate++;
+                        assertEquals(0, y, "the grate in the well's floor slab");
+                        assertEquals(3, RootShape.onorm(x - 12, z - 12));
+                    } else if (w == 'B' && c == '-') {
+                        centre++;
+                        assertArrayEquals(new int[] { 12, 0, 12 }, new int[] { x, y, z });
+                    } else throw new AssertionError(d.name + " changes the well at " + x + "," + y + "," + z);
+                }
+            }
+            assertArrayEquals(want[i], new int[] { grate, centre, blank, under }, d.name);
+        }
+    }
+
+    /**
+     * The rule over every base layer of the band (CITY.md §1.3 Vertical, 0.16.0): with the well the base layer gives,
+     * root_in_8 over Y0 14..19, root_in_14 20..25, root_in_20 26..31, root_in 32..38, root_7 39..44 and root 45..225,
+     * no cell under y 6, the top at Y0 - 1, the controller where the well's stands; and over the full wells 0.14.0 let
+     * players dig by hand over low ground (Y0 26..31) the in-well form, in the well's own air.
+     */
+    @Test
+    void everyBaseLayerOfTheBandHasADeepRoot() {
+        assertArrayEquals(new int[] { 13, 7 }, RootShape.chambers());
+        String[][] runs = { { "14", "19", RootShape.ROOT_IN_8 }, { "20", "25", RootShape.ROOT_IN_14 },
+            { "26", "31", RootShape.ROOT_IN_20 }, { "32", "38", RootShape.ROOT_IN }, { "39", "44", RootShape.ROOT_7 },
+            { "45", "225", RootShape.DEEP } };
+        int covered = 0;
+        for (String[] r : runs) for (int y0 = Integer.parseInt(r[0]); y0 <= Integer.parseInt(r[1]); y0++) {
+            RootShape.Well w = RootShape.forBase(y0);
+            RootShape.Deep d = RootShape.deepFor(y0, w);
+            assertEquals(r[2], d.name, "Y0 " + y0);
+            assertSame(w, d.well);
+            int base = y0 - w.depth - d.h, lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+            for (int y = 0; y < d.shape.H; y++) for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
+                if (d.cell(x, y, z) == ' ') continue;
+                lo = Math.min(lo, base + y);
+                hi = Math.max(hi, base + y);
+            }
+            assertTrue(lo >= RootShape.LOWEST_SLAB, "nothing in the bedrock at Y0 " + y0 + ": " + lo);
+            assertEquals(y0 - 1, hi, "the lid at Y0 - 1 at " + y0);
+            assertEquals(y0 - w.depth + 3, base + d.shape.controller[1], "the well's controller at " + y0);
+            assertArrayEquals(
+                w.controller(SiteFamily.ROOT_SITE, 0, y0, 0, 0, -1),
+                d.controller(SiteFamily.ROOT_SITE, 0, y0, 0, 0, -1));
+            covered++;
+        }
+        assertEquals(212, covered, "every base layer of the band, 14 to 225");
+        for (int y0 = RootShape.MIN_Y0; y0 <= 38; y0++) assertEquals(0, RootShape.chamber(y0, 26), "Y0 " + y0);
+        assertEquals(7, RootShape.chamber(39, 26));
+        assertEquals(13, RootShape.chamber(45, 26));
+        // the 0.14.0 full wells dug by hand over low ground: the in-well form, nothing dug
+        for (int y0 = 26; y0 <= 31; y0++) {
+            RootShape.Deep d = RootShape.deepFor(y0, RootShape.well(RootShape.DEPTH));
+            assertEquals(RootShape.ROOT_IN, d.name, "a hand-dug full well at Y0 " + y0);
+            assertEquals(0, d.h);
+        }
+        // the conduits: the upper half of the room, never lower than 3 over the layer people stand on
+        assertEquals(6, RootShape.conduitLen(13, 1));
+        assertEquals(3, RootShape.conduitLen(7, 1));
+        int[] inWell = { 12, 9, 6, 2 };
+        for (int i = 0; i < 4; i++) assertEquals(inWell[i], RootShape.conduitLen(RootShape.depths()[i] - 1, 2));
+        assertEquals(RootShape.ROOT_IN_20, RootShape.deepName(0, 20));
+        assertThrows(IllegalArgumentException.class, () -> RootShape.deepName(9, 26));
+        assertThrows(IllegalArgumentException.class, () -> RootShape.deepName(0, 25));
+    }
+
+    /**
+     * Every cell of every form has its stage: the chamber's shell SINK (the ring round the well's floor slab, the
+     * walls, the floor slab with its pad and veins), its conduits and bays FIT, the well's cells as the well's.
+     */
+    @Test
+    void everyCellOfEveryFormHasItsStage() {
+        for (RootShape.Deep d : RootShape.deeps()) {
+            int sink = 0, fit = 0;
+            for (int y = 0; y < d.shape.H; y++) for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) {
+                char ch = d.cell(x, y, z);
+                if (ch == ' ') continue;
+                int st = d.stage(x, y, z, ch);
+                assertTrue(st >= RootShape.R_SINK && st <= RootShape.R_COMMISSION);
+                if (st == RootShape.R_SINK) {
+                    assertTrue(d.shell(x, y, z), d.name + " " + x + "," + y + "," + z);
+                    sink++;
+                }
+                if (ch == RootShape.CONDUIT || d.bay(x, y, z)) {
+                    assertEquals(RootShape.R_FIT, st);
+                    fit++;
+                }
+                if (d.inChamber(x, y, z) && !d.bay(x, y, z) && ch != RootShape.CONDUIT)
+                    assertEquals(RootShape.R_SINK, st);
+            }
+            int chamberShell = d.h == 0 ? 0 : 64 + 96 * (d.h - 1) + 481;
+            assertEquals(417 * 2 + 88 * (d.well.depth - 2) + chamberShell, sink, d.name);
+            assertEquals(
+                16 + d.shape.counts()
+                    .get(RootShape.CONDUIT),
+                fit,
+                d.name);
+            // the inside a caisson digs: the chamber's 385 columns over its walls' layers, and the well's
+            for (int z = 0; z < 25; z++) for (int x = 0; x < 25; x++) for (int y = 0; y < d.shape.H; y++) {
+                assertFalse(d.inside(x, y, z) && d.shell(x, y, z));
+                if (d.chamberInside(x, y, z)) assertTrue(y > 0 && y < d.h);
+            }
+        }
+    }
+
+    /**
+     * What the deep root takes of a campus (0.16.0): its controller is the well's, and with a chamber its box is one
+     * wider and reaches down to the chamber's floor slab; in-well it is the well's.
+     */
+    @Test
+    void theDeepRootsEnvelope() {
+        int cx = 100, cz = -40;
+        for (int[] f : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
+            for (int[] k : new int[][] { { 45, 13 }, { 70, 13 }, { 39, 7 }, { 44, 7 } }) {
+                int y0 = k[0];
+                assertArrayEquals(
+                    new int[] { cx - 12, y0 - 26 - k[1], cz - 12, cx + 12, y0 - 1, cz + 12 },
+                    RootShape.protect(cx, y0, cz, f[0], f[1])
+                        .get(0),
+                    "Y0 " + y0);
+            }
+            for (int y0 : new int[] { 14, 20, 31, 32, 38 }) {
+                int d = RootShape.depth(y0);
+                assertArrayEquals(
+                    new int[] { cx - 11, y0 - d, cz - 11, cx + 11, y0 - 1, cz + 11 },
+                    RootShape.protect(cx, y0, cz, f[0], f[1])
+                        .get(0),
+                    "Y0 " + y0 + ": the in-well form's box is the well's");
+                assertEquals(
+                    RootShape.deepFor(y0, RootShape.forBase(y0))
+                        .protect(cx, y0, cz, f[0], f[1])
+                        .get(0)[1],
+                    y0 - d);
+            }
+        }
+    }
+
+    /**
+     * When the deepen job is offered (0.16.0, M13 §7.9, {@link RootShape#deepenTo}): a nexus of phase IV whose teams
+     * have the deep root's research over a root formed as a well, whose controller stands at the depth of the well it
+     * formed as; then the form the rule gives that well. Phase III, no research, a root not formed, one that is the
+     * deep root already and a controller at another depth offer nothing. A full well dug by hand over low ground
+     * (Y0 28, its controller at Y0 - 23) grows into the roots in the well, not the chamber.
+     */
+    @Test
+    void theDeepenJobIsOfferedOverAFormedWellOfPhaseFour() {
+        int full = RootShape.CTRL_Y - RootShape.DEPTH;
+        assertEquals(RootShape.DEEP, RootShape.deepenTo(4, true, true, RootShape.WELL, 70, 70 + full));
+        assertEquals(RootShape.DEEP, RootShape.deepenTo(5, true, true, RootShape.WELL, 70, 70 + full), "phase V too");
+        assertEquals(RootShape.ROOT_7, RootShape.deepenTo(4, true, true, RootShape.WELL, 41, 41 + full));
+        assertEquals(RootShape.ROOT_7, RootShape.deepenTo(4, true, true, RootShape.WELL, 39, 39 + full));
+        assertEquals(RootShape.ROOT_IN, RootShape.deepenTo(4, true, true, RootShape.WELL, 38, 38 + full));
+        assertEquals(RootShape.ROOT_IN, RootShape.deepenTo(4, true, true, RootShape.WELL, 28, 28 - 23), "dug by hand");
+        assertEquals(
+            RootShape.ROOT_IN_20,
+            RootShape.deepenTo(4, true, true, RootShape.WELL_20, 28, 28 + RootShape.CTRL_Y - 20));
+        assertEquals(
+            RootShape.ROOT_IN_14,
+            RootShape.deepenTo(4, true, true, RootShape.WELL_14, 22, 22 + RootShape.CTRL_Y - 14));
+        assertEquals(
+            RootShape.ROOT_IN_8,
+            RootShape.deepenTo(4, true, true, RootShape.WELL_8, 16, 16 + RootShape.CTRL_Y - 8));
+        assertNull(RootShape.deepenTo(3, true, true, RootShape.WELL, 70, 70 + full), "phase III");
+        assertNull(RootShape.deepenTo(4, false, true, RootShape.WELL, 70, 70 + full), "not researched");
+        assertNull(RootShape.deepenTo(4, true, false, RootShape.WELL, 70, 70 + full), "not formed");
+        for (RootShape.Deep d : RootShape.deeps())
+            assertNull(RootShape.deepenTo(4, true, true, d.name, 70, 70 + full), "already " + d.name);
+        assertNull(RootShape.deepenTo(4, true, true, RootShape.WELL, 70, 70 + full + 6), "a controller at 20 deep");
+        assertNull(RootShape.deepenTo(4, true, true, RootShape.WELL_20, 70, 70 + full), "a well_20 26 deep");
+        assertNull(RootShape.deepenTo(4, true, true, "nothing", 70, 70 + full));
     }
 }

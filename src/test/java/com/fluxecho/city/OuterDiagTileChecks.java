@@ -346,9 +346,17 @@ final class OuterDiagTileChecks {
      * levels after it holding no units, and the plan fits the window; returns the map for the building's own checks.
      */
     static ModuleMap theWindowsPlanFits(Building p) {
-        int[] levels = p.make.get()
-            .planLevels();
-        ModuleMap map = new ModuleMap(p.build, p.layout, p.dissolves, CityGui.MAP_MAX_W, CityGui.MAP_MAX_H, levels);
+        TileCityModule tile = p.make.get();
+        int[] levels = tile.planLevels();
+        // where the kind lets its dissolving cells give way, as the window's own plan takes it (0.16.0)
+        ModuleMap map = new ModuleMap(
+            p.build,
+            p.layout,
+            p.dissolves,
+            tile::dissolvesAt,
+            CityGui.MAP_MAX_W,
+            CityGui.MAP_MAX_H,
+            levels);
         assertEquals(1 + levels.length, map.storeys());
         assertEquals(1, map.level(0));
         assertFalse(map.overview(0));

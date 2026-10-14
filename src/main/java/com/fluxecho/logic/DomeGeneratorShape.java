@@ -48,6 +48,13 @@ import java.util.Set;
  * {@link #MOORED} 40 as before, {@link #MOORED_36}, {@link #MOORED_32}, {@link #MOORED_28}), and the floating shape
  * is one for every datum. Over Y0 218 the pod's top layers lie over the world's top: the plan leaves them out and the
  * structure check skips them, and the wards and the controller stay in the world up to Y0 225 ({@link #noRoom}).
+ * <p>
+ * The pod floats (0.16.0, CITY.md §3): the release job takes the legs down and the pod stands as {@link #FLOATING},
+ * whose blueprint is the pod's own box ({@link #FLOATING_BP}, its own build {@link #FLOATING_BUILD}), so a formed
+ * floating pod covers nothing under its floor. Its sky datum is where its controller stands ({@link #podDatum}): the
+ * datum the base layer gives it, or 40 for a pod built by hand on the full legs over high ground before 0.14.1. The
+ * floating plan ({@link BuildPlan#floating}) is the pod alone, and may leave the doors of given sky slots open
+ * ({@link #doorSlot}, {@link #doorCells}).
  */
 public final class DomeGeneratorShape {
 
@@ -125,11 +132,28 @@ public final class DomeGeneratorShape {
     private static final List<int[]> LEG_LIST = MOORS.get(0).legs;
     /** Every leg column {a, r} with the lowest and the highest dy a leg takes in it: {a, r, dyFrom, dyTo}. */
     private static final List<int[]> LEG_COLUMNS = MOORS.get(0).columns;
-    /** The checked shapes: the pod and its legs, the pod alone (the same box, so the controller's cell is shared). */
-    public static final Blueprint MOORED_BP = MOORS.get(0).blueprint, FLOATING_BP = blueprint(false, FLOOR_UP);
+    /**
+     * The checked shapes: the pod and its legs, and the pod alone. Up to 0.15.0 the floating shape had the full legs'
+     * box; nothing could form as it before phase IV, so 0.16.0 cut it to the pod's own box (21 x 10 x 21, the
+     * controller at {@code (10, 7, 6)}), and a formed floating pod covers that box only (0.14.1's lesson for the lower
+     * moored pods: the full legs' box round a pod at F 28 reaches over the nexus and its dais).
+     */
+    public static final Blueprint MOORED_BP = MOORS.get(0).blueprint, FLOATING_BP = podBlueprint();
 
     /** The Echo Dome Generator on its full legs as its module plan reads it ({@link BuildPlan#zenith}). */
     public static final CityBuild BUILD = MOORS.get(0).build;
+    /**
+     * The Echo Dome Generator floating (0.16.0): the pod's shape in its own box, the blueprint {@link #FLOATING_BP}
+     * with the shape's origin at its own (no offset), as the tile and the floating plan read it.
+     */
+    public static final CityBuild FLOATING_BUILD = new CityBuild(
+        KEY,
+        SHAPE,
+        HEIGHT,
+        FLOATING_BP,
+        UNITS,
+        Parts.moduleCore(ModuleCores.DOME_GENERATOR),
+        STAGES);
 
     static {
         if (UNITS.size() != 7 || UNITS.slots() != 7) throw new IllegalStateException("the ward units changed");
@@ -301,6 +325,23 @@ public final class DomeGeneratorShape {
         return null;
     }
 
+    /** Whether F is one of the sky datums ({@link #datums}). */
+    public static boolean isDatum(int datum) {
+        for (int f : DATUM_LIST) if (f == datum) return true;
+        return false;
+    }
+
+    /**
+     * The sky datum of a pod whose controller stands at the height {@code ctrlY} over a nexus whose base layer is
+     * {@code y0} (0.16.0): {@code ctrlY - CTRL_Y - y0}, its floor's height over the base layer. Exact for every pod
+     * that
+     * can stand, the one built by hand on the full legs over high ground (at 40) too, where {@link #datum} gives the
+     * lower datum the base layer would give a pod built now.
+     */
+    public static int podDatum(int ctrlY, int y0) {
+        return ctrlY - CTRL_Y - y0;
+    }
+
     /** The name of the moored shape the generator over a campus whose base layer is {@code y0} stands as. */
     public static String shapeFor(int y0) {
         return forBase(y0).name;
@@ -400,6 +441,36 @@ public final class DomeGeneratorShape {
     /** Whether a cell of the pod is one of the eight door openings (glazed soft until a catwalk docks). */
     public static boolean door(int x, int y, int z) {
         return y >= 1 && y <= 4 && cell(x, y, z) == '/' && RAW.get(x, y, z) == ShapeKit.NONE;
+    }
+
+    /** The sky slots round the pod: S0 to S7, the sky sites 30 to 37 (CITY.md §2.5), one door each. */
+    public static final int SKY_SLOTS = 8;
+
+    /**
+     * The sky slot whose door a column of the pod is in (0.16.0), or -1 for a column of no door: the slots go round
+     * from the gate's axis (+A, S0) to +R (S2), -A (S4) and -R (S6), the odd ones on the chamfers between them (S1
+     * between +A and +R). In the campus frame the pod's column (x, z) is (A 10 - z, R 10 - x), so the doors of S0 are
+     * the columns z 0, x 9..11, and those of S1 (3, 3), (4, 3), (3, 4). Integers only, as the door openings are.
+     */
+    public static int doorSlot(int x, int z) {
+        if (!door(x, 1, z)) return -1;
+        int a = MID - z, r = MID - x;
+        if (Math.abs(r) <= 1) return a > 0 ? 0 : 4;
+        if (Math.abs(a) <= 1) return r > 0 ? 2 : 6;
+        if (a > 0) return r > 0 ? 1 : 7;
+        return r > 0 ? 3 : 5;
+    }
+
+    /**
+     * The cells of a sky slot's door (0.16.0): its three columns, y1..y4, as points of the pod {x, y, z} (12 of them);
+     * none for a slot outside 0..7.
+     */
+    public static List<int[]> doorCells(int slot) {
+        List<int[]> out = new ArrayList<>();
+        for (int y = 1; y <= 4; y++) for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            if (door(x, y, z) && doorSlot(x, z) == slot) out.add(new int[] { x, y, z });
+        }
+        return out;
     }
 
     /** Whether a cell of the pod is the axis shaft's cap (soft until the orbital anchor's job opens it). */
@@ -529,8 +600,8 @@ public final class DomeGeneratorShape {
     /**
      * The checked blueprint at the sky datum {@code datum} (F): the pod's checked cells (soft ones left out) with its
      * cell (0, 0, 0) F - 1 over the blueprint's lowest layer, and with {@code legs} every leg cell; F + 9 high
-     * ({@link #BP_HEIGHT} at 40). The floating shape's is the one at 40 without legs, for every datum: the pod's cells
-     * round the controller are the same.
+     * ({@link #BP_HEIGHT} at 40). (Up to 0.15.0 the floating shape's was the one at 40 without legs; since 0.16.0 it is
+     * the pod's own box, {@link #podBlueprint}.)
      */
     private static Blueprint blueprint(boolean legs, int datum) {
         int height = datum + HEIGHT - 1, up = datum - 1;
@@ -548,6 +619,24 @@ public final class DomeGeneratorShape {
         }
         String[][] layers = new String[height][BP_DEPTH];
         for (int b = 0; b < height; b++) for (int c = 0; c < BP_DEPTH; c++) layers[b][c] = new String(g[b][c]);
+        return new Blueprint(layers);
+    }
+
+    /**
+     * The floating shape's checked blueprint (0.16.0): the pod's checked cells (soft ones left out) in the pod's own
+     * box, 21 across and deep and 10 high, its cell (x, y, z) at (x, layer 9 - y, row z), so the shape's origin is the
+     * blueprint's ({@link #FLOATING_BUILD}). The same cells round the controller as every moored blueprint holds.
+     */
+    private static Blueprint podBlueprint() {
+        char[][][] g = new char[HEIGHT][SIZE][SIZE];
+        for (char[][] layer : g) for (char[] row : layer) java.util.Arrays.fill(row, ' ');
+        for (int y = 0; y < HEIGHT; y++) for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            char ch = SHAPE.get(x, y, z);
+            if (ch == ShapeKit.NONE || ShapeKit.soft(ch)) continue;
+            g[HEIGHT - 1 - y][z][x] = ch;
+        }
+        String[][] layers = new String[HEIGHT][SIZE];
+        for (int b = 0; b < HEIGHT; b++) for (int c = 0; c < SIZE; c++) layers[b][c] = new String(g[b][c]);
         return new Blueprint(layers);
     }
 

@@ -271,7 +271,9 @@ public final class ModuleLook {
         }
         int[] c = b.controller();
         out.add(new double[] { c[0] + 0.5, c[1] + OVER_CONSOLE, c[2] + 0.5 });
-        if (b.offset()[1] > 0) out.add(new double[] { pad[0] + 0.5, pad[1] - BELLY, pad[2] + 0.5 });
+        // the pod floating (0.16.0) hangs in the air on no legs: its own box, but the belly plate all the same
+        if (b.offset()[1] > 0 || DomeGeneratorShape.KEY.equals(b.key()))
+            out.add(new double[] { pad[0] + 0.5, pad[1] - BELLY, pad[2] + 0.5 });
         return Collections.unmodifiableList(out);
     }
 
@@ -312,10 +314,19 @@ public final class ModuleLook {
      * A module kind's own visuals come on top; the sum must stay within 2,000 near, 300 mid and 64 far.
      */
     public static int baseQuads(CityBuild b, UnitLayout layout, int tier) {
+        return baseQuads(b, layout, tier, true);
+    }
+
+    /**
+     * {@link #baseQuads(CityBuild, UnitLayout, int)} for a shape whose plinth line is not drawn ({@code course} false,
+     * 0.16.0: the deep root's chamber forms, whose course runs round the chamber's walls deep in the ground,
+     * {@code RootLook#courseBuried}).
+     */
+    public static int baseQuads(CityBuild b, UnitLayout layout, int tier, boolean course) {
         int n = sweepQuads(b);
         if (tier == FAR) return n;
         n += plates(b).size() * PLATE_QUADS;
-        int faces = course(b).size();
+        int faces = course ? course(b).size() : 0;
         if (tier == MID) return n + faces;
         int sockets = 0;
         for (UnitLayout.Unit u : layout.units()) sockets += u.sockets.size();

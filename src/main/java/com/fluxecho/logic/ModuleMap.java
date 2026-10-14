@@ -104,6 +104,30 @@ public final class ModuleMap {
      *                                  the module's box
      */
     public ModuleMap(CityBuild build, UnitLayout layout, String dissolves, int maxW, int maxH, int[] levels) {
+        this(build, layout, dissolves, EVERYWHERE, maxW, maxH, levels);
+    }
+
+    /**
+     * Where a cell of a module's shape whose character dissolves gives way (0.16.0, the module kind's
+     * {@code dissolvesAt}): the Weather Station dissolves its mast's pillars, not its vane pylons' of the same
+     * character.
+     */
+    public interface DissolvesAt {
+
+        boolean at(int x, int y, int z);
+    }
+
+    /** Every cell of a dissolving character gives way (every module kind before 0.16.0). */
+    public static final DissolvesAt EVERYWHERE = (x, y, z) -> true;
+
+    /**
+     * The plans of a module whose dissolving characters give way only where {@code where} says (0.16.0); used while
+     * the plans are worked out, never kept.
+     *
+     * @throws IllegalArgumentException as {@link #ModuleMap(CityBuild, UnitLayout, String, int, int, int[])}
+     */
+    public ModuleMap(CityBuild build, UnitLayout layout, String dissolves, DissolvesAt where, int maxW, int maxH,
+        int[] levels) {
         this.layout = layout;
         width = build.width();
         depth = build.depth();
@@ -122,7 +146,7 @@ public final class ModuleMap {
         marks = new Mark[storeys.length][];
         for (int s = 0; s < storeys.length; s++) {
             int level = s < unitStoreys ? storeys[s] + (flush(build, layout, storeys[s]) ? 1 : 0) : storeys[s];
-            marks[s] = plan(build, level, dissolves);
+            marks[s] = plan(build, level, dissolves, where);
             centre(build, marks[s], level);
         }
         List<List<int[]>> t = new ArrayList<>();
@@ -305,10 +329,10 @@ public final class ModuleMap {
     }
 
     /** A storey's plan at height {@code y}: every block, then walls inside a mass made {@link Mark#SOLID}. */
-    private Mark[] plan(CityBuild b, int y, String dissolves) {
+    private Mark[] plan(CityBuild b, int y, String dissolves, DissolvesAt where) {
         Mark[] out = new Mark[width * depth];
         for (int x = 0; x < width; x++)
-            for (int z = 0; z < depth; z++) out[x * depth + z] = classify(b, x, y, z, dissolves);
+            for (int z = 0; z < depth; z++) out[x * depth + z] = classify(b, x, y, z, dissolves, where);
         Mark[] done = out.clone();
         for (int x = 0; x < width; x++) for (int z = 0; z < depth; z++) {
             if (out[x * depth + z] != Mark.WALL) continue;
@@ -333,8 +357,17 @@ public final class ModuleMap {
      * it (grass, water, a lit strip, a floor), else nothing.
      */
     public static Mark classify(CityBuild b, int x, int y, int z, String dissolves) {
+        return classify(b, x, y, z, dissolves, EVERYWHERE);
+    }
+
+    /**
+     * {@link #classify(CityBuild, int, int, int, String)} with a dissolving character a trunk only where it gives way
+     * ({@code where}, 0.16.0); elsewhere it shows as what it is.
+     */
+    public static Mark classify(CityBuild b, int x, int y, int z, String dissolves, DissolvesAt where) {
         char a = b.cell(x, y, z);
-        if (a != ShapeKit.NONE && dissolves != null && dissolves.indexOf(a) >= 0) return Mark.TRUNK;
+        if (a != ShapeKit.NONE && dissolves != null && dissolves.indexOf(a) >= 0 && where.at(x, y, z))
+            return Mark.TRUNK;
         switch (a) {
             case ShapeKit.AIR:
                 return Mark.DOOR;

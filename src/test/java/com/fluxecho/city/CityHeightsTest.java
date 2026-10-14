@@ -36,13 +36,18 @@ class CityHeightsTest {
         out.add(CityModule.dualFoilVault());
         out.add(CityModule.sophonArray());
         out.add(CityModule.holoTable());
+        // the sky ring's four (0.16.0): their decks follow the pod's datum, so they fit wherever it does
+        out.add(CityModule.weatherStation());
+        out.add(CityModule.skySails());
+        out.add(CityModule.observatory());
+        out.add(CityModule.dropletHangar());
         return out;
     }
 
     @Test
     void everyBuildingHasRoomAcrossTheCampusBand() {
         List<ModuleSpec> all = specs();
-        assertEquals(12, all.size());
+        assertEquals(16, all.size());
         for (ModuleSpec spec : all) for (int y0 = CampusBand.LOWEST; y0 <= CampusBand.HIGHEST; y0++)
             assertNull(spec.noRoom(y0), spec.key + " at Y0 " + y0);
         // out of the band (a 0.9.2 nexus may stand anywhere), the reasons stay

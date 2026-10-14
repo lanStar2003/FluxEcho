@@ -29,6 +29,10 @@ class AxisModulesLookTest {
         assertTrue(belly[1] < 0, "under the pod's floor");
         assertEquals(DomeGeneratorShape.PAD_X + 0.5, belly[0], 1e-9, "over the lift's shaft");
         assertNotNull(ModuleLook.liftPad(DomeGeneratorShape.BUILD));
+        // floating (0.16.0) it hangs in the air on no legs, in its own box: the same two plates
+        List<double[]> f = ModuleLook.plates(DomeGeneratorShape.FLOATING_BUILD);
+        assertEquals(2, f.size());
+        for (int i = 0; i < 2; i++) for (int k = 0; k < 3; k++) assertEquals(p.get(i)[k], f.get(i)[k], 1e-9);
     }
 
     @Test

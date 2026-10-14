@@ -143,4 +143,58 @@ class RootLookTest {
         }
         assertEquals(RootLook.SURFACE_Y, RootLook.surfaceY(RootShape.well(26)));
     }
+
+    /**
+     * The well's drawing over every form of the deep root (0.16.0): drawn in the well's own frame, which lies
+     * {@link RootShape#base} layers up in the form's (the chamber's height, 0 in-well), its ribs' lines still lie on
+     * rib cells, its bands' faces on their course and in front of what the well has there, and its rings stay clear of
+     * every head, the bays' and the conduits' new cells counted (players pass through a conduit). The well's frame
+     * keeps the controller where the form has it.
+     */
+    @Test
+    void theWellsDrawingHoldsOverEveryDeepForm() {
+        for (RootShape.Deep d : RootShape.deeps()) {
+            RootShape.Well w = d.well;
+            int b = RootShape.base(d.name);
+            String at = " in " + d.name;
+            assertEquals(d.h, b);
+            int[] wc = w.build.controller(), dc = d.build.controller();
+            assertArrayEquals(new int[] { wc[0], wc[1] + b, wc[2] }, dc, "the controller" + at);
+            for (int rib = 0; rib < 8; rib++) {
+                double[] r = RootLook.ribs()[rib];
+                int x = (int) Math.floor(r[0] + r[2] * 0.02), z = (int) Math.floor(r[1] + r[3] * 0.02);
+                for (int[] run : RootLook.ribRuns(rib, w))
+                    for (int y = run[0]; y < run[1]; y++) assertEquals('L', d.cell(x, y + b, z), "rib " + rib + at);
+            }
+            for (int y : w.bands()) for (int[] f : RootLook.bandFaces(y, w)) {
+                assertEquals(ModuleLook.COURSE, d.cell(f[0], y + b, f[1]), "a band" + at);
+                int nx = f[0] + f[2], nz = f[1] + f[3];
+                assertEquals(w.cell(nx, y, nz), d.cell(nx, y + b, nz), "in front of a band" + at);
+            }
+            for (int i = 0; i < w.ringY().length; i++) assertTrue(
+                RootLook.ringLowest(i) >= headUnder(i, d) + RootLook.CLEAR,
+                "ring " + i + at + ": a head reaches " + headUnder(i, d));
+        }
+    }
+
+    /** {@link RootLook#headUnder(int, RootShape.Well)} over a deep root's form, in its well's frame. */
+    private static double headUnder(int ring, RootShape.Deep d) {
+        double outer = RootShape.RING_R[ring] + 1, c = RootShape.MID;
+        double top = RootShape.FLOOR_Y + 1;
+        for (int x = 0; x < RootShape.SIZE; x++) for (int z = 0; z < RootShape.SIZE; z++) {
+            if (Math.hypot(x - c, z - c) > outer + 0.75) continue;
+            for (int y = 0; y < RootShape.RING_Y[ring]; y++) {
+                char ch = d.cell(x, y + d.h, z);
+                if (ch == ShapeKit.NONE || ch == ShapeKit.AIR
+                    || ch == '='
+                    || ch == RootShape.RING
+                    || ch == RootShape.CONDUIT
+                    || ch == ShapeKit.CONTROLLER) continue;
+                char up = d.cell(x, y + 1 + d.h, z);
+                if (up == ShapeKit.NONE || up == ShapeKit.AIR || up == RootShape.CONDUIT)
+                    top = Math.max(top, y + 1 + RootLook.HEAD);
+            }
+        }
+        return top;
+    }
 }

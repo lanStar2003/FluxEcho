@@ -82,6 +82,36 @@ class PartsTest {
         assertEquals("cornice", Parts.DECK_NAMES[Parts.D_CORNICE]);
     }
 
+    /**
+     * 0.16.0 appends the floating foundation: frame meta 10, code 10, light 7, a whole cube (the sky platforms' walking
+     * deck), legend {@code f} (CITY.md §1.4, Appendix A and C); the frame's other metas keep their codes.
+     */
+    @Test
+    void theCodesOf016() {
+        assertEquals(10, Parts.FR_FLOAT);
+        assertEquals(10, Parts.frame(Parts.FR_FLOAT));
+        assertTrue(Parts.isFrame(10));
+        assertEquals(Parts.FR_FLOAT, Parts.meta(10));
+        assertFalse(Parts.euOnly(10));
+        assertEquals(Parts.frame(Parts.FR_FLOAT), ShapeKit.partOf('f'));
+        assertTrue(ShapeKit.checked('f'));
+        assertEquals(11, com.fluxecho.frame.BlockFrame.TYPES);
+        assertEquals(com.fluxecho.frame.BlockFrame.TYPES, com.fluxecho.frame.BlockFrame.NAMES.length);
+        assertEquals("float", com.fluxecho.frame.BlockFrame.NAMES[com.fluxecho.frame.BlockFrame.FLOAT]);
+        assertEquals(Parts.FR_FLOAT, com.fluxecho.frame.BlockFrame.FLOAT);
+        assertEquals(7, com.fluxecho.frame.BlockFrame.light(Parts.FR_FLOAT));
+        assertTrue(com.fluxecho.frame.BlockFrame.full(Parts.FR_FLOAT), "a deck to walk on");
+        assertArrayEquals(
+            new float[] { 0, 0, 0, 1, 1, 1 },
+            com.fluxecho.frame.BlockFrame.box(Parts.FR_FLOAT),
+            "a whole cube");
+        int[] light = { 0, 7, 0, 12, 8, 15, 4, 8, 10, 6, 7 };
+        for (int m = 0; m < light.length; m++)
+            assertEquals(light[m], com.fluxecho.frame.BlockFrame.light(m), "the light of frame meta " + m);
+        assertEquals(0, com.fluxecho.frame.BlockFrame.light(com.fluxecho.frame.BlockFrame.TYPES));
+        assertEquals(9, Parts.frame(Parts.FR_ANCHOR), "the anchor keeps its code");
+    }
+
     @Test
     void familiesAndMetas() {
         Set<Integer> seen = new HashSet<>();
@@ -170,12 +200,21 @@ class PartsTest {
         assertTrue(ModuleCores.built(ModuleCores.HOLO_TABLE));
         assertEquals(73, Parts.moduleCore(ModuleCores.SOPHON_ARRAY));
         assertEquals(74, Parts.moduleCore(ModuleCores.HOLO_TABLE));
-        assertFalse(ModuleCores.built(ModuleCores.SKY_SAILS), "the sky ring's are still reserved");
+        // the sky ring's four (0.16.0); the orbital anchor's is still reserved
+        assertEquals(ModuleCores.SKY_SAILS, ModuleCores.meta(SkySailsShape.KEY));
+        assertEquals(ModuleCores.OBSERVATORY, ModuleCores.meta(ObservatoryShape.KEY));
+        assertEquals(ModuleCores.DROPLET_HANGAR, ModuleCores.meta(DropletHangarShape.KEY));
+        assertEquals(ModuleCores.WEATHER_STATION, ModuleCores.meta(WeatherStationShape.KEY));
+        assertEquals(75, Parts.moduleCore(ModuleCores.SKY_SAILS));
+        assertEquals(78, Parts.moduleCore(ModuleCores.WEATHER_STATION));
+        assertTrue(ModuleCores.built(ModuleCores.WEATHER_STATION));
+        assertFalse(ModuleCores.built(ModuleCores.ORBITAL_ANCHOR), "the orbital anchor's is still reserved");
         assertArrayEquals(
             new int[] { ModuleCores.ECO_DOME, ModuleCores.DUAL_FOIL_VAULT, ModuleCores.ARCANE_COURT,
                 ModuleCores.BLOOD_COVENANT, ModuleCores.HUNTING_GROUND, ModuleCores.MANA_FOUNTAIN,
                 ModuleCores.RESONANCE_GATE, ModuleCores.DOME_GENERATOR, ModuleCores.ROOT, ModuleCores.SOPHON_ARRAY,
-                ModuleCores.HOLO_TABLE },
+                ModuleCores.HOLO_TABLE, ModuleCores.SKY_SAILS, ModuleCores.OBSERVATORY, ModuleCores.DROPLET_HANGAR,
+                ModuleCores.WEATHER_STATION },
             ModuleCores.built());
         int last = -1;
         for (int m : ModuleCores.built()) {

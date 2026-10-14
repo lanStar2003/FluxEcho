@@ -32,19 +32,24 @@ import com.fluxecho.city.TileArcaneCourt;
 import com.fluxecho.city.TileBloodCovenant;
 import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileDomeGenerator;
+import com.fluxecho.city.TileDropletHangar;
 import com.fluxecho.city.TileDualFoilVault;
 import com.fluxecho.city.TileEcoDome;
 import com.fluxecho.city.TileHoloTable;
 import com.fluxecho.city.TileHuntingGround;
 import com.fluxecho.city.TileManaFountain;
+import com.fluxecho.city.TileObservatory;
 import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.city.TileRoot;
+import com.fluxecho.city.TileSkySails;
 import com.fluxecho.city.TileSophonArray;
+import com.fluxecho.city.TileWeatherStation;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.RootLook;
 import com.fluxecho.logic.ShapeKit;
 import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.render.Shapes;
@@ -60,7 +65,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link HuntingGroundRender} and {@link ManaFountainRender}; 0.14.0 the Dual-foil Vault's {@link VaultRender} and
  * the Resonance Gate's {@link ResonanceGateRender}, whose floating spire is a landmark too; 0.15.0 the Sophon
  * Array's {@link SophonRender}, whose frame, light point and circuit canopy are a landmark, and the Holo Sand
- * Table's {@link HoloTableRender}).
+ * Table's {@link HoloTableRender}; 0.16.0 the sky ring's shared light pillar and catwalk edges, {@link SkyRender}, the
+ * pillar a landmark, under the Weather Station's {@link WeatherStationRender}, the Sky Sail Array's
+ * {@link SkySailsRender} and the Observatory's {@link ObservatoryRender}, whose cloud, sails and ring lens are
+ * landmarks
+ * too, and the Droplet Hangar's {@link DropletHangarRender}; and the deep root's flowing light over the Tidal Well's,
+ * {@link RootRender#deep}).
  * <ul>
  * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
  * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
@@ -110,9 +120,9 @@ public final class CityRender {
         RECESS_MID = ModuleLook.PICTURE_MID;
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
-    static final int COURSE = 0, SWEEP = 1, PLATE = 2, SOCKETS = 3, OWN = 4, CANVAS = 5, ALL = 6;
+    static final int COURSE = 0, SWEEP = 1, PLATE = 2, SOCKETS = 3, OWN = 4, CANVAS = 5, SKY = 6, ALL = 7;
     private static final String[] NAMES = { "plinth light", "forming sweep", "name plate", "socket items",
-        "module visuals", "canvas paintings", "drawing" };
+        "module visuals", "canvas paintings", "sky platform", "drawing" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     /** Whether a part opened the world state itself (and it must be ended). */
@@ -191,8 +201,21 @@ public final class CityRender {
                 if (m instanceof TileEcoDome d) EcoDomeRender.draw(d, f, t, fade * appear, cam, tier);
                 else if (m instanceof TileDomeGenerator g)
                     DomeGeneratorRender.draw(g, f, t, fade * appear, cam, tier, appear);
-                else if (m instanceof TileRoot r) RootRender.draw(r, f, t, fade * appear, cam, tier);
-                else if (m instanceof TileArcaneCourt ac) ArcaneCourtRender.draw(ac, f, t, fade * appear, tier);
+                else if (m instanceof TileRoot r) {
+                    // the well's own look in the well's own frame (0.16.0): over a deep root's chamber it lies the
+                    // chamber's height up in the shape's frame
+                    int base = r.base();
+                    if (base == 0) RootRender.draw(r, f, t, fade * appear, cam, tier);
+                    else RootRender.draw(
+                        r,
+                        new CityFrame(r, r.well().build),
+                        t,
+                        fade * appear,
+                        new double[] { cam[0], cam[1] - base, cam[2] },
+                        tier);
+                    // the deep root's own light over the well's, in the form's own frame
+                    RootRender.deep(r, f, t, fade * appear, cam, tier);
+                } else if (m instanceof TileArcaneCourt ac) ArcaneCourtRender.draw(ac, f, t, fade * appear, tier);
                 else if (m instanceof TileBloodCovenant bc)
                     BloodCovenantRender.draw(bc, f, t, fade * appear, cam, tier);
                 else if (m instanceof TileHuntingGround hg) HuntingGroundRender.draw(hg, f, t, fade * appear, tier);
@@ -202,9 +225,23 @@ public final class CityRender {
                     ResonanceGateRender.draw(rg, f, t, fade * appear, cam, tier, appear);
                 else if (m instanceof TileSophonArray sa) SophonRender.draw(sa, f, t, fade * appear, cam, tier, appear);
                 else if (m instanceof TileHoloTable ht) HoloTableRender.draw(ht, f, t, fade * appear, tier);
+                else if (m instanceof TileWeatherStation ws) WeatherStationRender.draw(ws, f, t, fade, appear, tier);
+                else if (m instanceof TileSkySails ss) SkySailsRender.draw(ss, f, t, appear, tier);
+                else if (m instanceof TileObservatory o) ObservatoryRender.draw(o, f, t, fade, appear, cam, tier);
+                else if (m instanceof TileDropletHangar dh)
+                    DropletHangarRender.draw(dh, f, t, fade * appear, cam, tier);
             } catch (Throwable x) {
                 recover();
                 fail(OWN, x);
+            } finally {
+                close();
+            }
+            // the sky ring's platform (0.16.0): its light pillar to the ground and its catwalk's lit edges
+            if (!OFF[SKY] && SkyRender.sky(m)) try {
+                SkyRender.draw(m, f, t, fade, appear, tier);
+            } catch (Throwable x) {
+                recover();
+                fail(SKY, x);
             } finally {
                 close();
             }
@@ -234,18 +271,30 @@ public final class CityRender {
     /**
      * What a city module shows past the range the rest of it is drawn in (0.12.0): its landmark, if it has one (the
      * Dome Generator's dome, CITY.md §1.3 "landmarks drawn to 512"; 0.14.0 the Resonance Gate's floating spire; 0.15.0
-     * the Sophon Array's frame, light point and circuit canopy); nothing for the others. Called by the nexus's
-     * renderer for a module beyond its effects' range.
+     * the Sophon Array's frame, light point and circuit canopy; 0.16.0 every sky module's light pillar, the Weather
+     * Station's cloud, the Sky Sail Array's sails and the Observatory's ring lens); nothing for the others. Called by
+     * the nexus's renderer for a module beyond its effects' range.
      */
     public static void landmark(TileCityModule m, double t) {
-        if (OFF[ALL] || OFF[OWN]) return;
-        try {
+        if (OFF[ALL]) return;
+        if (!OFF[OWN]) try {
             if (m instanceof TileDomeGenerator g) DomeGeneratorRender.landmark(g, t);
             else if (m instanceof TileResonanceGate rg) ResonanceGateRender.landmark(rg, t);
             else if (m instanceof TileSophonArray sa) SophonRender.landmark(sa, t);
+            else if (m instanceof TileWeatherStation ws) WeatherStationRender.landmark(ws, t);
+            else if (m instanceof TileSkySails ss) SkySailsRender.landmark(ss, t);
+            else if (m instanceof TileObservatory o) ObservatoryRender.landmark(o, t);
         } catch (Throwable x) {
             recover();
             fail(OWN, x);
+        } finally {
+            close();
+        }
+        if (!OFF[SKY] && SkyRender.sky(m)) try {
+            SkyRender.landmark(m, t);
+        } catch (Throwable x) {
+            recover();
+            fail(SKY, x);
         } finally {
             close();
         }
@@ -332,6 +381,8 @@ public final class CityRender {
     }
 
     private static int[][] courseOf(TileCityModule m) {
+        // the deep root's chamber forms keep their course dark: it runs round the chamber's walls deep in the ground
+        if (m instanceof TileRoot r && RootLook.courseBuried(r.deep())) return new int[0][];
         List<int[]> l = ModuleLook.course(m.build());
         return l.toArray(new int[0][]);
     }
@@ -371,7 +422,7 @@ public final class CityRender {
         float a = (float) Math.min(1, (PLATE_RANGE - d) / 16) * 0.9f * fade;
         if (a <= 0.05f) return;
         int accent = m.moduleColor();
-        String title = EchoText.t("module." + m.moduleKey()), caption = plateCaption(m);
+        String title = EchoText.t(m.nameKey()), caption = plateCaption(m);
         float scale = 1.5f, px = 1 / 64f;
         int tw = (int) Math.ceil(font().getStringWidth(title) * scale), cw = font().getStringWidth(caption);
         int th = (int) Math.ceil(9 * scale), wdt = Math.max(tw, cw) + 14, hgt = th + 15;
@@ -398,11 +449,7 @@ public final class CityRender {
 
     /** The plate's second line: running with its samples, or why it does not run. */
     private static String plateCaption(TileCityModule m) {
-        if (on(m)) return EchoText.t(
-            "city.plate.on",
-            m.sampleCount(),
-            m.samples()
-                .getSlots());
+        if (on(m)) return EchoText.t("city.plate.on", m.sampleCount(), m.shownSlots());
         String dock = m.clientDock == null || m.clientDock.isEmpty() ? "unformed" : m.clientDock;
         return EchoText.t("dock." + ("docked".equals(dock) ? "no_power" : dock));
     }
@@ -481,8 +528,7 @@ public final class CityRender {
      * {@link #ITEMS} of them first; returns how many.
      */
     private static int pickSockets(TileCityModule m) {
-        int slots = m.samples()
-            .getSlots(), n = 0;
+        int slots = m.shownSlots(), n = 0;
         double camX = RenderManager.renderPosX, camY = RenderManager.renderPosY, camZ = RenderManager.renderPosZ;
         double reach = NEAR * NEAR;
         for (int slot = 0; slot < slots; slot++) {

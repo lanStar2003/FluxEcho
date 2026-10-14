@@ -205,9 +205,11 @@ class TileResonanceGateTest {
                 keep.toArray(new int[0][]));
             List<int[]> protect = spec.protect(campus, 0, cx, y0, cz, f[0], f[1]);
             assertEquals(keep.size(), protect.size());
+            // to the sky ring's deck (0.16.0): two cells under the lowest deck the base layer gives
+            int top = com.fluxecho.logic.SkyRing.groundTop(y0);
             for (int i = 0; i < keep.size(); i++) {
                 int[] k = keep.get(i), q = protect.get(i);
-                assertArrayEquals(new int[] { k[0], k.length == 6 ? k[4] : 0, k[1], k[2], 255, k[3] }, q);
+                assertArrayEquals(new int[] { k[0], k.length == 6 ? k[4] : 0, k[1], k[2], top, k[3] }, q);
             }
             int[] box = spec.footprint(0, cx, cz, f[0], f[1], 0);
             int[] a = CampusPlan.toLocal(box[0] - cx, box[1] - cz, f[0], f[1]),

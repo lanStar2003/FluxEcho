@@ -110,9 +110,10 @@ public final class ShapeKit {
 
     /**
      * The {@link Parts} code a legend character stands for (CITY.md Appendix A): frame, deck and fitting parts (0.14.0:
-     * the canvas {@code Q}), the soft floor parts (deck, lit and trim tiles, grass, dirt, water, a panel as a ramp
-     * block, a tread, a rail), a gate niche's soft dark course, lit panel, glass and canvas, {@link Parts#AIR} for
-     * {@code -}; -1 for the controller (whose part is the module's core) and for a space.
+     * the canvas {@code Q}; 0.16.0: the floating foundation {@code f}), the soft floor parts (deck, lit and trim tiles,
+     * grass, dirt, water, a panel as a ramp block, a tread, a rail), a gate niche's soft dark course, lit panel, glass
+     * and canvas, {@link Parts#AIR} for {@code -}; -1 for the controller (whose part is the module's core) and for a
+     * space.
      *
      * @throws IllegalArgumentException for a character the legend does not have
      */
@@ -136,6 +137,8 @@ public final class ShapeKit {
                 return Parts.frame(Parts.FR_CONSOLE);
             case 'A':
                 return Parts.frame(Parts.FR_ANCHOR);
+            case 'f':
+                return Parts.frame(Parts.FR_FLOAT);
             case 'd':
             case '.':
                 return Parts.deck(Parts.D_DECK);

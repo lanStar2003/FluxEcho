@@ -43,6 +43,7 @@ import com.fluxecho.logic.PreviewSites;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyRing;
 import com.fluxecho.matter.ItemEchoCrystal;
 import com.fluxecho.research.Research;
 import com.fluxecho.research.ResearchData;
@@ -137,6 +138,12 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     public int clientOuterDocked;
     public int[] clientOuterColor = new int[OuterRing.DIAG_SITES.length];
     /**
+     * The sky sites a module is docked on (0.16.0), a bit per slot S0..S7 ({@link SkyRing#bit}), and their modules'
+     * colours: the platforms that stand, and the light pillars under them.
+     */
+    public int clientSkyDocked;
+    public int[] clientSkyColor = new int[SkyRing.SLOTS];
+    /**
      * The client's copy of the campus (its job, state, projection inputs), from the description packet; replaced
      * wholesale on every update so the renderers never see it half-read.
      */
@@ -207,7 +214,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
 
     /**
      * The highest phase its teams have the research for, up to the phase this version reaches
-     * ({@link ResearchTree#researchedPhase}: phase III since 0.15.0).
+     * ({@link ResearchTree#researchedPhase}: phase III since 0.15.0, phase IV since 0.16.0).
      */
     private int researchedPhase() {
         return ResearchTree.researchedPhase(this::has);
@@ -500,10 +507,14 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         return Config.nexusCompute * (has(Research.COMPUTE_1) ? 1.5 : 1);
     }
 
-    /** EU/t it draws while formed, the manifestation table's share included. */
+    /**
+     * EU/t it draws while formed, the manifestation table's share included: its {@code manifestEuPerTick} while it
+     * manifests, and since 0.16.0 the power of the recipe's own on top (manifest matter's LuV power,
+     * {@link Manifests#tableEut}).
+     */
     public long upkeep() {
         double base = Config.nexusUpkeep * (has(Research.UPKEEP_1) ? 0.75 : 1);
-        return (long) Math.ceil(base) + (manifest.isEmpty() ? 0 : Config.manifestEut);
+        return (long) Math.ceil(base) + Manifests.tableEut(manifest, Config.manifestEut);
     }
 
     /**
@@ -683,6 +694,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             if (!open.contains(r.research)) continue;
             int[] take = Costs.plan(r.inputs, in);
             if (take == null) continue;
+            // a recipe that waits for a later phase of the nexus (0.16.0: manifest matter, phase III) says so
+            if (!r.runsAt(phase())) {
+                status = "manifest_phase";
+                continue;
+            }
             ItemStack out = r.output();
             if (out == null) continue;
             String[] rec = null;
@@ -817,8 +833,11 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         if (spec.family == SiteFamily.PAVILION) return pavilionSite(m, mc, c, fx, fz);
         if (spec.family == SiteFamily.HALL) return hallSite(m, mc, c, fx, fz);
         for (int site : spec.family.sites()) {
+            // a site of its family it may stand on (0.16.0: never a sky berth)
+            if (!spec.hasSite(site)) continue;
             // the zenith or the root where 0.14.0 put it too (0.14.1): one built there by hand over ground the builder
-            // now adapts to (a lower pod, a shallower well) still docks
+            // now adapts to (a lower pod, a shallower well, 0.16.0 a sky module beside a pod on the full legs) still
+            // docks
             if (standsAt(m, spec.controller(site, c[0], c[1], c[2], fx, fz))
                 || standsAt(m, spec.formerController(site, c[0], c[1], c[2], fx, fz))) return site;
         }
@@ -971,7 +990,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             | (manifest.isEmpty() ? 0 : MANIFESTING);
         int mask = 0;
         for (TileModule m : docked()) if (onRing(m)) mask |= 1 << m.slot();
-        int key = a | mask << 3 | openSlots() << 11 | grown << 15 | outerDocked() << 18;
+        int key = a | mask << 3 | openSlots() << 11 | grown << 15 | outerDocked() << 18 | skyDocked() << 22;
         activity = a;
         if (key != lastSent) {
             lastSent = key;
@@ -995,6 +1014,16 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             int i = outerIndex(m.slot());
             if (i >= 0) bits |= 1 << i;
         }
+        return bits;
+    }
+
+    /**
+     * The sky sites a module is docked on (0.16.0), one bit each for S0 to S7 ({@link SkyRing#bit}): the masterplan's
+     * standing platforms and the light pillars under them ({@code Ds}, {@link #clientSkyDocked}).
+     */
+    private int skyDocked() {
+        int bits = 0;
+        for (TileModule m : docked()) bits |= SkyRing.bit(m.slot());
         return bits;
     }
 
@@ -1045,6 +1074,19 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             t.setByte("Do", (byte) outer);
             t.setIntArray("DoC", outerColors);
         }
+        // the sky sites' docked modules and their colours (0.16.0), only once one docks there
+        int sky = 0;
+        int[] skyColors = new int[SkyRing.SLOTS];
+        for (TileModule m : docked()) {
+            int k = SkyRing.slot(m.slot());
+            if (k < 0) continue;
+            sky |= 1 << k;
+            skyColors[k] = m.moduleColor();
+        }
+        if (sky != 0) {
+            t.setByte("Ds", (byte) sky);
+            t.setIntArray("DsC", skyColors);
+        }
         t.setByte("Op", (byte) openSlots());
         t.setBoolean("H", hologram);
         t.setInteger("C", (int) Math.round(computeRate() * 10));
@@ -1068,6 +1110,9 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         clientOuterDocked = t.getByte("Do") & 0xFF;
         int[] oc = t.getIntArray("DoC");
         clientOuterColor = oc.length == OuterRing.DIAG_SITES.length ? oc : new int[OuterRing.DIAG_SITES.length];
+        clientSkyDocked = t.getByte("Ds") & 0xFF;
+        int[] sc = t.getIntArray("DsC");
+        clientSkyColor = sc.length == SkyRing.SLOTS ? sc : new int[SkyRing.SLOTS];
         clientOpen = t.getByte("Op");
         clientHologram = t.getBoolean("H");
         clientCompute10 = t.getInteger("C");

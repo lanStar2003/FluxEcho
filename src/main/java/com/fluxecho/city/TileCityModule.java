@@ -114,7 +114,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
 
     protected TileCityModule() {
         // a module kind's build and layout are static data, so the constructor may ask for them
-        int n = layout().slots();
+        int n = sampleSlots();
         samples = new ItemStackHandler(n) {
 
             @Override
@@ -146,6 +146,32 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
 
     /** Its units, in slot order. */
     public abstract UnitLayout layout();
+
+    /**
+     * How many samples its handler keeps (0.16.0): its layout's slots, unless a module kind keeps more for a shape it
+     * may grow into (the root keeps 16 for every tile, its well using the first eight). Asked once, by the constructor,
+     * before the subclass's fields are set: a constant. A save with fewer slots loads into the first of them
+     * ({@link #readFromNBT}).
+     */
+    protected int sampleSlots() {
+        return layout().slots();
+    }
+
+    /**
+     * The samples the shape it stands (or last stood) as shows (0.16.0): its layout's slots, at most the handler's. A
+     * root standing as its well shows the eight taps; what a deep root's bays held stays in the slots after them.
+     */
+    public int shownSlots() {
+        return Math.min(samples.getSlots(), layout().slots());
+    }
+
+    /**
+     * The lang key (under {@code fluxecho.}) of its name on its plate and its window (0.16.0): its module's,
+     * {@code module.<key>}, unless a module kind names a shape apart (the deep root, {@code module.root.deep}).
+     */
+    public String nameKey() {
+        return "module." + moduleKey();
+    }
 
     /** Its core's meta ({@link BlockModuleCore}, {@code ModuleCores}). */
     public abstract int coreMetaOf();
@@ -261,6 +287,24 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     protected int flags(char ch) {
         if (dissolves().indexOf(ch) < 0) return 0;
         return passes().indexOf(ch) >= 0 ? Formed.HIDE | Formed.PASS : Formed.HIDE;
+    }
+
+    /** A dissolving character's flags only where the module kind lets that cell of its shape dissolve (0.16.0). */
+    @Override
+    protected int flags(char ch, int x, int y, int z) {
+        int f = flags(ch);
+        if (f == 0) return 0;
+        int[] l = local(x, y, z);
+        return dissolvesAt(l[0], l[1], l[2]) ? f : 0;
+    }
+
+    /**
+     * Whether a cell of its shape whose character dissolves ({@link #dissolves}) gives way there (0.16.0): every such
+     * cell, unless a module kind keeps some (the Weather Station dissolves its mast, not its pylons of the same
+     * pillars).
+     */
+    protected boolean dissolvesAt(int x, int y, int z) {
+        return true;
     }
 
     @Override
@@ -414,10 +458,10 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         return -1;
     }
 
-    /** Samples it keeps, from {@link #sample}. */
+    /** Samples the shape it stands as shows ({@link #shownSlots}), from {@link #sample}. */
     public int sampleCount() {
         int n = 0;
-        for (int i = 0; i < samples.getSlots(); i++) if (sample(i) != null) n++;
+        for (int i = 0; i < shownSlots(); i++) if (sample(i) != null) n++;
         return n;
     }
 

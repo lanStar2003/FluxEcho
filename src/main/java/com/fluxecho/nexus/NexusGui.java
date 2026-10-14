@@ -142,6 +142,17 @@ public final class NexusGui {
         public boolean canDefer;
         /** The job key and its plan key; both empty without a job. */
         public String job = "", planKey = "";
+        /**
+         * Whether the job is the deepen job ({@code Dr}, 0.16.0, {@link BuildJob#deepens()}): the root's module job's
+         * keys, with a name and stages of its own.
+         */
+        public boolean deepens;
+        /**
+         * Whether the job builds the Echo Dome Generator's pod floating ({@code Fl}, 0.16.0,
+         * {@link BuildJob#floats()}):
+         * its clearing stage is named for the pod's place in the air, not the legs'.
+         */
+        public boolean floats;
         public int site = -1, state, pause, stage, stages, placed, total, cleared, blocked, skipped, unloaded;
         /** Natural blocks the last survey found to clear (shown before a member presses Start). */
         public int natural;
@@ -187,6 +198,8 @@ public final class NexusGui {
             canDefer = t.getBoolean("Df");
             job = t.getString("K");
             planKey = t.hasKey("Pk") ? t.getString("Pk") : job;
+            deepens = t.getBoolean("Dr");
+            floats = t.getBoolean("Fl");
             site = t.hasKey("S") ? t.getInteger("S") : -1;
             state = t.getByte("St");
             pause = t.getByte("Ps");
@@ -225,7 +238,10 @@ public final class NexusGui {
             NBTTagList ql = t.getTagList("Q", 10);
             for (int i = 0; i < ql.tagCount(); i++) {
                 NBTTagCompound e = ql.getCompoundTagAt(i);
-                q.add(new String[] { e.getString("K"), e.getString("Pk") });
+                // a queued deepen job (0.16.0) carries a third entry, so it is named as itself
+                q.add(
+                    e.getBoolean("Dr") ? new String[] { e.getString("K"), e.getString("Pk"), "Dr" }
+                        : new String[] { e.getString("K"), e.getString("Pk") });
             }
             queue = q;
         }
@@ -756,10 +772,14 @@ public final class NexusGui {
         t.setBoolean("Df", c.active() && c.canDefer());
         if (c.active()) t.setTag("Md", Campus.ModuleState.write(c.modules()));
         NBTTagList q = new NBTTagList();
-        for (String k : c.queue()) {
+        List<String> keys = c.queue();
+        List<Boolean> deepens = c.queueDeepens();
+        for (int i = 0; i < keys.size(); i++) {
+            String k = keys.get(i);
             NBTTagCompound e = new NBTTagCompound();
             e.setString("K", k);
             e.setString("Pk", queuedPlanKey(n, k));
+            if (i < deepens.size() && deepens.get(i)) e.setBoolean("Dr", true);
             q.appendTag(e);
         }
         t.setTag("Q", q);
@@ -768,6 +788,8 @@ public final class NexusGui {
         boolean ended = BuildState.ended(j.state());
         t.setString("K", j.key());
         t.setString("Pk", j.planKey());
+        if (j.deepens()) t.setBoolean("Dr", true);
+        if (j.floats()) t.setBoolean("Fl", true);
         t.setInteger("S", j.site());
         t.setByte(
             "St",
@@ -896,31 +918,67 @@ public final class NexusGui {
      * {@code build.stage.d<n>} for the retirement of a 0.9.2 hall (taking it down, the forum's floor, its fixtures);
      * since 0.15.0 {@code build.stage.o<n>} for the outer establish (grading the outer ring, its paving, the outer
      * gate's pylons) and {@code build.stage.s<n>} for the Sophon Array, whose stages run in its own order (its racks,
-     * then its struts and lattice sphere, {@link com.fluxecho.logic.SophonArrayShape#STAGE_ORDER}). A job past its
-     * last stage (a module waiting for its structure to form, a finished job) shows its last stage.
+     * then its struts and lattice sphere, {@link com.fluxecho.logic.SophonArrayShape#STAGE_ORDER}); since 0.16.0
+     * {@code build.stage.l<n>} for the release of the Echo Dome Generator's pod (taking the legs down, the pod
+     * floating) and {@code build.stage.k<n>} for a sky module (clearing the air, the floating platform and its rail,
+     * the shell, the roof, the fittings, the catwalk and the pod's door, commissioning). A job past its last stage (a
+     * module waiting for its structure to form, a finished job) shows its last
+     * stage.
      */
     public static String stageKey(String planKey, int stage) {
+        return stageKey(planKey, stage, false);
+    }
+
+    /**
+     * {@link #stageKey(String, int)} of a job that may be the deepen job ({@code deepens}, 0.16.0,
+     * {@link BuildJob#deepens()}), which has the root's module job's plan key but stages of its own:
+     * {@code build.stage.dr<n>} (sinking the chamber, draining, nothing for the floor, the conduits, bays and grate,
+     * commissioning).
+     */
+    public static String stageKey(String planKey, int stage, boolean deepens) {
+        return stageKey(planKey, stage, deepens, false);
+    }
+
+    /**
+     * {@link #stageKey(String, int, boolean)} of a job that may build the Echo Dome Generator's pod floating
+     * ({@code floats}, 0.16.0, {@link BuildJob#floats()}): its plan has no legs, so its clearing stage is the pod's
+     * place in the air ({@code build.stage.zf0}), not the legs' and the pod's; its empty legs stage passes at once and
+     * keeps its key, as every other stage does.
+     */
+    public static String stageKey(String planKey, int stage, boolean deepens, boolean floats) {
         String family;
         int last;
         ModuleSpec spec = ModuleSpecs.ofJob(planKey);
-        if (BuildPlan.establishPhase(planKey) > 0 || BuildPlan.FORUM.equals(planKey)) {
+        if (deepens) {
+            family = "dr";
+            last = RootShape.R_COMMISSION;
+        } else if (BuildPlan.establishPhase(planKey) > 0 || BuildPlan.FORUM.equals(planKey)) {
             family = "e";
             last = BuildPlan.E_FIXTURE;
         } else if (BuildPlan.growPhase(planKey) > 0) {
             family = "g";
             last = BuildPlan.E_FORM;
         } else if (spec != null && spec.family == SiteFamily.ZENITH) {
+            if (floats && Math.max(0, Math.min(stage, DomeGeneratorShape.Z_COMMISSION)) == DomeGeneratorShape.Z_CLEAR)
+                return "build.stage.zf0";
             family = "z";
             last = DomeGeneratorShape.Z_COMMISSION;
         } else if (spec != null && spec.family == SiteFamily.ROOT) {
             family = "r";
             last = RootShape.R_COMMISSION;
+        } else if (spec != null && spec.family == SiteFamily.SKY) {
+            // a sky module's own stages (0.16.0): the platform floats first, the catwalk and the pod's door last
+            family = "k";
+            last = com.fluxecho.logic.SkyRing.K_COMMISSION;
         } else if (BuildPlan.retireSlot(planKey) >= 0) {
             family = "d";
             last = BuildPlan.D_FIXTURE;
         } else if (BuildPlan.OUTER.equals(planKey)) {
             family = "o";
             last = BuildPlan.O_FIXTURE;
+        } else if (BuildPlan.RELEASE.equals(planKey)) {
+            family = "l";
+            last = BuildPlan.L_FLOAT;
         } else if (spec != null && com.fluxecho.logic.SophonArrayShape.KEY.equals(spec.key)) {
             // the Sophon Array's own order (0.15.0): its racks, then its struts and lattice
             family = "s";
@@ -968,8 +1026,21 @@ public final class NexusGui {
      * its state.
      */
     public static String phaseText(String planKey, int state, int pause, int stage) {
+        return phaseText(planKey, state, pause, stage, false);
+    }
+
+    /** {@link #phaseText(String, int, int, int)} of a job that may be the deepen job (0.16.0). */
+    public static String phaseText(String planKey, int state, int pause, int stage, boolean deepens) {
+        return phaseText(planKey, state, pause, stage, deepens, false);
+    }
+
+    /**
+     * {@link #phaseText(String, int, int, int, boolean)} of a job that may build the pod floating ({@code floats},
+     * 0.16.0, {@link #stageKey(String, int, boolean, boolean)}).
+     */
+    public static String phaseText(String planKey, int state, int pause, int stage, boolean deepens, boolean floats) {
         BuildState.State s = stateOf(state);
-        if (s == BuildState.State.BUILDING) return EchoText.t(stageKey(planKey, stage));
+        if (s == BuildState.State.BUILDING) return EchoText.t(stageKey(planKey, stage, deepens, floats));
         BuildState.Pause p = pauseOf(pause);
         if (s == BuildState.State.PAUSED && p != BuildState.Pause.NONE) return EchoText.t(pauseKey(p));
         return EchoText.t(stateKey(s));

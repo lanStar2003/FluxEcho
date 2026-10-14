@@ -179,7 +179,7 @@ public class CommandFluxEcho extends CommandBase {
     private static IChatComponent phase(BuildJob j) {
         BuildState.State st = j.state();
         String key;
-        if (st == BuildState.State.BUILDING) key = NexusGui.stageKey(j.planKey(), j.stage());
+        if (st == BuildState.State.BUILDING) key = NexusGui.stageKey(j.planKey(), j.stage(), j.deepens(), j.floats());
         else if (st == BuildState.State.PAUSED && j.pause() != BuildState.Pause.NONE)
             key = NexusGui.pauseKey(j.pause());
         else key = NexusGui.stateKey(st);

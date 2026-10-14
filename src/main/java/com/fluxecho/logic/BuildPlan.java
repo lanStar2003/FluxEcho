@@ -28,9 +28,11 @@ import java.util.Set;
  * controller last.</li>
  * <li>{@link #grow}: the next stage of a formed nexus (0.12.0, CITY.md §3), at phase II with the light-lift pad;</li>
  * <li>{@link #zenith}: the Echo Dome Generator over the nexus (0.12.0, {@link DomeGeneratorShape}): its six legs from
- * the forum, then its pod in the air.</li>
+ * the forum, then its pod in the air; {@link #floating} the pod alone once it floats (0.16.0).</li>
+ * <li>{@link #release}: the Echo Dome Generator's legs taken down from the top, so its pod floats (0.16.0).</li>
  * <li>{@link #root}: the Tidal Well under the nexus (0.12.0, {@link RootShape}), sunk as a caisson: layer by layer from
- * the lid down, each layer's wall ring before its inside is dug.</li>
+ * the lid down, each layer's wall ring before its inside is dug; {@link #deepen} a formed well grown into the deep root
+ * (0.16.0), only its new part, and {@link #deep} the whole of a deep root's form for its repair.</li>
  * <li>{@link #retire}: a docked 0.9.2 library hall taken down and its ground graded and paved as the forum's (0.14.1),
  * so the city module whose site it stood on can be built.</li>
  * <li>{@link #outer}: the outer establish (0.15.0): grade the outer ring's annulus and pave its streets, promenade,
@@ -1411,7 +1413,9 @@ public final class BuildPlan {
      * + 1 to {@link #MODULE_HEADROOM} above the shape's top layer that holds anything, outward from the nexus, grading
      * their Y0 cells. The gatehouse's box less its open passage ({@link CampusPlan#inGatePassage}): over the passage
      * only the columns its bridge stands in, from Y0 + {@link CampusPlan#GATE_HEADROOM} up and never graded, so the
-     * gate road, its widenings and the establish pylons under the bridge stay as they are.</li>
+     * gate road, its widenings and the establish pylons under the bridge stay as they are. Since 0.16.0 the gatehouse's
+     * and a hall's columns stop two cells under the sky ring's lowest deck ({@link SkyRing#groundTop}): only the
+     * Dual-foil Vault's reached so high, at the sky datum 28.</li>
      * <li>FLOOR: the site's floor ({@link CampusPlan#siteFloor} for a hall, {@link CampusPlan#pavilionFloor} for a
      * pavilion: its apron and its diagonal allee, {@link CampusPlan#gatehouseFloor} for the gatehouse: its apron,
      * {@link CampusPlan#outerDiagFloor} for an outer diagonal: its apron and its allée from the outer promenade) and
@@ -1455,6 +1459,10 @@ public final class BuildPlan {
         // gatehouse its box and MODULE_MARGIN round it but over its open passage, where only the bridge's columns
         // clear, from the passage's headroom up
         Set<Long> footprint = centred ? footprint(m) : null;
+        // under the sky ring (0.16.0) the gatehouse's and the halls' boxes stop two cells under the lowest deck, so no
+        // sky module's job meets theirs: only the Dual-foil Vault's reached so high, at the sky datum 28
+        int clearTo = y0 + top + 1 + MODULE_HEADROOM;
+        if (gate || family == SiteFamily.HALL) clearTo = Math.min(clearTo, SkyRing.groundTop(y0));
         List<Clearing> clear = new ArrayList<>();
         for (int z = -MODULE_MARGIN; z < d + MODULE_MARGIN; z++) {
             for (int x = -MODULE_MARGIN; x < w + MODULE_MARGIN; x++) {
@@ -1465,18 +1473,11 @@ public final class BuildPlan {
                     if (Math.abs(l[1]) <= CampusPlan.GATE_PASSAGE) {
                         // the passage stays open: only the bridge's volume over it, from its headroom up, ungraded
                         if (!overPassage(m, x, z, h)) continue;
-                        clear.add(
-                            new Clearing(
-                                f,
-                                p[0],
-                                y0 + CampusPlan.GATE_HEADROOM,
-                                p[2],
-                                y0 + top + 1 + MODULE_HEADROOM,
-                                false));
+                        clear.add(new Clearing(f, p[0], y0 + CampusPlan.GATE_HEADROOM, p[2], clearTo, false));
                         continue;
                     }
                 }
-                clear.add(new Clearing(f, p[0], y0 + 1, p[2], y0 + top + 1 + MODULE_HEADROOM, true));
+                clear.add(new Clearing(f, p[0], y0 + 1, p[2], clearTo, true));
             }
         }
         if (outerDiag) {
@@ -1488,7 +1489,7 @@ public final class BuildPlan {
             for (long k : OuterRing.diagSiteCells(site)) {
                 int[] at2 = f.world(CampusPlan.keyA(k), CampusPlan.keyR(k));
                 if (!taken.add(CampusPlan.key(at2[0], at2[1]))) continue;
-                clear.add(new Clearing(f, at2[0], y0 + 1, at2[1], y0 + top + 1 + MODULE_HEADROOM, true));
+                clear.add(new Clearing(f, at2[0], y0 + 1, at2[1], clearTo, true));
             }
         }
         clear.sort(RIPPLE);
@@ -1653,27 +1654,64 @@ public final class BuildPlan {
      */
     public static Plan zenith(int site, int cx, int y0, int cz, int fx, int fz) {
         // the sky datum the base layer gives it (0.14.1): its legs, its pod's height and its clear box follow it
-        DomeGeneratorShape.Moor moor = DomeGeneratorShape.forBase(y0);
-        CityBuild m = moor.build;
+        return zenith(site, cx, y0, cz, fx, fz, DomeGeneratorShape.forBase(y0), true, 0);
+    }
+
+    /**
+     * The module job of the Echo Dome Generator as it floats (0.16.0, CITY.md §3): the pod alone at the sky datum
+     * {@code datum} (F), never its legs. A repair of a pod that floats builds it (a moored plan would raise the six
+     * legs again under it, as visible pillars, since the floating shape matches first), and so does a dome job offered
+     * once the pod floats from the start (the sky ring researched, the nexus of phase IV). It is {@link #zenith} in the
+     * same stages, LEGS left empty: CLEAR the pod's box with {@link DomeGeneratorShape#POD_MARGIN} round it from Y0 + F
+     * to Y0 + F + 12 (no leg column), FLOOR, SHELL, ROOF, FIT and COMMISSION as the moored plan lays them, step for
+     * step. The doors of the sky slots in {@code doors} (bit k for slot k, site 30 + k,
+     * {@link DomeGeneratorShape#doorSlot}) get no glazing step: a repair never shuts a door a sky module's job opened;
+     * and the clear columns of those doors' catwalks' first rows, which lie in the pod's clear margin, start two cells
+     * over its floor ({@link SkyRing#catwalkMouth}), over the catwalk's deck and rails. Every checked cell is placed
+     * where {@link Blueprint#world} puts it for the controller at that datum in the
+     * {@code floating} blueprint, so the HARD steps are exactly the cells that shape's structure check looks at.
+     *
+     * @throws IllegalArgumentException if the site is not the zenith, the front not a horizontal unit vector or F not
+     *                                  a sky datum
+     */
+    public static Plan floating(int site, int cx, int y0, int cz, int fx, int fz, int datum, int doors) {
+        return zenith(site, cx, y0, cz, fx, fz, DomeGeneratorShape.moor(datum), false, doors);
+    }
+
+    /**
+     * The zenith's plan at the sky datum of {@code moor}: moored with {@code legs} (the leg columns cleared, the legs
+     * laid in LEGS, the pod placed in the moored blueprint), floating without (the pod alone, placed in the floating
+     * blueprint, the doors of the slots in {@code doors} left unglazed). The pod's cells lie where they lie either way:
+     * both blueprints hold them round the same controller.
+     */
+    private static Plan zenith(int site, int cx, int y0, int cz, int fx, int fz, DomeGeneratorShape.Moor moor,
+        boolean legs, int doors) {
+        CityBuild m = legs ? moor.build : DomeGeneratorShape.FLOATING_BUILD;
         int[] ctrl = moor.controller(site, cx, y0, cz, fx, fz);
         Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
         Local at = new Local(ctrl, m);
 
         List<Clearing> clear = new ArrayList<>();
-        for (int[] c : moor.legColumns()) {
+        if (legs) for (int[] c : moor.legColumns()) {
             int[] w = f.world(c[0], c[1]);
             clear.add(new Clearing(f, w[0], y0 + c[2], w[1], y0 + c[3], false));
         }
         int lo = -DomeGeneratorShape.POD_MARGIN, hi = DomeGeneratorShape.SIZE + DomeGeneratorShape.POD_MARGIN;
         for (int z = lo; z < hi; z++) for (int x = lo; x < hi; x++) {
             int[] p = at.world(x, 0, z);
-            clear.add(new Clearing(f, p[0], p[1], p[2], y0 + moor.clearTop(), false));
+            int from = p[1];
+            // an open door's catwalk starts in the pod's clear margin (0.16.0): its first row (deck and rails) stays
+            if (doors != 0) {
+                int[] l = CampusPlan.toLocal(p[0] - cx, p[2] - cz, fx, fz);
+                if (SkyRing.catwalkMouth(doors, l[0], l[1])) from = p[1] + 2;
+            }
+            clear.add(new Clearing(f, p[0], from, p[2], y0 + moor.clearTop(), false));
         }
         clear.sort(RIPPLE);
 
         List<List<Draft>> stages = new ArrayList<>();
         for (int i = 0; i < DomeGeneratorShape.Z_STAGES; i++) stages.add(new ArrayList<>());
-        for (int[] c : moor.legPoints()) {
+        if (legs) for (int[] c : moor.legPoints()) {
             int[] p = at.world(c[0], c[1], c[2]);
             stages.get(DomeGeneratorShape.Z_LEGS)
                 .add(new Draft(f, p[0], p[1], p[2], ShapeKit.partOf(DomeGeneratorShape.LEG), HARD, NO_GROUP));
@@ -1688,6 +1726,11 @@ public final class BuildPlan {
             if (unitCells.contains(ShapeKit.Shape.pos(x, y, z))) {
                 shapeUnitCells++;
                 continue;
+            }
+            // a floating plan leaves the doors of the given sky slots open (0.16.0): no glazing step there
+            if (doors != 0 && DomeGeneratorShape.door(x, y, z)) {
+                int slot = DomeGeneratorShape.doorSlot(x, z);
+                if (slot >= 0 && (doors & 1 << slot) != 0) continue;
             }
             int[] p = at.world(x, y, z);
             byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
@@ -1735,6 +1778,194 @@ public final class BuildPlan {
         return new Plan(moduleKey(m.key(), site), DomeGeneratorShape.Z_STAGES, out, columns(clear));
     }
 
+    // ---- the sky ring (0.16.0) ----
+
+    /**
+     * The module job of a sky module on its site (0.16.0, CITY.md §4.12, {@link SkyRing}) at the sky datum
+     * {@code datum} (F: its deck is the floor of the pod that stands, Y0 + F), in its own stages
+     * ({@link SkyRing#K_CLEAR} ..):
+     * <ul>
+     * <li>CLEAR: the platform's box with {@link #MODULE_MARGIN} round it, from a cell under the deck to
+     * {@link #MODULE_HEADROOM} over the shape's top layer, and the catwalk's columns between the pod's clear margin and
+     * the platform's (radial 12 to 20, its deck and rails), from the deck to {@link SkyRing#CATWALK_HEAD} over it; all
+     * in
+     * the air, never graded, outward from the nexus.</li>
+     * <li>FLOAT: the platform's floating foundation and then its rail, bottom-up.</li>
+     * <li>SHELL, ROOF: the cells the module puts there, bottom-up.</li>
+     * <li>FIT: the cells ranked before the units, every unit as one contiguous group in unit order (bottom-up within
+     * the
+     * group), then the cells ranked after them.</li>
+     * <li>DECOR: the catwalk from the pod's rim to the platform's mouth ({@link SkyRing#catwalk}, soft: the deck, then
+     * the rails), then the pod's door on the site's axis ({@link SkyRing#doorCells}: twelve must-be-air steps, the
+     * last of the stage, so the door opens onto a catwalk that stands).</li>
+     * <li>COMMISSION: the controller, the last step.</li>
+     * </ul>
+     * Every module cell is placed where {@link Blueprint#world} puts it for the controller at that datum
+     * ({@link SkyRing#controller}), so the HARD steps are exactly the cells the structure check looks at. Nothing needs
+     * support: the builder places cells in the air as it does the pod's.
+     *
+     * @throws IllegalArgumentException if the site is no sky module's, the front not a horizontal unit vector or F not
+     *                                  a sky datum
+     * @throws IllegalStateException    if a cell has no stage, or the units do not hold exactly the shape's unit cells
+     */
+    public static Plan sky(int site, int cx, int y0, int cz, int fx, int fz, int datum, ModuleBuild m) {
+        int[] ctrl = SkyRing.controller(m, site, cx, y0, cz, fx, fz, datum);
+        int[] ax = SkyRing.axis(site);
+        Frame f = new Frame(cx, y0, cz, fx, fz, ax[0], ax[1]);
+        Local at = new Local(ctrl, m);
+        final int w = m.width(), d = m.depth(), h = m.height(), deck = y0 + datum;
+
+        int top = 0;
+        for (int y = 0; y < h; y++) for (int z = 0; z < d; z++) for (int x = 0; x < w; x++) {
+            if (m.cell(x, y, z) != ShapeKit.NONE) top = Math.max(top, y);
+        }
+        List<Clearing> clear = new ArrayList<>();
+        for (int z = -MODULE_MARGIN; z < d + MODULE_MARGIN; z++)
+            for (int x = -MODULE_MARGIN; x < w + MODULE_MARGIN; x++) {
+                int[] p = at.world(x, 0, z);
+                clear.add(new Clearing(f, p[0], deck - 1, p[2], deck + top + 1 + MODULE_HEADROOM, false));
+            }
+        // the catwalk's columns between the pod's margin (radial 11, the pod's protected box) and the platform's
+        for (int t = SkyRing.CATWALK_FROM + 1; t < SkyRing.FRONT - MODULE_MARGIN; t++) {
+            for (int s = -SkyRing.CATWALK_RAIL; s <= SkyRing.CATWALK_RAIL; s++) {
+                int[] p = f.world(t * ax[0] - s * ax[1], t * ax[1] + s * ax[0]);
+                clear.add(new Clearing(f, p[0], deck, p[1], deck + SkyRing.CATWALK_HEAD, false));
+            }
+        }
+        clear.sort(RIPPLE);
+
+        List<List<Draft>> stages = new ArrayList<>();
+        for (int i = 0; i < SkyRing.K_STAGES; i++) stages.add(new ArrayList<>());
+        Set<Long> unitCells = new HashSet<>();
+        for (List<int[]> u : m.units()) for (int[] c : u) unitCells.add(ShapeKit.Shape.pos(c[0], c[1], c[2]));
+        List<Draft> before = new ArrayList<>(), after = new ArrayList<>();
+        int shapeUnitCells = 0;
+        for (int y = 0; y < h; y++) for (int z = 0; z < d; z++) for (int x = 0; x < w; x++) {
+            char ch = m.cell(x, y, z);
+            if (ch == ShapeKit.NONE) continue;
+            if (unitCells.contains(ShapeKit.Shape.pos(x, y, z))) {
+                shapeUnitCells++;
+                continue;
+            }
+            int[] p = at.world(x, y, z);
+            byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
+            int stage = m.stage(x, y, z, ch);
+            if (stage <= SkyRing.K_CLEAR || stage >= SkyRing.K_STAGES || stage == SkyRing.K_DECOR)
+                throw new IllegalStateException(m.key() + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
+            Draft dr = new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), kind, NO_GROUP);
+            if (stage == SkyRing.K_FIT) {
+                int rank = m.fitRank(x, y, z, ch);
+                if (rank == 0) throw new IllegalStateException(m.key() + ": a fitting ranked with the units");
+                dr.rank = rank;
+                (rank < 0 ? before : after).add(dr);
+            } else stages.get(stage)
+                .add(dr);
+        }
+        List<Draft> units = new ArrayList<>();
+        List<List<int[]>> groups = m.units();
+        for (int i = 0; i < groups.size(); i++) {
+            List<Draft> group = new ArrayList<>();
+            for (int[] c : groups.get(i)) {
+                char ch = m.cell(c[0], c[1], c[2]);
+                if (!ShapeKit.checked(ch) || ch == ShapeKit.CONTROLLER)
+                    throw new IllegalStateException(m.key() + ": a unit cell is not a part");
+                int[] p = at.world(c[0], c[1], c[2]);
+                group.add(new Draft(f, p[0], p[1], p[2], m.part(c[0], c[1], c[2], ch), HARD, i));
+            }
+            group.sort(BOTTOM_UP);
+            units.addAll(group);
+        }
+        if (units.size() != shapeUnitCells) {
+            throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + shapeUnitCells);
+        }
+
+        // DECOR: the catwalk (rank 0), then the pod's door (rank 1)
+        List<Draft> decor = stages.get(SkyRing.K_DECOR);
+        for (int[] c : SkyRing.catwalk(site)) {
+            int[] p = f.world(c[0], c[1]);
+            decor.add(new Draft(f, p[0], deck + c[2], p[1], ShapeKit.partOf((char) c[3]), SOFT, NO_GROUP));
+        }
+        for (int[] c : SkyRing.doorCells(site, datum)) {
+            int[] p = f.world(c[0], c[1]);
+            Draft dr = new Draft(f, p[0], y0 + c[2], p[1], Parts.AIR, AIR, NO_GROUP);
+            dr.rank = 1;
+            decor.add(dr);
+        }
+
+        Comparator<Draft> ranked = Comparator.<Draft>comparingInt(dr -> dr.rank)
+            .thenComparing(BOTTOM_UP);
+        for (int s = SkyRing.K_FLOAT; s < SkyRing.K_STAGES; s++) if (s != SkyRing.K_FIT) stages.get(s)
+            .sort(ranked);
+        before.sort(ranked);
+        after.sort(ranked);
+        List<Draft> fit = stages.get(SkyRing.K_FIT);
+        fit.addAll(before);
+        fit.addAll(units);
+        fit.addAll(after);
+
+        List<List<Step>> out = empty(SkyRing.K_STAGES);
+        for (int s = SkyRing.K_FLOAT; s < SkyRing.K_STAGES; s++) out.set(s, steps(stages.get(s), s));
+        return new Plan(moduleKey(m.key(), site), SkyRing.K_STAGES, out, columns(clear));
+    }
+
+    /**
+     * Where a sky module's controller stands on its site at the sky datum F (0.16.0, {@link SkyRing#controller}): {x,
+     * y, z, facing ordinal}.
+     *
+     * @throws IllegalArgumentException if the site is no sky module's, the front not a horizontal unit vector or F not
+     *                                  a sky datum
+     */
+    public static int[] skyController(ModuleBuild m, int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+        return SkyRing.controller(m, site, cx, y0, cz, fx, fz, datum);
+    }
+
+    // ---- the pod is released (0.16.0) ----
+
+    /**
+     * The stages of the release job: the legs taken down, top-down; then FLOAT, which has no steps: the builder waits
+     * there for the pod to stand as {@code floating}.
+     */
+    public static final int L_LEGS = 0, L_FLOAT = 1, L_STAGES = 2;
+    /** The plan key (and job key) of the release job (0.16.0). */
+    public static final String RELEASE = "release";
+
+    /**
+     * The release job of the Echo Dome Generator (0.16.0, CITY.md §3): at phase IV, with the sky ring researched, the
+     * pod lets go of its legs and floats.
+     * <ul>
+     * <li>LEGS: every leg cell of the pod at the sky datum {@code datum} (F: 234, 210, 186 or 162 cells at F 40, 36, 32
+     * and 28) as an {@link #AIR} step, from the top down ({@link #TOP_DOWN}), all six legs together a layer at a time,
+     * so no leg stands on air at any moment. Each is a frame pillar of ours, which the builder takes away and credits
+     * to the ledger as its part ({@link TerrainRule.Verdict#REPLACE}); the zenith's own protected boxes do not hold
+     * this job.</li>
+     * <li>FLOAT: no steps; the builder waits for the pod to stand as {@code floating}.</li>
+     * </ul>
+     * There are no clear columns: the forum's tiles under the legs, the supply port and the recycle bin stay. The pod
+     * stands as {@code floating} at the next check after the first leg cell goes (a nexus of phase IV tries that shape
+     * once the moored one fails), so while the job runs the legs still standing show as plain pillars for a while.
+     * Every cell is placed where {@link Blueprint#world} puts the moored blueprint's leg cell for the controller at
+     * that
+     * datum, so the steps are exactly the cells the moored shape checks for legs.
+     *
+     * @throws IllegalArgumentException if the front is not a horizontal unit vector or F not a sky datum
+     */
+    public static Plan release(int cx, int y0, int cz, int fx, int fz, int datum) {
+        facingOrdinal(fx, fz);
+        DomeGeneratorShape.Moor moor = DomeGeneratorShape.moor(datum);
+        int[] ctrl = moor.controller(SiteFamily.ZENITH_SITE, cx, y0, cz, fx, fz);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        Local at = new Local(ctrl, moor.build);
+        List<Draft> legs = new ArrayList<>();
+        for (int[] c : moor.legPoints()) {
+            int[] p = at.world(c[0], c[1], c[2]);
+            legs.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, AIR, NO_GROUP));
+        }
+        legs.sort(TOP_DOWN);
+        List<List<Step>> stages = empty(L_STAGES);
+        stages.set(L_LEGS, steps(legs, L_LEGS));
+        return new Plan(RELEASE, L_STAGES, stages, Collections.emptyList());
+    }
+
     /**
      * The module job of the root's Tidal Well (0.12.0, CITY.md §4.9), sunk as a caisson, in its own stages
      * ({@link RootShape#R_SINK} ..):
@@ -1762,8 +1993,47 @@ public final class BuildPlan {
     public static Plan root(int site, int cx, int y0, int cz, int fx, int fz) {
         // the depth the base layer gives the well (0.14.1): its lid stays at Y0 - 1, its floor slab at Y0 - D
         RootShape.Well well = RootShape.forBase(y0);
-        CityBuild m = well.build;
-        int[] ctrl = well.controller(site, cx, y0, cz, fx, fz);
+        return caisson(
+            site,
+            cx,
+            y0,
+            cz,
+            fx,
+            fz,
+            well.build,
+            well.controller(site, cx, y0, cz, fx, fz),
+            well::shell,
+            well::inside);
+    }
+
+    /**
+     * The whole plan of a form of the deep root (0.16.0, {@link RootShape.Deep}), as {@link #root} plans the well: the
+     * job that repairs a deep root that came apart. SINK goes from the well's lid down through the well and on through
+     * the chamber to its floor slab, every layer its shell then its inside; DRAIN, FLOOR (the well's floor level), FIT
+     * (the console, the rings, the ramp and the conduits; the taps and the bays, a group each in unit order; the
+     * water), COMMISSION. A repair digs only the fluid that flowed in ({@code TerrainRule.forDig}), so nothing a player
+     * left in the well or the chamber is taken. The form's own well is the one it stands over, wherever the base layer
+     * would put a well now (a full well dug by hand over low ground keeps its controller).
+     *
+     * @throws IllegalArgumentException if the site is not the root's or the front not a horizontal unit vector
+     */
+    public static Plan deep(int site, int cx, int y0, int cz, int fx, int fz, RootShape.Deep d) {
+        return caisson(site, cx, y0, cz, fx, fz, d.build, d.controller(site, cx, y0, cz, fx, fz), d::shell, d::inside);
+    }
+
+    /** Which cells of a caisson's frame a predicate takes: its shell, or the inside it digs (0.16.0). */
+    private interface CellRule {
+
+        boolean at(int x, int y, int z);
+    }
+
+    /**
+     * A shape sunk as a caisson (the well's plan since 0.12.0, made general for the deep root in 0.16.0): its shell
+     * layer by layer from the top, each layer's shell a band before the band that digs its inside, then the drain, the
+     * floor, the fittings and the controller, as {@link #root} describes it.
+     */
+    private static Plan caisson(int site, int cx, int y0, int cz, int fx, int fz, CityBuild m, int[] ctrl,
+        CellRule shellRule, CellRule insideRule) {
         Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
         Local at = new Local(ctrl, m);
         Set<Long> unitCells = new HashSet<>();
@@ -1777,7 +2047,7 @@ public final class BuildPlan {
             List<Draft> shell = new ArrayList<>(), dig = new ArrayList<>(), drained = new ArrayList<>();
             for (int z = 0; z < m.depth(); z++) for (int x = 0; x < m.width(); x++) {
                 int[] p = at.world(x, y, z);
-                if (well.inside(x, y, z)) {
+                if (insideRule.at(x, y, z)) {
                     dig.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DIG, NO_GROUP));
                     drained.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DRAIN, NO_GROUP));
                 }
@@ -1790,7 +2060,7 @@ public final class BuildPlan {
                 byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
                 Draft d = new Draft(f, p[0], p[1], p[2], kind == AIR ? Parts.AIR : m.part(x, y, z, ch), kind, NO_GROUP);
                 int stage = m.stage(x, y, z, ch);
-                if (stage == RootShape.R_SINK && well.shell(x, y, z)) shell.add(d);
+                if (stage == RootShape.R_SINK && shellRule.at(x, y, z)) shell.add(d);
                 else if (stage == RootShape.R_FLOOR) floor.add(d);
                 else if (stage == RootShape.R_FIT) {
                     d.rank = m.fitRank(x, y, z, ch);
@@ -1841,6 +2111,124 @@ public final class BuildPlan {
         out.set(RootShape.R_SINK, steps(sink, RootShape.R_SINK));
         out.set(RootShape.R_DRAIN, steps(drain, RootShape.R_DRAIN));
         out.set(RootShape.R_FLOOR, steps(floor, RootShape.R_FLOOR));
+        out.set(RootShape.R_FIT, steps(fit, RootShape.R_FIT));
+        out.set(RootShape.R_COMMISSION, steps(commission, RootShape.R_COMMISSION));
+        List<List<Integer>> bands = new ArrayList<>();
+        for (int i = 0; i < RootShape.R_STAGES; i++) bands.add(Collections.<Integer>emptyList());
+        bands.set(RootShape.R_SINK, sinkBands);
+        return new Plan(moduleKey(m.key(), site), RootShape.R_STAGES, out, Collections.<Column>emptyList(), bands);
+    }
+
+    /**
+     * The deepen job (0.16.0, CITY.md §4.9): a formed Tidal Well grown into a form of the deep root
+     * ({@link RootShape.Deep}), only its new part, in the root's stages, the well standing and docked all through:
+     * <ul>
+     * <li>SINK (a chamber form only): a caisson under the intact well, every band from the top down: first the ring
+     * round the well's floor slab (with that slab it closes a watertight lid over the chamber's octagon before anything
+     * is dug), then for each layer of the chamber's walls its wall ring, then its inside dug out ({@link #DIG}), then
+     * the chamber's floor slab with its lift pad and its lit veins.</li>
+     * <li>DRAIN: the chamber's inside once more, from the top down.</li>
+     * <li>FLOOR: nothing (the well's floor stands).</li>
+     * <li>FIT: the conduits (from the bottom up), the eight bays (a group each, units 8 to 15), and last the cells the
+     * deep root changes in the well's floor slab: its 24 grate cells (the well's BASE replaced, credited) and its open
+     * centre (an {@link #AIR} step). The first of those takes the well apart; the deep root forms once the last lands.
+     * An in-well form changes no cell of the well: its conduits and bays only, and it forms as the last one lands.</li>
+     * <li>COMMISSION: the well's controller, which stands already.</li>
+     * </ul>
+     * No step but the slab's last ones is at a cell the well's structure checks: the ring lies in cells the well leaves
+     * empty, the chamber under its box, the in-well conduits and bays in its air.
+     *
+     * @throws IllegalArgumentException if the site is not the root's or the front not a horizontal unit vector
+     * @throws IllegalStateException    if a cell has no stage, or the bays do not hold exactly the shape's bay cells
+     */
+    public static Plan deepen(int site, int cx, int y0, int cz, int fx, int fz, RootShape.Deep d) {
+        CityBuild m = d.build;
+        int[] ctrl = d.controller(site, cx, y0, cz, fx, fz);
+        Frame f = new Frame(cx, y0, cz, fx, fz, 1, 0);
+        Local at = new Local(ctrl, m);
+        List<Draft> sink = new ArrayList<>(), drain = new ArrayList<>(), conduits = new ArrayList<>(),
+            open = new ArrayList<>(), commission = new ArrayList<>();
+        List<Integer> sinkBands = new ArrayList<>();
+        int shapeBayCells = 0;
+        for (int y = m.height() - 1; y >= 0; y--) {
+            List<Draft> shell = new ArrayList<>(), dig = new ArrayList<>(), drained = new ArrayList<>();
+            for (int z = 0; z < m.depth(); z++) for (int x = 0; x < m.width(); x++) {
+                int[] p = at.world(x, y, z);
+                if (d.chamberInside(x, y, z)) {
+                    dig.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DIG, NO_GROUP));
+                    drained.add(new Draft(f, p[0], p[1], p[2], Parts.AIR, DRAIN, NO_GROUP));
+                }
+                char ch = m.cell(x, y, z);
+                if (ch == ShapeKit.NONE) continue;
+                if (ch == ShapeKit.CONTROLLER) {
+                    commission.add(new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), HARD, NO_GROUP));
+                    continue;
+                }
+                if (d.bay(x, y, z)) {
+                    shapeBayCells++;
+                    continue;
+                }
+                if (d.chamberShell(x, y, z)) {
+                    shell.add(new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), HARD, NO_GROUP));
+                    continue;
+                }
+                char w = d.wellCell(x, y, z);
+                // the well's own cell, as it stands
+                if (!d.inChamber(x, y, z) && w == ch) continue;
+                if (ch == RootShape.CONDUIT && (d.inChamber(x, y, z) || w == ShapeKit.NONE)) {
+                    Draft c = new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), HARD, NO_GROUP);
+                    c.rank = m.fitRank(x, y, z, ch);
+                    conduits.add(c);
+                    continue;
+                }
+                if (d.inChamber(x, y, z) || w == ShapeKit.NONE)
+                    throw new IllegalStateException(d.name + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
+                // a cell the deep root changes in the well: its floor slab's grate and its open centre, last
+                byte kind = ch == ShapeKit.AIR ? AIR : HARD;
+                open.add(new Draft(f, p[0], p[1], p[2], kind == AIR ? Parts.AIR : m.part(x, y, z, ch), kind, NO_GROUP));
+            }
+            // the layer's shell, then its inside: a band each, so the builder digs nothing before the ring stands
+            shell.sort(RIPPLE);
+            dig.sort(RIPPLE);
+            drained.sort(RIPPLE);
+            for (List<Draft> band : java.util.Arrays.asList(shell, dig)) {
+                if (band.isEmpty()) continue;
+                if (!sink.isEmpty()) sinkBands.add(sink.size());
+                sink.addAll(band);
+            }
+            drain.addAll(drained);
+        }
+        conduits.sort(
+            Comparator.<Draft>comparingInt(dr -> dr.rank)
+                .thenComparing(BOTTOM_UP));
+        open.sort(BOTTOM_UP);
+        List<Draft> fit = new ArrayList<>(conduits);
+        List<List<int[]>> groups = m.units();
+        int baySteps = 0;
+        for (int i = 0; i < groups.size(); i++) {
+            List<int[]> cells = groups.get(i);
+            int[] first = cells.get(0);
+            // the well's taps stand: the bays only, a group each with its unit's index
+            if (!d.bay(first[0], first[1], first[2])) continue;
+            List<Draft> group = new ArrayList<>();
+            for (int[] c : cells) {
+                char ch = m.cell(c[0], c[1], c[2]);
+                if (!ShapeKit.checked(ch) || ch == ShapeKit.CONTROLLER)
+                    throw new IllegalStateException(m.key() + ": a unit cell is not a part");
+                int[] p = at.world(c[0], c[1], c[2]);
+                group.add(new Draft(f, p[0], p[1], p[2], m.part(c[0], c[1], c[2], ch), HARD, i));
+            }
+            group.sort(BOTTOM_UP);
+            fit.addAll(group);
+            baySteps += group.size();
+        }
+        if (baySteps != shapeBayCells)
+            throw new IllegalStateException("the bays hold " + baySteps + " cells, the shape " + shapeBayCells);
+        fit.addAll(open);
+
+        List<List<Step>> out = empty(RootShape.R_STAGES);
+        out.set(RootShape.R_SINK, steps(sink, RootShape.R_SINK));
+        out.set(RootShape.R_DRAIN, steps(drain, RootShape.R_DRAIN));
         out.set(RootShape.R_FIT, steps(fit, RootShape.R_FIT));
         out.set(RootShape.R_COMMISSION, steps(commission, RootShape.R_COMMISSION));
         List<List<Integer>> bands = new ArrayList<>();
@@ -2262,6 +2650,12 @@ public final class BuildPlan {
     /** Bottom-up by layer, then as {@link #RIPPLE}. */
     private static final Comparator<Place> BOTTOM_UP = (p, q) -> {
         int c = Integer.compare(p.y, q.y);
+        return c != 0 ? c : RIPPLE.compare(p, q);
+    };
+
+    /** Top-down by layer, then as {@link #RIPPLE} (0.16.0: the release job takes the legs down from their heads). */
+    private static final Comparator<Place> TOP_DOWN = (p, q) -> {
+        int c = Integer.compare(q.y, p.y);
         return c != 0 ? c : RIPPLE.compare(p, q);
     };
 }

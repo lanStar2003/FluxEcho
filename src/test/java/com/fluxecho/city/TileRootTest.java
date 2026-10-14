@@ -70,10 +70,12 @@ class TileRootTest {
             assertArrayEquals(new int[] { X, Y - 1, Z }, k);
             assertTrue(r.consoleAt(k[0], k[1], k[2]), "the console stand opens the window");
             assertEquals(8, r.unitCount());
+            // 0.16.0: every root keeps sixteen samples (the deep root's bays after the taps); a well shows eight
             assertEquals(
-                8,
+                RootShape.SLOTS,
                 r.samples()
                     .getSlots());
+            assertEquals(8, r.shownSlots());
             for (int s = 0; s < 8; s++) {
                 int[] p = r.slotCell(s);
                 assertEquals(s, r.slotAt(p[0], p[1], p[2]));
@@ -109,16 +111,23 @@ class TileRootTest {
         TileRoot r = root(X, Y, Z, 2);
         List<TileMultiblock.Shape> shapes = r.shapes();
         // 0.12's well keeps its name and blueprint, so every well that formed still forms; the shallower wells are
-        // appended (0.14.1)
-        assertEquals(4, shapes.size());
+        // appended (0.14.1), then the deep root's six forms (0.16.0)
+        assertEquals(10, shapes.size());
         assertEquals(RootShape.WELL, shapes.get(0).name);
         assertSame(RootShape.BLUEPRINT, shapes.get(0).bp);
         assertEquals(RootShape.WELL_20, shapes.get(1).name);
         assertEquals(RootShape.WELL_14, shapes.get(2).name);
         assertEquals(RootShape.WELL_8, shapes.get(3).name);
-        for (TileMultiblock.Shape s : shapes) assertTrue(r.tries(s), "any well while no nexus is known");
+        String[] deep = { RootShape.DEEP, RootShape.ROOT_7, RootShape.ROOT_IN, RootShape.ROOT_IN_20,
+            RootShape.ROOT_IN_14, RootShape.ROOT_IN_8 };
+        for (int i = 0; i < deep.length; i++) {
+            assertEquals(deep[i], shapes.get(4 + i).name);
+            assertSame(RootShape.deep(deep[i]).blueprint, shapes.get(4 + i).bp);
+        }
+        for (TileMultiblock.Shape s : shapes) assertTrue(r.tries(s), "any shape while no nexus is known");
         assertEquals(RootShape.WELL, r.shapeName());
         assertEquals(Formed.HIDE | Formed.PASS, r.flags('R'));
+        assertEquals(Formed.HIDE | Formed.PASS, r.flags('C'), "the deep root's conduits (0.16.0)");
         assertEquals(0, r.flags('W'));
         assertEquals(0, r.flags('^'), "the pad stays a pad");
         assertEquals(0, r.flags('o'));
@@ -259,6 +268,10 @@ class TileRootTest {
             String k = com.fluxecho.nexus.NexusGui.stageKey(job, s);
             assertEquals("build.stage.r" + Math.min(s, RootShape.R_COMMISSION), k);
             keys.add("fluxecho." + k);
+            // the deepen job's own stages (0.16.0)
+            String dr = com.fluxecho.nexus.NexusGui.stageKey(job, s, true);
+            assertEquals("build.stage.dr" + Math.min(s, RootShape.R_COMMISSION), dr);
+            keys.add("fluxecho." + dr);
         }
         java.util.Collections.addAll(
             keys,
@@ -267,6 +280,10 @@ class TileRootTest {
             "fluxecho.root.tip",
             "fluxecho.root.structure",
             "fluxecho.unit.tap",
+            "fluxecho.unit.bay",
+            "fluxecho.module.root.deep",
+            "fluxecho.build.job.deepen",
+            "fluxecho.build.deepen_offered",
             "fluxecho." + RootShape.noRoom(0),
             "item.fluxecho.phase_alloy.name",
             "fluxecho.phase_alloy.tip",
@@ -413,5 +430,44 @@ class TileRootTest {
         int[] tap = r.slotCell(0);
         assertTrue(r.covers(null, tap[0], tap[1], tap[2]), "a tap");
         assertTrue(r.covers(null, c[0], c[1] - 1, c[2]), "its lid");
+    }
+
+    /**
+     * Under a known nexus of phase IV (0.16.0) the deep root's form the well of its cell grows into is tried too, and
+     * before the well ({@code matchOrder}: an in-well form holds its well whole); below phase IV only the well. A deep
+     * root that came apart keeps its form while the nexus stands at phase IV, so its repair is the whole form; below
+     * it is named back to its well.
+     */
+    @Test
+    void underANexusOfPhaseFourItsDeepFormIsTriedFirst() {
+        int[][] cases = { { 79, 26 }, { 41, 26 }, { 35, 26 }, { 28, 20 }, { 16, 8 } };
+        for (int[] k : cases) for (int phase : new int[] { 3, 4 }) {
+            com.fluxecho.nexus.TileNexus n = nexus(k[0]);
+            n.regrow(phase);
+            TileRoot r = under(n, rootCell(n, k[1]));
+            RootShape.Well w = RootShape.well(k[1]);
+            String deep = RootShape.deepFor(k[0], w).name;
+            for (TileMultiblock.Shape s : r.shapes()) assertEquals(
+                s.name.equals(w.name) || phase >= 4 && s.name.equals(deep),
+                r.tries(s),
+                s.name + " at Y0 " + k[0] + " phase " + phase);
+            List<TileMultiblock.Shape> order = r.matchOrder(
+                r.shapes()
+                    .get(0));
+            assertEquals(10, order.size());
+            for (int i = 0; i < 6; i++) assertTrue(RootShape.deep(order.get(i).name) != null, "the deep forms first");
+            assertEquals(RootShape.WELL, order.get(6).name, "then the shape it stood as");
+            r.expectShape(deep);
+            r.nameShapeHere();
+            assertEquals(phase >= 4 ? deep : w.name, r.shapeName(), "a deep root that came apart at phase " + phase);
+        }
+        // a 0.14.0 full well dug by hand over low ground grows into the in-well form
+        com.fluxecho.nexus.TileNexus low = nexus(28);
+        low.regrow(4);
+        TileRoot old = under(low, rootCell(low, RootShape.DEPTH));
+        for (TileMultiblock.Shape s : old.shapes()) assertEquals(
+            s.name.equals(RootShape.WELL) || s.name.equals(RootShape.ROOT_IN),
+            old.tries(s),
+            s.name + " in a hand-dug full well");
     }
 }

@@ -137,4 +137,51 @@ class LiftLookTest {
         assertTrue(LiftLook.hoops(10, 50, 11).length < h.length, "cut at the beam's foot");
         assertEquals(0, LiftLook.hoops(10, 20, 100).length);
     }
+
+    /**
+     * The deep root's lift (0.16.0, CITY.md §2.5): a chamber's pad under the island's adds the ride down to it, from
+     * the chamber's floor (Y0 - 39 under the full chamber, Y0 - 33 under the 7-layer one) up to the island's pad
+     * (a gap of 14 or 8), through the open centre of the well's floor slab; an in-well form adds none. The axis is read
+     * off each form's own cells.
+     */
+    @Test
+    void theDeepRootsChamberAddsItsRide() {
+        for (RootShape.Deep d : RootShape.deeps()) {
+            int base = Y0 - d.well.depth - d.h;
+            Col c = new Col().fill(0, base - 1, Cell.SOLID);
+            java.util.List<Integer> pads = new java.util.ArrayList<>();
+            for (int y = 0; y < d.shape.H; y++) {
+                char ch = d.cell(12, y, 12);
+                Cell k = ch == '^' ? Cell.PAD : ch == ' ' || ch == '-' || ch == '=' ? Cell.OPEN : Cell.OURS;
+                c.cells.put(base + y, k);
+                if (ch == '^') pads.add(base + y);
+            }
+            // the dais's pad over the lid's open centre
+            c.fill(Y0, Y0, Cell.PAD);
+            pads.add(Y0);
+            int[] at = new int[pads.size()];
+            for (int i = 0; i < at.length; i++) at[i] = pads.get(i);
+            List<LiftLook.Beam> b = LiftLook.beams(c, at);
+            int island = Y0 - d.well.depth + 1;
+            assertEquals(d.h > 0 ? 2 : 1, b.size(), d.name + ": " + b);
+            LiftLook.Beam up = b.get(b.size() - 1);
+            assertEquals(island, up.pad, d.name + ": the island's ride to the dais");
+            assertEquals(Y0, up.hi, 1e-9);
+            if (d.h == 0) continue;
+            LiftLook.Beam down = b.get(0);
+            assertEquals(Y0 - 26 - d.h, down.pad, d.name + ": the chamber's floor pad");
+            assertEquals(down.pad + 1, down.lo, 1e-9);
+            assertEquals(island, down.hi, 1e-9, d.name + ": up to the island's pad");
+            assertEquals(d.h == 13 ? 14 : 8, island - down.pad, "the gap");
+            assertFalse(down.blocked);
+            LiftShaft.Ride r = LiftShaft.plan(c, down.pad, 1);
+            // a ride ends with the feet on the pad's top
+            assertEquals(island + 1, r.to, 1e-9, d.name + ": the ride up lands on the island");
+            assertEquals(
+                down.pad + 1,
+                LiftShaft.plan(c, island, -1).to,
+                1e-9,
+                d.name + ": and down on the chamber's floor");
+        }
+    }
 }

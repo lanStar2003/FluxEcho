@@ -19,7 +19,7 @@
 | `shard/MTEFluxCollector` | 采集器本体（`MTEBasicMachine`）：供能、槽位、迁移旧机器、贴图、GUI、NBT、Waila、全息数据 |
 | `shard/ShardTier` | 等级表（第 3 节） |
 | `shard/ShardWork` | 每个工作周期的逻辑（代替 GT 配方查找）；通量碎屑也在这里出 |
-| `shard/CoreCircuits` | 核心电路矿辞 `circuitLV..circuitLuV` → 等级 1–6；`example(t)` |
+| `shard/CoreCircuits` | 核心电路矿辞（GT 用 `OrePrefixes.circuit` 算出的名字，GT 5.09.51 里是 `circuitBasic..circuitMaster`）→ 等级 1–6；`example(t)` |
 | `shard/Collectors` | 注册 1 台采集器 + 6 个旧 ID；`main()`、`legacy()` |
 | `shard/DrillHead`、`DrillHeads` | 6 种固定钻头、磨损概率；GT `toolHeadDrill` → `DrillHead`，`uses(stack)` |
 | `shard/Mix` | 矿脉出矿权重（主/次各 1，伴生/零散各 1/8） |

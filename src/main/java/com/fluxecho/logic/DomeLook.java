@@ -280,6 +280,66 @@ public final class DomeLook {
         return shellQuads(distance, radius) + (legs ? farLegQuads() : 0) + 1;
     }
 
+    // ---- the floating pod (0.16.0)
+
+    /**
+     * The floating pod's lifting light (0.16.0, once the release job took its legs down): a soft glow under its floor
+     * ({@link #FLOAT_GLOW_R} wide, a hair under it), its floor's rim lit, and near motes sinking from its underside
+     * ({@link #FLOAT_MOTES}, {@link #FLOAT_FALL} blocks down over {@link #FLOAT_FALL_T} ticks), as the floating
+     * foundation's platforms of the sky ring glow under their decks.
+     */
+    public static final double FLOAT_GLOW_R = 9, FLOAT_UNDER = -0.06, FLOAT_FALL = 7;
+    public static final int FLOAT_MOTES = 6, FLOAT_FALL_T = 120;
+    /** The quads of the glow under the floor ({@code Shapes.disc}: 32 sides). */
+    public static final int DISC_QUADS = 32;
+
+    /**
+     * The rim of the pod's floor seen from above, {x, z} in the pod's frame round its middle: the outer corners of the
+     * stepped edge of its octagon {@code oct(10, 14)}.
+     */
+    public static double[][] rim() {
+        double h = DomeGeneratorShape.POD_R + 0.5, s = DomeGeneratorShape.POD_K + 1, c = Math.min(h, s - h);
+        double[][] o = { { h, -c }, { h, c }, { c, h }, { -c, h }, { -h, c }, { -h, -c }, { -c, -h }, { c, -h } };
+        double[][] out = new double[o.length][];
+        for (int i = 0; i < o.length; i++) out[i] = new double[] { CX + o[i][0], CZ + o[i][1] };
+        return out;
+    }
+
+    /** Where sinking mote {@code k} under the floating pod is at the world time {@code t}: {drop, alpha}. */
+    public static double[] floatMote(int k, double t) {
+        double u = ArcaneLook.frac(t / FLOAT_FALL_T + k / (double) FLOAT_MOTES);
+        return new double[] { FLOAT_FALL * u, StrictMath.sin(Math.PI * u) };
+    }
+
+    /**
+     * The quads of the floating pod's lifting light at a tier: the glow under its floor and its rim's eight edges in
+     * their pieces, near its sinking motes too; nothing far.
+     */
+    public static int floatQuads(int tier) {
+        if (tier == ModuleLook.FAR) return 0;
+        double[][] r = rim();
+        int n = DISC_QUADS;
+        for (int i = 0; i < r.length; i++) {
+            double[] a = r[i], b = r[(i + 1) % r.length];
+            n += pieces(Math.hypot(b[0] - a[0], b[1] - a[1]));
+        }
+        return tier == ModuleLook.NEAR ? n + FLOAT_MOTES : n;
+    }
+
+    /**
+     * The most quads the moored legs' ribs take at a tier, as {@code DomeGeneratorRender} draws them (each segment's
+     * four sides and two ends at most, near a collar of four lines at each joint, a line up each segment's inner face
+     * and a glow at each joint; mid the same without collars and glows; far {@link #farLegQuads}): what the floating
+     * pod
+     * leaves out, more than its lifting light ever takes ({@link #floatQuads}).
+     */
+    public static int legQuads(int tier) {
+        if (tier == ModuleLook.FAR) return farLegQuads();
+        int seg = tier == ModuleLook.NEAR ? LEG_SEGMENTS : 4;
+        int perLeg = seg * 6 + seg + (tier == ModuleLook.NEAR ? (seg + 1) * 4 + seg + 1 : 0);
+        return DomeGeneratorShape.LEGS * perLeg;
+    }
+
     private static double sq(double d) {
         return d * d;
     }

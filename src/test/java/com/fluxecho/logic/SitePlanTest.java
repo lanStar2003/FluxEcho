@@ -125,8 +125,11 @@ class SitePlanTest {
         assertEquals(SiteFamily.OUTER_GROUND, SiteFamily.OUTER_DIAG.ground());
         assertEquals(SiteFamily.OUTER_GROUND, SiteFamily.OUTER_FLANK.ground());
         assertEquals(SiteFamily.THIRD_GROUND, SiteFamily.THIRD.ground());
+        // the sky ring's ground is the floating pod (0.16.0): no job lays it, and it is no plan key
+        assertEquals(SiteFamily.POD_FLOATS, SiteFamily.SKY.ground());
+        assertEquals(0, BuildPlan.establishPhase(SiteFamily.POD_FLOATS));
         for (SiteFamily f : new SiteFamily[] { SiteFamily.HALL, SiteFamily.PAVILION, SiteFamily.GATE, SiteFamily.ZENITH,
-            SiteFamily.ROOT, SiteFamily.SKY, SiteFamily.ORBIT }) assertNull(f.ground(), f.name());
+            SiteFamily.ROOT, SiteFamily.ORBIT }) assertNull(f.ground(), f.name());
         // no establish key is mistaken for a ground job, nor the other way round
         assertEquals(0, BuildPlan.establishPhase(SiteFamily.OUTER_GROUND));
         assertEquals(0, BuildPlan.establishPhase(SiteFamily.THIRD_GROUND));

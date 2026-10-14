@@ -195,7 +195,8 @@ class PreviewSitesTest {
      * nexus's phase, the Archive, the Eco Dome, the dome generator (moored, or floating from phase IV), the Tidal Well
      * and, from phase II, all four pavilions and (0.14.0) the gatehouse and the Dual-foil Vault (all of them stand from
      * phase II since 0.14.1, {@link #phaseTwoStandsTheWholeCity}), and (0.15.0) from phase III the Sophon Array and the
-     * Holo Sand Table on the outer diagonals.
+     * Holo Sand Table on the outer diagonals, and (0.16.0) from phase IV the sky ring's four modules and the deep root
+     * (its full chamber under the well, 1,761 cells more).
      */
     @Test
     void thePreviewStaysWithinItsBudget() {
@@ -207,7 +208,9 @@ class PreviewSitesTest {
                     .size()
                 + EcoDomeShape.BLUEPRINT.cells()
                     .size()
-                + RootShape.BLUEPRINT.cells()
+                // 0.16.0: the deep root from phase IV, the Tidal Well before
+                + (phase >= RootShape.DEEP_PHASE ? RootShape.deep(RootShape.DEEP).blueprint : RootShape.BLUEPRINT)
+                    .cells()
                     .size()
                 + (phase >= 4 ? DomeGeneratorShape.FLOATING_BP : DomeGeneratorShape.MOORED_BP).cells()
                     .size();
@@ -228,6 +231,15 @@ class PreviewSitesTest {
             if (phase >= 3) cells += SophonArrayShape.BLUEPRINT.cells()
                 .size()
                 + HoloTableShape.BLUEPRINT.cells()
+                    .size();
+            // 0.16.0: from phase IV the sky ring's four on their platforms round the floating pod
+            if (phase >= 4) cells += WeatherStationShape.BLUEPRINT.cells()
+                .size()
+                + SkySailsShape.BLUEPRINT.cells()
+                    .size()
+                + ObservatoryShape.BLUEPRINT.cells()
+                    .size()
+                + DropletHangarShape.BLUEPRINT.cells()
                     .size();
             assertTrue(cells <= PREVIEW_BUDGET, "phase " + phase + ": " + cells + " cells");
         }

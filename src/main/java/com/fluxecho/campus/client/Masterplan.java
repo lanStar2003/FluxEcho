@@ -43,9 +43,11 @@ import com.fluxecho.logic.LiftRule;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.OuterLook;
 import com.fluxecho.logic.OuterRing;
+import com.fluxecho.logic.PodView;
 import com.fluxecho.logic.RingSlots;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyRing;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.ItemBlockNexusCore;
 import com.fluxecho.nexus.TileModule;
@@ -73,7 +75,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * The two sites on the nexus's axis (0.12.0): the zenith ({@link SiteFamily#ZENITH_SITE}) as the pod's octagon dashed
  * on the forum, drawn again up at the pod's floor (Y0 + 40, or the lower sky datum over high ground since 0.14.1,
- * {@link DomeGeneratorShape#datum}), and the squares of its six legs' feet, its sign under the pod; the root
+ * {@link DomeGeneratorShape#datum}), and the squares of its six legs' feet while it stands on them (0.16.0: not once
+ * it floats), its sign under the pod; the root
  * ({@link SiteFamily#ROOT_SITE}) as the well's octagon dashed on the forum over it, its sign behind the nexus. Their
  * signs name them (天顶, 根位) and what stands, is built or is planned there, as a hall site's do.
  * <p>
@@ -86,6 +89,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * has within {@link CampusSplit#REACH}), an amber dashed line where it crosses the outer disc. An outer diagonal a
  * neighbour holds part of for good (its inner square, or an outer diagonal it claimed) is signed as left to the
  * neighbours.
+ * <p>
+ * The sky ring (0.16.0, CITY.md §2.5), once the nexus has grown to phase IV, a sky module is the job or one is docked:
+ * up at the pod's floor (the sky datum the pod has), the four module platforms' octagons ({@link SkyRing#centre},
+ * S0, S2, S4 and S6) and the two edges of each catwalk from the pod out to its platform, dashed until the platform's
+ * module stands, coloured and signed as the inner sites (the job's breathing cyan); each sign hangs under its
+ * platform's front, seen from the forum.
  * <p>
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
@@ -151,9 +160,14 @@ public final class Masterplan {
     private static final Map<String, boolean[]> TRIMMED = new ConcurrentHashMap<>();
 
     /** The parts that fail on their own. */
-    private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2, OUTER = 3;
+    private static final int PLAN = 0, SIGNS = 1, PREVIEW = 2, OUTER = 3, SKY = 4;
     private static final String[] NAMES = { "masterplan", "masterplan signs", "placement preview",
-        "masterplan's outer ring" };
+        "masterplan's outer ring", "masterplan's sky ring" };
+
+    /** The sky ring's module sites (0.16.0): S0, S2, S4, S6; the berths between them come with 0.17.0. */
+    private static final int[] SKY_SITES = { SkyRing.SITE0, SkyRing.SITE0 + 2, SkyRing.SITE0 + 4, SkyRing.SITE0 + 6 };
+    /** A sky platform seen from above round its centre: {@code oct(10, 14)}. */
+    private static final double[][] PLATFORM = octagon(SkyRing.HALF, SkyRing.K);
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     private float nx, ny = 1, nz;
@@ -249,8 +263,11 @@ public final class Masterplan {
                     begun = true;
                 }
                 Frame f = new Frame(ox, oy, oz, n.front().offsetX, n.front().offsetZ);
-                // the pod's floor at the campus's sky datum (0.14.1: lower over high ground)
-                int datum = DomeGeneratorShape.datum(c[1]);
+                // the pod's floor at the campus's sky datum (0.14.1: lower over high ground; 0.16.0: where a pod
+                // standing there has it), and whether it stands on its legs
+                int[] pod = pod(n, v, tiles, c, n.front().offsetX, n.front().offsetZ);
+                int datum = pod[0];
+                boolean moored = pod[1] != 0;
                 Frame up = new Frame(ox, oy + datum, oz, f.fx, f.fz);
                 Site[] sites = sites(n, v, tiles, c, f.fx, f.fz);
                 float breath = 0.85f + 0.15f * (float) Math.sin(t * 0.06);
@@ -260,6 +277,13 @@ public final class Masterplan {
                     outer = outer(n, v, tiles, c, f.fx, f.fz);
                 } catch (Throwable x) {
                     fail(OUTER, x);
+                }
+                // the sky ring (0.16.0), its own part likewise
+                Site[] sky = null;
+                if (!OFF[SKY]) try {
+                    sky = sky(n, v, tiles, c, f.fx, f.fz, datum);
+                } catch (Throwable x) {
+                    fail(SKY, x);
                 }
                 for (int pass = 0; pass < 2; pass++) {
                     boolean through = pass == 0;
@@ -292,13 +316,20 @@ public final class Masterplan {
                     float za = zen.alpha * k * (zen.job ? breath : 1f), ra = root.alpha * k * (root.job ? breath : 1f);
                     outline(tes, f, POD, 0, 0, true, 0.12, zen.rgb, za, true);
                     outline(tes, up, POD, 0, 0, true, 0.14, zen.rgb, Math.min(0.35f, za * 1.3f), false);
-                    for (int[] foot : FEET) outline(tes, f, FOOT, foot[0], foot[1], true, 0.1, zen.rgb, za, false);
+                    // the legs' feet only while the pod stands (or is to stand) on them: not once it floats (0.16.0)
+                    if (moored)
+                        for (int[] foot : FEET) outline(tes, f, FOOT, foot[0], foot[1], true, 0.1, zen.rgb, za, false);
                     outline(tes, f, WELL, 0, 0, true, 0.12, root.rgb, ra, true);
                     if (outer != null && !OFF[OUTER]) try {
                         outerLines(tes, f, outer, k, breath);
                     } catch (Throwable x) {
                         // the batch stays open for the inner plan's draw below
                         fail(OUTER, x);
+                    }
+                    if (sky != null && !OFF[SKY]) try {
+                        skyLines(tes, up, sky, k, breath);
+                    } catch (Throwable x) {
+                        fail(SKY, x);
                     }
                     drawing = false;
                     tes.draw();
@@ -312,6 +343,12 @@ public final class Masterplan {
                 if (outer != null && !OFF[OUTER]) for (int i = 0; i < OUTER_SITES.length; i++) {
                     Site st = outer.sites[i];
                     double[] at = OuterLook.signAt(OUTER_SITES[i]);
+                    double[] r = f.at(at[0], at[1]);
+                    signs.add(new Sign(r[0], oy + at[2], r[1], st.title, st.caption, st.rgb, 2f));
+                }
+                if (sky != null && !OFF[SKY]) for (int i = 0; i < SKY_SITES.length; i++) {
+                    Site st = sky[i];
+                    double[] at = skySignAt(SKY_SITES[i], datum);
                     double[] r = f.at(at[0], at[1]);
                     signs.add(new Sign(r[0], oy + at[2], r[1], st.title, st.caption, st.rgb, 2f));
                 }
@@ -467,6 +504,37 @@ public final class Masterplan {
     }
 
     /**
+     * The zenith's pod as the masterplan draws it (0.16.0): {its sky datum, 1 while it stands or is to stand on its
+     * legs, 0 once it floats} ({@link PodView#moored}). An Echo Dome Generator standing at the zenith's controller
+     * column at a sky datum says it, docked or not (a docked one first), by the shape it last stood as and its datum
+     * where its controller stands; else the campus's jobs: the current release job, on its legs at the datum it
+     * releases, or a dome job current or queued that builds the pod floating, at its datum; else the pod the campus's
+     * base layer gives, on its legs.
+     */
+    private static int[] pod(TileNexus n, Campus.View v, List<TileMultiblock> tiles, int[] c, int fx, int fz) {
+        int[] ctrl = DomeGeneratorShape.controller(SiteFamily.ZENITH_SITE, c[0], c[1], c[2], fx, fz);
+        TileModule seen = null;
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            if (!DomeGeneratorShape.KEY.equals(mod.moduleKey()) || mod.xCoord != ctrl[0] || mod.zCoord != ctrl[2])
+                continue;
+            if (!DomeGeneratorShape.isDatum(DomeGeneratorShape.podDatum(mod.yCoord, c[1]))) continue;
+            boolean docked = mod.clientDocked && mod.clientSlot == SiteFamily.ZENITH_SITE
+                && Arrays.equals(mod.clientNexus, c);
+            if (seen == null || docked) seen = mod;
+            if (docked) break;
+        }
+        boolean releasing = v.hasJob() && !BuildState.ended(v.stateEnum())
+            && BuildPlan.RELEASE.equals(v.planKey)
+            && v.form.floats();
+        boolean floatingJob = v.floatingJob > 0;
+        boolean moored = PodView.moored(seen == null ? null : seen.shapeName(), floatingJob, releasing);
+        int datum = seen != null ? DomeGeneratorShape.podDatum(seen.yCoord, c[1])
+            : releasing ? v.form.pod : floatingJob ? v.floatingJob : DomeGeneratorShape.datum(c[1]);
+        return new int[] { datum, moored ? 1 : 0 };
+    }
+
+    /**
      * The site of the nexus's axis a module stands on (0.12.0): its controller is where the zenith's or the root's
      * stands for this nexus, facing its front; -1 for any other.
      */
@@ -561,6 +629,114 @@ public final class Masterplan {
         return new double[][] { { from, -3.5 }, { 24.5, -3.5 }, { 24.5, -5.5 }, { 29.5, -5.5 }, { 29.5, -3.5 },
             { 33.5, -3.5 }, { 33.5, -5.5 }, { 36.5, -5.5 }, { 36.5, 5.5 }, { 33.5, 5.5 }, { 33.5, 3.5 }, { 29.5, 3.5 },
             { 29.5, 5.5 }, { 24.5, 5.5 }, { 24.5, 3.5 }, { from, 3.5 } };
+    }
+
+    // ---- the sky ring (0.16.0)
+
+    /**
+     * The sky ring's module sites as the masterplan shows them ({@link #SKY_SITES}), or null while it shows none:
+     * before the nexus has grown to the phase that opens the sky ring ({@link SiteFamily#SKY}'s), unless a sky module
+     * is the job or one is docked. A site is occupied by a module docked there ({@link TileNexus#clientSkyDocked}) or a
+     * loaded one standing on its platform at about the pod's datum {@code datum}.
+     */
+    private static Site[] sky(TileNexus n, Campus.View v, List<TileMultiblock> tiles, int[] c, int fx, int fz,
+        int datum) {
+        int jobSite = -1;
+        String jobModule = null;
+        if (v.hasJob() && !BuildState.ended(v.stateEnum())) {
+            jobModule = ModuleSpecs.moduleOf(v.planKey);
+            jobSite = jobModule == null || !SkyRing.skySite(v.site) ? -1 : v.site;
+        }
+        if (n.phase() < SiteFamily.SKY.opens && jobSite < 0 && n.clientSkyDocked == 0) return null;
+        // the sky modules that stand, by the platform their foundation's centre stands on
+        String[] names = new String[SKY_SITES.length];
+        int[] colours = new int[names.length];
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileModule mod) || m.isInvalid() || m.getWorldObj() != n.getWorldObj()) continue;
+            ModuleSpec spec = ModuleSpecs.get(mod.moduleKey());
+            if (spec == null || spec.family != SiteFamily.SKY || !mod.formed()) continue;
+            int[] mc = mod.centre();
+            if (Math.abs(mc[1] - (c[1] + datum)) > 16) continue;
+            int[] l = CampusPlan.toLocal(mc[0] - c[0], mc[2] - c[2], fx, fz);
+            for (int i = 0; i < names.length; i++)
+                if (names[i] == null && SkyRing.inPlatform(SKY_SITES[i], l[0], l[1])) {
+                    names[i] = mod.moduleKey();
+                    colours[i] = mod.moduleColor();
+                }
+        }
+        Site[] out = new Site[SKY_SITES.length];
+        for (int i = 0; i < SKY_SITES.length; i++) {
+            int s = SKY_SITES[i], slot = SkyRing.slot(s);
+            Site st = new Site();
+            st.title = EchoText.t(SiteFamily.labelKey(s), s);
+            out[i] = st;
+            boolean docked = (n.clientSkyDocked & SkyRing.bit(s)) != 0;
+            st.occupied = docked || names[i] != null;
+            st.job = s == jobSite;
+            if (st.job) {
+                st.rgb = CYAN;
+                st.alpha = 0.3f;
+                st.caption = EchoText.t("build.masterplan.building", EchoText.t("module." + jobModule));
+            } else if (st.occupied) {
+                int col = docked && n.clientSkyColor[slot] != 0 ? n.clientSkyColor[slot] : colours[i];
+                st.rgb = col == 0 ? WHITE : col;
+                st.alpha = 0.28f;
+                st.caption = names[i] != null ? EchoText.t("module." + names[i]) : EchoText.t("build.masterplan.taken");
+            } else {
+                st.rgb = DIM;
+                st.alpha = 0.15f;
+                st.caption = EchoText.t("build.masterplan.reserved");
+                Campus.ModuleState planned = planned(v, s);
+                if (planned != null) {
+                    st.caption = EchoText.t(
+                        "build.masterplan.planned",
+                        EchoText.t("module." + planned.key),
+                        EchoText.t(
+                            "build.masterplan.status." + planned.status.name()
+                                .toLowerCase(Locale.ROOT)));
+                    st.rgb = planned.status == Campus.ModuleStatus.NEEDS_RESEARCH ? AMBER
+                        : planned.status == Campus.ModuleStatus.QUEUED ? CYAN : DIM;
+                    st.alpha = 0.24f;
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The sky ring's lines up at the pod's floor ({@code up}): each module platform's octagon and its catwalk's two
+     * edges from the pod's rim out to the platform's front, dashed until the platform's module stands.
+     */
+    private static void skyLines(Tessellator tes, Frame up, Site[] sky, float k, float breath) {
+        double t0 = SkyRing.CATWALK_FROM - 0.5, t1 = SkyRing.CATWALK_TO + 0.5, side = SkyRing.CATWALK_HALF + 0.5;
+        for (int i = 0; i < SKY_SITES.length; i++) {
+            Site st = sky[i];
+            int s = SKY_SITES[i];
+            float a = Math.min(0.35f, st.alpha * 1.2f) * k * (st.job ? breath : 1f);
+            int[] pc = SkyRing.centre(s), ax = SkyRing.axis(s);
+            outline(tes, up, PLATFORM, pc[0], pc[1], true, 0.14, st.rgb, a, !st.occupied);
+            for (double e : new double[] { -side, side }) outline(
+                tes,
+                up,
+                new double[][] { local(ax, t0, e), local(ax, t1, e) },
+                0,
+                0,
+                false,
+                0.1,
+                st.rgb,
+                a,
+                !st.occupied);
+        }
+    }
+
+    /**
+     * Where a sky site's sign hangs: {A, R, height over the floor}, under its platform's front edge (radial 24, clear
+     * of the light pillar under its middle), a few blocks under the deck, so it reads from the forum.
+     */
+    private static double[] skySignAt(int site, int datum) {
+        int[] ax = SkyRing.axis(site);
+        double d = SkyRing.FRONT + 2;
+        return new double[] { ax[0] * d, ax[1] * d, datum - 3.5 };
     }
 
     // ---- the outer ring (0.15.0)

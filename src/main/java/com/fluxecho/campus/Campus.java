@@ -40,13 +40,16 @@ import com.fluxecho.logic.CampusBand;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.CampusSplit;
 import com.fluxecho.logic.CityOffer;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.FxCodec;
 import com.fluxecho.logic.Mix;
 import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
+import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyRing;
 import com.fluxecho.logic.WrongCell;
 import com.fluxecho.nexus.Costs;
 import com.fluxecho.nexus.NexusRegistry;
@@ -83,6 +86,11 @@ import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
  * ({@link BuildJob#outer}, {@code establish:outer}), which grades and paves the outer ring; once it has run the outer
  * families' sites stand on laid ground ({@link #groundLaid}) and their modules are offered there. A campus whose outer
  * disc reaches a neighbouring campus's shares the ground with it instead of being refused ({@link CampusSplit}).
+ * <p>
+ * 0.16.0: a nexus of phase IV whose teams researched the sky ring is offered the release of the Echo Dome Generator's
+ * pod ({@link BuildJob#release}): its legs come down from the top, credited to the ledger, and the pod stands as
+ * {@code floating}. From then on the pod is never built on legs again: a repair of a floating pod, and a dome job
+ * offered once the pod may float from the start, build the floating plan ({@link BuildJob.Form#pod}).
  */
 public final class Campus {
 
@@ -216,6 +224,13 @@ public final class Campus {
     public List<String> queue() {
         List<String> out = new ArrayList<>();
         for (BuildJob j : queue) out.add(j.key);
+        return out;
+    }
+
+    /** For each queued job, in the order of {@link #queue()}, whether it is the deepen job (0.16.0). */
+    public List<Boolean> queueDeepens() {
+        List<Boolean> out = new ArrayList<>();
+        for (BuildJob j : queue) out.add(j.deepens());
         return out;
     }
 
@@ -394,9 +409,39 @@ public final class Campus {
     /**
      * Whether the campus job that lays a family's ground has run here ({@link SiteFamily#ground}): since 0.15.0 the
      * outer establish once it ran to its end; the third ring's later. The outer families' sites are offered only then.
+     * Since 0.16.0 the sky ring's ground ({@link SiteFamily#POD_FLOATS}) is the pod standing as it floats now
+     * ({@link #floatingDatum}).
      */
     public boolean groundLaid(String job) {
+        if (SiteFamily.POD_FLOATS.equals(job)) return floatingDatum() > 0;
         return job != null && laid.contains(job);
+    }
+
+    /**
+     * The sky datum of the Echo Dome Generator's pod docked on the zenith while it stands formed as it floats
+     * (0.16.0): the floor its sky modules' decks are level with ({@link DomeGeneratorShape#podDatum}); 0 while it is
+     * moored, unformed or gone.
+     */
+    int floatingDatum() {
+        for (TileModule m : nexus.docked()) {
+            if (m.slot() != SiteFamily.ZENITH_SITE || !m.formed()) continue;
+            int datum = floatingPod(m, centre()[1]);
+            if (datum > 0) return datum;
+        }
+        return 0;
+    }
+
+    /**
+     * The doors of the pod a floating plan leaves open (0.16.0, {@link BuildJob.Form#doors}): a bit for each sky site
+     * a module stands on (a recorded site) or a module job not ended is for, so a repair of the pod never glazes a door
+     * that leads to one.
+     */
+    int openDoors() {
+        int doors = 0;
+        for (int site : sites.keySet()) if (SkyRing.platformSite(site)) doors |= SkyRing.bit(site);
+        for (BuildJob j : jobs()) if (!BuildState.ended(j.state) && j.module() != null && SkyRing.platformSite(j.site))
+            doors |= SkyRing.bit(j.site);
+        return doors;
     }
 
     /**
@@ -659,6 +704,9 @@ public final class Campus {
         if (!nexus.formed() || !nexus.dockKnown()) return;
         offerRefresh();
         offerGrowth(now);
+        offerDeepen(now);
+        offerRelease(now);
+        floatPendingDome();
         offerOuter(now);
         withdraw(staleOuterOffers());
         Set<Integer> halls = new LinkedHashSet<>();
@@ -666,7 +714,17 @@ public final class Campus {
             if (o.hall >= 0 && CityOffer.LEGACY_HALL.equals(o.reason)) halls.add(o.hall);
             ModuleSpec spec = o.offered() ? ModuleSpecs.get(o.kind.key) : null;
             if (spec == null) continue;
-            enqueue(BuildJob.module(spec, o.site));
+            BuildJob j = BuildJob.module(spec, o.site);
+            // a pod offered once it may float from the start is built floating, never on legs to release (0.16.0), and
+            // leaves the doors to the sky modules open
+            if (floatsFresh(spec.key, nexus.phase(), nexus.has(Research.SKY_RING)))
+                j.floatAt(freshPodDatum(), openDoors());
+            // a sky module (0.16.0) is laid level with the floor of the pod that floats
+            if (spec.family == SiteFamily.SKY) {
+                int deck = floatingDatum();
+                if (deck > 0) j.deckAt(deck);
+            }
+            enqueue(j);
             // the site as every window names it (0.14.0): "4 号位" by number, but 大门, 天顶, 根位 by name
             tell(
                 new ChatComponentTranslation(
@@ -994,6 +1052,8 @@ public final class Campus {
             if (w != null) for (TileModule m : NexusRegistry.modules(w.provider.dimensionId)) {
                 if (m.isInvalid() || m.getWorldObj() != w) continue;
                 modules.add(m);
+                // a sky module (0.16.0) floats over the halls and the gate: its centre is on no ground site
+                if (floatsOverGround(m)) continue;
                 int[] mc = m.centre();
                 boolean near = Math.max(Math.abs(mc[0] - c[0]), Math.abs(mc[2] - c[2])) <= reach;
                 if (!near || onRecordedSite(m)) {
@@ -1010,13 +1070,19 @@ public final class Campus {
             if (sites.containsKey(site) || jobOnSite(site) != null) return CityOffer.OTHER;
             ModuleSpec spec = ModuleSpecs.get(kind.key);
             if (spec == null) return CityOffer.OTHER;
-            if (spec.axis()) {
-                // an axis site (0.12.0) is free when no loaded module stands on its controller cell: the keep-out
-                // boxes and the module centres are about the ground round the nexus, which the zenith only touches
-                // with its legs
+            if (spec.axis() || spec.family == SiteFamily.SKY) {
+                // an axis site (0.12.0), or a sky site (0.16.0), is free when no loaded module stands on its
+                // controller cell (a sky module's at either deck it may stand at): the keep-out boxes and the module
+                // centres are about the ground round the nexus, which the zenith only touches with its legs and the
+                // sky ring floats over
                 int[] at = spec.controller(site, c[0], c[1], c[2], f[0], f[1]);
-                for (TileModule m : modules)
+                int[] former = spec.family == SiteFamily.SKY ? spec.formerController(site, c[0], c[1], c[2], f[0], f[1])
+                    : null;
+                for (TileModule m : modules) {
                     if (m.xCoord == at[0] && m.yCoord == at[1] && m.zCoord == at[2]) return CityOffer.OTHER;
+                    if (former != null && m.xCoord == former[0] && m.yCoord == former[1] && m.zCoord == former[2])
+                        return CityOffer.OTHER;
+                }
                 return CityOffer.FREE;
             }
             // an outer diagonal (0.15.0) cell for cell: the corners of its square reach past its octagon to where a
@@ -1121,12 +1187,14 @@ public final class Campus {
         List<int[]> keep = new ArrayList<>();
         for (int site : sites.keySet()) {
             keep.addAll(siteKeepOut(site));
+            // a sky module's boxes (0.16.0) are in the air over the halls: no ground of a hall's
+            if (SiteFamily.of(site) == SiteFamily.SKY) continue;
             for (int[] p : siteProtect(site)) keep.add(new int[] { p[0], p[2], p[3], p[5] });
         }
         int[] c = centre(), f = front();
         for (BuildJob j : jobs()) {
             ModuleSpec spec = BuildState.ended(j.state) || j.retires() ? null : ModuleSpecs.get(j.module());
-            if (spec == null || !spec.hasSite(j.site)) continue;
+            if (spec == null || !spec.hasSite(j.site) || spec.family == SiteFamily.SKY) continue;
             keep.addAll(spec.keepOut(plan(), j.site, c[0], c[1], c[2], f[0], f[1]));
             for (int[] p : spec.protect(plan(), j.site, c[0], c[1], c[2], f[0], f[1]))
                 keep.add(new int[] { p[0], p[2], p[3], p[5] });
@@ -1168,6 +1236,192 @@ public final class Campus {
             new ChatComponentTranslation(
                 P + "grow_offered",
                 new ChatComponentTranslation("fluxecho.nexus.phase." + next)));
+    }
+
+    // ---- the deep root (0.16.0)
+
+    /**
+     * Offers the deepen job (0.16.0, CITY.md §4.9, {@link BuildJob#deepen}) once the nexus has grown to phase IV, its
+     * teams have the deep root's research and the root docked under it stands formed as a well
+     * ({@link RootShape#deepenTo}: the form the room under that well leaves, a chamber or the roots in the well): a job
+     * on the root's own site that waits for 开始 like any other. Not while a job is on the root's site (the deepen job
+     * itself, a repair), nor for a day after a member cancelled it (the root's module key is declined, as for every
+     * module job). One that never began is taken back once there is nothing to deepen (the well gone or come apart, or
+     * the root a deep root already).
+     */
+    private void offerDeepen(long now) {
+        List<BuildJob> pending = new ArrayList<>();
+        for (BuildJob j : jobs()) if (j.deepens() && !BuildState.ended(j.state)) pending.add(j);
+        String form = deepenForm();
+        if (form == null) {
+            List<BuildJob> gone = new ArrayList<>();
+            for (BuildJob j : pending) if (yields(j)) gone.add(j);
+            withdraw(gone);
+            return;
+        }
+        if (!pending.isEmpty() || jobOnSite(SiteFamily.ROOT_SITE) != null) return;
+        Long until = declined.get(RootShape.KEY);
+        if (until != null && now < until) return;
+        ModuleSpec spec = ModuleSpecs.get(RootShape.KEY);
+        if (spec == null || !spec.enabled()) return;
+        enqueue(BuildJob.deepen(spec, form));
+        tell(new ChatComponentTranslation(P + "deepen_offered"));
+    }
+
+    /**
+     * The deep root's form the root docked on its site would grow into now ({@link RootShape#deepenTo}), or null when
+     * there is none to offer.
+     */
+    private String deepenForm() {
+        TileModule root = null;
+        for (TileModule m : nexus.docked())
+            if (RootShape.KEY.equals(m.moduleKey()) && m.slot() == SiteFamily.ROOT_SITE) root = m;
+        if (root == null) return null;
+        return RootShape.deepenTo(
+            nexus.phase(),
+            nexus.has(Research.DEEP_ROOT),
+            root.formed(),
+            root.shapeName(),
+            centre()[1],
+            root.yCoord);
+    }
+
+    /**
+     * The deep root's form a root's controller tile stands, or last stood, as (0.16.0), so its repair puts that form
+     * back whole; null for any other tile, a root that is a well, and none at all.
+     */
+    static String deepRootOf(TileEntity te) {
+        if (!(te instanceof TileModule m) || !RootShape.KEY.equals(m.moduleKey())) return null;
+        return RootShape.deep(m.shapeName()) == null ? null : m.shapeName();
+    }
+
+    // ---- the pod floats (0.16.0)
+
+    /**
+     * Offers the release job of the Echo Dome Generator (0.16.0, CITY.md §3, {@link BuildJob#release}) once the
+     * nexus's teams have the sky ring and the nexus has grown to phase IV, while the pod docked on the zenith stands
+     * moored or any block of its legs is left ({@link #releaseWanted}: a leg broken at phase IV floats the pod at once
+     * and leaves the other legs standing as plain pillars): a job at the pod's own datum that waits for 开始 like any
+     * other. Not while one is still to run, nor for a day after a member cancelled it. One that never began is taken
+     * back once there is nothing to release (the pod gone, or floating with no leg left).
+     */
+    private void offerRelease(long now) {
+        List<BuildJob> pending = new ArrayList<>();
+        for (BuildJob j : jobs()) if (j.releases() && !BuildState.ended(j.state)) pending.add(j);
+        int datum = releaseDatum();
+        if (datum == 0) {
+            List<BuildJob> gone = new ArrayList<>();
+            for (BuildJob j : pending) if (yields(j)) gone.add(j);
+            withdraw(gone);
+            return;
+        }
+        if (!pending.isEmpty()) return;
+        Long until = declined.get(BuildPlan.RELEASE);
+        if (until != null && now < until) return;
+        enqueue(BuildJob.release(datum));
+        tell(new ChatComponentTranslation(P + "release_offered"));
+    }
+
+    /**
+     * The sky datum of the pod the release job would take the legs of now, or 0 when there is none to release
+     * ({@link #releaseWanted}): the Echo Dome Generator docked on the zenith, its datum read from its controller
+     * ({@link DomeGeneratorShape#podDatum}: a pod built by hand on the full legs over high ground has its legs at 40).
+     */
+    private int releaseDatum() {
+        boolean skyRing = nexus.has(Research.SKY_RING);
+        if (!skyRing || nexus.phase() < DomeGeneratorShape.FLOAT_PHASE) return 0;
+        TileModule pod = null;
+        for (TileModule m : nexus.docked())
+            if (DomeGeneratorShape.KEY.equals(m.moduleKey()) && m.slot() == SiteFamily.ZENITH_SITE) pod = m;
+        if (pod == null) return 0;
+        int datum = DomeGeneratorShape.podDatum(pod.yCoord, centre()[1]);
+        if (!DomeGeneratorShape.isDatum(datum)) return 0;
+        boolean moored = DomeGeneratorShape.moored(pod.shapeName()) != null;
+        int left = moored ? 0 : legsLeft(datum);
+        return releaseWanted(skyRing, nexus.phase(), true, moored, left) ? datum : 0;
+    }
+
+    /**
+     * Whether the release job is wanted (0.16.0): the teams have the sky ring, the nexus stands at phase IV or more,
+     * the pod is docked on the zenith, and it stands moored or {@code legsLeft} blocks of its legs still stand.
+     */
+    static boolean releaseWanted(boolean skyRing, int phase, boolean docked, boolean moored, int legsLeft) {
+        return skyRing && phase >= DomeGeneratorShape.FLOAT_PHASE && docked && (moored || legsLeft > 0);
+    }
+
+    /**
+     * How many cells the release job at the sky datum would take down ({@link BuildPlan#release}) still hold a frame
+     * pillar of ours, in loaded chunks: the legs a floating pod left standing.
+     */
+    private int legsLeft(int datum) {
+        World w = world();
+        if (w == null) return 0;
+        int[] c = centre(), f = front();
+        int pillar = Parts.frame(Parts.FR_PILLAR), n = 0;
+        for (BuildPlan.Step s : BuildPlan.release(c[0], c[1], c[2], f[0], f[1], datum).steps) {
+            if (!w.blockExists(s.x, s.y, s.z)) continue;
+            if (PartBlocks.code(w.getBlock(s.x, s.y, s.z), w.getBlockMetadata(s.x, s.y, s.z)) == pillar) n++;
+        }
+        return n;
+    }
+
+    /**
+     * Whether a new job of the module kind builds the pod floating (0.16.0, CITY.md §3): the Echo Dome Generator, once
+     * the teams have the sky ring and the nexus has grown to phase IV, stands as it will stay, never on legs a release
+     * job would take down again.
+     */
+    static boolean floatsFresh(String key, int phase, boolean skyRing) {
+        return DomeGeneratorShape.KEY.equals(key) && skyRing && phase >= DomeGeneratorShape.FLOAT_PHASE;
+    }
+
+    /**
+     * A dome job offered on legs before the pod could float, and never begun ({@link #yields}), is made a floating
+     * one once it can ({@link #floatsFresh}, 0.16.0): it is surveyed again with the pod alone in its projection.
+     */
+    private void floatPendingDome() {
+        if (!floatsFresh(DomeGeneratorShape.KEY, nexus.phase(), nexus.has(Research.SKY_RING))) return;
+        for (BuildJob j : jobs()) {
+            if (j.repair() || j.floats() || !DomeGeneratorShape.KEY.equals(j.module()) || !yields(j)) continue;
+            j.floatAt(freshPodDatum(), openDoors());
+            j.restart(j.keepClear);
+            if (j == job) {
+                builder.reset();
+                etaAt = Long.MIN_VALUE;
+            }
+            needDirty = true;
+            stateChanged();
+        }
+    }
+
+    /**
+     * The sky datum a fresh floating pod is laid at (0.16.0, {@link SkyRing#podDatumFor}): the deck of a sky module
+     * already recorded on its platform site (from its recorded controller, whether or not its chunk is loaded), else
+     * of a sky job not over, else the datum the base layer gives. A pod built by hand on the full legs over high ground
+     * floated at 40 and its sky modules were laid there; a pod raised in its place meets their catwalks at 40, never
+     * at the lower datum the base layer would give (where its doors and its clearing would miss them).
+     */
+    int freshPodDatum() {
+        int y0 = centre()[1];
+        List<Integer> decks = new ArrayList<>();
+        for (Map.Entry<Integer, int[]> e : new TreeMap<>(sites).entrySet())
+            if (SkyRing.platformSite(e.getKey())) decks.add(DomeGeneratorShape.podDatum(e.getValue()[1], y0));
+        for (BuildJob j : jobs()) if (!BuildState.ended(j.state) && j.module() != null && SkyRing.platformSite(j.site))
+            decks.add(j.form().deck);
+        int[] d = new int[decks.size()];
+        for (int i = 0; i < d.length; i++) d[i] = decks.get(i);
+        return SkyRing.podDatumFor(y0, d);
+    }
+
+    /**
+     * The sky datum of an Echo Dome Generator that stands, or last stood, as floating (0.16.0), read from its
+     * controller's height over the base layer {@code y0}; 0 for any other tile or module, a pod that stands moored, and
+     * none at all.
+     */
+    static int floatingPod(TileEntity te, int y0) {
+        if (!(te instanceof TileModule m) || !DomeGeneratorShape.KEY.equals(m.moduleKey())
+            || !DomeGeneratorShape.FLOATING.equals(m.shapeName())) return 0;
+        int datum = DomeGeneratorShape.podDatum(m.yCoord, y0);
+        return DomeGeneratorShape.isDatum(datum) ? datum : 0;
     }
 
     /**
@@ -1422,10 +1676,12 @@ public final class Campus {
 
     /**
      * The job (current or queued, not over) on a site, or null. A retire job (0.14.1) names its hall's ring slot as its
-     * site but takes none: the module waiting for that site still says the hall is in its way.
+     * site but takes none: the module waiting for that site still says the hall is in its way. Nor does the release
+     * job (0.16.0) take the zenith: the pod it works on stands there, and is repaired when it comes apart.
      */
     private BuildJob jobOnSite(int site) {
-        for (BuildJob j : jobs()) if (j.site == site && !j.retires() && !BuildState.ended(j.state)) return j;
+        for (BuildJob j : jobs())
+            if (j.site == site && !j.retires() && !j.releases() && !BuildState.ended(j.state)) return j;
         return null;
     }
 
@@ -1574,6 +1830,8 @@ public final class Campus {
      * it even where the split moved after it was built.
      */
     private List<int[]> strayBoxes(TileModule m) {
+        // a sky module (0.16.0) takes nothing of the ground under it
+        if (floatsOverGround(m)) return Collections.emptyList();
         int[] mc = m.centre();
         ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
         if (spec == null || spec.family != SiteFamily.OUTER_DIAG)
@@ -1583,6 +1841,15 @@ public final class Campus {
         if (w != null && !w.isRemote && w.provider != null)
             for (int[] o : CampusRegistry.centres(w)) centres.add(new int[] { o[0], o[2] });
         return CampusSplit.strayDiagBoxes(mc[0], mc[2], centres);
+    }
+
+    /**
+     * Whether a module is one of the sky ring's (0.16.0): it floats on its platform over the halls and the gate, so its
+     * centre and its box say nothing of the ground the campus jobs work, nor of a ground site's being free.
+     */
+    static boolean floatsOverGround(TileModule m) {
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        return spec != null && spec.family == SiteFamily.SKY;
     }
 
     /**
@@ -1633,18 +1900,36 @@ public final class Campus {
         if (spec == null || !spec.hasSite(site)) return Collections.emptyList();
         int[] c = centre();
         int[] f = front();
-        String key = spec.key + "@" + site + ":" + c[0] + "," + c[1] + "," + c[2] + ":" + f[0] + "," + f[1];
+        // a sky module (0.16.0) stands at the deck of the pod it was built by: its controller says which
+        int[] at = sites.get(site);
+        int datum = spec.family == SiteFamily.SKY && at != null ? DomeGeneratorShape.podDatum(at[1], c[1]) : 0;
+        String key = spec.key + "@"
+            + site
+            + ":"
+            + c[0]
+            + ","
+            + c[1]
+            + ","
+            + c[2]
+            + ":"
+            + f[0]
+            + ","
+            + f[1]
+            + ":"
+            + datum;
         List<int[]> boxes = cache.get(key);
         if (boxes == null) {
             switch (which) {
                 case 1:
-                    boxes = spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+                    boxes = spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1], datum);
                     break;
                 case 2:
                     boxes = spec.outerKeepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
                     break;
                 case 3:
-                    boxes = spec.outerProtect(plan(), site, c[0], c[1], c[2], f[0], f[1]);
+                    boxes = spec.family == SiteFamily.SKY
+                        ? spec.protect(plan(), site, c[0], c[1], c[2], f[0], f[1], datum)
+                        : spec.outerProtect(plan(), site, c[0], c[1], c[2], f[0], f[1]);
                     break;
                 default:
                     boxes = spec.keepOut(plan(), site, c[0], c[1], c[2], f[0], f[1]);
@@ -1737,13 +2022,27 @@ public final class Campus {
         dirty();
     }
 
-    /** Where the module controller of a module job (or its repair) stands: {x, y, z, facing}; null for the others. */
+    /**
+     * Where the module controller of a module job (or its repair) stands: {x, y, z, facing}; null for the others. Since
+     * 0.16.0 the release job's is the controller of the pod it releases, and a job that builds the pod floating has it
+     * at the datum the job carries ({@link BuildJob#podDatum}): a pod built by hand on the full legs over high ground
+     * stands at 40, not at the datum the base layer gives one built now.
+     */
     int[] moduleController(BuildJob j) {
-        ModuleSpec spec = ModuleSpecs.get(j.module());
-        if (spec == null || !spec.hasSite(j.site)) return null;
         int[] c = centre();
         int[] f = front();
-        return spec.controller(j.site, c[0], c[1], c[2], f[0], f[1]);
+        if (j.releases() || j.floats()) return DomeGeneratorShape.moor(j.podDatum(c[1]))
+            .controller(SiteFamily.ZENITH_SITE, c[0], c[1], c[2], f[0], f[1]);
+        ModuleSpec spec = ModuleSpecs.get(j.module());
+        if (spec == null || !spec.hasSite(j.site)) return null;
+        // a root job that builds the deep root (0.16.0): the controller of the well that form grows from, which a well
+        // dug by hand over low ground has at the full well's cell, not where the base layer would sink one now
+        RootShape.Deep deep = j.form()
+            .deep();
+        if (deep != null && RootShape.KEY.equals(spec.key))
+            return deep.controller(j.site, c[0], c[1], c[2], f[0], f[1]);
+        // a sky module's (0.16.0) at the deck its job carries
+        return spec.controller(j.site, c[0], c[1], c[2], f[0], f[1], j.form().deck);
     }
 
     /** The core part of a module job's module; -1 for the others. */
@@ -1860,24 +2159,50 @@ public final class Campus {
             protectedFor = job;
             protectedBoxes = protectedBoxes();
         }
-        return inBoxes(protectedBoxes, x, y, z);
+        if (inBoxes(protectedBoxes, x, y, z)) return true;
+        return inBoxes(podBoxes, x, y, z) && !podExempt.contains(cellKey(x, y, z));
     }
 
     /** The job the protected boxes were worked out for. */
     private BuildJob protectedFor;
+    /**
+     * The zenith's protected boxes while a sky module's job is the current one (0.16.0), and the cells of them its job
+     * works ({@link SkyRing#exempt}: its door and its catwalk's first row), as {@link #cellKey}: they hold every other
+     * cell for it.
+     */
+    private List<int[]> podBoxes = new ArrayList<>();
+    private Set<Long> podExempt = new HashSet<>();
+
+    /** One long for a world cell. */
+    private static long cellKey(int x, int y, int z) {
+        return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
+    }
 
     private List<int[]> protectedBoxes() {
         List<int[]> out = new ArrayList<>();
+        podBoxes = new ArrayList<>();
+        podExempt = new HashSet<>();
+        // a sky module's job (0.16.0) opens its door in the pod and lays its catwalk's first row inside the pod's box
+        boolean skyJob = job != null && job.module() != null && SkyRing.platformSite(job.site);
+        if (skyJob) {
+            int[] c = centre(), f = front();
+            int datum = SkyRing.datum(c[1], job.form().deck);
+            for (int[] e : SkyRing.exempt(job.site, c[0], c[1], c[2], f[0], f[1], datum))
+                podExempt.add(cellKey(e[0], e[1], e[2]));
+        }
         World w = world();
         int[] own = job == null ? null : moduleController(job);
         // a retire job (0.14.1) works the ground of the hall it takes down: the hall, and its one box, are its own
         int[] retire = job == null ? null : job.retireBox();
-        // the modules on the campus's recorded hall sites, loaded or not, but the one the job builds or repairs
+        // the modules on the campus's recorded hall sites, loaded or not, but the one the job builds or repairs (and
+        // the pod the release job takes the legs of, 0.16.0)
         for (Map.Entry<Integer, int[]> e : sites.entrySet()) {
-            if (job != null && job.module() != null && job.site == e.getKey()) continue;
+            if (job != null && worksSite(job, e.getKey())) continue;
             // the whole site: the building, its forecourt, apron and canopy (0.10.1; the footprint alone before); an
             // axis module only the space it takes (0.12.0); for the outer establish a hall's exact ground (0.15.0)
-            out.addAll(job != null && job.laysOuter() ? siteOuterProtect(e.getKey()) : siteProtect(e.getKey()));
+            List<int[]> boxes = job != null && job.laysOuter() ? siteOuterProtect(e.getKey()) : siteProtect(e.getKey());
+            if (skyJob && e.getKey() == SiteFamily.ZENITH_SITE) podBoxes.addAll(boxes);
+            else out.addAll(boxes);
         }
         for (TileMultiblock m : NexusRegistry.loaded(w)) {
             if (m == nexus) continue;
@@ -1907,6 +2232,16 @@ public final class Campus {
             new int[] { Math.min(k[0], k[2]), k.length == 6 ? Math.min(k[4], k[5]) : 0, Math.min(k[1], k[3]),
                 Math.max(k[0], k[2]), k.length == 6 ? Math.max(k[4], k[5]) : 255, Math.max(k[1], k[3]) });
         return out;
+    }
+
+    /**
+     * Whether a job works the module recorded on a site, so that site's protected boxes do not hold it: the module job
+     * or the repair on the site, and (0.16.0) the release job on the zenith, which takes down the legs of the pod
+     * standing there. The zenith's boxes hold the leg columns and the pod's box; every other job keeps out of both.
+     */
+    static boolean worksSite(BuildJob j, int site) {
+        if (j.module() != null && j.site == site) return true;
+        return j.releases() && site == SiteFamily.ZENITH_SITE;
     }
 
     /** Whether the cell's column lies in the columns of a box {x0, z0, x1, z1, ...}. */
@@ -2273,7 +2608,9 @@ public final class Campus {
         // a retire job cancelled is offered again a day later too (0.14.1)
         if (job.retires()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
         // a growth cancelled is offered again a day later, as a module is (0.12.0); so is the outer establish (0.15.0)
-        if (job.grows() || job.laysOuter()) declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
+        // and the release of the pod (0.16.0)
+        if (job.grows() || job.laysOuter() || job.releases())
+            declined.put(job.planKey(), world().getTotalWorldTime() + DECLINE_TICKS);
         if (declinesRefresh(job)) gradedVersion = Math.max(gradedVersion, BuildJob.GRADE_V);
         if (job == instantJob) instantJob = null;
         stateChanged();
@@ -2369,8 +2706,10 @@ public final class Campus {
 
     /**
      * 修复: a job that stopped as incomplete starts over on the same plan (cells already right come free), but a growth
-     * that did gives way to a repair of the nexus ({@link #repairGrowth}); otherwise a repair of the nexus or of a
-     * sited module that stood unformed for a while is queued.
+     * that did gives way to a repair of the nexus ({@link #repairGrowth}), and since 0.16.0 a release to a repair of
+     * the pod ({@link #repairRelease}) and the deepen job to a repair of the whole deep root ({@link #repairDeepen}):
+     * their plans hold only their new part, so starting them over cannot put a broken cell of the rest right;
+     * otherwise a repair of the nexus or of a sited module that stood unformed for a while is queued.
      */
     public String repair(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
@@ -2383,6 +2722,12 @@ public final class Campus {
         if (job != null && job.grows()
             && job.state == BuildState.State.PAUSED
             && job.pause == BuildState.Pause.INCOMPLETE) return repairGrowth();
+        if (job != null && job.releases()
+            && job.state == BuildState.State.PAUSED
+            && job.pause == BuildState.Pause.INCOMPLETE) return repairRelease();
+        if (job != null && job.deepens()
+            && job.state == BuildState.State.PAUSED
+            && job.pause == BuildState.Pause.INCOMPLETE) return repairDeepen();
         if (job != null && job.state == BuildState.State.PAUSED && job.pause == BuildState.Pause.INCOMPLETE) {
             // the same plan again, its clearing already done: only the structure's cells are put right
             Builder.forget(job, ledger, job.plan(this));
@@ -2422,6 +2767,90 @@ public final class Campus {
     }
 
     /**
+     * 修复 on a release job that stopped as incomplete (0.16.0): its plan holds only the legs it takes down, so starting
+     * it over cannot put a broken pod right. The release ends (not declined: no member said no to it) and the pod on
+     * the zenith is repaired in its place as the shape it last stood as ({@link #repairOf}: floating once it floated,
+     * at its own datum), and floating at the release's datum all the same once the release began taking the legs down
+     * ({@link #floatPodRepair}: a pod that came apart before it floated still carries the moored name), so the repair
+     * never lays the legs the members agreed to release. A repair of the pod already queued (by an earlier 修复 while
+     * the release ran) is the one; with no pod left nothing is queued and the members hear the release ended
+     * ({@code release_ended}); a new pod is offered, floating from the start.
+     */
+    String repairRelease() {
+        BuildJob r = job;
+        r.state = BuildState.cancel(r.state);
+        if (r == instantJob) instantJob = null;
+        stateChanged();
+        if (jobOnSite(SiteFamily.ZENITH_SITE) != null) return P + "repair_queued";
+        ModuleSpec spec = ModuleSpecs.get(DomeGeneratorShape.KEY);
+        int[] at = sites.get(SiteFamily.ZENITH_SITE);
+        World w = world();
+        TileEntity te = at != null && w != null && w.blockExists(at[0], at[1], at[2])
+            ? w.getTileEntity(at[0], at[1], at[2])
+            : null;
+        if (spec == null || !(te instanceof TileModule m) || !DomeGeneratorShape.KEY.equals(m.moduleKey()))
+            return P + "release_ended";
+        BuildJob fix = repairOf(spec, SiteFamily.ZENITH_SITE, te, centre()[1], openDoors());
+        floatPodRepair(fix, te, r);
+        enqueue(fix);
+        return P + "repair_queued";
+    }
+
+    /**
+     * Makes a repair of the pod on the zenith float when the pod can only float (0.16.0), though its tile does not say
+     * it floated ({@link #repairOf} reads only the shape it last stood as): the release {@code release} began taking
+     * its legs down (the pod came apart before it ever floated, so it is still named moored), or the nexus may float a
+     * pod from the start ({@link #floatsFresh}) and a door to a sky module is open or no leg of the pod is left (a core
+     * put back by hand over a released pod names itself moored). It floats at the release's datum, else at the one its
+     * controller stands at. So a repair never lays again the legs of a pod meant to float, nor glazes a door that leads
+     * to a sky module. Any other repair is left as it is.
+     */
+    private void floatPodRepair(BuildJob r, TileEntity te, BuildJob release) {
+        if (r.floats() || !DomeGeneratorShape.KEY.equals(r.module())) return;
+        int doors = openDoors();
+        if (release != null && (release.started || release.touched)
+            && release.form()
+                .floats()) {
+            r.floatAt(release.form().pod, doors);
+            return;
+        }
+        if (!floatsFresh(DomeGeneratorShape.KEY, nexus.phase(), nexus.has(Research.SKY_RING))) return;
+        int y0 = centre()[1];
+        int datum = te == null ? 0 : DomeGeneratorShape.podDatum(te.yCoord, y0);
+        if (!DomeGeneratorShape.isDatum(datum)) datum = DomeGeneratorShape.datum(y0);
+        if (doors != 0 || legsLeft(datum) == 0) r.floatAt(datum, doors);
+    }
+
+    /** The release job that is not over, or null (there is only ever one). */
+    private BuildJob pendingRelease() {
+        for (BuildJob j : jobs()) if (j.releases() && !BuildState.ended(j.state)) return j;
+        return null;
+    }
+
+    /**
+     * 修复 on the deepen job stopped as incomplete (0.16.0): its plan holds only the deep root's new part
+     * ({@link BuildPlan#deepen}), so starting it over cannot put a broken cell of the well right (a tap, a wall block,
+     * the ramp broken while it ran), and the root's own repair is held off while the job stands on its site. The
+     * deepen job ends (not declined: no member said no to it) and a repair of the root is queued in its place as the
+     * form the job was growing it into ({@link BuildJob#rootAs}: the whole deep root's plan, {@link BuildPlan#deep}),
+     * which puts the well's cells and the new part right together and waits for that form. Never by the tile's name,
+     * which still says the well: a repair as the well would close the grate again.
+     */
+    String repairDeepen() {
+        BuildJob d = job;
+        String form = d.form().root;
+        d.state = BuildState.cancel(d.state);
+        if (d == instantJob) instantJob = null;
+        stateChanged();
+        ModuleSpec spec = ModuleSpecs.get(RootShape.KEY);
+        if (spec == null || !spec.hasSite(SiteFamily.ROOT_SITE)) return P + "nothing_to_repair";
+        BuildJob r = BuildJob.repairModule(spec, SiteFamily.ROOT_SITE);
+        r.rootAs(form);
+        enqueue(r);
+        return P + "repair_queued";
+    }
+
+    /**
      * The phase a repair of the nexus builds when it takes the place of a growth: the growth's phase once its stage and
      * lift pad were placed (it reached its FORM stage), else the phase the nexus grew to.
      */
@@ -2455,9 +2884,63 @@ public final class Campus {
         for (Map.Entry<Integer, Long> e : siteUnformedSince.entrySet()) {
             if (now - e.getValue() <= REPAIR_AFTER || jobOnSite(e.getKey()) != null) continue;
             ModuleSpec spec = ModuleSpecs.get(siteKinds.get(e.getKey()));
-            if (spec != null && spec.hasSite(e.getKey())) return BuildJob.repairModule(spec, e.getKey());
+            if (spec == null || !spec.hasSite(e.getKey())) continue;
+            int[] at = sites.get(e.getKey());
+            TileEntity te = at != null && w.blockExists(at[0], at[1], at[2]) ? w.getTileEntity(at[0], at[1], at[2])
+                : null;
+            // the pod is repaired as the shape it stands as (0.16.0), and so is the root (a deep root whole, never as
+            // the bare well): not while its tile cannot be asked
+            if (te == null && (DomeGeneratorShape.KEY.equals(spec.key) || RootShape.KEY.equals(spec.key))) continue;
+            BuildJob r = repairOf(spec, e.getKey(), te, centre()[1], openDoors());
+            // the pod is repaired floating whenever it can only float, its tile's name aside (0.16.0)
+            if (e.getKey() == SiteFamily.ZENITH_SITE) floatPodRepair(r, te, pendingRelease());
+            // a sky module whose tile cannot be asked (0.16.0) is repaired at the deck its recorded controller gives
+            int deck = at == null || spec.family != SiteFamily.SKY ? 0
+                : DomeGeneratorShape.podDatum(at[1], centre()[1]);
+            if (r.form().deck == 0 && DomeGeneratorShape.isDatum(deck)) r.deckAt(deck);
+            return r;
         }
         return null;
+    }
+
+    /**
+     * The repair of the module recorded on a site, whose controller's tile is {@code at} (null when not known), over a
+     * nexus whose base layer is {@code y0}: its module job's plan once more, and since 0.16.0 for an Echo Dome
+     * Generator that stands, or last stood, as floating the floating plan at its own datum ({@link #floatingPod}), so
+     * a repair never raises its legs again (the floating shape matches first: they would stand as plain pillars).
+     */
+    static BuildJob repairOf(ModuleSpec spec, int site, TileEntity at, int y0) {
+        return repairOf(spec, site, at, y0, 0);
+    }
+
+    /**
+     * {@link #repairOf(ModuleSpec, int, TileEntity, int)} leaving the doors of the sky slots in {@code doors} open on a
+     * floating pod (0.16.0, {@link #openDoors}): a repair never glazes a door that leads to a sky module or to a job
+     * for one. A sky module's repair is laid at the deck its controller stands at ({@link #skyDatum}).
+     */
+    static BuildJob repairOf(ModuleSpec spec, int site, TileEntity at, int y0, int doors) {
+        BuildJob r = BuildJob.repairModule(spec, site);
+        int pod = floatingPod(at, y0);
+        if (pod > 0) r.floatAt(pod, doors);
+        // a deep root (0.16.0) is put back whole as the form it stood as, never as the bare well
+        String deep = deepRootOf(at);
+        if (deep != null) r.rootAs(deep);
+        int deck = spec.family == SiteFamily.SKY ? skyDatum(at, y0) : 0;
+        if (deck > 0) r.deckAt(deck);
+        return r;
+    }
+
+    /**
+     * The sky datum of the deck a sky module stands at (0.16.0), read from its controller's height over the base layer
+     * {@code y0} (every sky module's controller stands {@link DomeGeneratorShape#CTRL_Y} over its deck, as the pod's
+     * over its floor); 0 for any other tile, or one at no sky datum.
+     */
+    static int skyDatum(TileEntity te, int y0) {
+        if (!(te instanceof TileModule m)) return 0;
+        ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+        if (spec == null || spec.family != SiteFamily.SKY) return 0;
+        int datum = DomeGeneratorShape.podDatum(m.yCoord, y0);
+        return DomeGeneratorShape.isDatum(datum) ? datum : 0;
     }
 
     /** Refunds every cell in flight into the ledger (the core is being broken and carries the credit away). */
@@ -3070,6 +3553,10 @@ public final class Campus {
             int own = claims();
             if (own != 0) t.setByte("Oc", (byte) own);
         }
+        // the sky datum of a dome job not over that builds the pod floating, current or queued (0.16.0): the
+        // masterplan draws no feet under a pod queued to float behind another job
+        int floatingJob = floatingDomeJob();
+        if (floatingJob > 0) t.setInteger("Pq", floatingJob);
         if (job == null) return;
         lastBlockedHash = job.blockedShownHash();
         t.setString("K", job.key);
@@ -3120,6 +3607,17 @@ public final class Campus {
         if (regainClaims.length > 0) t.setIntArray("Nq", regainClaims);
         if (job.retireOuter) t.setBoolean("Ro", true);
         if (!job.patch.isEmpty()) t.setIntArray("Op", BuildJob.boxes(job.patch, 4));
+        // the floating pod's datum and its open doors (0.16.0): the client plans the release and the floating pod
+        job.form.write(t);
+    }
+
+    /**
+     * The sky datum of the first job of the Echo Dome Generator not over (the current one, then the queue's) that
+     * builds the pod floating ({@code Pq}, 0.16.0), or 0.
+     */
+    int floatingDomeJob() {
+        for (BuildJob j : jobs()) if (!BuildState.ended(j.state) && j.floats()) return j.form().pod;
+        return 0;
     }
 
     /**
@@ -3236,6 +3734,11 @@ public final class Campus {
         /** Whether the outer establish has laid the outer ring's ground ({@code Ol}, 0.15.0, {@link #groundLaid}). */
         public boolean outerLaid;
         /**
+         * What the job knows of the form its building takes ({@code Pf}, {@code Pd}, 0.16.0, {@link BuildJob.Form}):
+         * the datum the release job releases, a floating pod's plan and the doors it leaves open.
+         */
+        public BuildJob.Form form = new BuildJob.Form();
+        /**
          * The neighbours the campus's outer sites are judged against, {x, z} or {x, z, claims} ({@code Ns}, 0.15.0,
          * {@link Campus#splitNeighbours}): sent with the campus, job or not, so the masterplan draws the split and
          * signs the sites as the server offers them.
@@ -3243,6 +3746,11 @@ public final class Campus {
         public List<int[]> split = new ArrayList<>();
         /** The outer diagonals the campus has claimed ({@code Oc}, 0.15.0, a bit per world quadrant). */
         public int claims;
+        /**
+         * The sky datum of a job of the Echo Dome Generator not over, current or queued, that builds the pod floating
+         * ({@code Pq}, 0.16.0, {@link Campus#floatingDomeJob}), or 0: the masterplan draws no feet under it.
+         */
+        public int floatingJob;
 
         public void read(NBTTagCompound t) {
             active = t.getBoolean("Ac");
@@ -3289,8 +3797,13 @@ public final class Campus {
             retireOuter = t.getBoolean("Ro");
             patch = new ArrayList<>();
             BuildJob.readFlat(t.getIntArray("Op"), patch);
+            form = BuildJob.Form.read(t);
+            // a repair picks the whole plan of a deep root's form (0.16.0): its key says so, as on the server
+            form.whole = job.startsWith(BuildJob.REPAIR);
             split = readTriples(t.getIntArray("Ns"));
             claims = t.getByte("Oc") & 15;
+            int pq = t.getInteger("Pq");
+            floatingJob = DomeGeneratorShape.isDatum(pq) ? pq : 0;
         }
 
         /** Whether there is a job. */

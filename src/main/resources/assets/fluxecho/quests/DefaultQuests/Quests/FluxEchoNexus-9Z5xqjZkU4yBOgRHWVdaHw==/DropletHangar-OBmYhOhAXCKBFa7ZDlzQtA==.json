@@ -1,0 +1,57 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -7995849499852185851,
+      "questIDLow:4": -4844108965461354046
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "天环的建筑：浮空平台上八个托架围着一座控制亭，每个托架上悬着一颗镜面水滴。中枢长到相位 IV、吊舱浮起来以后，研究「水滴机库」（守护分支，要先研究天环和回响穹顶），中枢在吊舱左边的 S6 投影出它（S6 被天光帆阵占了就去右边的 S2）。\n\n• 研究要 100000 算力，和 16 块铬板、4 块 LuV 电路板、8 块显化物质、8 块反重力晶格、8 个恶魂之泪；\n• 在显化台用 8 块回响晶、8 块显化物质、4 块反重力晶格、2 块 LuV 电路板、4 个恶魂之泪显化出水滴机库核心（160 秒），交给中枢，再在「建造」页按「开始」；\n• 21×21、7 格高，四座里最矮的：两两对称的八个水滴托架（3×3 的池沿围着一个样本座），核心在前面控制亭的控制台座上，上方一圈悬浮环段；\n• 8 个单元：每个托架放一颗水滴；\n• 建好后自己停靠到中枢上，从团队无线电网取 128 EU/t。成型后控制亭上方的环段化作一圈呼吸的光环；停靠后每个托架上方悬着一颗镜面水滴，各按各的节奏上下浮动、轻轻摇摆，表面映着上面的天、亮的地平线和下面的地；没停靠时水滴静静地落在托架上。\n\n[note]天环的平台要等吊舱浮起来：吊舱还立在支腿上时，「建造」页写着「它的场地在天环上：穹顶发生器的吊舱要先浮起来（先释放吊舱，或者先建穹顶）」。四座研究过的都建得下：先挑自己的平台，被占了就去别的空着的平台。成型后平台下面一道光柱落到地上，512 格内都看得见；栈桥两边亮着细细的光线，一道光从吊舱往平台走。中枢底座很高时，最上面超出世界顶部的几层略去不建，单元和核心都在。这个版本的托架什么都能放，水滴在穹顶下巡航是以后的版本。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 13,
+        "OreDict:8": "",
+        "id:8": "fluxecho:module_core"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§d§l水滴机库",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 4042429837141367842,
+  "questIDLow:4": -9145211221033824076,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "autoConsume:1": 0,
+      "consume:1": 0,
+      "groupDetect:1": 0,
+      "ignoreNBT:1": 0,
+      "partialMatch:1": 1,
+      "requiredItems:9": {
+        "0:10": {
+          "Count:3": 1,
+          "Damage:2": 13,
+          "OreDict:8": "",
+          "id:8": "fluxecho:module_core"
+        }
+      },
+      "taskID:8": "bq_standard:retrieval",
+      "index:3": 0
+    }
+  }
+}

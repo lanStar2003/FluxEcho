@@ -411,6 +411,8 @@ public final class BuildClient {
         // an outer establish that patches the ring: the boxes it lays inside
         for (int[] b : v.patch) sig.append("|p")
             .append(java.util.Arrays.toString(b));
+        // the floating pod's datum and its open doors (0.16.0): the release job's legs, a floating pod's plan
+        sig.append(v.form.signature());
         Key k = new Key(n.getWorldObj().provider.dimensionId, n.xCoord, n.yCoord, n.zCoord);
         String s = sig.toString();
         CachedPlan cached = PLANS.get(k);
@@ -433,7 +435,8 @@ public final class BuildClient {
                 v.neighbours,
                 v.regainFrom,
                 v.retireOuter,
-                v.patch);
+                v.patch,
+                v.form);
         } catch (RuntimeException e) {
             com.fluxecho.FluxEcho.LOG.warn("Could not compute the build plan {} of the nexus at {}", v.planKey, k, e);
             p = null;

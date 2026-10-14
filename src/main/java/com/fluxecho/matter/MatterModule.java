@@ -23,8 +23,10 @@ import gregtech.api.util.GTRecipeConstants;
  * (0.12.0, CITY.md §5.1, in their minimal form: one recipe each, used by the phase's research and module cores) phase
  * alloy, smelted in GT's electric blast furnace, and resonant glass, which the nexus manifests from it
  * ({@code nexus.Manifests}); with phase III (0.15.0, minimal as well) memory filament, phase alloy drawn into a fine
- * wire in GT's wiremill and coated with an echo crystal at the manifestation table. Each is in the ore dictionary, so
- * recipes and other machines can take them by name.
+ * wire in GT's wiremill and coated with an echo crystal at the manifestation table; with phase IV (0.16.0, minimal as
+ * well) manifest matter, a little of the flux layer the nexus makes into matter at the table, and the anti-gravity
+ * lattice it makes of manifest matter and resonant glass, the floating foundations' material. Each is in the ore
+ * dictionary, so recipes and other machines can take them by name.
  */
 public final class MatterModule {
 
@@ -45,7 +47,25 @@ public final class MatterModule {
      */
     public static final int WIRE_EUT = 7680, WIRE_TICKS = 200, WIRES_PER_INGOT = 8, WIRES_BY_HAND = 2;
 
-    public static Item grit, crystal, echoCrystal, phaseAlloy, resonantGlass, phaseAlloyWire, memoryFilament;
+    /**
+     * The phase-IV materials' ore names (0.16.0, BLUEPRINT 3.6): manifest matter, as an ingot (black-gold liquid metal
+     * the nexus holds in shape), and the anti-gravity lattice, for which GT has no prefix that fits (a lattice is
+     * neither a plate nor a gem, nor GT's frame box), so it takes one of its own the way resonant glass took
+     * {@code glass}.
+     */
+    public static final String MANIFEST_MATTER = "ingotManifestMatter", ANTI_GRAVITY_LATTICE = "latticeAntiGravity";
+    /**
+     * Manifest matter at the table (0.16.0): the extra power it draws on top of the table's share while it runs (LuV,
+     * by the tier's recipe power as EV's 1920 and IV's 7680 above), its time, how much one run makes, and the lowest
+     * nexus phase that may make it (BLUEPRINT 3.6: "from phase III of the nexus on").
+     */
+    public static final int MANIFEST_MATTER_EUT = 30720, MANIFEST_MATTER_TICKS = 1200, MANIFEST_MATTER_YIELD = 4,
+        MANIFEST_MATTER_PHASE = 3;
+    /** The anti-gravity lattice at the table (0.16.0): its time and how many one run makes. */
+    public static final int LATTICE_TICKS = 400, LATTICE_YIELD = 4;
+
+    public static Item grit, crystal, echoCrystal, phaseAlloy, resonantGlass, phaseAlloyWire, memoryFilament,
+        manifestMatter, antiGravityLattice;
 
     private MatterModule() {}
 
@@ -73,6 +93,13 @@ public final class MatterModule {
         GameRegistry.registerItem(memoryFilament, "memory_filament");
         OreDictionary.registerOre(PHASE_ALLOY_WIRE, phaseAlloyWire);
         OreDictionary.registerOre(MEMORY_FILAMENT, memoryFilament);
+        // manifest matter and the anti-gravity lattice (0.16.0), both made at the manifestation table only
+        manifestMatter = new ItemMatter("manifest_matter");
+        GameRegistry.registerItem(manifestMatter, "manifest_matter");
+        antiGravityLattice = new ItemMatter("anti_gravity_lattice");
+        GameRegistry.registerItem(antiGravityLattice, "anti_gravity_lattice");
+        OreDictionary.registerOre(MANIFEST_MATTER, manifestMatter);
+        OreDictionary.registerOre(ANTI_GRAVITY_LATTICE, antiGravityLattice);
     }
 
     /**
@@ -148,5 +175,13 @@ public final class MatterModule {
 
     public static ItemStack memoryFilament(int n) {
         return new ItemStack(memoryFilament, n);
+    }
+
+    public static ItemStack manifestMatter(int n) {
+        return new ItemStack(manifestMatter, n);
+    }
+
+    public static ItemStack antiGravityLattice(int n) {
+        return new ItemStack(antiGravityLattice, n);
     }
 }

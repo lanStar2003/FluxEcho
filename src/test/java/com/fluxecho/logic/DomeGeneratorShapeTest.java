@@ -179,15 +179,23 @@ class DomeGeneratorShapeTest {
                 .size());
     }
 
+    /**
+     * The moored blueprint (the pod on its full legs, 29 x 49 x 25) and since 0.16.0 the floating one cut to the pod's
+     * own box (21 x 10 x 21, the shape's origin its own, {@link DomeGeneratorShape#FLOATING_BUILD}): the same pod
+     * cells, laid round the controller the same way, so the pod's blocks lie where they lie whichever shape it stands
+     * as; the legs only in the moored one.
+     */
     @Test
     void theTwoBlueprints() {
         Blueprint m = DomeGeneratorShape.MOORED_BP, f = DomeGeneratorShape.FLOATING_BP;
-        for (Blueprint b : new Blueprint[] { m, f }) {
-            assertEquals(29, b.width());
-            assertEquals(49, b.height());
-            assertEquals(25, b.depth());
-            assertTrue(b.symmetric());
-        }
+        assertEquals(29, m.width());
+        assertEquals(49, m.height());
+        assertEquals(25, m.depth());
+        assertEquals(21, f.width());
+        assertEquals(10, f.height());
+        assertEquals(21, f.depth());
+        assertTrue(m.symmetric());
+        assertTrue(f.symmetric());
         assertEquals(
             1261,
             m.cells()
@@ -198,25 +206,34 @@ class DomeGeneratorShapeTest {
                 .size());
         assertEquals(234, m.count('P'));
         assertEquals(0, f.count('P'));
-        assertEquals(m.ctrlA, f.ctrlA);
-        assertEquals(m.ctrlB, f.ctrlB);
-        assertEquals(m.ctrlC, f.ctrlC);
-        CityBuild b = DomeGeneratorShape.BUILD;
+        CityBuild b = DomeGeneratorShape.BUILD, fb = DomeGeneratorShape.FLOATING_BUILD;
         assertArrayEquals(new int[] { 14, 7, 8 }, new int[] { m.ctrlA, m.ctrlB, m.ctrlC });
         assertArrayEquals(new int[] { 14, 7, 8 }, b.cellOf(10, 2, 6));
+        assertArrayEquals(new int[] { 10, 7, 6 }, new int[] { f.ctrlA, f.ctrlB, f.ctrlC });
+        assertArrayEquals(new int[] { 10, 7, 6 }, fb.cellOf(10, 2, 6));
+        assertArrayEquals(new int[] { 0, 0, 0 }, fb.offset());
+        assertSame(f, fb.blueprint());
         for (int y = 0; y < S.H; y++) for (int z = 0; z < S.D; z++) for (int x = 0; x < S.W; x++) {
             char ch = S.get(x, y, z);
-            int[] c = b.cellOf(x, y, z);
+            int[] c = b.cellOf(x, y, z), d = fb.cellOf(x, y, z);
             assertEquals(ShapeKit.soft(ch) ? ' ' : ch, m.at(c[0], c[1], c[2]), x + "," + y + "," + z);
-            assertEquals(ShapeKit.soft(ch) ? ' ' : ch, f.at(c[0], c[1], c[2]));
+            assertEquals(ShapeKit.soft(ch) ? ' ' : ch, f.at(d[0], d[1], d[2]));
             assertArrayEquals(new int[] { x, y, z }, b.localOf(c[0], c[1], c[2]));
+            assertArrayEquals(new int[] { x, y, z }, fb.localOf(d[0], d[1], d[2]));
+            // the same cell for a controller anywhere: both blueprints lay the pod round it alike
+            for (int facing = 2; facing <= 5; facing++) {
+                int[] fr = BuildPlan.front(facing);
+                assertArrayEquals(
+                    m.world(c[0], c[1], c[2], 7, 90, -3, fr[0], fr[1]),
+                    f.world(d[0], d[1], d[2], 7, 90, -3, fr[0], fr[1]));
+            }
         }
         for (int[] p : DomeGeneratorShape.legPoints()) {
             int[] c = b.cellOf(p[0], p[1], p[2]);
             assertEquals('P', m.at(c[0], c[1], c[2]));
-            assertEquals(' ', f.at(c[0], c[1], c[2]));
         }
         assertEquals(ModuleCores.DOME_GENERATOR, b.corePart() - Parts.MODULE_CORE);
+        assertEquals(ModuleCores.DOME_GENERATOR, fb.corePart() - Parts.MODULE_CORE);
         assertEquals(DomeGeneratorShape.KEY, ModuleCores.KEYS[ModuleCores.DOME_GENERATOR]);
     }
 
@@ -410,8 +427,8 @@ class DomeGeneratorShapeTest {
             assertArrayEquals(new int[] { 4, 0, f + 2 }, m.podToCampus(10, 2, 6));
             assertArrayEquals(new int[] { 10, 2, 6 }, m.campusToPod(4, 0, f + 2));
         }
-        // the floating shape is the full legs' box without the legs: the same pod round the same controller cell
-        assertEquals(DomeGeneratorShape.MOORED_BP.ctrlB, DomeGeneratorShape.FLOATING_BP.ctrlB);
+        // the floating shape is the pod's own box (0.16.0): the same pod round the controller at every datum
+        assertEquals(DomeGeneratorShape.HEIGHT - 1 - DomeGeneratorShape.CTRL_Y, DomeGeneratorShape.FLOATING_BP.ctrlB);
     }
 
     /**

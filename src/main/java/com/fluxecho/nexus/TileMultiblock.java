@@ -211,6 +211,14 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
     /** The {@link Formed} flags of a part once formed. */
     protected abstract int flags(char ch);
 
+    /**
+     * The {@link Formed} flags of the part at a world cell once formed (0.16.0): {@link #flags(char)} unless the
+     * multiblock dissolves a character in some cells only (the Weather Station's mast, not its pylons).
+     */
+    protected int flags(char ch, int x, int y, int z) {
+        return flags(ch);
+    }
+
     /** The lang key (under {@code fluxecho.}) of the structure's description lines for the projector. */
     protected abstract String descriptionKey();
 
@@ -473,7 +481,7 @@ public abstract class TileMultiblock extends TileEntity implements ISurvivalCons
         int[] b = { Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
             Integer.MIN_VALUE };
         for (int[] s : seen) {
-            int f = flags((char) s[3]);
+            int f = flags((char) s[3], s[0], s[1], s[2]);
             if (f != 0 && s[1] <= level) cells.put(Formed.key(s[0], s[1], s[2]), f);
             for (int i = 0; i < 3; i++) {
                 b[i] = Math.min(b[i], s[i]);

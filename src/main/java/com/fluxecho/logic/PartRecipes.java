@@ -183,6 +183,20 @@ public final class PartRecipes {
                 part(Parts.frame(Parts.FR_RING)),
                 'C',
                 crystal));
+        // the floating foundation (0.16.0, CITY.md §1.4): frame bases and stainless plates round an anti-gravity
+        // lattice, eight a lattice, the deck the sky platforms float on
+        list.add(
+            recipe(
+                Parts.frame(Parts.FR_FLOAT),
+                8,
+                "Floating Foundation",
+                rows("BSB", "SLS", "BSB"),
+                'B',
+                base,
+                'S',
+                ssPlate,
+                'L',
+                "ore:latticeAntiGravity"));
 
         // deck parts
         list.add(

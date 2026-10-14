@@ -26,6 +26,7 @@ import com.fluxecho.logic.HoloLook;
 import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.RootShape;
+import com.fluxecho.logic.SkyRing;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileModule;
 import com.fluxecho.nexus.TileMultiblock;
@@ -44,12 +45,15 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <li>Docked (idle): over the glass a miniature of the campus the table is docked to, made each time it is drawn from
  * what the client knows of that campus: the nexus's column at its phase, the ground and its rings (the outer ring's
  * once it is laid), every formed module of the campus the client has as a box of its own colour, and the zenith's pod
- * with its legs and the root's well in section; it turns slowly, carried up from the glass by a soft column of light.
+ * with its legs and the root's well in section; 0.16.0 the sky ring's modules as boxes up at the pod's deck with their
+ * catwalks to the pod as lines, and the deep root's chamber in section under the well's. It turns slowly, carried up
+ * from the glass by a soft column of light.
  * Powered it is brighter (its layers come with the units' functions).</li>
  * </ul>
  * Budgets (CITY.md §1.3, quads a frame on top of {@link CityRender}'s, {@link HoloLook#quads}): the ring light 96
  * near, 24 mid, 16 far; the miniature near at most its ground, rings, {@link HoloLook#MINI_BOXES} boxes and the
- * nexus with their rims, the two sections, the legs and the column, mid their tops alone, far nothing. With the plinth
+ * nexus with their rims, the sections (three under a deep root's chamber), the legs, the catwalks and the column, mid
+ * their tops alone, far nothing. With the plinth
  * line and the plate the table stays under 2,000 near, 300 mid and 64 far ({@code HoloLookTest}).
  * <p>
  * Shader-safe as {@link CityRender}: in its frame ({@link CityFrame}) relative to the camera, quads only with the
@@ -131,6 +135,9 @@ final class HoloTableRender {
      * footprint and height ({@link HoloLook#siteBox}), whether or not the client has its chunks loaded (0.15.0: from
      * the table on an outer diagonal the far side of the campus is 120 to 175 blocks off), refined to its structure's
      * bounds when it has; the zenith and the root, and a formed module the view does not list, come from the tiles.
+     * A sky module (0.16.0) stands up at the pod's sky datum (the loaded pod's, else the one the base layer gives) over
+     * its platform ({@link HoloLook#skyBox}), its catwalk to the pod drawn as two lines ({@link HoloLook#walks}); the
+     * deep root shows its chamber in section under the well's ({@link HoloLook#rootSections}).
      */
     private static HoloLook.Model model(TileHoloTable h) {
         int[] at = h.clientNexus;
@@ -153,15 +160,28 @@ final class HoloTableRender {
         // the campus's middle at the ground: the middle of the centre cell, the forum's floor (Y0 + 1)
         double ox = c[0] + 0.5, oy = c[1] + 1, oz = c[2] + 0.5;
         List<HoloLook.Box> boxes = new ArrayList<>();
-        HoloLook.Box pod = null, root = null;
-        List<double[]> legs = new ArrayList<>();
+        HoloLook.Box pod = null, root = null, chamber = null;
+        List<double[]> legs = new ArrayList<>(), walks = new ArrayList<>();
         int legRgb = CYAN;
+        int deck = skyDatum(tiles, w, c);
         // the modules the campus view lists as built on its ground sites, loaded or not
         Set<TileModule> shown = new HashSet<>();
         if (v != null) for (Campus.ModuleState ms : v.modules) {
             if (ms.status != Campus.ModuleStatus.BUILT || ms.site < 0) continue;
             ModuleSpec spec = ModuleSpecs.get(ms.key);
             if (spec == null || spec.axis()) continue;
+            if (SkyRing.skySite(ms.site)) {
+                // a sky module: up on its platform at the pod's deck, its catwalk to the pod
+                int[] fp = SkyRing.footprint(ms.site, c[0], c[2], fd.offsetX, fd.offsetZ, 0);
+                TileModule loaded = loadedOn(tiles, w, c, ms.key, fp);
+                if (loaded != null) shown.add(loaded);
+                int[] b = loaded == null ? null : loaded.bounds();
+                boxes.add(
+                    b != null ? HoloLook.siteBox(fp, b, c[0], c[1], c[2], spec.height, loaded.moduleColor())
+                        : HoloLook.skyBox(ms.site, fd.offsetX, fd.offsetZ, deck, spec.height, spec.colour));
+                if (SkyRing.platformSite(ms.site)) walks.addAll(HoloLook.walks(ms.site, fd.offsetX, fd.offsetZ, deck));
+                continue;
+            }
             int[] fp;
             try {
                 fp = spec.footprint(ms.site, c[0], c[2], fd.offsetX, fd.offsetZ, 0);
@@ -214,10 +234,13 @@ final class HoloTableRender {
             }
             int[] b = mod.bounds();
             if (b == null) continue;
-            if (axis && mod instanceof TileRoot) {
-                // the root's well in section, from its lid down to its floor
-                double half = RootShape.WELL_R + 0.5;
-                root = new HoloLook.Box(-half, b[1] - oy, -half, half, b[4] + 1 - oy, half, mod.moduleColor());
+            if (axis && mod instanceof TileRoot r) {
+                // the root's well in section, from its lid down to its floor, and a deep root's chamber under it
+                RootShape.Deep d = r.deep();
+                HoloLook.Box[] sec = HoloLook
+                    .rootSections(b[1] - oy, b[4] + 1 - oy, d == null ? 0 : d.h, mod.moduleColor());
+                root = sec[0];
+                chamber = sec[1];
                 continue;
             }
             boxes.add(
@@ -230,7 +253,21 @@ final class HoloTableRender {
                     b[5] + 1 - oz,
                     mod.moduleColor()));
         }
-        return HoloLook.model(n.phase(), outer, CYAN, boxes, pod, legs, legRgb, root);
+        return HoloLook.model(n.phase(), outer, CYAN, boxes, pod, legs, legRgb, root, chamber, walks);
+    }
+
+    /**
+     * The sky datum of the campus centred at {@code c} (0.16.0): its loaded pod's, else the one its base layer gives
+     * ({@link DomeGeneratorShape#datum}).
+     */
+    private static int skyDatum(List<TileMultiblock> tiles, World w, int[] c) {
+        for (TileMultiblock m : tiles) {
+            if (!(m instanceof TileDomeGenerator g) || m.getWorldObj() != w || m.isInvalid() || !g.formed()) continue;
+            int[] mc = g.centre();
+            if (Math.abs(mc[0] - c[0]) <= 2 && Math.abs(mc[2] - c[2]) <= 2 && Math.abs(mc[1] - c[1]) <= 96)
+                return g.datum();
+        }
+        return DomeGeneratorShape.datum(c[1]);
     }
 
     /**
@@ -250,8 +287,8 @@ final class HoloTableRender {
 
     /**
      * The miniature, turned as the world time has it: near the column of light up from the glass, the ground's fill and
-     * its rings, the nexus and every box with its top's rim, the sections and the legs; mid the ground's fill and its
-     * edge, the tops of the nexus and the boxes and the sections' planes.
+     * its rings, the nexus and every box with its top's rim, the sections, the legs and the catwalks; mid the ground's
+     * fill and its edge, the tops of the nexus and the boxes and the sections' planes.
      */
     private static void mini(TileHoloTable h, CityFrame f, double t, float p, HoloLook.Model m, int tier) {
         if (p <= 0.01f) return;
@@ -306,6 +343,9 @@ final class HoloTableRender {
         if (nearby) {
             tes.setColorRGBA_I(Shapes.mix(m.legRgb, WHITE, 0.3), CityFrame.alpha255(0.5f * p));
             for (double[] l : m.legs) mini.line(tes, l[0], l[1], l[2], l[3], l[4], l[5]);
+            // the sky ring's catwalks from the pod out to their platforms
+            tes.setColorRGBA_I(line, CityFrame.alpha255(0.5f * p));
+            for (double[] l : m.walks) mini.line(tes, l[0], l[1], l[2], l[3], l[4], l[5]);
         }
         tes.draw();
         Shapes.end();

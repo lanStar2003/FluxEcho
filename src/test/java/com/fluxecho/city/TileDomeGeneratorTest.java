@@ -135,6 +135,11 @@ class TileDomeGeneratorTest {
         for (int i = 2; i < 5; i++) assertTrue(d.tries(shapes.get(i)), "any datum while no nexus is known");
         assertFalse(d.tries(shapes.get(1)), "no nexus of phase IV under it");
         assertEquals(DomeGeneratorShape.MOORED, d.shapeName());
+        // a pod that last stood floating (0.16.0) stays up while no formed nexus is known: it has no legs to stand on
+        TileDomeGenerator released = gen(X, Y, Z, 2);
+        released.expectShape(DomeGeneratorShape.FLOATING);
+        assertEquals(DomeGeneratorShape.FLOATING, released.shapeName());
+        assertTrue(released.tries(shapes.get(1)), "floating, with its nexus apart");
         // the nexus preview stands it floating from phase IV
         d.previewPhase(4);
         assertEquals(DomeGeneratorShape.FLOATING, d.shapeName());
@@ -371,5 +376,58 @@ class TileDomeGeneratorTest {
         assertTrue(d.covers(null, foot[0], foot[1], foot[2]), "a leg's foot");
         int[] ward = d.slotCell(0);
         assertTrue(d.covers(null, ward[0], ward[1], ward[2]), "a ward");
+    }
+
+    /**
+     * A floating pod (0.16.0) takes its frame and build from the pod's own box and its datum from where its controller
+     * stands: over a nexus at Y0 205 the one the builder raised at 36, and one built by hand on the full legs before
+     * 0.14.1 at 40 (up to 0.15.0 both said 36); formed, it covers its own box only, never the forum under it.
+     */
+    @Test
+    void aFloatingPodsFrameDatumAndBox() {
+        TileNexus n = nexus(205);
+        n.regrow(4);
+        int[] c = n.centre();
+        for (int f : new int[] { 36, 40 }) {
+            int[] at = zenith(n, f);
+            boolean[] stands = { false };
+            TileDomeGenerator d = new TileDomeGenerator() {
+
+                @Override
+                public TileNexus under() {
+                    return under(Collections.singletonList(n));
+                }
+
+                @Override
+                public boolean formed() {
+                    return stands[0];
+                }
+            };
+            d.xCoord = at[0];
+            d.yCoord = at[1];
+            d.zCoord = at[2];
+            d.place((UUID) null, null, at[3]);
+            d.previewPhase(4);
+            assertEquals(DomeGeneratorShape.FLOATING, d.shapeName());
+            assertSame(DomeGeneratorShape.FLOATING_BUILD, d.build());
+            assertEquals(f, d.datum(), "where its controller stands");
+            assertArrayEquals(new int[] { 10, 2, 6 }, d.local(at[0], at[1], at[2]));
+            for (int y = 0; y < DomeGeneratorShape.HEIGHT; y += 3)
+                for (int z = 0; z < 21; z += 4) for (int x = 0; x < 21; x += 4) {
+                    int[] w = d.worldOf(x, y, z);
+                    assertArrayEquals(new int[] { x, y, z }, d.local(w[0], w[1], w[2]));
+                }
+            assertArrayEquals(new int[] { c[0], c[1] + f, c[2] }, d.centre(), "the pad over the nexus");
+            stands[0] = true;
+            assertTrue(d.covers(null, at[0], at[1], at[2]));
+            int[] ward = d.slotCell(0);
+            assertTrue(d.covers(null, ward[0], ward[1], ward[2]));
+            assertFalse(d.covers(null, c[0], c[1] + f - 1, c[2]), "nothing under its floor");
+            int[] foot = DomeGeneratorShape.moor(f)
+                .legs()
+                .get(0);
+            int[] fw = CampusPlan.toWorld(foot[0], foot[1], n.front().offsetX, n.front().offsetZ);
+            assertFalse(d.covers(null, c[0] + fw[0], c[1] + foot[2], c[2] + fw[1]), "where a leg stood");
+        }
     }
 }

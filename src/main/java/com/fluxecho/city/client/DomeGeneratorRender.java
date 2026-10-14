@@ -61,6 +61,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * Over high ground the pod stands lower on shorter legs (0.14.1): the legs' ribs, the dome's ground ring and middle,
  * the arcs and the distances follow the generator's sky datum ({@link TileDomeGenerator#datum}).
+ * <p>
+ * Floating (0.16.0, the release job took its legs down): no legs are drawn, near or far; instead a lifting light glows
+ * under the pod's floor, its rim lit and near motes sinking from it ({@link DomeLook#floatQuads}, fewer quads than the
+ * legs it replaces, {@link DomeLook#legQuads}). The dome, the emitter and the arcs are drawn as before, the dome's
+ * middle on the forum under the pod's datum (read from where its controller stands).
  */
 @SideOnly(Side.CLIENT)
 final class DomeGeneratorRender {
@@ -81,8 +86,9 @@ final class DomeGeneratorRender {
     /** The apex cells by dome radius and rings. */
     private static final Map<Long, List<double[][]>> APEX = new ConcurrentHashMap<>();
 
-    private static final int LEG_PART = 0, EMITTER = 1, ARCS = 2, SHELL = 3, SWEEP = 4;
-    private static final String[] NAMES = { "leg ribs", "emitter", "arcs", "dome shell", "forming sweep" };
+    private static final int LEG_PART = 0, EMITTER = 1, ARCS = 2, SHELL = 3, SWEEP = 4, FLOAT = 5;
+    private static final String[] NAMES = { "leg ribs", "emitter", "arcs", "dome shell", "forming sweep",
+        "lifting light" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     static {
@@ -146,6 +152,15 @@ final class DomeGeneratorRender {
         } catch (Throwable x) {
             CityRender.recover();
             fail(LEG_PART, x);
+        } finally {
+            CityRender.close();
+        }
+        // floating (0.16.0): the lifting light under the pod instead of the legs
+        if (!moored && tier != ModuleLook.FAR && !OFF[FLOAT]) try {
+            lift(f, t, p0, tier == ModuleLook.NEAR, on, docked, accent);
+        } catch (Throwable x) {
+            CityRender.recover();
+            fail(FLOAT, x);
         } finally {
             CityRender.close();
         }
@@ -417,6 +432,49 @@ final class DomeGeneratorRender {
             double[] u = c[i], v = c[(i + 1) % 4];
             f.line(tes, u[0], u[1], u[2], v[0], v[1], v[2], 0.07);
         }
+    }
+
+    // ---- floating (0.16.0)
+
+    /**
+     * The floating pod's lifting light, its legs released: a soft glow under its floor, its floor's rim lit, and near
+     * motes sinking slowly from its underside, as the sky ring's platforms glow under their decks. In its colour while
+     * docked and powered, amber without power, dim undocked.
+     */
+    private static void lift(CityFrame f, double t, float p, boolean nearby, boolean on, boolean docked, int accent) {
+        if (p <= 0.01f) return;
+        int glow = on ? accent : docked ? AMBER : IDLE;
+        float life = p * (on ? 1f : docked ? 0.5f : 0.3f);
+        double y = DomeLook.FLOAT_UNDER;
+        Shapes.begin(true);
+        Shapes.disc(
+            f.x(DomeLook.CX, DomeLook.CZ),
+            f.y(y),
+            f.z(DomeLook.CX, DomeLook.CZ),
+            DomeLook.FLOAT_GLOW_R,
+            glow,
+            0.28f * life,
+            0f);
+        Tessellator tes = CityFrame.start();
+        tes.setColorRGBA_I(
+            Shapes.mix(glow, WHITE, 0.3),
+            CityFrame.alpha255(0.45f * life * (0.8f + 0.2f * (float) Math.sin(t * 0.07))));
+        double[][] rim = DomeLook.rim();
+        for (int i = 0; i < rim.length; i++) {
+            double[] a = rim[i], b = rim[(i + 1) % rim.length];
+            f.line(tes, a[0], y, a[1], b[0], y, b[1], 0.08);
+        }
+        tes.draw();
+        Shapes.end();
+        if (!nearby) return;
+        Motes.begin();
+        for (int k = 0; k < DomeLook.FLOAT_MOTES; k++) {
+            double[] m = DomeLook.floatMote(k, t);
+            double a = k * 2.399 + t * 0.004, r = 2.5 + 4.5 * ((k * 0.618) % 1);
+            double x = DomeLook.CX + Math.cos(a) * r, z = DomeLook.CZ + Math.sin(a) * r;
+            Motes.add(f.x(x, z), f.y(y - m[0]), f.z(x, z), 0.3, glow, 0.5f * life * (float) m[1]);
+        }
+        Motes.end();
     }
 
     // ---- the emitter

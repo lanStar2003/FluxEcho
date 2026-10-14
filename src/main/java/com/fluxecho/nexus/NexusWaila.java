@@ -92,10 +92,15 @@ public final class NexusWaila implements IWailaDataProvider {
     /** The campus's line: the job, how far it is, its stage (or why it waits), and what it misses most. */
     private static void build(NBTTagCompound t, List<String> tip) {
         if (!t.hasKey("feBuildK")) return;
-        String name = BuildJob.name(t.getString("feBuildK"), t.getString("feBuildPk"))
+        // the deepen job (0.16.0) has the root's module job's keys, but its own name and stages
+        boolean deepens = t.getBoolean("feBuildDr");
+        // a dome job that builds the pod floating (0.16.0) clears the pod's place in the air, not its legs'
+        boolean floats = t.getBoolean("feBuildFl");
+        String name = BuildJob.name(t.getString("feBuildK"), t.getString("feBuildPk"), deepens)
             .getUnformattedText();
         int state = t.getByte("feBuildSt"), pause = t.getByte("feBuildPs");
-        String what = NexusGui.phaseText(t.getString("feBuildPk"), state, pause, t.getByte("feBuildSg"));
+        String what = NexusGui
+            .phaseText(t.getString("feBuildPk"), state, pause, t.getByte("feBuildSg"), deepens, floats);
         boolean paused = state == BuildState.State.PAUSED.ordinal();
         tip.add(
             (paused ? EnumChatFormatting.GOLD : EnumChatFormatting.AQUA)
@@ -115,6 +120,8 @@ public final class NexusWaila implements IWailaDataProvider {
         if (!c.active() || j == null || BuildState.ended(j.state())) return;
         tag.setString("feBuildK", j.key());
         tag.setString("feBuildPk", j.planKey());
+        if (j.deepens()) tag.setBoolean("feBuildDr", true);
+        if (j.floats()) tag.setBoolean("feBuildFl", true);
         tag.setByte(
             "feBuildSt",
             (byte) j.state()
@@ -169,10 +176,7 @@ public final class NexusWaila implements IWailaDataProvider {
             tag.setString("feDock", c.dockStatus());
             tag.setBoolean("fePowered", c.powered());
             tag.setInteger("feSamples", c.sampleCount());
-            tag.setInteger(
-                "feCap",
-                c.samples()
-                    .getSlots());
+            tag.setInteger("feCap", c.shownSlots());
             tag.setInteger("feUnits", c.unitCount());
             tag.setString("feOwner", c.ownerName());
         }

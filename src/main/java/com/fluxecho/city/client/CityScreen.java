@@ -127,7 +127,7 @@ public final class CityScreen {
             hgradient(1, 1, w * 0.6, h - 1, accent, 0.28f, accent, 0f);
             rect(1, h - 1, w - 1, h, accent, 0.6f);
             end();
-            String title = EchoText.t("module." + c.moduleKey());
+            String title = EchoText.t(c.nameKey());
             text(fit(title, (int) w - 8), 4, 3, accent, 1f);
         } finally {
             GL11.glPopMatrix();
@@ -158,8 +158,7 @@ public final class CityScreen {
         try {
             boolean docked = "docked".equals(v.dock);
             String none = EchoText.t("city.gui.status.none");
-            int n = c.sampleCount(), slots = c.samples()
-                .getSlots();
+            int n = c.sampleCount(), slots = c.shownSlots();
             line(
                 0,
                 "structure",
@@ -237,7 +236,7 @@ public final class CityScreen {
     /** The state's tooltip: the dock state at length, and what the module draws while it runs. */
     public static List<String> statusTip(TileCityModule c, CityGui.View v) {
         List<String> out = new ArrayList<>();
-        out.add(EchoText.t("module." + c.moduleKey()));
+        out.add(EchoText.t(c.nameKey()));
         out.add(EnumChatFormatting.GRAY + dockText(v));
         out.addAll(EchoText.lines("city.gui.status.tip", v.upkeep));
         return out;
@@ -279,8 +278,7 @@ public final class CityScreen {
                     WHITE,
                     (float) Math.sin(f * Math.PI) * 0.8f);
             }
-            int slots = c.samples()
-                .getSlots(), n = Math.min(slots, 48);
+            int slots = c.shownSlots(), n = Math.min(slots, 48);
             for (int i = 0; i < n; i++) {
                 double ang = -Math.PI / 2 + i * 2 * Math.PI / n;
                 boolean kept = c.sample(i) != null;
@@ -686,12 +684,7 @@ public final class CityScreen {
         GL11.glTranslatef(x, y, 0);
         try {
             int lw = (int) ((w - 2) / 0.75f);
-            String samples = EchoText.t(
-                "city.gui.foot.samples",
-                c.sampleCount(),
-                c.samples()
-                    .getSlots(),
-                c.unitCount());
+            String samples = EchoText.t("city.gui.foot.samples", c.sampleCount(), c.shownSlots(), c.unitCount());
             small(fit(samples, lw), 0, 1, 0.75f, WHITE, 1f);
             small(fit(dockText(v), lw), 0, 9, 0.75f, dockColour(v), 1f);
             String hint = EchoText.t(

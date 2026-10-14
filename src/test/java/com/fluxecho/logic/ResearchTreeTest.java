@@ -42,7 +42,8 @@ class ResearchTreeTest {
     /**
      * What an operator's {@code /fluxecho research all} grants: every node the star map lets a team research in this
      * version (0.12.0: phase II, the tidal well and the dome too; 0.15.0: phase III, the outer ring, the Sophon Array
-     * and the Holo Sand Table), never the greyed placeholders of later phases.
+     * and the Holo Sand Table; 0.16.0: phase IV, the sky ring, its four buildings and the deep root), never the greyed
+     * placeholders of later phases.
      */
     @Test
     void onlyTheNodesOfThisVersionAreAvailable() {
@@ -53,6 +54,9 @@ class ResearchTreeTest {
         assertTrue(now.contains(ResearchTree.DOME));
         for (String id : new String[] { ResearchTree.PHASE_3, ResearchTree.OUTER_RING, ResearchTree.SOPHON_ARRAY,
             ResearchTree.HOLO_TABLE }) assertTrue(now.contains(id), id + ": research all grants it");
+        for (String id : new String[] { ResearchTree.PHASE_4, ResearchTree.SKY_RING, ResearchTree.WEATHER_STATION,
+            ResearchTree.SKY_SAILS, ResearchTree.OBSERVATORY, ResearchTree.DROPLET_HANGAR, ResearchTree.DEEP_ROOT })
+            assertTrue(now.contains(id), id + ": research all grants it (0.16.0)");
         assertTrue(now.contains(ResearchTree.ANCHOR));
         assertTrue(now.contains(ResearchTree.LIBRARY), "the library's research opens the Echo Archive");
         for (ResearchTree.Node n : ResearchTree.all()) {
@@ -231,15 +235,15 @@ class ResearchTreeTest {
     /**
      * A line between two stars (a node and one it requires) never runs through a third star, so the map shows no
      * requirement that is not there (0.13.0: the line from the echo crystal to the Arcane Court ran through the
-     * library's star, and the one from phase II to the Echo Hunting Ground through the eco dome's). The frame's spine
-     * is the one exception: phase II's line down to the dome runs through the inner ring and the anchor, the chain
-     * phase II itself stands on.
+     * library's star, and the one from phase II to the Echo Hunting Ground through the eco dome's). Until 0.16.0 the
+     * frame's spine was the one exception, phase II's line down to the dome at the spine's foot running through the
+     * inner ring and the anchor; since the dome stands beside the spine with the guard's constellation, no line is
+     * exempt.
      */
     @Test
     void noLinkRunsThroughAThirdStar() {
         for (ResearchTree.Node n : ResearchTree.all()) for (String id : n.requires) {
             ResearchTree.Node r = ResearchTree.get(id);
-            if (r.id.equals(ResearchTree.PHASE_2) && n.id.equals(ResearchTree.DOME)) continue;
             for (ResearchTree.Node m : ResearchTree.all()) {
                 if (m == n || m == r) continue;
                 double d = fromSegment(m.x, m.y, r.x, r.y, n.x, n.y);
@@ -288,7 +292,7 @@ class ResearchTreeTest {
         assertNotNull(n);
         assertEquals(ResearchTree.Branch.ECHO, n.branch);
         assertEquals(1, n.phase);
-        assertEquals(3, ResearchTree.PHASE_NOW, "0.15.0 opens phase III");
+        assertEquals(4, ResearchTree.PHASE_NOW, "0.16.0 opens phase IV");
         assertTrue(ResearchTree.availableNow(n));
         assertEquals(java.util.Arrays.asList(ResearchTree.INNER_RING, ResearchTree.ECHO_CRYSTAL), n.requires);
         assertEquals(16_000, n.compute);
@@ -583,7 +587,8 @@ class ResearchTreeTest {
         assertEquals(0, ResearchTree.nextGrowth(1, id -> false));
         assertEquals(0, ResearchTree.nextGrowth(2, two::contains), "not without phase III's research");
         assertEquals(3, ResearchTree.nextGrowth(2, three::contains), "grow:3");
-        assertEquals(0, ResearchTree.nextGrowth(3, id -> true), "phase IV waits for a later version");
+        assertEquals(4, ResearchTree.nextGrowth(3, id -> true), "grow:4 since 0.16.0");
+        assertEquals(0, ResearchTree.nextGrowth(3, three::contains), "not without phase IV's research");
         assertEquals(0, ResearchTree.nextGrowth(0, id -> true));
         assertEquals(1, ResearchTree.researchedPhase(id -> false));
         assertEquals(2, ResearchTree.researchedPhase(two::contains));
@@ -697,10 +702,245 @@ class ResearchTreeTest {
             assertTrue(needs(n).contains(ResearchTree.PHASE_2), n.id + " takes memory filament before phase II");
             assertTrue(n.phase >= 3, n.id + ": an IV material");
         }
-        assertEquals(4, asked, "phase III, the outer ring and both buildings take it");
+        assertEquals(6, asked, "phase III, the outer ring, both of its buildings, phase IV and the sky ring take it");
         assertFalse(
             costNames(ResearchTree.get(ResearchTree.PHASE_2)).contains("wireMemoryFilament"),
             "phase II opens it");
+    }
+
+    /**
+     * Phase IV made real (0.16.0, CITY.md §3, §5.2 and Appendix B): its node continues the frame's spine over the outer
+     * ring, which it needs, is researched on a nexus of phase III and opens phase IV, with the real LuV costs the
+     * contract names: chrome hull plates, LuV circuits, the phase's own material, manifest matter, and memory filament;
+     * it takes more compute than phase III, and needs the Sophon Array, whose research opens manifest matter.
+     */
+    @Test
+    void phaseFour() {
+        ResearchTree.Node p4 = ResearchTree.get(ResearchTree.PHASE_4), p3 = ResearchTree.get(ResearchTree.PHASE_3),
+            outer = ResearchTree.get(ResearchTree.OUTER_RING);
+        assertNotNull(p4);
+        assertEquals(ResearchTree.PHASE_4, ResearchTree.phaseResearch(4));
+        assertEquals(4, ResearchTree.phaseOf(ResearchTree.PHASE_4));
+        assertEquals(ResearchTree.Branch.FRAME, p4.branch);
+        assertEquals(4, p4.phase);
+        assertEquals(3, p4.nexusPhase(), "researched at phase III");
+        assertEquals(java.util.Arrays.asList(ResearchTree.OUTER_RING, ResearchTree.SOPHON_ARRAY), p4.requires);
+        assertTrue(p4.compute > p3.compute, "a later phase takes more compute");
+        assertEquals(
+            new HashSet<>(
+                java.util.Arrays.asList("plateChrome", "circuitLuV", "ingotManifestMatter", "wireMemoryFilament")),
+            costNames(p4));
+        Set<String> done = new HashSet<>(
+            java.util.Arrays.asList(
+                ResearchTree.ANCHOR,
+                ResearchTree.INNER_RING,
+                ResearchTree.PHASE_2,
+                ResearchTree.PHASE_3,
+                ResearchTree.COMPUTE_1,
+                ResearchTree.OUTER_RING));
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(p4, done, 3, 999), "the Sophon Array first");
+        done.add(ResearchTree.SOPHON_ARRAY);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(p4, done, 2, 999), "a nexus of phase III");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(p4, done, 3, 999));
+        // the spine: phase IV straight over the outer ring
+        assertEquals(outer.x, p4.x);
+        assertTrue(p4.y < outer.y, "over the outer ring");
+    }
+
+    /**
+     * The nexus grows to phase IV (0.16.0): {@code grow:4} is offered to a formed nexus of phase III whose teams have
+     * {@code phase_4}, and a nexus may stand as phase IV only with all three phase nodes done; phase V waits for a
+     * later
+     * version.
+     */
+    @Test
+    void theNexusGrowsToPhaseFour() {
+        Set<String> three = new HashSet<>(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.PHASE_3)),
+            four = new HashSet<>(three);
+        four.add(ResearchTree.PHASE_4);
+        assertEquals(4, ResearchTree.nextGrowth(3, four::contains), "grow:4");
+        assertEquals(0, ResearchTree.nextGrowth(3, three::contains), "not without phase IV's research");
+        assertEquals(3, ResearchTree.nextGrowth(2, four::contains), "one phase at a time");
+        assertEquals(0, ResearchTree.nextGrowth(4, id -> true), "phase V waits for a later version");
+        assertEquals(4, ResearchTree.researchedPhase(four::contains));
+        assertEquals(3, ResearchTree.researchedPhase(three::contains));
+        Set<String> gap = new HashSet<>(java.util.Arrays.asList(ResearchTree.PHASE_2, ResearchTree.PHASE_4));
+        assertEquals(2, ResearchTree.researchedPhase(gap::contains), "phase IV's node alone opens nothing");
+        assertEquals(4, ResearchTree.researchedPhase(id -> true), "never past this version");
+    }
+
+    /**
+     * The frame's stars stand on the spine as one chain (0.16.0, decided for the user: phase IV needs the outer ring):
+     * from the top down each needs the one under it, so no line along the spine skips a star; the guard's
+     * constellation, whose name stood at the spine's foot until 0.16.0, stands beside it.
+     */
+    @Test
+    void theFramesSpineIsOneChain() {
+        java.util.List<ResearchTree.Node> spine = new java.util.ArrayList<>();
+        for (ResearchTree.Node n : ResearchTree.all()) if (n.branch == ResearchTree.Branch.FRAME) spine.add(n);
+        spine.sort((a, b) -> Integer.compare(a.y, b.y));
+        assertEquals(
+            7,
+            spine.size(),
+            "the sky ring, phase IV, the outer ring, phase III, phase II, the ring, the anchor");
+        for (int i = 0; i + 1 < spine.size(); i++) assertTrue(
+            spine.get(i).requires.contains(spine.get(i + 1).id),
+            spine.get(i).id + " needs " + spine.get(i + 1).id + ", the star under it");
+        assertEquals(ResearchTree.SKY_RING, spine.get(0).id, "the sky ring tops the spine");
+        assertEquals(ResearchTree.ANCHOR, spine.get(spine.size() - 1).id, "the anchor at its foot");
+        assertTrue(ResearchTree.Branch.GUARD.labelX != ResearchTree.WIDTH / 2, "the guard's name off the spine");
+        assertTrue(ResearchTree.get(ResearchTree.DOME).x < ResearchTree.WIDTH / 2, "the dome beside it, on the left");
+    }
+
+    /**
+     * The sky ring's research (0.16.0, CITY.md §2.5, §4.12 and Appendix B): a frame node after phase IV and the dome,
+     * researched on a nexus of phase IV, with the phase's LuV costs; it tops the frame's spine, and since it opens the
+     * anti-gravity lattice at the table, it takes none.
+     */
+    @Test
+    void theSkyRing() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.SKY_RING), p4 = ResearchTree.get(ResearchTree.PHASE_4);
+        assertNotNull(n);
+        assertEquals("sky_ring", n.id);
+        assertEquals(ResearchTree.Branch.FRAME, n.branch);
+        assertEquals(4, n.phase);
+        assertEquals(4, n.nexusPhase());
+        assertEquals(0, ResearchTree.phaseOf(n.id), "it opens no phase");
+        assertEquals(java.util.Arrays.asList(ResearchTree.PHASE_4, ResearchTree.DOME), n.requires);
+        assertTrue(n.compute > 0);
+        Set<String> names = costNames(n);
+        assertTrue(
+            names.containsAll(java.util.Arrays.asList("plateChrome", "circuitLuV", "ingotManifestMatter")),
+            names.toString());
+        assertFalse(names.contains("latticeAntiGravity"), "it opens the lattice");
+        Set<String> done = new HashSet<>(needs(n));
+        done.remove(ResearchTree.DOME);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 4, 999), "the dome first");
+        done.add(ResearchTree.DOME);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 3, 999), "a nexus of phase IV");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 4, 999));
+        assertEquals(p4.x, n.x, "on the frame's spine");
+        assertTrue(n.y < p4.y, "over phase IV");
+    }
+
+    /**
+     * The sky ring's four buildings (0.16.0, CITY.md §4.12 and Appendix B): phase IV nodes after the sky ring (the
+     * guard's Weather Station and Droplet Hangar also after the dome) on their branches, researched on a nexus of phase
+     * IV, with the phase's LuV costs, the anti-gravity lattice their platforms float on and one themed vanilla item
+     * each; each node is its module's key, and each stands on its branch's side of the map.
+     */
+    @Test
+    void theSkyRingsBuildings() {
+        String[] ids = { ResearchTree.WEATHER_STATION, ResearchTree.SKY_SAILS, ResearchTree.OBSERVATORY,
+            ResearchTree.DROPLET_HANGAR };
+        String[] keys = { "weather_station", "sky_sails", "observatory", "droplet_hangar" };
+        ResearchTree.Branch[] branches = { ResearchTree.Branch.GUARD, ResearchTree.Branch.ENERGY,
+            ResearchTree.Branch.COMPUTE, ResearchTree.Branch.GUARD };
+        String[] themed = { "minecraft:daylight_detector", "minecraft:wool", "minecraft:clock",
+            "minecraft:ghast_tear" };
+        for (int i = 0; i < ids.length; i++) {
+            ResearchTree.Node n = ResearchTree.get(ids[i]);
+            assertNotNull(n, ids[i]);
+            assertEquals(keys[i], n.id, "the module is its node");
+            assertEquals(branches[i], n.branch, n.id);
+            assertEquals(4, n.phase, n.id);
+            assertEquals(4, n.nexusPhase(), n.id);
+            assertEquals(0, ResearchTree.phaseOf(n.id), "it opens no phase");
+            assertTrue(ResearchTree.availableNow(n), n.id);
+            assertTrue(n.compute > 0, n.id);
+            boolean guard = n.branch == ResearchTree.Branch.GUARD;
+            assertEquals(
+                guard ? java.util.Arrays.asList(ResearchTree.SKY_RING, ResearchTree.DOME)
+                    : java.util.Arrays.asList(ResearchTree.SKY_RING),
+                n.requires,
+                n.id);
+            Set<String> names = costNames(n);
+            assertTrue(
+                names.containsAll(
+                    java.util.Arrays
+                        .asList("plateChrome", "circuitLuV", "ingotManifestMatter", "latticeAntiGravity", themed[i])),
+                n.id + ": " + names);
+            assertEquals(
+                Integer.signum(n.branch.labelX - ResearchTree.WIDTH / 2),
+                Integer.signum(n.x - ResearchTree.WIDTH / 2),
+                n.id + ": on its branch's side");
+            Set<String> done = new HashSet<>(needs(n));
+            done.remove(ResearchTree.SKY_RING);
+            assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 4, 999), "the sky ring first");
+            done.add(ResearchTree.SKY_RING);
+            assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 3, 999), "a nexus of phase IV");
+            assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 4, 999));
+        }
+    }
+
+    /**
+     * The Deep Root's research (0.16.0, CITY.md §4.9 and Appendix B): a phase IV node on the depths branch after the
+     * tidal well and phase IV, researched on a nexus of phase IV, with the phase's LuV costs and buckets; it opens a
+     * shape of the root module, not a module of its own.
+     */
+    @Test
+    void theDeepRoot() {
+        ResearchTree.Node n = ResearchTree.get(ResearchTree.DEEP_ROOT);
+        assertNotNull(n);
+        assertEquals("deep_root", n.id);
+        assertEquals(ResearchTree.Branch.DEPTHS, n.branch);
+        assertEquals(4, n.phase);
+        assertEquals(4, n.nexusPhase());
+        assertEquals(0, ResearchTree.phaseOf(n.id), "it opens no phase");
+        assertEquals(java.util.Arrays.asList(ResearchTree.TIDAL_WELL, ResearchTree.PHASE_4), n.requires);
+        assertTrue(n.compute > 0);
+        Set<String> names = costNames(n);
+        assertTrue(
+            names.containsAll(
+                java.util.Arrays.asList("plateChrome", "circuitLuV", "ingotManifestMatter", "minecraft:bucket")),
+            names.toString());
+        Set<String> done = new HashSet<>(needs(n));
+        done.remove(ResearchTree.TIDAL_WELL);
+        assertEquals(ResearchTree.Block.REQUIRES, ResearchTree.check(n, done, 4, 999), "the tidal well first");
+        done.add(ResearchTree.TIDAL_WELL);
+        assertEquals(ResearchTree.Block.LATER_PHASE, ResearchTree.check(n, done, 3, 999), "a nexus of phase IV");
+        assertEquals(ResearchTree.Block.NONE, ResearchTree.check(n, done, 4, 999));
+        assertTrue(n.x < ResearchTree.WIDTH / 2, "on the left, the depths branch's side");
+    }
+
+    /**
+     * Manifest matter and the anti-gravity lattice (0.16.0) are made at the table once the Sophon Array and the sky
+     * ring are researched ({@code Manifests}, {@code ManifestsTest}), so every node that takes one needs that research
+     * first; only nodes of phase IV take them (LuV materials), and the lattice is asked for by each sky building, for
+     * the platform it floats on.
+     */
+    @Test
+    void thePhaseFourMaterialsAreMadeBeforeTheyAreAskedFor() {
+        int matter = 0, lattice = 0;
+        for (ResearchTree.Node n : ResearchTree.all()) {
+            Set<String> names = costNames(n);
+            if (names.contains("ingotManifestMatter")) {
+                matter++;
+                assertTrue(needs(n).contains(ResearchTree.SOPHON_ARRAY), n.id + " takes manifest matter");
+                assertEquals(4, n.phase, n.id + ": an LuV material");
+            }
+            if (names.contains("latticeAntiGravity")) {
+                lattice++;
+                assertTrue(needs(n).contains(ResearchTree.SKY_RING), n.id + " takes the lattice");
+                assertEquals(4, n.phase, n.id + ": an LuV material");
+            }
+        }
+        assertEquals(7, matter, "every phase IV node takes manifest matter");
+        assertEquals(4, lattice, "the four sky buildings take the lattice");
+    }
+
+    /** Every node's name and description are in both lang files (the star map writes both). */
+    @Test
+    void everyNodeHasANameAndADescription() throws IOException {
+        for (String file : new String[] { "en_US.lang", "zh_CN.lang" }) {
+            Map<String, String> lang = lang(file);
+            for (ResearchTree.Node n : ResearchTree.all()) {
+                assertNotNull(lang.get("fluxecho.research.node." + n.id), n.id + " in " + file);
+                assertNotNull(lang.get("fluxecho.research.node." + n.id + ".desc"), n.id + ".desc in " + file);
+            }
+            for (ResearchTree.Branch b : ResearchTree.Branch.values())
+                assertNotNull(lang.get("fluxecho.research.branch." + b.key), b.key + " in " + file);
+        }
     }
 
     @Test

@@ -6,7 +6,8 @@ import javax.imageio.ImageIO;
  * Draws the textures of the Flux Nexus era (0.9.0): the flux frame's parts, the nexus's and the library's cores, the
  * flux materials and the library's index cards; (0.11.0) the frame's cladding anchor and the city's module cores;
  * (0.12.0) the phase's materials, phase alloy and resonant glass; (0.13.0) the four pavilions' module cores; and
- * (0.15.0) phase III's material, memory filament, and the phase alloy wire it is coated from.
+ * (0.15.0) phase III's material, memory filament, and the phase alloy wire it is coated from; and (0.16.0) phase IV's
+ * materials, manifest matter and the anti-gravity lattice, and the frame's floating foundation.
  * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
  */
@@ -39,6 +40,11 @@ public class NexusTextures {
     static final int SOPHON_PINK = 0xFF8CE6;
     /** The Holo Sand Table's accent (0.15.0), as {@code TileHoloTable.COLOR}. */
     static final int HOLO_CYAN = 0x66F0FF;
+    /** The sky ring's accents (0.16.0), as {@code TileWeatherStation.COLOR} and the others' (CITY.md §1.1). */
+    static final int WEATHER_BLUE = 0x9AD0FF, SAILS_GOLD = 0xFFD27A, OBSERVATORY_LILAC = 0xB9C8FF,
+        HANGAR_CHROME = 0xD8E4F0;
+    /** The anti-gravity lattice's lifting light (0.16.0): a pale sky blue, on its item and the floating foundation. */
+    static final int LIFT = 0x9FD8FF;
     static final int FRAMES = 8;
 
     interface Px {
@@ -80,6 +86,13 @@ public class NexusTextures {
         still(fr + "anchor_side", NexusTextures::anchorFace);
         anim(fr + "anchor_top_glow", NexusTextures::anchorGlow);
         anim(fr + "anchor_side_glow", NexusTextures::anchorGlow);
+        // the floating foundation (0.16.0): a lattice deck on top, a truss on the sides, an emitter plate underneath
+        // and the lifting light on it, rings of light running out from its middle
+        still(fr + "float_top", NexusTextures::floatTop);
+        still(fr + "float_side", NexusTextures::floatSide);
+        still(fr + "float_bottom", NexusTextures::floatBottom);
+        anim(fr + "float_bottom_glow", NexusTextures::floatBottomGlow);
+        anim(fr + "float_side_glow", NexusTextures::floatSideGlow);
 
         still("blocks/nexus/front", (x, y, f) -> coreFront(x, y, f, false, CYAN, NexusTextures::hexEmblem));
         anim("blocks/nexus/front_on", (x, y, f) -> coreFront(x, y, f, true, CYAN, NexusTextures::hexEmblem));
@@ -156,6 +169,12 @@ public class NexusTextures {
         anim(holo + "front_on", (x, y, f) -> coreFront(x, y, f, true, HOLO_CYAN, NexusTextures::tableEmblem));
         still(holo + "side", (x, y, f) -> coreSide(x, y, HOLO_CYAN));
         still(holo + "top", (x, y, f) -> coreTop(x, y, HOLO_CYAN));
+        // the sky ring's four (0.16.0), each in its accent: the weather mast under its cloud, the sails between their
+        // masts, the observatory's slit dome, a droplet over its cradle
+        core("weather_station", WEATHER_BLUE, NexusTextures::weatherEmblem);
+        core("sky_sails", SAILS_GOLD, NexusTextures::sailsEmblem);
+        core("observatory", OBSERVATORY_LILAC, NexusTextures::observatoryEmblem);
+        core("droplet_hangar", HANGAR_CHROME, NexusTextures::dropletEmblem);
 
         still("items/flux_grit", NexusTextures::grit);
         still("items/flux_crystal", NexusTextures::fluxCrystal);
@@ -164,6 +183,8 @@ public class NexusTextures {
         still("items/resonant_glass", NexusTextures::resonantGlass);
         still("items/phase_alloy_wire", NexusTextures::phaseAlloyWire);
         anim("items/memory_filament", NexusTextures::memoryFilament);
+        anim("items/manifest_matter", NexusTextures::manifestMatter);
+        anim("items/anti_gravity_lattice", NexusTextures::antiGravityLattice);
         still("items/library_card", (x, y, f) -> card(x, y, false));
         still("items/library_card_written", (x, y, f) -> card(x, y, true));
     }
@@ -450,6 +471,70 @@ public class NexusTextures {
         return mix(CYAN, WHITE, 0.15 + 0.85 * wave(a, f));
     }
 
+    // ---- the floating foundation (0.16.0)
+
+    /** Whether a pixel lies on the lattice's lines (every fifth pixel inside the rim, a 3 x 3 grid of cells). */
+    static boolean latticeLine(int v) {
+        return v == 5 || v == 10;
+    }
+
+    /** The deck people walk on: dark glass over the steel lattice, its nodes studded. */
+    static int floatTop(int x, int y, int f) {
+        int c = (x + y) % 2 == 0 ? 0x101A26 : 0x0E1722;
+        boolean lx = latticeLine(x), ly = latticeLine(y);
+        if (lx || ly) c = 0x2A3644;
+        if (lx && ly) c = STEEL_LIGHT;
+        return rim(x, y, c);
+    }
+
+    /**
+     * A side: the lattice as a truss, posts and rails with a brace across each cell, and a channel along the foot where
+     * the light from underneath spills out.
+     */
+    static int floatSide(int x, int y, int f) {
+        int c = y < 8 ? 0x111B27 : 0x0F1823;
+        boolean lx = latticeLine(x), ly = latticeLine(y);
+        if (lx || ly || x > 0 && x < 15 && y > 0 && y < 13 && (x + y) % 5 == 0) c = 0x2A3644;
+        if (lx && ly) c = STEEL_LIGHT;
+        if (y == 13) c = STEEL_DARK;
+        if (y == 14) c = 0x0A2632;
+        return rim(x, y, c);
+    }
+
+    /** The underside: an emitter plate, its rings grooved round a hub, under the lattice. */
+    static int floatBottom(int x, int y, int f) {
+        int c = (x + y) % 2 == 0 ? 0x0C1520 : 0x0B131D;
+        double d = dist(x, y);
+        if (d >= 2.4 && d < 3.1 || d >= 4.9 && d < 5.6) c = 0x16283A;
+        if (d < 1.6) c = 0x1C2B3A;
+        if (latticeLine(x) && latticeLine(y)) c = STEEL;
+        return rim(x, y, c);
+    }
+
+    /**
+     * The lifting light on the underside: rings of light running out from the hub over the animation (two at a time),
+     * the hub always lit, the lattice's nodes glinting; nothing in the corners past the plate.
+     */
+    static int floatBottomGlow(int x, int y, int f) {
+        double d = dist(x, y);
+        if (d < 1.4) return mix(LIFT, WHITE, 0.6);
+        if (d > 7.2) return 0;
+        double v = ((d / 3.6 - f / (double) FRAMES) % 1 + 1) % 1;
+        double ring = Math.max(0, 1 - Math.min(v, 1 - v) * 7);
+        if (ring > 0.15) return mix(mix(LIFT, 0x2F6F8A, d / 9), WHITE, ring * 0.7);
+        if (latticeLine(x) && latticeLine(y)) return mix(0x2F6F8A, LIFT, 0.5);
+        return 0;
+    }
+
+    /** The foot of a side: the light spilling out from underneath, a bright band running along it. */
+    static int floatSideGlow(int x, int y, int f) {
+        if (x < 1 || x > 14) return 0;
+        double w = wave(x / 16.0, f);
+        if (y == 14) return mix(mix(LIFT, 0x2F6F8A, 0.35), WHITE, 0.15 + 0.7 * w);
+        if (y == 13 && w > 0.5) return mix(0x2F6F8A, LIFT, w);
+        return 0;
+    }
+
     // ---- cores
 
     interface Emblem {
@@ -627,6 +712,66 @@ public class NexusTextures {
         if (y == 12 && x >= 4 && x <= 11) return 1;
         if (x == 6 && y >= 10 && y <= 11 || x == 9 && y >= 9 && y <= 11 || (x == 7 || x == 8) && y == 11) return 2;
         return 0;
+    }
+
+    /**
+     * The Weather Station's emblem (0.16.0): the mast on the hut's roof line, the vane's arm across it with its two
+     * cups, and the churning cloud over it, lit.
+     */
+    static int weatherEmblem(int x, int y) {
+        if (y >= 2 && y <= 4 && Math.hypot((x - 7.5) / 1.8, (y - 3.5) * 1.1) < 3.0) return 2;
+        if ((x == 7 || x == 8) && y >= 6 && y <= 12) return 1;
+        if (y == 7 && x >= 4 && x <= 11) return 1;
+        if ((x == 4 || x == 11) && y == 8) return 2;
+        if (y == 13 && x >= 3 && x <= 12) return 1;
+        return 0;
+    }
+
+    /**
+     * The Sky Sail Array's emblem (0.16.0): two masts on the deck line and the light sail spread between them, billowing
+     * a little, lit.
+     */
+    static int sailsEmblem(int x, int y) {
+        if ((x == 3 || x == 12) && y >= 3 && y <= 12) return 1;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        double belly = 0.6 * Math.sin((y - 4) * Math.PI / 6);
+        if (y >= 4 && y <= 10 && x >= 5 - belly && x <= 10 + belly) return 2;
+        return 0;
+    }
+
+    /**
+     * The Observatory's emblem (0.16.0): the stepped dome's outline on its drum, the meridian slit lit, the platform's
+     * line under them.
+     */
+    static int observatoryEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 9);
+        if ((x == 7 || x == 8) && y >= 4 && y <= 8) return 2;
+        if (y <= 9 && d >= 5.0 && d < 6.0) return 1;
+        if ((x == 2 || x == 13) && y >= 9 && y <= 13) return 1;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        return 0;
+    }
+
+    /**
+     * The Droplet Hangar's emblem (0.16.0): a mirror droplet, a teardrop pointing up, hovering over its cradle's rim on
+     * the deck line, lit.
+     */
+    static int dropletEmblem(int x, int y) {
+        double d = Math.hypot(x - 7.5, y - 7.5);
+        if (d < 2.7 || y >= 3 && y < 6 && Math.abs(x - 7.5) < (y - 2.5) * 0.9) return 2;
+        if (y == 12 && (x == 4 || x == 11)) return 1;
+        if (y == 12 && x >= 5 && x <= 10) return 1;
+        if (y == 13 && x >= 2 && x <= 13) return 1;
+        return 0;
+    }
+
+    /** A module core's four faces in its folder (0.16.0's helper): its accent and its emblem. */
+    static void core(String key, int accent, Emblem e) throws Exception {
+        String dir = "blocks/module_core/" + key + "/";
+        still(dir + "front", (x, y, f) -> coreFront(x, y, f, false, accent, e));
+        anim(dir + "front_on", (x, y, f) -> coreFront(x, y, f, true, accent, e));
+        still(dir + "side", (x, y, f) -> coreSide(x, y, accent));
+        still(dir + "top", (x, y, f) -> coreTop(x, y, accent));
     }
 
     static int coreFront(int x, int y, int f, boolean on, int accent, Emblem e) {
@@ -814,6 +959,78 @@ public class NexusTextures {
         double run = (w[1] - f / (double) FRAMES + 1) % 1, pulse = Math.max(0, 1 - Math.min(run, 1 - run) * 9);
         int c = w[0] <= 0 ? mix(mix(0x1C6F84, VIOLET, 0.35), 0x2F9FC0, w[0] + 1) : mix(0x3FC8E8, 0x9AF4FF, w[0]);
         return mix(c, WHITE, pulse * (w[0] <= 0 ? 0.6 : 0.95));
+    }
+
+    /**
+     * Manifest matter (0.16.0, BLUEPRINT 3.6): a blob of black-gold liquid metal that never stops slowly changing
+     * shape, its outline swelling and drawing in round the animation, gold running through the black, a gold rim and a
+     * pale highlight; every term turns a whole number of times through the eight frames, so the loop has no seam.
+     */
+    static int manifestMatter(int x, int y, int f) {
+        double ph = 2 * Math.PI * f / FRAMES;
+        double dx = x - 7.5, dy = y - 8.0;
+        double a = Math.atan2(dy, dx), d = Math.hypot(dx, dy * 1.15);
+        double r = 5.5 + 0.7 * Math.sin(3 * a + ph) + 0.45 * Math.sin(5 * a - 2 * ph) + 0.3 * Math.cos(2 * a + ph);
+        if (d > r) return 0;
+        double flow = Math.sin(x * 0.9 + y * 0.6 + ph) + Math.sin(y * 1.1 - x * 0.4 - 2 * ph);
+        int c = mix(0x0E0B06, 0x2A2010, (flow + 2) / 4);
+        if (flow > 1.1) c = mix(0x8A6A1E, 0xFFD87A, (flow - 1.1) / 0.9);
+        if (r - d < 0.9) c = mix(c, 0x6A5018, 0.6);
+        double hl = Math.hypot(x - 5.5 - 0.6 * Math.sin(ph), y - 5.2);
+        if (hl < 1.3) c = mix(c, 0xFFF4D0, 0.8 - hl * 0.3);
+        return c;
+    }
+
+    /** The anti-gravity lattice's cube in the icon: its middle's height, and how far a unit of it spans. */
+    static final double CUBE_Y = 6.0, CUBE_X = 2.6, CUBE_XZ = 1.5, CUBE_UP = 2.6;
+
+    /**
+     * A point of a face of the lattice cube under a pixel, seen from above its +X +Z corner: {face, p, q} with face 0
+     * the top, 1 the +X side, 2 the +Z side and p, q from -1 to 1 across it; null where no face lies.
+     */
+    static double[] cubeAt(double sx, double sy) {
+        double ax = (sx - 7.5) / CUBE_X;
+        // the top (Y = 1): sx = (u - v) X, sy = (u + v) XZ - UP
+        double b = (sy - CUBE_Y + CUBE_UP) / CUBE_XZ, u = (ax + b) / 2, v = (b - ax) / 2;
+        if (Math.abs(u) <= 1 && Math.abs(v) <= 1) return new double[] { 0, u, v };
+        // the +X side: Z = v, Y = w
+        double sv = 1 - ax, sw = ((1 + sv) * CUBE_XZ - (sy - CUBE_Y)) / CUBE_UP;
+        if (ax >= 0 && Math.abs(sv) <= 1 && Math.abs(sw) <= 1) return new double[] { 1, sv, sw };
+        // the +Z side: X = u, Y = w
+        double zu = 1 + ax, zw = ((zu + 1) * CUBE_XZ - (sy - CUBE_Y)) / CUBE_UP;
+        if (ax <= 0 && Math.abs(zu) <= 1 && Math.abs(zw) <= 1) return new double[] { 2, zu, zw };
+        return null;
+    }
+
+    /**
+     * The anti-gravity lattice (0.16.0, BLUEPRINT 3.6): a lattice cube hanging in the air and bobbing a little, its
+     * edges and middles lit lines over dark glass, its nodes white, and under it the lifting light, a pool of light
+     * swelling and fading with motes rising from it to the cube.
+     */
+    static int antiGravityLattice(int x, int y, int f) {
+        double ph = 2 * Math.PI * f / FRAMES, bob = 0.5 * Math.sin(ph);
+        double[] c = cubeAt(x + 0.5, y + 0.5 - bob);
+        if (c != null) {
+            int face = (int) c[0];
+            int fill = face == 0 ? 0x1E3A52 : face == 1 ? 0x13283A : 0x0F2030;
+            double p = c[1], q = c[2];
+            boolean edgeP = Math.abs(Math.abs(p) - 1) < 0.2, edgeQ = Math.abs(Math.abs(q) - 1) < 0.2;
+            if (edgeP && edgeQ) return WHITE;
+            if (edgeP || edgeQ) return LIFT;
+            // the lattice inside: a cross over the top, a node in the middle of each side
+            if (face == 0 && (Math.abs(p) < 0.17 || Math.abs(q) < 0.17)) return mix(LIFT, 0x2F6F8A, 0.45);
+            if (face != 0 && Math.abs(p) < 0.25 && Math.abs(q) < 0.25) return mix(LIFT, WHITE, 0.3);
+            return fill;
+        }
+        // the lifting light: a pool under the cube and motes rising from it
+        double pulse = 0.55 + 0.45 * Math.sin(ph);
+        double e = Math.hypot((x - 7.5) / 4.6, (y - 14.2) / 1.2);
+        if (e < 1) return mix(0x2F6F8A, mix(LIFT, WHITE, 0.4 * pulse), (1 - e) * (0.5 + 0.5 * pulse) + 0.3);
+        if (y >= 11 && y <= 13 && x >= 5 && x <= 10) {
+            double rise = ((14 - y) / 3.0 + f / (double) FRAMES + x * 0.37) % 1;
+            if (rise < 0.25) return mix(0x2F6F8A, LIFT, 1 - rise * 3);
+        }
+        return 0;
     }
 
     static int card(int x, int y, boolean written) {

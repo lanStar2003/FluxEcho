@@ -181,13 +181,16 @@ class WorldEdgeTest {
     /**
      * Inside the range every module was offered at before (the zenith to Y0 203, the well from 32), the sky datum is
      * 40 and the well 26 deep, and nothing lies outside the world: every plan is step for step the one 0.14.0 made
-     * (checksums of 0.14.0's plans; the Eco Dome's are 0.14.1's, as its crown deck lost a grass cell, §2).
+     * (checksums of 0.14.0's plans; the Eco Dome's are 0.14.1's, as its crown deck lost a grass cell, §2). The
+     * Dual-foil Vault's at Y0 223 is 0.16.0's: under the sky ring's deck at the datum 28 its clear columns stop at
+     * Y0 + 26, two cells under it, instead of Y0 + 29; with their old top its checksum is 0.14.0's, so not a step
+     * moved.
      */
     @Test
     void insideTheOldRangeEveryPlanIsTheOneBefore() {
         int[] bases = { 32, 64, 79, 203, 223 };
         long[][] crcs = { { 634478072L, 1948775050L, 20940611L, 1041280120L, 2335015903L },
-            { 3846001252L, 155109968L, 1935298065L, 3026057490L, 3244557013L },
+            { 3846001252L, 155109968L, 1935298065L, 3026057490L, 2397870871L },
             { 669525100L, 2341407887L, 3105971571L, 3807362643L, 1835682086L },
             { 1921628738L, 1344598318L, 3482605610L, 2827896150L, 303915443L },
             { 235517079L, 1755700208L, 2193300394L, 1007103592L, 1666261085L },
@@ -206,6 +209,11 @@ class WorldEdgeTest {
                         .plan(bases[k])),
                 mods.get(i).name + " at Y0 " + bases[k]);
         }
+        // the vault at Y0 223 (0.16.0): only its clear columns' top moved, from Y0 + 29 to Y0 + 26
+        Plan vault = mods.get(1)
+            .plan(223);
+        for (BuildPlan.Column col : vault.clear) assertEquals(223 + 26, col.yTo);
+        assertEquals(3244557013L, hash(vault, 223 + 29), "0.14.0's plan, its clear columns to Y0 + 29");
         assertArrayEquals(
             new int[] { 40, 40 },
             new int[] { DomeGeneratorShape.datum(32), DomeGeneratorShape.datum(203) });
@@ -214,6 +222,11 @@ class WorldEdgeTest {
 
     /** Every step, the clear columns, the bands and the key of a plan, as one checksum. */
     private static long hash(Plan p) {
+        return hash(p, Integer.MIN_VALUE);
+    }
+
+    /** {@link #hash(Plan)} with every clear column's top taken as {@code clearTop} (unless that is MIN_VALUE). */
+    private static long hash(Plan p, int clearTop) {
         CRC32 c = new CRC32();
         ByteBuffer b = ByteBuffer.allocate(28);
         for (Step s : p.steps) {
@@ -232,7 +245,7 @@ class WorldEdgeTest {
             b.putInt(col.x)
                 .putInt(col.z)
                 .putInt(col.yFrom)
-                .putInt(col.yTo)
+                .putInt(clearTop == Integer.MIN_VALUE ? col.yTo : clearTop)
                 .putInt(col.grade ? 1 : 0);
             c.update(b.array(), 0, 20);
         }

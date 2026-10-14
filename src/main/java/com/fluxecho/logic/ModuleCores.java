@@ -19,11 +19,13 @@ public final class ModuleCores {
      * The metas that have a module in this version, in meta order (0.11.0 the Eco Dome; 0.12.0 the Echo Dome
      * Generator and the root's Tidal Well; 0.13.0 the four pavilions: the Arcane Court, the Blood Covenant Altar, the
      * Echo Hunting Ground and the Mana Fountain Array; 0.14.0 the gate's Resonance Gate and the Dual-foil Vault; 0.15.0
-     * the outer diagonals' Sophon Array and Holo Sand Table); the rest are reserved. Their cores are listed in the
-     * creative tab and have their own icons.
+     * the outer diagonals' Sophon Array and Holo Sand Table; 0.16.0 the sky ring's Sky Sail Array, Observatory,
+     * Droplet Hangar and Weather Station); the rest are reserved. Their cores are listed in the creative tab and have
+     * their own icons.
      */
     private static final int[] BUILT = { ECO_DOME, DUAL_FOIL_VAULT, ARCANE_COURT, BLOOD_COVENANT, HUNTING_GROUND,
-        MANA_FOUNTAIN, RESONANCE_GATE, DOME_GENERATOR, ROOT, SOPHON_ARRAY, HOLO_TABLE };
+        MANA_FOUNTAIN, RESONANCE_GATE, DOME_GENERATOR, ROOT, SOPHON_ARRAY, HOLO_TABLE, SKY_SAILS, OBSERVATORY,
+        DROPLET_HANGAR, WEATHER_STATION };
 
     private ModuleCores() {}
 

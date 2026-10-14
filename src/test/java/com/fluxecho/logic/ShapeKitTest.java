@@ -19,7 +19,7 @@ class ShapeKitTest {
 
     @Test
     void theLegendIsUniqueAndComplete() {
-        String checked = "FBgPCRZKAd#e:%k*WLwnQqpcrtGhou^";
+        String checked = "FBgPCRZKAfd#e:%k*WLwnQqpcrtGhou^";
         Set<Integer> seen = new LinkedHashSet<>();
         for (char ch : checked.toCharArray()) {
             assertTrue(ShapeKit.checked(ch), "'" + ch + "'");
@@ -43,6 +43,9 @@ class ShapeKitTest {
         assertTrue(ShapeKit.soft('$'));
         assertEquals(Parts.deck(Parts.D_CANVAS), ShapeKit.partOf('$'));
         assertEquals('Q', ShapeKit.checkedTwin('$'));
+        // the floating foundation (0.16.0, CITY.md §1.4): checked f, the sky platforms' deck
+        assertEquals(Parts.frame(Parts.FR_FLOAT), ShapeKit.partOf('f'));
+        assertTrue(ShapeKit.checked('f'));
     }
 
     /**

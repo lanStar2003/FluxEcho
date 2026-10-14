@@ -41,7 +41,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * from across the campus, and the breathing only moves it between a little dimmer and full. A new projection is
  * revealed by a scan plane rising through the plan's box; while building, the lowest layer still to build is brighter
  * and its cells are edged with light. Blocked cells are red boxes seen through everything, and so are, in yellow, the
- * machines and chests the job will dismantle into the recycle bin (0.10.1); the ground a new campus will grade is
+ * machines and chests the job will dismantle into the recycle bin (0.10.1) and the edges of the blocks of ours it
+ * will take down (0.16.0: the release job's legs, {@link BuildScan#takedown}); the ground a new campus will grade is
  * edged in amber until the clearing is done (not for a repair, which grades nothing), and a finished job sends a ring
  * of hard light out over its floor. Apart from the projection (in every mode, with or without a job) it lights the
  * campus's flush wells with a soft column of rising light ({@link WellScan} finds them in the client tick).
@@ -100,10 +101,12 @@ public final class BuildRender {
 
     /** The parts that can fail on their own; {@link #OFF} says which have. */
     private static final int GHOST = 0, PLANE = 1, LAYER = 2, BLOCKED = 3, OUTLINES = 4, EDGE = 5, RING = 6,
-        CREASES = 7, MACHINES = 8, WELLS = 9, XRAY = 10, AIR = 11, TRIMMED = 12, ALL = 13;
+        CREASES = 7, MACHINES = 8, WELLS = 9, XRAY = 10, AIR = 11, TRIMMED = 12, TAKEDOWN = 13, ALL = 14;
     private static final String[] NAMES = { "ghost", "scan plane", "lowest layer", "blocked boxes", "outlines",
         "grading edge", "completion ring", "creases", "machine boxes", "well light", "x-ray", "shadow",
-        "neighbours' ground", "drawing" };
+        "neighbours' ground", "takedown outline", "drawing" };
+    /** The takedown outline's alphas at the top of its pulse: through everything, and where nothing covers it. */
+    private static final float TAKEDOWN_THROUGH = 0.35f, TAKEDOWN_SEEN = 0.85f;
     /**
      * The x-ray's alphas at the top of a breath: through the terrain and where nothing covers it, the whole plan's and
      * the current stage's (0.12.0).
@@ -294,6 +297,16 @@ public final class BuildRender {
         } catch (Throwable x) {
             recover();
             fail(MACHINES, x);
+        } finally {
+            close();
+        }
+        // what the job takes down of ours (0.16.0: the release job's legs, 将拆除), outlined in yellow likewise
+        float[] down = g == null || ended || OFF[TAKEDOWN] ? null : BuildScan.takedown(n);
+        if (down != null && down.length > 0) try {
+            takedown(g, down, t);
+        } catch (Throwable x) {
+            recover();
+            fail(TAKEDOWN, x);
         } finally {
             close();
         }
@@ -514,6 +527,21 @@ public final class BuildRender {
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         segments(g, g.xray, tint, XRAY_SEEN * rel);
         segments(g, g.xrayStage, light, XRAY_STAGE_SEEN * rel);
+        Shapes.end();
+    }
+
+    /**
+     * The takedown outline (0.16.0, {@link BuildScan#takedown}): the edges of the blocks of ours the job will take
+     * down (the release job's legs), yellow as the machines it dismantles, pulsing; once faintly through everything and
+     * once where nothing covers them, so a leg behind the pod or a hill still reads.
+     */
+    private static void takedown(BuildScan.Ghost g, float[] e, double t) {
+        float pulse = 0.8f + 0.2f * (float) Math.sin(t * 0.2);
+        Shapes.begin(true);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        segments(g, e, YELLOW, TAKEDOWN_THROUGH * pulse);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        segments(g, e, YELLOW, TAKEDOWN_SEEN * pulse);
         Shapes.end();
     }
 

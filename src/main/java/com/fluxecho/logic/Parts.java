@@ -9,7 +9,8 @@ package com.fluxecho.logic;
  * The codes are saved (the ledger's parts, flights in the air) and sent ({@code BUILD_FX}, one byte a code): a code
  * is only ever appended, never renumbered or reused. 0.11.0 appends the frame's cladding anchor (9), the fittings'
  * socket (39) and basin rim (40), water (53) and the module cores of {@code fluxecho:module_core} (64 + meta); 0.12.0
- * the fittings' light-lift pad (41); 0.14.0 the deck's canvas (28), the wall a module's units paint their items on.
+ * the fittings' light-lift pad (41); 0.14.0 the deck's canvas (28), the wall a module's units paint their items on;
+ * 0.16.0 the frame's floating foundation (10), the anti-gravity lattice cube the sky platforms are decked with.
  */
 public final class Parts {
 
@@ -27,9 +28,10 @@ public final class Parts {
      */
     public static final int MODULE_CORE = 64, MODULE_CORES = 16;
 
-    // frame metas (as in BlockFrame)
+    // frame metas (as in BlockFrame; 0.16.0 appends the floating foundation, CITY.md §1.4: an anti-gravity lattice
+    // cube with a lifting glow on its bottom face, light 7, the walking deck of the sky platforms)
     public static final int FR_BASE = 0, FR_BASE_LIT = 1, FR_PILLAR = 2, FR_CONDUIT = 3, FR_RING = 4, FR_SEAT = 5,
-        FR_FOUNDATION = 6, FR_SHELF = 7, FR_CONSOLE = 8, FR_ANCHOR = 9;
+        FR_FOUNDATION = 6, FR_SHELF = 7, FR_CONSOLE = 8, FR_ANCHOR = 9, FR_FLOAT = 10;
 
     // deck metas (0.14.0 appends the canvas, CITY.md §1.4: a panel whose faces are dark woven navy with a faint cyan
     // grid, giving no light; a unit's painting is drawn on its field)

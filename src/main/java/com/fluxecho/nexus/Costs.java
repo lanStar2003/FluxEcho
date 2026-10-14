@@ -8,20 +8,37 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
+import com.fluxecho.core.CoreCircuits;
+import com.fluxecho.logic.CircuitTiers;
 import com.fluxecho.logic.CostPlan;
 import com.fluxecho.logic.ResearchTree;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
-/** What research and manifestation costs mean in items: matching a stack, showing a cost, taking it. */
+/**
+ * What research and manifestation costs mean in items: matching a stack, showing a cost, taking it. An ore cost is
+ * looked up by {@link #oreName}, so a tier's circuits ({@code ore:circuitLuV}) are GT's own ore name for them.
+ */
 public final class Costs {
 
     private Costs() {}
 
+    /**
+     * The ore dictionary name an ore cost is paid with (0.16.0): GT's own name for a tier's circuits when the cost
+     * names them by the tier ({@code circuitMaster} for {@code ore:circuitLuV}, {@code logic/CircuitTiers}), the
+     * cost's name for anything else. Research payment, the manifestation table, the star map, NEI and the campus's
+     * supply all match and show costs through here.
+     */
+    public static String oreName(ResearchTree.Cost c) {
+        int tier = CircuitTiers.tierOf(c.name);
+        return tier >= 0 ? CoreCircuits.oreName(tier) : c.name;
+    }
+
     public static boolean matches(ResearchTree.Cost c, ItemStack s) {
         if (s == null || s.getItem() == null) return false;
         if (c.ore) {
-            for (ItemStack o : OreDictionary.getOres(c.name)) if (OreDictionary.itemMatches(o, s, false)) return true;
+            for (ItemStack o : OreDictionary.getOres(oreName(c)))
+                if (OreDictionary.itemMatches(o, s, false)) return true;
             return false;
         }
         Item item = item(c);
@@ -38,7 +55,7 @@ public final class Costs {
     public static List<ItemStack> options(ResearchTree.Cost c) {
         List<ItemStack> out = new ArrayList<>();
         if (c.ore) {
-            for (ItemStack o : OreDictionary.getOres(c.name)) {
+            for (ItemStack o : OreDictionary.getOres(oreName(c))) {
                 ItemStack s = o.copy();
                 if (s.getItemDamage() == OreDictionary.WILDCARD_VALUE) s.setItemDamage(0);
                 s.stackSize = c.count;

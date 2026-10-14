@@ -74,8 +74,54 @@ public final class GateLook {
      * bobbing {@link #BOB} about that) and how far it has turned (radians, one turn every {@link #TURN_T} ticks).
      */
     public static double[] spire(double t) {
-        double y = WAIST + HOVER + BOB * Math.sin(2 * Math.PI * t / BOB_T);
+        return spire(t, SPIRE_TO);
+    }
+
+    /**
+     * {@link #spire(double)} of a spire whose top is {@code top} ({@link #spireTop}): its foot stays at
+     * {@link #SPIRE_FROM}, its waist halfway up to the top.
+     */
+    public static double[] spire(double t, double top) {
+        double y = SPIRE_FROM + halfHeight(top) + HOVER + BOB * Math.sin(2 * Math.PI * t / BOB_T);
         return new double[] { y, 2 * Math.PI * ArcaneLook.frac(t / TURN_T) };
+    }
+
+    /**
+     * Where the spire's top stands (its upper tip before it hovers and bobs) under a sky platform whose deck lies
+     * {@code deck} layers over the gate's base layer (0.16.0, the weather station's platform on S0; 0 or less when no
+     * platform stands over it): {@link #SPIRE_TO}, or under a deck its tip would reach (F 28, Y0 212 and up), low
+     * enough that the tip at the top of its bob stays a block under the deck, so the crystal never pierces the
+     * floating foundation and the platform's light pillar meets its tip. Its foot stays where it is; the shards and
+     * the pulse keep their heights (they clear the deck at every datum).
+     */
+    public static double spireTop(double deck) {
+        if (!(deck > 0)) return SPIRE_TO;
+        return Math.max(SPIRE_FROM + 1, Math.min(SPIRE_TO, deck - 1 - HOVER - BOB));
+    }
+
+    /**
+     * The layers of the spire's axis column the drawing reads for a block standing over the spire (0.16.0): from the
+     * layer over the shortest spire's foot up to the full spire's tip at the top of its bob. A block in any of them
+     * shortens the spire as a deck there does ({@link #spireTop}); one higher up never would, and one lower down would
+     * give the same shortest spire. The gate's own shape leaves that column empty, so a block found there is something
+     * floating over the gate: a platform's floating foundation laid before its controller, or left standing when its
+     * controller was broken.
+     */
+    public static final int OVER_FROM = (int) SPIRE_FROM + 1, OVER_TO = (int) Math.ceil(SPIRE_TO + HOVER + BOB);
+
+    /**
+     * The deck the spire stands under when a sky module's platform gives one ({@code platform}) and a block stands in
+     * its column at the layer {@code block} (0.16.0), each 0 or less when there is none: the lower of the two, or 0
+     * when neither is there.
+     */
+    public static double lowerDeck(double platform, double block) {
+        if (!(platform > 0)) return block > 0 ? block : 0;
+        return block > 0 ? Math.min(platform, block) : platform;
+    }
+
+    /** The spire's half-height when its top is {@code top}: half its length from {@link #SPIRE_FROM} up. */
+    public static double halfHeight(double top) {
+        return (top - SPIRE_FROM) / 2;
     }
 
     /**

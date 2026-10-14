@@ -310,10 +310,12 @@ public final class CampusPlan {
     /**
      * The unit axis {da, dr} of a site: (1, 0) for the front, then clockwise; the diagonals are (+-1, +-1). Since
      * 0.15.0 an outer site's is its family's ({@link OuterRing#axis}: an outer diagonal's the inner diagonal it stands
-     * beyond, an outer flanker's its avenue's); every other number keeps 0.14's (its number modulo 8).
+     * beyond, an outer flanker's its avenue's), and since 0.16.0 a sky site's its slot's ({@link SkyRing#axis}: S0 the
+     * gate's, then clockwise); every other number keeps 0.14's (its number modulo 8).
      */
     public static int[] siteAxis(int site) {
         SiteFamily f = SiteFamily.of(site);
+        if (f == SiteFamily.SKY) return SkyRing.axis(site);
         if (f == SiteFamily.OUTER_DIAG || f == SiteFamily.OUTER_FLANK) return OuterRing.axis(site);
         int[] ax = AXES[Math.floorMod(site, AXES.length)];
         return new int[] { ax[0], ax[1] };
@@ -322,9 +324,11 @@ public final class CampusPlan {
     /**
      * The centre {a, r} of a module at the site: on a cardinal site the middle of a footprint {@code depth} deep whose
      * front row is at {@link #HALL_FRONT}; on a diagonal site the pavilion envelope's centre; on an outer diagonal
-     * (0.15.0) its octagon's centre.
+     * (0.15.0) its octagon's centre; on a sky site (0.16.0) its platform's centre ({@link SkyRing#centre}: radial 32 on
+     * its axis, a berth's (+-23, +-23)).
      */
     public static int[] moduleCentre(int site, int depth) {
+        if (SiteFamily.of(site) == SiteFamily.SKY) return SkyRing.centre(site);
         if (SiteFamily.of(site) == SiteFamily.OUTER_DIAG) return OuterRing.diagCentre(site);
         int k = Math.floorMod(site, AXES.length);
         if (k % 2 == 1) return diagonalCentre(k);
@@ -377,7 +381,8 @@ public final class CampusPlan {
      * ({@link #inHall}), a pavilion's octagon ({@link #inPavilion}), the gatehouse ({@link #inGatehouse}), and on the
      * axis (0.12.0) the zenith pod's octagon {@code oct(10, 14)} or the root's {@code oct(11, 15)} (seen from above);
      * since 0.15.0 an outer diagonal's octagon {@code oct(15, 20)} and an outer flanker's 27 x 31
-     * ({@link OuterRing}).
+     * ({@link OuterRing}); since 0.16.0 a sky site's platform {@code oct(10, 14)} ({@link SkyRing#inPlatform}). The
+     * gate's, and any other number's, is the gatehouse's.
      */
     public static boolean inEnvelope(int site, int width, int depth, int a, int r) {
         switch (family(site)) {
@@ -393,6 +398,8 @@ public final class CampusPlan {
                 return OuterRing.inDiag(site, a, r);
             case OUTER_FLANK:
                 return OuterRing.inFlank(site, a, r);
+            case SKY:
+                return SkyRing.inPlatform(site, a, r);
             default:
                 return inGatehouse(a, r);
         }

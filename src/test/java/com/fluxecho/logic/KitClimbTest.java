@@ -100,6 +100,27 @@ class KitClimbTest {
         out.add(
             new Case("sophon_array", SophonArrayShape.SHAPE, SophonArrayShape.walkStarts(), SophonArrayShape.PASSES));
         out.add(new Case("holo_table", HoloTableShape.SHAPE, HoloTableShape.walkStarts(), HoloTableShape.PASSES));
+        // the sky ring's four (0.16.0) from their catwalk's mouth, and from the pod's pad through its door over the
+        // catwalk to each (the weather station's mast passes once formed, its pylons by the same characters too: the
+        // walk stays strict as built)
+        out.add(
+            new Case(
+                "weather_station",
+                WeatherStationShape.SHAPE,
+                WeatherStationShape.walkStarts(),
+                WeatherStationShape.PASSES));
+        out.add(new Case("sky_sails", SkySailsShape.SHAPE, SkySailsShape.walkStarts(), SkySailsShape.PASSES));
+        out.add(
+            new Case("observatory", ObservatoryShape.SHAPE, ObservatoryShape.walkStarts(), ObservatoryShape.PASSES));
+        out.add(
+            new Case(
+                "droplet_hangar",
+                DropletHangarShape.SHAPE,
+                DropletHangarShape.walkStarts(),
+                DropletHangarShape.PASSES));
+        for (ShapeKit.Shape m : new ShapeKit.Shape[] { WeatherStationShape.SHAPE, SkySailsShape.SHAPE,
+            ObservatoryShape.SHAPE, DropletHangarShape.SHAPE })
+            out.add(new Case("sky_walk_" + m.name, SkyRingTest.composite(m, true), SkyRingTest.padStart(), ""));
         out.add(
             new Case("dome_pod", DomeGeneratorShape.RAW, DomeGeneratorShape.walkStarts(), DomeGeneratorShape.PASSES));
         out.add(
@@ -116,6 +137,9 @@ class KitClimbTest {
         ShapeKit.Shape deep = RootShape.deepRoot(), ley = RootShape.leyCore();
         out.add(new Case("deep_root", deep, topPad(deep), RootShape.PASSES));
         out.add(new Case("ley_core", ley, topPad(ley), RootShape.PASSES));
+        // the deep root's other forms (0.16.0): the 7-layer chamber, the roots in the wells 26, 20, 14 and 8 deep
+        for (RootShape.Deep d : RootShape.deeps()) if (!RootShape.DEEP.equals(d.name))
+            out.add(new Case(d.shape.name, d.shape, topPad(d.shape), RootShape.PASSES));
         return out;
     }
 
@@ -302,6 +326,27 @@ class KitClimbTest {
         assertTrue(climbs > 1000, "the city's stairs, ramps and terraces: " + climbs + " moves up or down");
     }
 
+    /**
+     * The deep root's six forms (0.16.0) walk as the generator's twin of this check counts them (the design's §3: from
+     * the top pad, as built and as formed with its rings and conduits passed through), and the real boxes refuse
+     * none of the moves.
+     */
+    @Test
+    void theDeepRootsFormsClimbTheirRealBoxes() {
+        int[] moves = { 2674, 2674, 1263, 1236, 1195, 956 };
+        for (int i = 0; i < moves.length; i++) {
+            ShapeKit.Shape s = RootShape.deeps()
+                .get(i).shape;
+            for (String passes : new String[] { "", RootShape.PASSES }) {
+                int[] count = new int[2];
+                List<String> bad = refused(s, topPad(s), passes, count);
+                assertTrue(bad.isEmpty(), s.name + " passing '" + passes + "': " + bad);
+                assertEquals(moves[i], count[0], s.name + ": the moves of its walk");
+            }
+        }
+        assertEquals("RC", RootShape.PASSES, "the rings and the conduits");
+    }
+
     /** Every tread of every shape is stood on: a stair the walk cannot climb is a stair nobody can (0.14.1). */
     @Test
     void everyTreadIsStoodOn() {
@@ -331,7 +376,7 @@ class KitClimbTest {
         assertArrayEquals(new double[] { 0, 12 / 16.0 }, extent('h'), 1e-9);
         assertArrayEquals(new double[] { 0, 0.5 }, extent('Z'), 1e-9);
         assertArrayEquals(new double[] { 5 / 16.0, 11 / 16.0 }, extent('R'), 1e-9);
-        for (char ch : "FBgPCKAdWLwnQGqopc^~,;.{[!/$#e:%k*".toCharArray())
+        for (char ch : "FBgPCKAfdWLwnQGqopc^~,;.{[!/$#e:%k*".toCharArray())
             assertArrayEquals(new double[] { 0, 1 }, extent(ch), 1e-9, String.valueOf(ch));
         assertNull(extent(' '));
         assertNull(extent('-'));

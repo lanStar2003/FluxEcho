@@ -221,8 +221,9 @@ class NexusShapeTest {
         // what a nexus may stand as with every phase's research is held to what this version reaches
         int all = ResearchTree.researchedPhase(id -> true);
         assertEquals(ResearchTree.PHASE_NOW, all);
-        assertArrayEquals(new int[] { 3, 2 }, NexusShape.tryOrder(2, all));
-        assertArrayEquals(new int[] { 3 }, NexusShape.tryOrder(3, all));
+        assertArrayEquals(new int[] { 4, 3, 2 }, NexusShape.tryOrder(2, all), "0.16.0 reaches phase IV");
+        assertArrayEquals(new int[] { 4, 3 }, NexusShape.tryOrder(3, all));
+        assertArrayEquals(new int[] { 4 }, NexusShape.tryOrder(4, all));
         // with only phase II's research a phase-II nexus tries phase II alone
         assertArrayEquals(new int[] { 2 }, NexusShape.tryOrder(2, ResearchTree.researchedPhase("phase_2"::equals)));
     }

@@ -18,7 +18,16 @@ public final class CoreCircuits {
     private static final Materials[] TIERS = { null, Materials.LV, Materials.MV, Materials.HV, Materials.EV,
         Materials.IV, Materials.LuV };
 
+    /**
+     * Circuit material of every GT voltage tier from ULV (0) to UV (8), for the tier names research and manifestation
+     * costs give circuits ({@code logic/CircuitTiers}, 0.16.0); unlike {@link #TIERS} it is no core's.
+     */
+    private static final Materials[] ORE_TIERS = { Materials.ULV, Materials.LV, Materials.MV, Materials.HV,
+        Materials.EV, Materials.IV, Materials.LuV, Materials.ZPM, Materials.UV };
+
     private static int[] oreIds;
+
+    private static String[] oreNames;
 
     private CoreCircuits() {}
 
@@ -35,6 +44,19 @@ public final class CoreCircuits {
     /** {@code circuitLV} and so on. */
     public static String name(int gtTier) {
         return String.valueOf(OrePrefixes.circuit.get(TIERS[gtTier]));
+    }
+
+    /**
+     * GT's ore dictionary name of a tier's circuits, ULV (0) to UV (8): {@code circuitData} for EV, {@code
+     * circuitMaster} for LuV (0.16.0). GT 5.09.51 registers its circuits under these old circuit materials only.
+     */
+    public static synchronized String oreName(int gtTier) {
+        if (oreNames == null) {
+            String[] names = new String[ORE_TIERS.length];
+            for (int i = 0; i < names.length; i++) names[i] = String.valueOf(OrePrefixes.circuit.get(ORE_TIERS[i]));
+            oreNames = names;
+        }
+        return oreNames[gtTier];
     }
 
     /** GT voltage tier of the circuit (1 LV to 6 LuV), 0 when the stack is none of them. */

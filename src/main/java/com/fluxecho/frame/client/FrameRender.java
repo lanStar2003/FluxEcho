@@ -17,9 +17,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 
 /**
  * Draws the flux frame into the chunk mesh: each part's box with the usual lighting, its bright lines again on top at
- * full brightness, the conduit's core and the seat's crystal glowing whole. A part that gave way to a formed
- * multiblock's drawing ({@link Formed#HIDE}) draws nothing. A shelf that is a body of a shelf unit is drawn by
- * {@link ShelfUnits}.
+ * full brightness (0.16.0: the floating foundation's lifting glow on its bottom face too, animated by its texture, so
+ * the sky platforms' undersides glow with a shader pack on and need no drawing of their own), the conduit's core and
+ * the seat's crystal glowing whole. A part that gave way to a formed multiblock's drawing ({@link Formed#HIDE}) draws
+ * nothing. A shelf that is a body of a shelf unit is drawn by {@link ShelfUnits}.
  */
 @SideOnly(Side.CLIENT)
 public final class FrameRender implements ISimpleBlockRenderingHandler {

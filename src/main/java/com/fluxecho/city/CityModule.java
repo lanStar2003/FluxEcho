@@ -1,5 +1,6 @@
 package com.fluxecho.city;
 
+import java.util.Collections;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
@@ -11,19 +12,26 @@ import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.logic.ArcaneCourtShape;
 import com.fluxecho.logic.BloodCovenantShape;
+import com.fluxecho.logic.BuildPlan;
+import com.fluxecho.logic.CityBuild;
 import com.fluxecho.logic.DomeGeneratorShape;
+import com.fluxecho.logic.DropletHangarShape;
 import com.fluxecho.logic.DualFoilVaultShape;
 import com.fluxecho.logic.EcoDomeShape;
 import com.fluxecho.logic.HoloTableShape;
 import com.fluxecho.logic.HuntingGroundShape;
 import com.fluxecho.logic.ManaFountainShape;
 import com.fluxecho.logic.ModuleCores;
+import com.fluxecho.logic.ObservatoryShape;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResonanceGateShape;
 import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.ShapeKit;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyRing;
+import com.fluxecho.logic.SkySailsShape;
 import com.fluxecho.logic.SophonArrayShape;
+import com.fluxecho.logic.WeatherStationShape;
 import com.fluxecho.matter.MatterModule;
 import com.fluxecho.nexus.Manifests;
 import com.fluxecho.nexus.NexusModule;
@@ -38,9 +46,10 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * Dome (0.11.0), the zenith's Echo Dome Generator and the root's Tidal Well (0.12.0), the four pavilions on the
  * diagonals (0.13.0: the Arcane Court, the Blood Covenant Altar, the Echo Hunting Ground and the Mana Fountain Array,
  * each a {@link #pavilion}), the gate's Resonance Gate (0.14.0, the gate family's {@link #resonanceGate}), the
- * Dual-foil Vault (0.14.0, the third hall, {@link #dualFoilVault}) and the outer diagonals' Sophon Array and Holo Sand
- * Table (0.15.0, each an {@link #outerDiag}). Its specs are registered after the library's, so a nexus offers the
- * Archive first.
+ * Dual-foil Vault (0.14.0, the third hall, {@link #dualFoilVault}), the outer diagonals' Sophon Array and Holo Sand
+ * Table (0.15.0, each an {@link #outerDiag}) and the sky ring's Weather Station, Sky Sail Array, Observatory and
+ * Droplet Hangar (0.16.0, each a {@link #sky} module). Its specs are registered after the library's, so a nexus offers
+ * the Archive first.
  */
 public final class CityModule {
 
@@ -65,6 +74,11 @@ public final class CityModule {
         GameRegistry.registerTileEntity(TileDualFoilVault.class, "fluxecho:" + DualFoilVaultShape.KEY);
         GameRegistry.registerTileEntity(TileSophonArray.class, "fluxecho:" + SophonArrayShape.KEY);
         GameRegistry.registerTileEntity(TileHoloTable.class, "fluxecho:" + HoloTableShape.KEY);
+        // the sky ring's four (0.16.0)
+        GameRegistry.registerTileEntity(TileWeatherStation.class, "fluxecho:" + WeatherStationShape.KEY);
+        GameRegistry.registerTileEntity(TileSkySails.class, "fluxecho:" + SkySailsShape.KEY);
+        GameRegistry.registerTileEntity(TileObservatory.class, "fluxecho:" + ObservatoryShape.KEY);
+        GameRegistry.registerTileEntity(TileDropletHangar.class, "fluxecho:" + DropletHangarShape.KEY);
     }
 
     public static void init() {
@@ -110,6 +124,21 @@ public final class CityModule {
         IMultiblockInfoContainer
             .registerTileClass(TileHoloTable.class, NexusModule.infoContainer(HoloTableShape.KEY + ".structure"));
         NexusModule.previewModule(core, ModuleCores.HOLO_TABLE, TileHoloTable::new);
+        // the sky ring's four (0.16.0), in the order their sites go round from the gate
+        IMultiblockInfoContainer.registerTileClass(
+            TileWeatherStation.class,
+            NexusModule.infoContainer(WeatherStationShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.WEATHER_STATION, TileWeatherStation::new);
+        IMultiblockInfoContainer
+            .registerTileClass(TileSkySails.class, NexusModule.infoContainer(SkySailsShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.SKY_SAILS, TileSkySails::new);
+        IMultiblockInfoContainer
+            .registerTileClass(TileObservatory.class, NexusModule.infoContainer(ObservatoryShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.OBSERVATORY, TileObservatory::new);
+        IMultiblockInfoContainer.registerTileClass(
+            TileDropletHangar.class,
+            NexusModule.infoContainer(DropletHangarShape.KEY + ".structure"));
+        NexusModule.previewModule(core, ModuleCores.DROPLET_HANGAR, TileDropletHangar::new);
         BlockFrame.onUse(UnitUse::use);
         BlockFitting.onUse(UnitUse::use);
         // a unit may be made of canvas panels (0.14.0)
@@ -125,6 +154,10 @@ public final class CityModule {
         ModuleSpecs.register(dualFoilVault());
         ModuleSpecs.register(sophonArray());
         ModuleSpecs.register(holoTable());
+        ModuleSpecs.register(weatherStation());
+        ModuleSpecs.register(skySails());
+        ModuleSpecs.register(observatory());
+        ModuleSpecs.register(dropletHangar());
     }
 
     /**
@@ -399,6 +432,150 @@ public final class CityModule {
     }
 
     /**
+     * The Weather Station as the campus builder raises it (0.16.0): a sky module (21 x 21, 14 high) on S0 over the gate
+     * (site 30), opened by the {@code weather_station} research at phase IV once the pod floats, commissioned with its
+     * module core in its hut's portal.
+     */
+    public static ModuleSpec weatherStation() {
+        return sky(
+            WeatherStationShape.KEY,
+            Research.WEATHER_STATION,
+            WeatherStationShape.HEIGHT,
+            WeatherStationShape.SITES,
+            ModuleCores.WEATHER_STATION,
+            TileWeatherStation.COLOR,
+            WeatherStationShape.BUILD);
+    }
+
+    /**
+     * The Sky Sail Array as the campus builder raises it (0.16.0): a sky module (21 x 21, 15 high) on S2, else S6
+     * (sites
+     * 32, 36), opened by the {@code sky_sails} research at phase IV once the pod floats, commissioned with its module
+     * core in its cabin's portal.
+     */
+    public static ModuleSpec skySails() {
+        return sky(
+            SkySailsShape.KEY,
+            Research.SKY_SAILS,
+            SkySailsShape.HEIGHT,
+            SkySailsShape.SITES,
+            ModuleCores.SKY_SAILS,
+            TileSkySails.COLOR,
+            SkySailsShape.BUILD);
+    }
+
+    /**
+     * The Observatory as the campus builder raises it (0.16.0): a sky module (21 x 21, 13 high) on S4 over the Archive
+     * (site 34), opened by the {@code observatory} research at phase IV once the pod floats, commissioned with its
+     * module core in its vestibule's portal.
+     */
+    public static ModuleSpec observatory() {
+        return sky(
+            ObservatoryShape.KEY,
+            Research.OBSERVATORY,
+            ObservatoryShape.HEIGHT,
+            ObservatoryShape.SITES,
+            ModuleCores.OBSERVATORY,
+            TileObservatory.COLOR,
+            ObservatoryShape.BUILD);
+    }
+
+    /**
+     * The Droplet Hangar as the campus builder raises it (0.16.0): a sky module (21 x 21, 7 high) on S6, else S2 (sites
+     * 36, 32), opened by the {@code droplet_hangar} research at phase IV once the pod floats, commissioned with its
+     * module core on the kiosk's console.
+     */
+    public static ModuleSpec dropletHangar() {
+        return sky(
+            DropletHangarShape.KEY,
+            Research.DROPLET_HANGAR,
+            DropletHangarShape.HEIGHT,
+            DropletHangarShape.SITES,
+            ModuleCores.DROPLET_HANGAR,
+            TileDropletHangar.COLOR,
+            DropletHangarShape.BUILD);
+    }
+
+    /**
+     * A sky module's spec (0.16.0, the SKY family, CITY.md §2.5, §4.12, {@link SkyRing}): 21 x 21 on its platform at
+     * radial 32 on its site's axis, its deck level with the floor of the pod that stands ({@link BuildPlan#sky}: at the
+     * datum the base layer gives, or at the one its job carries), its controller where the building puts it facing the
+     * pod. It takes nothing of the ground (no keep-out); its protected boxes are its platform's box and its catwalk in
+     * the air ({@link SkyRing#protect}); it has room wherever a core may be placed ({@link SkyRing#noRoom}); one stood
+     * up by hand beside a pod built on the full legs over high ground (at 40) still docks ({@code formerController}).
+     */
+    static ModuleSpec sky(String key, String research, int height, int[] sites, int meta, int colour, CityBuild build) {
+        int top = topLayer(build);
+        return new ModuleSpec(
+            SiteFamily.SKY,
+            key,
+            research,
+            SkyRing.SIZE,
+            SkyRing.SIZE,
+            height,
+            sites,
+            Parts.moduleCore(meta),
+            colour,
+            (plan, site, cx, y0, cz, fx, fz) -> BuildPlan
+                .sky(site, cx, y0, cz, fx, fz, DomeGeneratorShape.datum(y0), build),
+            (site, cx, y0, cz, fx, fz) -> SkyRing
+                .controller(build, site, cx, y0, cz, fx, fz, DomeGeneratorShape.datum(y0)),
+            () -> true,
+            new ModuleSpec.Envelope() {
+
+                @Override
+                public int[] footprint(int site, int cx, int cz, int fx, int fz, int margin) {
+                    return SkyRing.footprint(site, cx, cz, fx, fz, margin);
+                }
+
+                @Override
+                public List<int[]> keepOut(int site, int cx, int y0, int cz, int fx, int fz) {
+                    return Collections.emptyList();
+                }
+
+                @Override
+                public List<int[]> protect(int site, int cx, int y0, int cz, int fx, int fz) {
+                    return SkyRing.protect(site, cx, y0, cz, fx, fz, DomeGeneratorShape.datum(y0), top);
+                }
+
+                @Override
+                public String noRoom(int y0) {
+                    return SkyRing.noRoom(y0);
+                }
+
+                @Override
+                public int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
+                    if (DomeGeneratorShape.datum(y0) == DomeGeneratorShape.FLOOR_UP) return null;
+                    return SkyRing.controller(build, site, cx, y0, cz, fx, fz, DomeGeneratorShape.FLOOR_UP);
+                }
+
+                @Override
+                public int[] controllerAt(int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+                    return SkyRing.controller(build, site, cx, y0, cz, fx, fz, datum);
+                }
+
+                @Override
+                public BuildPlan.Plan planAt(com.fluxecho.logic.CampusPlan plan, int site, int cx, int y0, int cz,
+                    int fx, int fz, int datum) {
+                    return BuildPlan.sky(site, cx, y0, cz, fx, fz, datum, build);
+                }
+
+                @Override
+                public List<int[]> protectAt(int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+                    return SkyRing.protect(site, cx, y0, cz, fx, fz, SkyRing.datum(y0, datum), top);
+                }
+            });
+    }
+
+    /** The highest layer of a shape that holds anything. */
+    private static int topLayer(CityBuild b) {
+        int top = 0;
+        for (int y = 0; y < b.height(); y++) for (int z = 0; z < b.depth(); z++)
+            for (int x = 0; x < b.width(); x++) if (b.cell(x, y, z) != ShapeKit.NONE) top = Math.max(top, y);
+        return top;
+    }
+
+    /**
      * An outer diagonal building's spec (0.15.0, the OUTER_DIAG family, CITY.md §2.1, §2.3): 31 x 31 on the outer
      * diagonals in the order it prefers them, its controller where the building puts it facing along A toward the
      * nexus, what it takes of the campus its apron and allée ({@link ModuleSpec#keepOut}). It takes no room on the
@@ -450,7 +627,9 @@ public final class CityModule {
      * and (0.14.0) the Resonance Gate's and the Dual-foil Vault's from the same with one themed vanilla item each;
      * (0.15.0) the outer diagonals' cores at phase III from IV circuits, phase alloy and memory filament, again with
      * one themed vanilla item each (five kinds, so the table keeps a slot for a second record's echo crystals; the
-     * resonant glass is their research's).
+     * resonant glass is their research's); (0.16.0) the sky ring's four cores at phase IV from LuV circuits, manifest
+     * matter and the anti-gravity lattice their platforms float on, with one themed vanilla item each, five kinds
+     * again.
      */
     public static void postInit() {
         Manifests.register(
@@ -572,6 +751,38 @@ public final class CityModule {
                     "ore:" + MatterModule.MEMORY_FILAMENT + "*8", "ore:circuitIV*2", "item:minecraft:map*8" },
                 () -> new ItemStack(core, 1, ModuleCores.HOLO_TABLE),
                 2400,
+                false));
+        // the sky ring's cores (0.16.0) at phase IV: LuV circuits, manifest matter, the anti-gravity lattice their
+        // platforms float on and echo crystals, and the themed item of each one's research: the Weather Station's
+        // daylight sensors, the Sky Sail Array's wool (sailcloth), the Observatory's clocks, the Droplet Hangar's ghast
+        // tears. Five kinds, the second-record rule of the Sophon Array's core
+        skyCore(
+            "weather_station_core",
+            Research.WEATHER_STATION,
+            ModuleCores.WEATHER_STATION,
+            "item:minecraft:daylight_detector*4");
+        skyCore("sky_sails_core", Research.SKY_SAILS, ModuleCores.SKY_SAILS, "item:minecraft:wool*8");
+        skyCore("observatory_core", Research.OBSERVATORY, ModuleCores.OBSERVATORY, "item:minecraft:clock*4");
+        skyCore(
+            "droplet_hangar_core",
+            Research.DROPLET_HANGAR,
+            ModuleCores.DROPLET_HANGAR,
+            "item:minecraft:ghast_tear*4");
+    }
+
+    /**
+     * A sky module's core on the manifestation table (0.16.0): echo crystals, manifest matter, the anti-gravity
+     * lattice, LuV circuits and its themed item, five kinds.
+     */
+    private static void skyCore(String id, String research, int meta, String themed) {
+        Manifests.register(
+            new Manifests.Recipe(
+                id,
+                research,
+                new String[] { "ore:" + MatterModule.ECHO_CRYSTAL + "*8", "ore:" + MatterModule.MANIFEST_MATTER + "*8",
+                    "ore:" + MatterModule.ANTI_GRAVITY_LATTICE + "*4", "ore:circuitLuV*2", themed },
+                () -> new ItemStack(core, 1, meta),
+                3200,
                 false));
     }
 }

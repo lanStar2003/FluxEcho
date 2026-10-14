@@ -196,7 +196,8 @@ public class ManifestHandler extends TemplateRecipeHandler {
         boolean open = ClientLedger.research()
             .contains(c.recipe.research);
         int y = TOP + AREA + 5, width = (int) ((WIDTH - 22) / 0.6f);
-        long eut = Config.manifestEut, ticks = c.recipe.ticks;
+        // the table's share and (0.16.0) the recipe's own power on top
+        long eut = c.recipe.tableEut(Config.manifestEut), ticks = c.recipe.ticks;
         small(
             fit(
                 EchoText.t("nei.stats", Compact.si(eut), EchoText.seconds((int) ticks), Compact.si(eut * ticks)),
@@ -213,6 +214,17 @@ public class ManifestHandler extends TemplateRecipeHandler {
         if (c.recipe.record) {
             y += 7;
             small(fit(EchoText.t("nei.manifest.record", Config.recordCooldown / 1200), width), 5, y, 0.6f, DIM, 1f);
+        }
+        // a recipe that waits for a later phase of the nexus (0.16.0: manifest matter, phase III)
+        if (c.recipe.minPhase > 1) {
+            y += 7;
+            small(
+                fit(EchoText.t("nei.manifest.phase", EchoText.t("nexus.phase." + c.recipe.minPhase)), width),
+                5,
+                y,
+                0.6f,
+                AMBER,
+                1f);
         }
         if (!open) {
             GL11.glPushMatrix();

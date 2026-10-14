@@ -55,6 +55,11 @@ public class BlockModuleCore extends BlockNexus {
         if (meta == ModuleCores.ROOT) return new TileRoot();
         if (meta == ModuleCores.SOPHON_ARRAY) return new TileSophonArray();
         if (meta == ModuleCores.HOLO_TABLE) return new TileHoloTable();
+        // the sky ring's four (0.16.0)
+        if (meta == ModuleCores.SKY_SAILS) return new TileSkySails();
+        if (meta == ModuleCores.OBSERVATORY) return new TileObservatory();
+        if (meta == ModuleCores.DROPLET_HANGAR) return new TileDropletHangar();
+        if (meta == ModuleCores.WEATHER_STATION) return new TileWeatherStation();
         return null;
     }
 

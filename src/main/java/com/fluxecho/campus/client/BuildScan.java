@@ -108,6 +108,8 @@ public final class BuildScan {
     private static final int PARTS = 128;
     /** The fewest ticks between two workings-out of an underground plan's x-ray while its cells get built. */
     public static final int XRAY_TICKS = 100;
+    /** The ticks between two workings-out of a plan's takedown outline (0.16.0, {@link XRay#takedown}). */
+    public static final int TAKEDOWN_TICKS = 20;
 
     private static final int[] NO_INTS = new int[0];
     private static final float[] NO_FLOATS = new float[0];
@@ -291,6 +293,13 @@ public final class BuildScan {
         final boolean underground;
         final int hangY;
         final int[] shadow, plumbs;
+        /**
+         * The plan's AIR steps ({@link XRay#airSteps}) and its takedown outline as last worked out (0.16.0): segments
+         * relative to the origin, six floats each, published whole; and when.
+         */
+        final int[] airSteps;
+        volatile float[] takedown = NO_FLOATS;
+        long takedownAt = Long.MIN_VALUE / 2;
         /** The x-ray as last worked out, the stage it was for, when, and whether cells changed since. */
         float[] xray = NO_FLOATS, xrayStage = NO_FLOATS;
         int xrayFor = Integer.MIN_VALUE;
@@ -353,6 +362,7 @@ public final class BuildScan {
                 ringR = Math.max(b[3] + 1 - b[0], b[5] + 1 - b[2]) / 2.0;
             }
             underground = XRay.underground(cells, oy);
+            airSteps = XRay.airSteps(cells);
             hangY = XRay.hangs(cells, oy);
             shadow = XRay.shadow(cells, hangY);
             plumbs = XRay.plumbs(shadow);
@@ -394,6 +404,18 @@ public final class BuildScan {
     }
 
     // ---- reading
+
+    /**
+     * The takedown outline of the nexus's job as last worked out (0.16.0, {@link XRay#takedown}): segments relative to
+     * its ghost's origin, six floats each, of the cells its AIR steps empty where one of our blocks still stands (the
+     * release job's legs); empty when there are none. Do not change the array.
+     */
+    public static float[] takedown(TileNexus n) {
+        World w = n == null ? null : n.getWorldObj();
+        if (w == null) return NO_FLOATS;
+        Track t = TRACKS.get(new BuildClient.Key(w.provider.dimensionId, n.xCoord, n.yCoord, n.zCoord));
+        return t == null ? NO_FLOATS : t.takedown;
+    }
 
     /** The projection of the nexus's job as last worked out, or null when there is none (yet). */
     public static Ghost ghost(TileNexus n) {
@@ -484,6 +506,15 @@ public final class BuildScan {
             .isEmpty();
     }
 
+    /**
+     * Whether one of our blocks stands at a cell in the client world (0.16.0, {@link PartBlocks#code}): a frame pillar
+     * or pane, a deck, a fitting...; a chunk it does not have holds none.
+     */
+    private static boolean ours(World w, int x, int y, int z) {
+        if (y < 0 || y > 255 || !loaded(w, x, z)) return false;
+        return PartBlocks.code(w.getBlock(x, y, z), w.getBlockMetadata(x, y, z)) >= 0;
+    }
+
     /** Whether the client world's block at a cell is opaque; a chunk it does not have reads as air. */
     private static boolean opaque(World w, int x, int y, int z) {
         if (y < 0 || y > 255) return false;
@@ -554,6 +585,14 @@ public final class BuildScan {
                 && boxDistance(t.bounds.all, vx, vy, vz) <= Config.buildGhostRange + SCAN_MARGIN;
             if (live) scan(t, w, now, vx, vy, vz, stage(n));
             else rest(t);
+            // what the job takes down of ours (0.16.0): again every second, in range of the outlines
+            if (t.airSteps.length > 0 && (now - t.takedownAt >= TAKEDOWN_TICKS || now < t.takedownAt)) {
+                t.takedownAt = now;
+                boolean near = t.bounds.all != null ? boxDistance(t.bounds.all, vx, vy, vz) <= OUTLINE_RANGE
+                    : hx * hx + hz * hz <= (double) OUTLINE_RANGE * OUTLINE_RANGE;
+                t.takedown = near ? relative(t, XRay.takedown(t.cells, t.airSteps, (x, y, z) -> ours(w, x, y, z)))
+                    : NO_FLOATS;
+            }
         }
         TRACKS.keySet()
             .retainAll(seen);

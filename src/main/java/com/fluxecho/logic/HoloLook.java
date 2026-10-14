@@ -16,8 +16,10 @@ import java.util.List;
  * view of that campus ({@link Model}): the graded ground and its rings (the forum, the promenade ring, the disc's
  * edge, and once the outer ring is laid its promenade and edge), the nexus as its column at its phase, every module as
  * a box in its own colour (at most {@link #MINI_BOXES}, the nearest the nexus first), and the zenith's pod and the
- * root's well in section (two planes crossed on the axis, the pod's legs as lines). It turns once every
- * {@link #TURN_T} ticks; a soft column of light carries it up from the glass.</li>
+ * root's well in section (two planes crossed on the axis, the pod's legs as lines). 0.16.0: the sky ring's modules
+ * as boxes up at their platforms' deck ({@link #skyBox}) with their catwalks from the pod as lines ({@link #walks}),
+ * and the deep root in section, its chamber a wider section under the well's ({@link #rootSections}). It turns once
+ * every {@link #TURN_T} ticks; a soft column of light carries it up from the glass.</li>
  * <li>Its name plate floats over the middle above the ring light, under the lantern ({@link #plate}), clear of the
  * miniature: the table's console stands at the table's front, not in the middle, so the centrally planned rule
  * ({@link ModuleLook#central}) would put it in front of the drum instead.</li>
@@ -45,6 +47,11 @@ public final class HoloLook {
     public static final double MINI_R = 3.6, LIFT = 0.35;
     /** How deep the root may go (CITY.md §2.6: the ley core's sphere to Y0 - 57): the ground is lifted for it. */
     public static final double ROOT_DEPTH = 57;
+    /**
+     * The highest the miniature reaches in the table's frame (0.16.0): just under the ring light's segments. The sky
+     * ring stands higher than the pod; a campus whose miniature would reach past it is drawn a little smaller.
+     */
+    public static final double MINI_TOP = HoloTableShape.RING_Y - 0.6;
     /** The ticks of one turn of the miniature, and the most module boxes it shows. */
     public static final int TURN_T = 1200, MINI_BOXES = 24;
     /** The graded disc's edge (blocks from the nexus's middle) before and after the outer ring is laid. */
@@ -137,28 +144,81 @@ public final class HoloLook {
     }
 
     /**
+     * A sky module of the campus as the miniature shows it (0.16.0, from the client's campus view, loaded or not): its
+     * floating platform's box (21 x 21 round the platform's centre, {@link SkyRing#centre}, on its site's axis) from
+     * its deck, at the pod's sky datum {@code datum} over the base layer, up {@code height} layers; relative to the
+     * campus's middle at the forum's floor as {@link #siteBox}, for a nexus facing {@code (fx, fz)}.
+     *
+     * @throws IllegalArgumentException for a site that is no sky module's
+     */
+    public static Box skyBox(int site, int fx, int fz, int datum, int height, int rgb) {
+        if (!SkyRing.platformSite(site)) throw new IllegalArgumentException("not a sky module's site: " + site);
+        int[] c = SkyRing.centre(site);
+        int[] w = CampusPlan.toWorld(c[0], c[1], fx, fz);
+        double half = SkyRing.HALF + 0.5;
+        return new Box(w[0] - half, datum - 1, w[1] - half, w[0] + half, datum - 1 + height, w[1] + half, rgb);
+    }
+
+    /**
+     * The catwalk of a sky module's site from the pod out to its platform as the miniature shows it (0.16.0): the two
+     * outer edges of its deck, lines {x0, y0, z0, x1, y1, z1} along the top of the deck at the sky datum
+     * {@code datum}, from the pod's rim (radial 10.5) to the platform's front (radial 21.5), relative to the campus's
+     * middle at the forum's floor.
+     *
+     * @throws IllegalArgumentException for a site that is no sky module's
+     */
+    public static List<double[]> walks(int site, int fx, int fz, int datum) {
+        if (!SkyRing.platformSite(site)) throw new IllegalArgumentException("not a sky module's site: " + site);
+        int[] ax = SkyRing.axis(site);
+        List<double[]> out = new ArrayList<>();
+        double t0 = SkyRing.CATWALK_FROM - 0.5, t1 = SkyRing.CATWALK_TO + 0.5, side = SkyRing.CATWALK_HALF + 0.5;
+        for (double s : new double[] { -side, side }) {
+            double a0 = t0 * ax[0] - s * ax[1], r0 = t0 * ax[1] + s * ax[0], a1 = t1 * ax[0] - s * ax[1],
+                r1 = t1 * ax[1] + s * ax[0];
+            out.add(
+                new double[] { a0 * fx - r0 * fz, datum, a0 * fz + r0 * fx, a1 * fx - r1 * fz, datum,
+                    a1 * fz + r1 * fx });
+        }
+        return out;
+    }
+
+    /**
+     * The root in section (0.16.0) as the miniature shows it, relative to the campus's middle at the forum's floor:
+     * the structure found from {@code bottom} up to {@code top} (its bounds), the well's section
+     * ({@link RootShape#WELL_R} round the axis) over a deep root's chamber {@code h} layers high (0 for none), and the
+     * chamber's ({@link RootShape#CHAMBER_R}, one wider) under it, else null for it.
+     */
+    public static Box[] rootSections(double bottom, double top, int h, int rgb) {
+        double w = RootShape.WELL_R + 0.5, c = RootShape.CHAMBER_R + 0.5;
+        Box well = new Box(-w, bottom + h, -w, w, top, w, rgb);
+        Box chamber = h > 0 ? new Box(-c, bottom, -c, c, bottom + h, c, rgb) : null;
+        return new Box[] { well, chamber };
+    }
+
+    /**
      * What the miniature shows of one campus, in world blocks from the nexus's middle at the ground (x and z along the
      * world's axes, y up from the forum's floor, Y0 + 1): its scale and the ground's height in the table's frame, the
-     * nexus's column, the module boxes, the axis sections, the pod's legs and the rings on the ground (octagons
-     * {x, z}, the last one the ground's edge).
+     * nexus's column, the module boxes, the axis sections, the pod's legs, the sky ring's catwalks (0.16.0) and the
+     * rings on the ground (octagons {x, z}, the last one the ground's edge).
      */
     public static final class Model {
 
         public final double scale, ground;
         public final Box nexus;
         public final List<Box> boxes, sections;
-        public final List<double[]> legs;
+        public final List<double[]> legs, walks;
         public final int legRgb;
         public final List<double[][]> rings;
 
         Model(double scale, double ground, Box nexus, List<Box> boxes, List<Box> sections, List<double[]> legs,
-            int legRgb, List<double[][]> rings) {
+            List<double[]> walks, int legRgb, List<double[][]> rings) {
             this.scale = scale;
             this.ground = ground;
             this.nexus = nexus;
             this.boxes = Collections.unmodifiableList(boxes);
             this.sections = Collections.unmodifiableList(sections);
             this.legs = Collections.unmodifiableList(legs);
+            this.walks = Collections.unmodifiableList(walks);
             this.legRgb = legRgb;
             this.rings = Collections.unmodifiableList(rings);
         }
@@ -173,6 +233,16 @@ public final class HoloLook {
      */
     public static Model model(int phase, boolean outer, int nexusRgb, List<Box> modules, Box pod, List<double[]> legs,
         int legRgb, Box root) {
+        return model(phase, outer, nexusRgb, modules, pod, legs, legRgb, root, null, null);
+    }
+
+    /**
+     * {@link #model(int, boolean, int, List, Box, List, int, Box)} with the deep root's chamber in section under the
+     * well's ({@code chamber}, {@link #rootSections}; null for none) and the sky ring's catwalks ({@code walks},
+     * {@link #walks}; null for none) (0.16.0).
+     */
+    public static Model model(int phase, boolean outer, int nexusRgb, List<Box> modules, Box pod, List<double[]> legs,
+        int legRgb, Box root, Box chamber, List<double[]> walks) {
         double extent = outer ? OUTER_EXTENT : INNER_EXTENT, s = MINI_R / extent;
         double half = NexusShape.RADIUS + 0.5;
         Box nexus = new Box(-half, -1, -half, half, NexusShape.height(Math.max(1, phase)) - 1, half, nexusRgb);
@@ -183,6 +253,12 @@ public final class HoloLook {
         List<Box> sections = new ArrayList<>();
         if (pod != null) sections.add(pod);
         if (root != null) sections.add(root);
+        if (root != null && chamber != null) sections.add(chamber);
+        // whatever stands highest (the sky ring's modules over the pod, 0.16.0) stays under the ring light
+        double top = nexus.y1;
+        for (Box b : boxes) top = Math.max(top, b.y1);
+        for (Box b : sections) top = Math.max(top, b.y1);
+        s = Math.min(s, (MINI_TOP - TABLE_TOP - LIFT) / (ROOT_DEPTH + top));
         List<double[]> l = new ArrayList<>();
         if (pod != null && legs != null) l.addAll(legs);
         List<double[][]> rings = new ArrayList<>();
@@ -194,7 +270,8 @@ public final class HoloLook {
             rings.add(OuterLook.octagon(CampusPlan.GRADE_R, CampusPlan.GRADE_K));
             rings.add(OuterLook.octagon(OuterRing.OUTER_R, OuterRing.OUTER_K));
         } else rings.add(OuterLook.octagon(CampusPlan.GRADE_R, CampusPlan.GRADE_K));
-        return new Model(s, ground(s), nexus, boxes, sections, l, legRgb, rings);
+        List<double[]> w = walks == null ? Collections.<double[]>emptyList() : walks;
+        return new Model(s, ground(s), nexus, boxes, sections, l, w, legRgb, rings);
     }
 
     /**
@@ -230,8 +307,9 @@ public final class HoloLook {
     /**
      * The quads the miniature takes a frame at a tier, counted as {@code HoloTableRender} draws it from the same
      * model: near the ground's fill and every ring's sides, the nexus and every box with its top's rim, each section's
-     * two planes with their edges, the legs and the column of light up from the glass; mid the ground's fill and its
-     * edge, the tops of the nexus and the boxes and the sections' planes; far nothing.
+     * two planes with their edges, the legs, the sky ring's catwalks (0.16.0) and the column of light up from the
+     * glass; mid the ground's fill and its edge, the tops of the nexus and the boxes and the sections' planes; far
+     * nothing.
      */
     public static int miniQuads(Model m, int tier) {
         if (tier == ModuleLook.FAR) return 0;
@@ -259,6 +337,7 @@ public final class HoloLook {
         }
         if (near) {
             for (double[] l : m.legs) n += line(m, Math.sqrt(sq(l[3] - l[0]) + sq(l[4] - l[1]) + sq(l[5] - l[2])));
+            for (double[] l : m.walks) n += line(m, Math.sqrt(sq(l[3] - l[0]) + sq(l[4] - l[1]) + sq(l[5] - l[2])));
             n += BEAM_QUADS;
         }
         return n;

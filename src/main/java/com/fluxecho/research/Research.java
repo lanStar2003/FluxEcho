@@ -23,7 +23,10 @@ public final class Research {
         HUNTING_GROUND = ResearchTree.HUNTING_GROUND, MANA_FOUNTAIN = ResearchTree.MANA_FOUNTAIN,
         RESONANCE_GATE = ResearchTree.RESONANCE_GATE, DUAL_FOIL_VAULT = ResearchTree.DUAL_FOIL_VAULT,
         PHASE_3 = ResearchTree.PHASE_3, OUTER_RING = ResearchTree.OUTER_RING, SOPHON_ARRAY = ResearchTree.SOPHON_ARRAY,
-        HOLO_TABLE = ResearchTree.HOLO_TABLE;
+        HOLO_TABLE = ResearchTree.HOLO_TABLE, PHASE_4 = ResearchTree.PHASE_4, SKY_RING = ResearchTree.SKY_RING,
+        WEATHER_STATION = ResearchTree.WEATHER_STATION, SKY_SAILS = ResearchTree.SKY_SAILS,
+        OBSERVATORY = ResearchTree.OBSERVATORY, DROPLET_HANGAR = ResearchTree.DROPLET_HANGAR,
+        DEEP_ROOT = ResearchTree.DEEP_ROOT;
 
     private Research() {}
 

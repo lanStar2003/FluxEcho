@@ -29,10 +29,12 @@ import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPace;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.FxCodec;
 import com.fluxecho.logic.NexusShape;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.Removal;
+import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.TerrainRule;
 import com.fluxecho.nexus.Doorway;
 import com.fluxecho.nexus.TileMultiblock;
@@ -267,7 +269,7 @@ public final class Builder {
         if (job.pause == BuildState.Pause.INCOMPLETE) {
             // the structure was put right by hand: the next pass sees it formed and moves on
             TileMultiblock t = target(job);
-            if (t != null && t.formed() && grownTo(job)) resume(job);
+            if (t != null && t.formed() && grownTo(job) && standsAs(job, t.shapeName())) resume(job);
             return;
         }
         boolean shortage = job.pause == BuildState.Pause.MATERIALS || job.pause == BuildState.Pause.POWER;
@@ -505,15 +507,16 @@ public final class Builder {
     }
 
     /**
-     * Waits for the structure the job raised to form (the nexus after its core, a module after its controller); on
-     * success moves on (or finishes a module job). After {@link #FORM_WAIT} ticks it looks at the cells again and
+     * Waits for the structure the job raised to form (the nexus after its core, a module after its controller; since
+     * 0.16.0 the pod as {@code floating} once the release job took its legs down, {@link #standsAs}); on success moves
+     * on (or finishes a module job). After {@link #FORM_WAIT} ticks it looks at the cells again and
      * builds the wrong ones anew ({@link #recheck}), and after {@link #FORM_TRIES} such rounds it pauses as incomplete
      * and tells the members which cell keeps the structure from forming ({@link TileMultiblock#firstWrong}, 0.14.2).
      * Returns whether the structure stands.
      */
     private boolean waitForm(BuildJob job, BuildPlan.Plan plan, long now, Outcome o) {
         TileMultiblock t = target(job);
-        if (t != null && t.formed() && grownTo(job)) {
+        if (t != null && t.formed() && grownTo(job) && standsAs(job, t.shapeName())) {
             job.formSince = -1;
             job.formTries = 0;
             if (job.stage >= plan.stages) finish(job, now);
@@ -550,10 +553,31 @@ public final class Builder {
 
     /**
      * The shape the structure a job waits for is to form as, for naming its first wrong cell: a growth's new phase,
-     * else null (the shape the structure is to stand as now).
+     * the pod floating for the release job and a job that builds the pod floating (0.16.0), the deep root's form a
+     * root job builds (0.16.0), else null (the shape the structure is to stand as now).
      */
     static String formShape(BuildJob job) {
+        if (job.releases() || job.floats()) return DomeGeneratorShape.FLOATING;
+        String deep = rootForm(job);
+        if (deep != null) return deep;
         return job.grows() ? NexusShape.shapeName(job.growPhase()) : null;
+    }
+
+    /** The deep root's form a root job builds (0.16.0, {@code BuildJob.Form#root}), or null. */
+    private static String rootForm(BuildJob job) {
+        return RootShape.KEY.equals(job.module()) ? job.form().root : null;
+    }
+
+    /**
+     * Whether a formed structure standing as the shape {@code shape} is what the job waits for (0.16.0): for the
+     * release job the pod floating (it still stands moored on its last legs until they are gone), for a root job that
+     * builds the deep root (0.16.0) that form (the well stands formed until its floor slab's last cells change, and
+     * an in-well form holds its well whole), for every other job any shape it forms as.
+     */
+    static boolean standsAs(BuildJob job, String shape) {
+        String deep = rootForm(job);
+        if (deep != null) return deep.equals(shape);
+        return !job.releases() || DomeGeneratorShape.FLOATING.equals(shape);
     }
 
     /**
@@ -1336,14 +1360,15 @@ public final class Builder {
 
     /**
      * Gives a module controller standing on the job's controller cell its owner and its front towards the nexus, and
-     * the shape the campus's base layer gives it (0.14.1: the zenith's sky datum, the well's depth), makes it look at
-     * its structure again and records it on the job's site.
+     * the shape the campus's base layer gives it (0.14.1: the zenith's sky datum, the well's depth; 0.16.0: the pod
+     * floating for a job that builds it so, {@link BuildJob#shapeFor}), makes it look at its structure again and
+     * records it on the job's site.
      */
     private void commission(BuildJob job, TileMultiblock m, UUID owner, String ownerName, int front) {
         World w = campus.world();
         m.place(owner, ownerName, front);
         ModuleSpec spec = ModuleSpecs.get(job.module());
-        if (spec != null) m.expectShape(spec.shapeFor(campus.centre()[1]));
+        if (spec != null) m.expectShape(job.shapeFor(spec, campus.centre()[1]));
         m.markDirty();
         w.markBlockForUpdate(m.xCoord, m.yCoord, m.zCoord);
         FrameEvents.changed(w, m.xCoord, m.yCoord, m.zCoord);
@@ -1357,7 +1382,8 @@ public final class Builder {
      * it to face the nexus, keeping a player owner it has (the nexus's owner when it has none).
      */
     private void recommission(BuildJob job, TileMultiblock t) {
-        if (job.raisesNexus() || job.grows()) return;
+        // the release job (0.16.0) builds no controller: the pod it waits for was commissioned by its own job
+        if (job.raisesNexus() || job.grows() || job.releases()) return;
         int[] c = campus.moduleController(job);
         if (c == null || c.length < 4 || t.xCoord != c[0] || t.yCoord != c[1] || t.zCoord != c[2]) return;
         if (t.owner() != null && t.front()

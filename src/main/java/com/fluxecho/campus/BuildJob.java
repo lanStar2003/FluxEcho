@@ -21,22 +21,25 @@ import net.minecraft.util.IChatComponent;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
+import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.NexusShape;
+import com.fluxecho.logic.RootShape;
 import com.fluxecho.logic.SiteFamily;
 
 /**
  * One construction job of a nexus campus and how far it has got: which plan it builds (the establish job, the forum of
  * a 0.9.2 nexus, a module on a site, a repair of one of those, the 0.10.1 refresh of a campus laid out by an older
- * plan, since 0.12.0 the growth of the nexus to its next phase, since 0.14.1 the retirement of a docked 0.9.2 hall, or
- * since 0.15.0 the outer establish that lays the outer ring's ground), where it is in its life ({@link BuildState}),
+ * plan, since 0.12.0 the growth of the nexus to its next phase, since 0.14.1 the retirement of a docked 0.9.2 hall,
+ * since 0.15.0 the outer establish that lays the outer ring's ground, or since 0.16.0 the release of the Echo Dome
+ * Generator's pod from its legs), where it is in its life ({@link BuildState}),
  * which stage it is in, which steps are done or skipped, how far the clearing has dug, which cells are in flight, and
  * the counts the GUI shows.
  * <p>
  * The plan itself is never saved: {@link #planFor} recomputes it from the job key, the nexus's position and front, the
  * {@link CampusPlan} seeded with the nexus controller's position, the keep-out boxes saved with the job and (0.15.0,
- * the outer establish) the neighbouring campuses' centres saved with it, so the client can compute the same plan from
- * the synced key ({@link Campus.View}). The done and skipped sets are indexes into that plan and are only valid for
- * the plan version {@link #V} they were saved with.
+ * the outer establish) the neighbouring campuses' centres saved with it, and (0.16.0) the {@link Form} saved with it,
+ * so the client can compute the same plan from the synced key ({@link Campus.View}). The done and skipped sets are
+ * indexes into that plan and are only valid for the plan version {@link #V} they were saved with.
  */
 public final class BuildJob {
 
@@ -70,6 +73,96 @@ public final class BuildJob {
      * alike.
      */
     public static final String RETIRE = BuildPlan.RETIRE + ":";
+
+    /**
+     * What a job knows of the form its building takes beyond its plan key (0.16.0): the inputs that pick one of the
+     * plans of the same key ({@link #planFor}), saved with the job and synced with it ({@link Campus.View#form}), so
+     * the
+     * client plans what the server builds. Every field is 0 on a job made before 0.16.0, which so keeps the plan it
+     * had (no {@link #V} bump: a new plan is only ever chosen by a field a new job sets), and each is saved and sent
+     * only when set.
+     */
+    public static final class Form {
+
+        /**
+         * The sky datum F of the Echo Dome Generator's pod as it floats, or 0 (NBT {@code Pf}, CITY.md §3). On the
+         * release job ({@link #release}) it is the datum whose legs the job takes down: the pod's own, so a pod built
+         * by hand on the full legs over high ground is released at 40. On a dome job or a repair of the dome it picks
+         * the floating plan ({@link BuildPlan#floating}): the pod alone at Y0 + F, never its legs again.
+         */
+        public int pod;
+        /**
+         * The sky slots whose pod doors a floating plan leaves open (NBT {@code Pd}): bit k for slot k, the sky site
+         * 30 + k ({@link DomeGeneratorShape#doorSlot}), so a repair never glazes a door a sky module's job opened. 0
+         * glazes every door, as the moored plan does.
+         */
+        public int doors;
+        /**
+         * The sky datum F of a sky module's deck, or 0 (NBT {@code Sd}, 0.16.0, CITY.md §4.12): the floor of the pod
+         * that stood when its job was offered (its controller's height less {@link DomeGeneratorShape#CTRL_Y}), so a
+         * platform beside a pod built by hand on the full legs over high ground is laid level with it at 40, not at the
+         * datum the base layer gives. A sky job without it builds at the base layer's datum.
+         */
+        public int deck;
+        /**
+         * The form of the deep root a root job builds, or null (NBT {@code Rs}, 0.16.0, CITY.md §4.9): on the deepen
+         * job ({@link #deepen}) the form a formed well grows into, so its plan is the new part alone
+         * ({@link BuildPlan#deepen}); on a repair of the root the form it stood as, so it is put back whole
+         * ({@link BuildPlan#deep}), never as the bare well. A root job without it builds the well.
+         */
+        public String root;
+        /**
+         * Whether the job is a repair (not saved: its key says so, {@link BuildJob#repair}, on the server and in the
+         * client's copy), which picks the whole plan of a deep root's form rather than the deepen job's new part.
+         */
+        public boolean whole;
+
+        /** Whether it picks the pod's floating plan (or, on the release job, names the datum it releases). */
+        public boolean floats() {
+            return pod > 0;
+        }
+
+        /** The form of the deep root it builds ({@link #root}), or null. */
+        public RootShape.Deep deep() {
+            return root == null ? null : RootShape.deep(root);
+        }
+
+        /**
+         * Writes the fields that are set into a job's tag or its client copy ({@code Pf}, {@code Pd}, {@code Sd},
+         * {@code Rs}).
+         */
+        void write(NBTTagCompound t) {
+            if (pod > 0) t.setInteger("Pf", pod);
+            if (doors != 0) t.setInteger("Pd", doors);
+            if (deck > 0) t.setInteger("Sd", deck);
+            if (root != null) t.setString("Rs", root);
+        }
+
+        /**
+         * The fields a job's tag or its client copy holds: a datum that is no sky datum, or doors past the eight sky
+         * slots, read as none.
+         */
+        public static Form read(NBTTagCompound t) {
+            Form f = new Form();
+            if (t == null) return f;
+            int pod = t.getInteger("Pf");
+            f.pod = DomeGeneratorShape.isDatum(pod) ? pod : 0;
+            f.doors = t.getInteger("Pd") & (1 << DomeGeneratorShape.SKY_SLOTS) - 1;
+            int deck = t.getInteger("Sd");
+            f.deck = DomeGeneratorShape.isDatum(deck) ? deck : 0;
+            // a deep root's form (0.16.0): a name of none of its shapes reads as none
+            String root = t.getString("Rs");
+            f.root = RootShape.deep(root) == null ? null : root;
+            return f;
+        }
+
+        /** The fields as a string, to tell the client's cached plan from a new one ("" when none is set). */
+        public String signature() {
+            String pods = pod == 0 && doors == 0 ? "" : "|f" + pod + "," + doors;
+            String decks = deck == 0 ? pods : pods + "|s" + deck;
+            return root == null ? decks : decks + "|r" + root + (whole ? "w" : "");
+        }
+    }
 
     /**
      * A launched cell on its way: it was paid for and lands at {@link #land}. It remembers what it paid for (the part
@@ -138,6 +231,11 @@ public final class BuildJob {
      * the campus kept the ring out of and has left since. Saved ({@code Op}) and synced; empty for every other job.
      */
     final List<int[]> patch = new ArrayList<>();
+    /**
+     * What it knows of the form its building takes (0.16.0, {@link Form}): the floating pod's sky datum and the doors
+     * a floating plan leaves open. Saved ({@code Pf}, {@code Pd}) and synced only when set.
+     */
+    Form form = new Form();
 
     // ---- where it is
     BuildState.State state = BuildState.initial();
@@ -209,6 +307,7 @@ public final class BuildJob {
         this.key = key;
         this.planKey = planKey;
         this.site = site;
+        form.whole = key.startsWith(REPAIR);
     }
 
     /** The establish job of a freshly placed core, keeping out the boxes of the modules standing near it. */
@@ -259,6 +358,81 @@ public final class BuildJob {
     /** A repair of the module on a site ({@code repair:<site>}), the same plan as its module job. */
     public static BuildJob repairModule(ModuleSpec spec, int site) {
         return new BuildJob(REPAIR + site, spec.jobKey(site), site);
+    }
+
+    /**
+     * The release job of the Echo Dome Generator (0.16.0, {@code release}, {@link BuildPlan#release}, CITY.md §3): the
+     * legs of its pod at the sky datum {@code datum} (the pod's own: {@link DomeGeneratorShape#podDatum}) are taken
+     * down from the top, each credited to the ledger as its part, and the job ends once the pod stands as
+     * {@code floating}. It waits for 开始 like any job; its site is the zenith, which the 建造 page names, and the
+     * zenith's protected boxes do not hold it.
+     *
+     * @throws IllegalArgumentException if the datum is no sky datum
+     */
+    public static BuildJob release(int datum) {
+        if (!DomeGeneratorShape.isDatum(datum)) throw new IllegalArgumentException("no sky datum " + datum);
+        BuildJob j = new BuildJob(BuildPlan.RELEASE, BuildPlan.RELEASE, SiteFamily.ZENITH_SITE);
+        j.form.pod = datum;
+        return j;
+    }
+
+    /**
+     * The deepen job of the root (0.16.0, CITY.md §4.9, {@link BuildPlan#deepen}): a formed Tidal Well grown into the
+     * deep root's form {@code form} (the one {@link RootShape#deepFor} gives the well), only its new part. Its key and
+     * plan key are the root's module job's, {@code module:root@9}, so it works the root's own site and controller; the
+     * form travels as {@link Form#root}. It waits for 开始 like any job and ends once the root stands as that form.
+     *
+     * @throws IllegalArgumentException if the form is no deep root's
+     */
+    public static BuildJob deepen(ModuleSpec spec, String form) {
+        if (RootShape.deep(form) == null) throw new IllegalArgumentException("no deep root " + form);
+        BuildJob j = module(spec, SiteFamily.ROOT_SITE);
+        j.form.root = form;
+        return j;
+    }
+
+    /**
+     * Makes a root job (its module job or its repair) build the deep root's form {@code form} (0.16.0,
+     * {@link Form#root}); does nothing to any other job, or for a name of no deep root's form. Only for a job that has
+     * touched nothing: its plan is made anew.
+     */
+    void rootAs(String form) {
+        if (!RootShape.KEY.equals(module()) || RootShape.deep(form) == null) return;
+        this.form.root = form;
+        plan = null;
+        index = null;
+    }
+
+    /**
+     * Makes a job of the Echo Dome Generator (its module job or its repair) build the pod as it floats at the sky
+     * datum {@code datum} (0.16.0, {@link BuildPlan#floating}), leaving the doors of the sky slots in {@code doors}
+     * open; does nothing to any other job. Only for a job that has touched nothing: its plan is made anew.
+     *
+     * @throws IllegalArgumentException if the datum is no sky datum
+     */
+    void floatAt(int datum, int doors) {
+        if (!DomeGeneratorShape.isDatum(datum)) throw new IllegalArgumentException("no sky datum " + datum);
+        if (!DomeGeneratorShape.KEY.equals(module())) return;
+        form.pod = datum;
+        form.doors = doors & (1 << DomeGeneratorShape.SKY_SLOTS) - 1;
+        plan = null;
+        index = null;
+    }
+
+    /**
+     * Makes a sky module's job (its module job or its repair) lay its platform level with the pod's floor at the sky
+     * datum {@code datum} (0.16.0, {@link Form#deck}); does nothing to any other job. Only for a job that has touched
+     * nothing: its plan is made anew.
+     *
+     * @throws IllegalArgumentException if the datum is no sky datum
+     */
+    void deckAt(int datum) {
+        if (!DomeGeneratorShape.isDatum(datum)) throw new IllegalArgumentException("no sky datum " + datum);
+        ModuleSpec spec = ModuleSpecs.get(module());
+        if (spec == null || spec.family != SiteFamily.SKY) return;
+        form.deck = datum;
+        plan = null;
+        index = null;
     }
 
     /**
@@ -447,8 +621,8 @@ public final class BuildJob {
     // ---- identity
 
     /**
-     * The job key: {@code establish}, {@code forum}, {@code module:<module>@<site>}, {@code repair:...}, and since
-     * 0.14.1 {@code retire:<slot>}.
+     * The job key: {@code establish}, {@code forum}, {@code module:<module>@<site>}, {@code repair:...}, since 0.14.1
+     * {@code retire:<slot>}, and since 0.16.0 {@code release}.
      */
     public String key() {
         return key;
@@ -460,7 +634,8 @@ public final class BuildJob {
     }
 
     /**
-     * The site of a module job or a module repair, the inner ring slot of a retire job (0.14.1); -1 for the others.
+     * The site of a module job or a module repair, the inner ring slot of a retire job (0.14.1), the zenith for the
+     * release job (0.16.0); -1 for the others.
      */
     public int site() {
         return site;
@@ -571,6 +746,60 @@ public final class BuildJob {
         return BuildPlan.retireSlot(planKey) >= 0;
     }
 
+    /** Whether it releases the Echo Dome Generator's pod from its legs (0.16.0, {@link #release}). */
+    public boolean releases() {
+        return BuildPlan.RELEASE.equals(planKey);
+    }
+
+    /**
+     * Whether it builds the Echo Dome Generator's pod as it floats (0.16.0): a dome job or a repair of the dome whose
+     * {@link Form#pod} is set, so its plan is {@link BuildPlan#floating}.
+     */
+    public boolean floats() {
+        return form.floats() && DomeGeneratorShape.KEY.equals(module());
+    }
+
+    /** What it knows of the form its building takes (0.16.0, {@link Form}; read-only use). */
+    public Form form() {
+        return form;
+    }
+
+    /**
+     * Whether it grows a formed well into the deep root (0.16.0, {@link #deepen}): a root job, not a repair, that
+     * carries a deep root's form.
+     */
+    public boolean deepens() {
+        return deepens(key, planKey, form);
+    }
+
+    /** Whether a job of the key and plan key that carries the form is the deepen job ({@link #deepens()}). */
+    public static boolean deepens(String key, String planKey, Form form) {
+        return form != null && form.root != null
+            && key != null
+            && !key.startsWith(REPAIR)
+            && RootShape.KEY.equals(ModuleSpecs.moduleOf(planKey));
+    }
+
+    /**
+     * The sky datum of the pod the job works on (0.16.0): the one it carries ({@link Form#pod}: the release job's and
+     * a floating pod's), else the one the base layer {@code y0} gives ({@link DomeGeneratorShape#datum}).
+     */
+    public int podDatum(int y0) {
+        return form.floats() ? form.pod : DomeGeneratorShape.datum(y0);
+    }
+
+    /**
+     * The shape the builder names to the module core it commissions ({@code TileMultiblock.expectShape}): for a job
+     * that builds the pod floating (0.16.0) {@code floating}, else the one the spec gives the base layer {@code y0}
+     * (0.14.1: the zenith's sky datum, the well's depth), null when it has one shape for every height.
+     */
+    public String shapeFor(ModuleSpec spec, int y0) {
+        if (floats()) return DomeGeneratorShape.FLOATING;
+        // the deep root's form a root job builds (0.16.0), whatever the base layer would give a well now
+        if (form.root != null && RootShape.KEY.equals(module())) return form.root;
+        return spec == null ? null : spec.shapeFor(y0);
+    }
+
     /**
      * The ground a retire job works, {x0, z0, x1, z1, yFrom, yTo} ({@link #retire}), or null for any other job (or a
      * retire job saved without it).
@@ -633,12 +862,21 @@ public final class BuildJob {
 
     /** Its name for chat and the GUI, such as 建造回响书库 or 修复通量中枢. */
     public IChatComponent name() {
-        return name(key, planKey);
+        return name(key, planKey, deepens());
     }
 
     /** The name of a job from its key and plan key (the client has both in {@link Campus.View}). */
     public static IChatComponent name(String key, String planKey) {
+        return name(key, planKey, false);
+    }
+
+    /**
+     * {@link #name(String, String)} of a job that may be the deepen job ({@code deepens}, 0.16.0, {@link #deepens()}),
+     * which has the root's module job's keys: 潮汐井生长为深根, not 建造潮汐井.
+     */
+    public static IChatComponent name(String key, String planKey, boolean deepens) {
         if (key == null || key.isEmpty()) return new ChatComponentTranslation("fluxecho.build.gui.none");
+        if (deepens) return new ChatComponentTranslation("fluxecho.build.job.deepen");
         if (REFRESH.equals(key)) return new ChatComponentTranslation("fluxecho.build.job.refresh");
         int slot = BuildPlan.retireSlot(planKey);
         if (slot >= 0) return new ChatComponentTranslation(
@@ -649,6 +887,7 @@ public final class BuildJob {
             "fluxecho.build.job.grow",
             new ChatComponentTranslation("fluxecho.nexus.phase." + grow));
         if (BuildPlan.OUTER.equals(planKey)) return new ChatComponentTranslation("fluxecho.build.job.outer");
+        if (BuildPlan.RELEASE.equals(planKey)) return new ChatComponentTranslation("fluxecho.build.job.release");
         String module = ModuleSpecs.moduleOf(planKey);
         if (key.startsWith(REPAIR)) {
             IChatComponent what = module != null ? new ChatComponentTranslation("fluxecho.module." + module)
@@ -721,6 +960,40 @@ public final class BuildJob {
     public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
         int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut, List<int[]> neighbours, List<int[]> regainFrom,
         boolean retireOuter, List<int[]> patch) {
+        return planFor(
+            planKey,
+            cp,
+            cx,
+            y0,
+            cz,
+            fx,
+            fz,
+            ctrlX,
+            ctrlY,
+            ctrlZ,
+            keepOut,
+            neighbours,
+            regainFrom,
+            retireOuter,
+            patch,
+            null);
+    }
+
+    /**
+     * {@link #planFor(String, CampusPlan, int, int, int, int, int, int, int, int, List, List, List, boolean, List)}
+     * with what the job knows of the form its building takes ({@code form}, 0.16.0; null for nothing): the release job
+     * ({@code release}) takes down the legs at the datum it carries, and a dome job or a repair of the dome that
+     * carries a floating pod's datum builds the floating plan ({@link BuildPlan#floating}); a root job that carries a
+     * deep root's form ({@link Form#root}) builds its new part over the formed well ({@link BuildPlan#deepen}), or as
+     * a repair ({@link Form#whole}) the whole form ({@link BuildPlan#deep}). Without a form every plan is the one
+     * 0.15.0 made.
+     */
+    public static BuildPlan.Plan planFor(String planKey, CampusPlan cp, int cx, int y0, int cz, int fx, int fz,
+        int ctrlX, int ctrlY, int ctrlZ, List<int[]> keepOut, List<int[]> neighbours, List<int[]> regainFrom,
+        boolean retireOuter, List<int[]> patch, Form form) {
+        boolean floats = form != null && form.floats();
+        if (BuildPlan.RELEASE.equals(planKey))
+            return BuildPlan.release(cx, y0, cz, fx, fz, floats ? form.pod : DomeGeneratorShape.datum(y0));
         if (BuildPlan.OUTER.equals(planKey)) return BuildPlan.outer(
             cp,
             cx,
@@ -748,6 +1021,16 @@ public final class BuildJob {
         ModuleSpec spec = ModuleSpecs.ofJob(planKey);
         int site = ModuleSpecs.siteOf(planKey);
         if (spec == null || !spec.hasSite(site)) return null;
+        // the pod as it floats (0.16.0): never its legs again
+        if (floats && DomeGeneratorShape.KEY.equals(spec.key))
+            return BuildPlan.floating(site, cx, y0, cz, fx, fz, form.pod, form.doors);
+        // the deep root (0.16.0): the deepen job its new part over the formed well, a repair the whole of its form
+        RootShape.Deep deep = form == null ? null : form.deep();
+        if (deep != null && RootShape.KEY.equals(spec.key))
+            return form.whole ? BuildPlan.deep(site, cx, y0, cz, fx, fz, deep)
+                : BuildPlan.deepen(site, cx, y0, cz, fx, fz, deep);
+        // a sky module (0.16.0) level with the floor of the pod that stood when it was offered
+        if (form != null && form.deck > 0) return spec.plan(cp, site, cx, y0, cz, fx, fz, form.deck);
         return spec.plan(cp, site, cx, y0, cz, fx, fz);
     }
 
@@ -772,7 +1055,8 @@ public final class BuildJob {
                 neighbours,
                 regainFrom,
                 retireOuter,
-                patch);
+                patch,
+                form);
             index = null;
         }
         return plan;
@@ -1079,6 +1363,8 @@ public final class BuildJob {
         if (retireOuter) t.setBoolean("Ro", true);
         // the boxes an outer establish that patches the ring lays inside, only when it has any (0.15.0)
         if (!patch.isEmpty()) t.setIntArray("Op", boxes(patch, 4));
+        // the floating pod's datum and its open doors (0.16.0), only when set, so every other job saves as before
+        form.write(t);
         t.setIntArray("D", bits(done));
         t.setIntArray("Sk", bits(skipped));
         t.setInteger("Cc", clearColumn);
@@ -1162,6 +1448,8 @@ public final class BuildJob {
         readClaims(t.getIntArray("Nq"), j.regainFrom);
         j.retireOuter = t.getBoolean("Ro");
         readFlat(t.getIntArray("Op"), j.patch);
+        j.form = Form.read(t);
+        j.form.whole = j.repair();
         unbits(t.getIntArray("D"), j.done);
         unbits(t.getIntArray("Sk"), j.skipped);
         j.clearColumn = t.getInteger("Cc");

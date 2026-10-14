@@ -21,6 +21,10 @@ import java.util.Set;
  * Its counterpart for a plan that builds high in the air (the zenith's pod at Y0 + 40): what {@link #hangs} there gets
  * its {@link #shadow} drawn on the ground and {@link #plumbs} dropped to it, so a player on the forum sees where the
  * ghost overhead stands.
+ * <p>
+ * And for a plan that takes our own blocks down (0.16.0, the release job's legs 将拆除): its {@link #takedown}
+ * outline, the edges of the cells its {@link BuildPlan#AIR} steps empty where one of ours still stands, drawn in yellow
+ * through everything until they are gone.
  */
 public final class XRay {
 
@@ -268,6 +272,40 @@ public final class XRay {
             out[2 * i + 1] = (int) (long) picked.get(i);
         }
         return out;
+    }
+
+    // ---- what a plan takes down (0.16.0)
+
+    /** The most steps a takedown outline is worked out from (the release job's legs are at most 234 cells). */
+    public static final int TAKEDOWN_STEPS = 4096;
+
+    /**
+     * The step indices of a plan's {@link BuildPlan#AIR} steps (not the caisson's dug or drained cells), what it may
+     * take down, in step order: at most {@link #TAKEDOWN_STEPS}, the first ones.
+     */
+    public static int[] airSteps(GhostCells.Cells c) {
+        int[] out = new int[Math.min(c.size(), TAKEDOWN_STEPS)];
+        int n = 0;
+        for (int i = 0; i < c.size() && n < out.length; i++) if (c.kind[i] == BuildPlan.AIR) out[n++] = i;
+        return Arrays.copyOf(out, n);
+    }
+
+    /**
+     * The takedown outline of a plan (0.16.0, the release job's legs 将拆除): the fold edges
+     * ({@link #edges(int[], int[], int[])}) of the cells of the steps {@code air} ({@link #airSteps}) where one of our
+     * blocks still stands ({@code ours}), what the job will take down and credit to the ledger; empty when none does.
+     */
+    public static int[] takedown(GhostCells.Cells c, int[] air, GhostCells.Opaque ours) {
+        int[] xs = new int[air.length], ys = new int[air.length], zs = new int[air.length];
+        int n = 0;
+        for (int i : air) {
+            if (!ours.at(c.x[i], c.y[i], c.z[i])) continue;
+            xs[n] = c.x[i];
+            ys[n] = c.y[i];
+            zs[n++] = c.z[i];
+        }
+        if (n == 0) return new int[0];
+        return edges(Arrays.copyOf(xs, n), Arrays.copyOf(ys, n), Arrays.copyOf(zs, n));
     }
 
     /** A block corner or cell as one long: 26 bits across and along, 12 up (as {@link GhostCells}). */

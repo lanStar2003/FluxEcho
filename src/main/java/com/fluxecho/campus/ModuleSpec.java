@@ -11,6 +11,7 @@ import com.fluxecho.logic.CityOffer;
 import com.fluxecho.logic.OuterRing;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyRing;
 
 /**
  * A kind of module the campus builder can raise for a nexus: what research opens it, which family of sites it stands on
@@ -83,6 +84,29 @@ public final class ModuleSpec {
          */
         default int[] formerController(int site, int cx, int y0, int cz, int fx, int fz) {
             return null;
+        }
+
+        /**
+         * Where its controller stands on the site when it stands at the sky datum {@code datum} (0.16.0: a sky
+         * module's deck is the floor of the pod that stands, which a pod built by hand on the full legs over high
+         * ground puts at 40 rather than the datum the base layer gives); null for a module that stands at one height
+         * for every pod.
+         */
+        default int[] controllerAt(int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+            return null;
+        }
+
+        /** Its build plan on the site at the sky datum {@code datum} (0.16.0, {@link #controllerAt}); null likewise. */
+        default BuildPlan.Plan planAt(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+            return null;
+        }
+
+        /**
+         * Its {@link #protect} boxes when it stands at the sky datum {@code datum} (0.16.0, {@link #controllerAt}); by
+         * default the boxes for the datum the base layer gives.
+         */
+        default List<int[]> protectAt(int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+            return protect(site, cx, y0, cz, fx, fz);
         }
     }
 
@@ -271,7 +295,7 @@ public final class ModuleSpec {
         List<int[]> out = new ArrayList<>();
         for (int[] b : outerKeepOut(plan, site, cx, y0, cz, fx, fz))
             out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
-        return out;
+        return underSky(out, y0);
     }
 
     /**
@@ -315,9 +339,35 @@ public final class ModuleSpec {
                 out.add(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
             return out;
         }
-        if (family == SiteFamily.GATE) return BuildPlan.gateProtect(keepOut(plan, site, cx, y0, cz, fx, fz));
+        if (family == SiteFamily.GATE)
+            return underSky(BuildPlan.gateProtect(keepOut(plan, site, cx, y0, cz, fx, fz)), y0);
         int[] b = siteBox(plan, site, cx, y0, cz, fx, fz);
-        return Collections.singletonList(new int[] { b[0], 0, b[1], b[2], 255, b[3] });
+        return underSky(Collections.singletonList(new int[] { b[0], 0, b[1], b[2], 255, b[3] }), y0);
+    }
+
+    /**
+     * {@link #protect} for the module standing at the sky datum {@code datum} (0.16.0): a sky module's boxes round the
+     * deck it stands on ({@link Envelope#protectAt}), every other module's {@link #protect}.
+     */
+    public List<int[]> protect(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+        if (envelope != null) return envelope.protectAt(site, cx, y0, cz, fx, fz, datum);
+        return protect(plan, site, cx, y0, cz, fx, fz);
+    }
+
+    /**
+     * Protected boxes {x0, y0, z0, x1, y1, z1} of a module on the ground under the sky ring (0.16.0: the gatehouse, the
+     * halls) cut at {@link SkyRing#groundTop}, two cells under the lowest deck the base layer gives, so a sky module's
+     * job never meets one; a box wholly over it is left out.
+     */
+    private static List<int[]> underSky(List<int[]> boxes, int y0) {
+        int top = SkyRing.groundTop(y0);
+        List<int[]> out = new ArrayList<>(boxes.size());
+        for (int[] b : boxes) {
+            int lo = Math.min(b[1], b[4]), hi = Math.max(b[1], b[4]);
+            if (lo > top) continue;
+            out.add(new int[] { b[0], lo, b[2], b[3], Math.min(hi, top), b[5] });
+        }
+        return out;
     }
 
     /** The build plan of the module on the site. */
@@ -325,9 +375,29 @@ public final class ModuleSpec {
         return plans.plan(plan, site, cx, y0, cz, fx, fz);
     }
 
+    /**
+     * The build plan of the module on the site at the sky datum {@code datum} (0.16.0, a sky module's deck at the floor
+     * of the pod that stands, {@link Envelope#planAt}); {@link #plan} for a module that stands at one height for every
+     * pod, and for a datum that is none.
+     */
+    public BuildPlan.Plan plan(CampusPlan plan, int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+        BuildPlan.Plan p = envelope == null || datum <= 0 ? null
+            : envelope.planAt(plan, site, cx, y0, cz, fx, fz, datum);
+        return p != null ? p : plan(plan, site, cx, y0, cz, fx, fz);
+    }
+
     /** Where its controller stands on the site: {x, y, z, facing ordinal}. */
     public int[] controller(int site, int cx, int y0, int cz, int fx, int fz) {
         return controllers.controller(site, cx, y0, cz, fx, fz);
+    }
+
+    /**
+     * Where its controller stands on the site at the sky datum {@code datum} (0.16.0, {@link Envelope#controllerAt});
+     * {@link #controller} for a module that stands at one height for every pod, and for a datum that is none.
+     */
+    public int[] controller(int site, int cx, int y0, int cz, int fx, int fz, int datum) {
+        int[] at = envelope == null || datum <= 0 ? null : envelope.controllerAt(site, cx, y0, cz, fx, fz, datum);
+        return at != null ? at : controller(site, cx, y0, cz, fx, fz);
     }
 
     /**
@@ -344,6 +414,8 @@ public final class ModuleSpec {
      * keeps its site's keep-out, protection and repairs, and docks there.
      */
     public boolean hasSite(int site) {
+        // the sky ring's berths (0.16.0) are the orbit job's of 0.17.0: no module stands on one
+        if (family == SiteFamily.SKY && SkyRing.berth(site)) return false;
         return family.hasSite(site);
     }
 

@@ -335,7 +335,7 @@ public class TerminalScreen extends ControlCenterScreen {
         String where = paused ? tr("fluxecho.build.pause." + ps) : tr("fluxecho.build.state." + st);
         int col = "building".equals(st) || "done".equals(st) ? Theme.GREEN
             : paused || "projecting".equals(st) ? Theme.ORANGE : Theme.LABEL2;
-        String name = BuildJob.name(b.getString("k"), b.getString("pk"))
+        String name = BuildJob.name(b.getString("k"), b.getString("pk"), b.getBoolean("dr"))
             .getUnformattedText();
         String right = where + "  " + b.getInteger("done") + " / " + b.getInteger("total");
         card(c, x, y, w, ROW - 2);

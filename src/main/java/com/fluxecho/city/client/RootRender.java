@@ -42,9 +42,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Budgets (CITY.md §1.3, quads a frame on top of {@link CityRender}'s): near, the rings at most 4 faces of
  * {@value #ARCS} x {@value #NEAR_PIECES} pieces each (only the faces turned to the camera, about half) and their seams
  * and motes (about 290 for three), the ribs a line and a halo a block (about 300), the bands a line a face (about
- * 230), the pool a glow and two lines a cell of water (about 330), the surface a glow a grate cell and 32 blades;
- * mid, a piece an arc and no seams, a line a rib's stretch, no bands, the pool's glow alone (about 200); far, the
- * rings as lines (48). With the plate and the tap sockets the well stays under 2,000 near, 300 mid and 64 far.
+ * 230), the pool a glow and two lines a cell of water (about 180), the surface a glow a grate cell and 32 blades;
+ * mid, a piece an arc and no seams, a line a rib's stretch, no bands, the pool's glow alone (about 150); far, the
+ * rings as lines (36). Since 0.16.0 the pool glows a quad a strip of cells ({@link RootLook#poolStrips}) and a ring is
+ * 12 pieces far, so the deep root over the well keeps within the caps ({@link RootLook#wellQuads}). With the plate
+ * and the tap sockets the well stays under 2,000 near, 300 mid and 64 far.
  * <p>
  * Shader-safe as {@link CityRender}: in its frame ({@link CityFrame}) relative to the camera, quads only, a normal
  * towards the viewer, no depth writes (the rings' faces turned away are left out), the caustics a little over the
@@ -53,6 +55,19 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * Over low ground the well is shallower (0.14.1): the rings, ribs, bands and the forum over it are those of the well
  * the tile stands as ({@link TileRoot#well}), worked out once for each depth.
+ * <p>
+ * The deep root (0.16.0, {@link #deep}): the well's look is drawn in the well's own frame, {@link RootShape#base}
+ * layers
+ * up the form's; over it, in the form's own frame, light flows down the dissolved root conduits
+ * ({@link RootLook#flows}):
+ * in a chamber down each conduit, along the floor's lit vein and up to its bay's plinth, the well's floor grate glowing
+ * from below; in-well as strands at radius 6 from the lid (at most {@link RootLook#STRAND_HALO} thick, clear of the
+ * outer tide ring), and a root collar of dark steel closing the gap between the basin's rim and each bay plinth over
+ * it.
+ * Budgets on top of the well's ({@link RootLook#deepQuads}): near two quads a block of every way, a glow a head, the
+ * grate's 24 cells and the collars' sides and seams; mid a line a stretch; far nothing. A chamber form
+ * keeps its plinth line dark ({@link RootLook#courseBuried}). With the well, the plate and the sockets the deep root
+ * stays under 2,000 near, 300 mid and 64 far ({@code RootLookTest}).
  */
 @SideOnly(Side.CLIENT)
 final class RootRender {
@@ -70,8 +85,10 @@ final class RootRender {
     /** What is drawn of a well of each depth, by depth. */
     private static final Map<Integer, Look> LOOKS = new ConcurrentHashMap<>();
 
-    private static final int RINGS = 0, RIB_PART = 1, BAND_PART = 2, POOL = 3, SURFACE = 4;
-    private static final String[] NAMES = { "tide rings", "rising ribs", "flux-layer bands", "pool", "grate glow" };
+    private static final int RINGS = 0, RIB_PART = 1, BAND_PART = 2, POOL = 3, SURFACE = 4, FLOWS = 5, GRATE_GLOW = 6,
+        COLLARS = 7;
+    private static final String[] NAMES = { "tide rings", "rising ribs", "flux-layer bands", "pool", "grate glow",
+        "deep root's flowing light", "deep root's grate", "deep root's collars" };
     private static final boolean[] OFF = new boolean[NAMES.length];
 
     private RootRender() {}
@@ -85,7 +102,7 @@ final class RootRender {
         final List<List<int[]>> runs = new ArrayList<>(), bandFaces = new ArrayList<>();
         final int[] bands;
         final int rings, lid, surface;
-        final double[][] water;
+        final double[][] water, strips;
 
         Look(RootShape.Well w) {
             for (int i = 0; i < RIBS.length; i++) runs.add(RootLook.ribRuns(i, w));
@@ -94,7 +111,9 @@ final class RootRender {
             rings = w.ringY().length;
             lid = w.lidY;
             surface = RootLook.surfaceY(w);
-            water = ModuleLook.water(w.build, RootShape.FLOOR_Y, 0.5)
+            List<double[]> cells = ModuleLook.water(w.build, RootShape.FLOOR_Y, 0.5);
+            water = cells.toArray(new double[0][]);
+            strips = RootLook.poolStrips(cells)
                 .toArray(new double[0][]);
         }
     }
@@ -178,8 +197,9 @@ final class RootRender {
             tes.setColorRGBA_I(glow, CityFrame.alpha255(0.5f * life));
             for (int i = 0; i < n; i++) {
                 double y = ringY(i, day), r = RootShape.RING_R[i] + 0.5;
-                for (int k = 0; k < 16; k++) {
-                    double a0 = k * Math.PI / 8, a1 = (k + 1) * Math.PI / 8;
+                for (int k = 0; k < RootLook.FAR_RING_PIECES; k++) {
+                    double a0 = k * 2 * Math.PI / RootLook.FAR_RING_PIECES,
+                        a1 = (k + 1) * 2 * Math.PI / RootLook.FAR_RING_PIECES;
                     f.line(
                         tes,
                         C + Math.cos(a0) * r,
@@ -368,7 +388,8 @@ final class RootRender {
     // ---- the pool
 
     /**
-     * The pool's surface: a glow on every cell of water, brighter as the tide rises; powered and near, caustics: two
+     * The pool's surface: a glow on every cell of water (a quad a strip of them), brighter as the tide rises; powered
+     * and near, caustics: two
      * families of wavering lines, one along each axis, crossing on the water and drifting.
      */
     private static void pool(CityFrame f, Look look, double t, float p, double tide, boolean caustics, int accent) {
@@ -377,12 +398,12 @@ final class RootRender {
         Shapes.begin(true);
         Tessellator tes = CityFrame.start();
         tes.setColorRGBA_I(accent, CityFrame.alpha255(p * (0.05f + 0.05f * (float) (tide + 1) / 2)));
-        for (double[] c : water) {
-            double x0 = c[0] - 0.5, z0 = c[1] - 0.5;
-            f.vertex(tes, x0, POOL_Y, z0);
-            f.vertex(tes, x0 + 1, POOL_Y, z0);
-            f.vertex(tes, x0 + 1, POOL_Y, z0 + 1);
-            f.vertex(tes, x0, POOL_Y, z0 + 1);
+        // the glow a strip of touching cells (0.16.0), the same cover as a quad a cell
+        for (double[] s : look.strips) {
+            f.vertex(tes, s[0], POOL_Y, s[1]);
+            f.vertex(tes, s[2], POOL_Y, s[1]);
+            f.vertex(tes, s[2], POOL_Y, s[3]);
+            f.vertex(tes, s[0], POOL_Y, s[3]);
         }
         if (caustics) {
             int rgb = Shapes.mix(WATER_LIGHT, WHITE, 0.4);
@@ -423,7 +444,8 @@ final class RootRender {
         tes.setColorRGBA_I(on ? accent : AMBER, CityFrame.alpha255(a));
         int shown = 0;
         for (int[] c : GRATE) {
-            int[] at = r.worldOf(c[0], look.surface, c[1]);
+            // the grate in the frame of the shape the tile stands as: a deep root's lies the chamber's height up
+            int[] at = r.wellWorldOf(c[0], look.surface, c[1]);
             if (w.getBlock(at[0], at[1], at[2]) != grate || w.getBlockMetadata(at[0], at[1], at[2]) != meta) continue;
             f.vertex(tes, c[0], top, c[1]);
             f.vertex(tes, c[0] + 1, top, c[1]);
@@ -446,6 +468,166 @@ final class RootRender {
         }
         tes.draw();
         Shapes.end();
+    }
+
+    // ---- the deep root (0.16.0)
+
+    /**
+     * What the deep root (0.16.0, CITY.md §4.9 Visuals) shows over its well's own look, in the form's own frame
+     * ({@code f}, the chamber's floor slab at y0; {@code cam} the camera in that frame): in a chamber, light flowing
+     * down each dissolved root conduit, down to the floor and out along the lit vein to the bay on its line, and the
+     * grate in the well's floor glowing from below; in-well, light strands hanging from the lid where the conduits
+     * dissolve, and under each bay plinth standing over the basin rim a root collar closing the gap. In the deep root's
+     * colour docked and powered, amber without power, dim undocked; mid the ways as lines alone; nothing far.
+     */
+    static void deep(TileRoot r, CityFrame f, double t, float p, double[] cam, int tier) {
+        RootShape.Deep d = r.deep();
+        if (d == null || p <= 0.01f || tier == ModuleLook.FAR) return;
+        boolean docked = CityRender.docked(r), on = CityRender.on(r);
+        int glow = on ? r.moduleColor() : docked ? AMBER : IDLE;
+        float life = p * (on ? 1f : docked ? 0.55f : 0.3f);
+        if (!OFF[FLOWS]) try {
+            flows(d, f, t, life, glow, tier == ModuleLook.NEAR);
+        } catch (Throwable x) {
+            CityRender.recover();
+            fail(FLOWS, x);
+        } finally {
+            CityRender.close();
+        }
+        if (d.h > 0 && tier == ModuleLook.NEAR && !OFF[GRATE_GLOW]) try {
+            grateGlow(d, f, t, life, glow);
+        } catch (Throwable x) {
+            CityRender.recover();
+            fail(GRATE_GLOW, x);
+        } finally {
+            CityRender.close();
+        }
+        if (d.h == 0 && tier == ModuleLook.NEAR && !OFF[COLLARS]) try {
+            collars(d, f, p, life, glow, cam);
+        } catch (Throwable x) {
+            CityRender.recover();
+            fail(COLLARS, x);
+        } finally {
+            CityRender.close();
+        }
+    }
+
+    /**
+     * The light flowing along the deep root's ways ({@link RootLook#flows}): each way dim along its length and bright
+     * where the flow's head is, the ways one after another round the axis; near in pieces of a block with a halo each
+     * (a strand at most {@link RootLook#STRAND_HALO} thick) and a glow at the head, mid a line a stretch.
+     */
+    private static void flows(RootShape.Deep d, CityFrame f, double t, float a, int glow, boolean nearby) {
+        List<double[][]> ways = RootLook.flows(d);
+        int light = Shapes.mix(glow, WHITE, 0.4);
+        Shapes.begin(true);
+        Tessellator tes = CityFrame.start();
+        double[][] heads = new double[ways.size()][];
+        for (int k = 0; k < ways.size(); k++) {
+            double[][] way = ways.get(k);
+            double len = RootLook.length(way), head = RootLook.flowHead(k, ways.size(), t, len), at = 0;
+            for (int i = 1; i < way.length; i++) {
+                double[] u = way[i - 1], v = way[i];
+                double seg = Math.sqrt(sq(v[0] - u[0]) + sq(v[1] - u[1]) + sq(v[2] - u[2]));
+                if (!nearby) {
+                    double dm = at + seg / 2 - head;
+                    tes.setColorRGBA_I(glow, CityFrame.alpha255(a * (0.35f + 0.4f * (float) Math.exp(-dm * dm / 8))));
+                    f.line(tes, u[0], u[1], u[2], v[0], v[1], v[2], RootLook.STRAND_CORE);
+                    at += seg;
+                    continue;
+                }
+                int pieces = Math.max(1, (int) Math.ceil(seg / RootLook.FLOW_STEP));
+                for (int q = 0; q < pieces; q++) {
+                    double f0 = q / (double) pieces, f1 = (q + 1) / (double) pieces,
+                        dm = at + seg * (f0 + f1) / 2 - head;
+                    float k0 = (float) Math.exp(-dm * dm / 1.5);
+                    double x0 = u[0] + (v[0] - u[0]) * f0, y0 = u[1] + (v[1] - u[1]) * f0,
+                        z0 = u[2] + (v[2] - u[2]) * f0, x1 = u[0] + (v[0] - u[0]) * f1, y1 = u[1] + (v[1] - u[1]) * f1,
+                        z1 = u[2] + (v[2] - u[2]) * f1;
+                    tes.setColorRGBA_I(Shapes.mix(glow, light, k0), CityFrame.alpha255(a * (0.3f + 0.65f * k0)));
+                    f.line(tes, x0, y0, z0, x1, y1, z1, RootLook.STRAND_CORE);
+                    tes.setColorRGBA_I(glow, CityFrame.alpha255(a * (0.08f + 0.2f * k0)));
+                    f.line(tes, x0, y0, z0, x1, y1, z1, RootLook.STRAND_HALO);
+                }
+                if (head >= at && head <= at + seg) {
+                    double g = (head - at) / Math.max(seg, 1e-9);
+                    heads[k] = new double[] { u[0] + (v[0] - u[0]) * g, u[1] + (v[1] - u[1]) * g,
+                        u[2] + (v[2] - u[2]) * g };
+                }
+                at += seg;
+            }
+        }
+        tes.draw();
+        Shapes.end();
+        if (!nearby) return;
+        Motes.begin();
+        for (double[] h : heads)
+            if (h != null) Motes.add(f.x(h[0], h[2]), f.y(h[1]), f.z(h[0], h[2]), 0.3, light, 0.6f * a);
+        Motes.end();
+    }
+
+    /** The grate in the well's floor lit from below: a glow on each grate cell's underside, seen from the chamber. */
+    private static void grateGlow(RootShape.Deep d, CityFrame f, double t, float a, int glow) {
+        double y = d.h - 0.02;
+        Shapes.begin(true);
+        Tessellator tes = CityFrame.start();
+        for (int[] c : RootLook.grateFrom(d)) {
+            float k = a * (0.22f + 0.1f * (float) Math.sin(t * 0.05 + c[0] * 0.7 + c[1] * 1.1));
+            tes.setColorRGBA_I(glow, CityFrame.alpha255(k));
+            f.vertex(tes, c[0], y, c[1]);
+            f.vertex(tes, c[0] + 1, y, c[1]);
+            f.vertex(tes, c[0] + 1, y, c[1] + 1);
+            f.vertex(tes, c[0], y, c[1] + 1);
+        }
+        tes.draw();
+        Shapes.end();
+    }
+
+    /**
+     * The root collars of an in-well form ({@link RootLook#collars}): under each bay plinth standing over the basin
+     * rim, the gap between the rim's top and the plinth's foot closed by a band of dark steel (its sides turned to the
+     * camera), a seam of light round its top.
+     */
+    private static void collars(RootShape.Deep d, CityFrame f, float p, float a, int glow, double[] cam) {
+        Shapes.begin(false);
+        Tessellator tes = CityFrame.start();
+        double in = 0.03;
+        for (int[] c : RootLook.collars(d)) {
+            double y0 = RootLook.collarFrom(c[2]), y1 = c[2], x0 = c[0] + in, x1 = c[0] + 1 - in, z0 = c[1] + in,
+                z1 = c[1] + 1 - in;
+            tes.setColorRGBA_I(STEEL_DARK, CityFrame.alpha255(0.97f * p));
+            if (cam[0] < x0) side(tes, f, x0, z0, x0, z1, y0, y1);
+            if (cam[0] > x1) side(tes, f, x1, z1, x1, z0, y0, y1);
+            if (cam[2] < z0) side(tes, f, x1, z0, x0, z0, y0, y1);
+            if (cam[2] > z1) side(tes, f, x0, z1, x1, z1, y0, y1);
+        }
+        tes.draw();
+        Shapes.additive(true);
+        tes = CityFrame.start();
+        for (int[] c : RootLook.collars(d)) {
+            double y = c[2] - 0.04, x0 = c[0] + in - 0.01, x1 = c[0] + 1 - in + 0.01, z0 = c[1] + in - 0.01,
+                z1 = c[1] + 1 - in + 0.01;
+            tes.setColorRGBA_I(glow, CityFrame.alpha255(0.6f * a + 0.1f * p));
+            f.line(tes, x0, y, z0, x1, y, z0, 0.04);
+            f.line(tes, x1, y, z0, x1, y, z1, 0.04);
+            f.line(tes, x1, y, z1, x0, y, z1, 0.04);
+            f.line(tes, x0, y, z1, x0, y, z0, 0.04);
+        }
+        tes.draw();
+        Shapes.end();
+    }
+
+    /** An upright face from (xa, za) to (xb, zb) between two heights. */
+    private static void side(Tessellator tes, CityFrame f, double xa, double za, double xb, double zb, double y0,
+        double y1) {
+        f.vertex(tes, xa, y0, za);
+        f.vertex(tes, xb, y0, zb);
+        f.vertex(tes, xb, y1, zb);
+        f.vertex(tes, xa, y1, za);
+    }
+
+    private static double sq(double v) {
+        return v * v;
     }
 
     private static void fail(int part, Throwable x) {

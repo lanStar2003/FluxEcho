@@ -21,6 +21,7 @@ import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.client.Motifs;
 import com.fluxecho.core.EchoText;
+import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ResearchTree;
@@ -216,7 +217,11 @@ public final class NexusScreen {
         for (Manifests.Recipe r : Manifests.all()) {
             if (!open.contains(r.research)) continue;
             ItemStack o = r.output();
-            names.add(o == null ? r.id : o.getDisplayName());
+            String name = o == null ? r.id : o.getDisplayName();
+            // one that waits for a later phase of the nexus says which (0.16.0: manifest matter from phase III)
+            if (!r.runsAt(n.phase()))
+                name = EchoText.t("nexus.gui.from_phase", name, EchoText.t("nexus.phase." + r.minPhase));
+            names.add(name);
         }
         String can = names.isEmpty() ? EchoText.t("nexus.gui.nothing_open") : String.join(" · ", names);
         small(EchoText.t("nexus.gui.can_make"), 4, y, 0.75f, DIM, 1f);
@@ -394,7 +399,7 @@ public final class NexusScreen {
             queue(b, w, h);
             return;
         }
-        String name = BuildJob.name(b.job, b.planKey)
+        String name = BuildJob.name(b.job, b.planKey, b.deepens)
             .getUnformattedText();
         text(fit(name, lw), 2, 2, CYAN, 1f);
 
@@ -409,7 +414,7 @@ public final class NexusScreen {
             "build.gui.stage",
             Math.min(b.stage + 1, stages),
             stages,
-            EchoText.t(NexusGui.stageKey(b.planKey, b.stage)));
+            EchoText.t(NexusGui.stageKey(b.planKey, b.stage, b.deepens, b.floats)));
         small(fit(stage, sw), 2, 24, 0.75f, WHITE, 1f);
 
         float f = b.total <= 0 ? 0 : Math.min(1f, b.placed / (float) b.total);
@@ -451,6 +456,14 @@ public final class NexusScreen {
                     b.trimLost,
                     Math.max(1, b.trimNeighbours)),
                 sw),
+            2,
+            68,
+            0.75f,
+            AMBER,
+            1f);
+        // before Start, the release job (0.16.0): the leg blocks it will take down and credit to the ledger
+        else if (!b.started && b.live() && BuildPlan.RELEASE.equals(b.planKey)) small(
+            fit(EchoText.t("build.gui.to_take_down", Math.max(0, b.total - b.placed)), sw),
             2,
             68,
             0.75f,
@@ -536,7 +549,7 @@ public final class NexusScreen {
     private static void queue(NexusGui.Build b, float w, float h) {
         List<String> names = new ArrayList<>();
         for (String[] q : b.queue) names.add(
-            BuildJob.name(q[0], q[1])
+            BuildJob.name(q[0], q[1], q.length > 2)
                 .getUnformattedText());
         String line = EchoText
             .t("build.gui.queue", names.isEmpty() ? EchoText.t("build.gui.none") : String.join(" · ", names));

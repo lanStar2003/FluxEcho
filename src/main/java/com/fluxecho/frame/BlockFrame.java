@@ -32,12 +32,19 @@ import cpw.mods.fml.relauncher.SideOnly;
  */
 public class BlockFrame extends Block {
 
+    /**
+     * The metas; 0.16.0 appends the floating foundation ({@link #FLOAT}, CITY.md §1.4), the anti-gravity lattice cube
+     * the sky platforms are decked with: a whole cube to walk on, a lifting glow on its bottom face.
+     */
     public static final int BASE = 0, BASE_LIT = 1, PILLAR = 2, CONDUIT = 3, RING = 4, SEAT = 5, FOUNDATION = 6,
-        SHELF = 7, CONSOLE = 8, ANCHOR = 9, TYPES = 10;
+        SHELF = 7, CONSOLE = 8, ANCHOR = 9, FLOAT = 10, TYPES = 11;
     public static final String[] NAMES = { "base", "base_lit", "pillar", "conduit", "ring", "seat", "foundation",
-        "shelf", "console", "anchor" };
-    /** The light of each meta; the cladding anchor (0.11.0, a whole cube with a socket plate on every face) gives 6. */
-    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8, 10, 6 };
+        "shelf", "console", "anchor", "float" };
+    /**
+     * The light of each meta; the cladding anchor (0.11.0, a whole cube with a socket plate on every face) gives 6, the
+     * floating foundation (0.16.0) 7 (CITY.md Appendix C).
+     */
+    private static final int[] LIGHT = { 0, 7, 0, 12, 8, 15, 4, 8, 10, 6, 7 };
 
     /** What a formed multiblock does when one of its frame blocks is used (a library's shelf, its desk). */
     public interface Use {
@@ -56,7 +63,7 @@ public class BlockFrame extends Block {
     public static int renderId = -1;
 
     @SideOnly(Side.CLIENT)
-    private IIcon[] top, side, glowTop, glowSide;
+    private IIcon[] top, side, glowTop, glowSide, bottom, glowBottom;
     @SideOnly(Side.CLIENT)
     public IIcon core, crystal;
 
@@ -71,13 +78,19 @@ public class BlockFrame extends Block {
         setLightOpacity(0);
     }
 
-    /** Whether the meta is a whole cube. */
+    /** Whether the meta is a whole cube (0.16.0: the floating foundation too, the sky platforms' walking deck). */
     public static boolean full(int meta) {
         return meta == BASE || meta == BASE_LIT
             || meta == FOUNDATION
             || meta == SHELF
             || meta == ANCHOR
+            || meta == FLOAT
             || meta >= TYPES;
+    }
+
+    /** The light a meta gives, 0 for a meta the frame does not have. */
+    public static int light(int meta) {
+        return meta >= 0 && meta < TYPES ? LIGHT[meta] : 0;
     }
 
     /** The part's box: x0, y0, z0, x1, y1, z1. */
@@ -126,8 +139,7 @@ public class BlockFrame extends Block {
 
     @Override
     public int getLightValue(IBlockAccess w, int x, int y, int z) {
-        int meta = w.getBlockMetadata(x, y, z);
-        return meta >= 0 && meta < TYPES ? LIGHT[meta] : 0;
+        return light(w.getBlockMetadata(x, y, z));
     }
 
     @Override
@@ -208,6 +220,8 @@ public class BlockFrame extends Block {
         side = new IIcon[TYPES];
         glowTop = new IIcon[TYPES];
         glowSide = new IIcon[TYPES];
+        bottom = new IIcon[TYPES];
+        glowBottom = new IIcon[TYPES];
         for (int i = 0; i < TYPES; i++) {
             String p = FluxEcho.MODID + ":frame/" + NAMES[i];
             top[i] = r.registerIcon(p + "_top");
@@ -221,6 +235,12 @@ public class BlockFrame extends Block {
         glowSide[CONSOLE] = r.registerIcon(FluxEcho.MODID + ":frame/console_side_glow");
         glowTop[ANCHOR] = r.registerIcon(FluxEcho.MODID + ":frame/anchor_top_glow");
         glowSide[ANCHOR] = r.registerIcon(FluxEcho.MODID + ":frame/anchor_side_glow");
+        // the floating foundation (0.16.0): the lattice's underside of its own, and the lifting glow on it (animated,
+        // drawn into the chunk mesh at full brightness like every frame glow, so it holds with a shader pack on); its
+        // sides' lower edge lit where the glow spills out
+        bottom[FLOAT] = r.registerIcon(FluxEcho.MODID + ":frame/float_bottom");
+        glowBottom[FLOAT] = r.registerIcon(FluxEcho.MODID + ":frame/float_bottom_glow");
+        glowSide[FLOAT] = r.registerIcon(FluxEcho.MODID + ":frame/float_side_glow");
         core = r.registerIcon(FluxEcho.MODID + ":frame/conduit_core");
         crystal = r.registerIcon(FluxEcho.MODID + ":frame/seat_crystal");
     }
@@ -229,13 +249,17 @@ public class BlockFrame extends Block {
     @SideOnly(Side.CLIENT)
     public IIcon getIcon(int s, int meta) {
         int m = meta >= 0 && meta < TYPES ? meta : 0;
+        if (s == 0 && bottom[m] != null) return bottom[m];
         return s <= 1 ? top[m] : side[m];
     }
 
-    /** The overlay drawn at full brightness on a face, or null. */
+    /**
+     * The overlay drawn at full brightness on a face, or null; the bottom face has one only on the floating foundation
+     * (0.16.0), its lifting glow.
+     */
     @SideOnly(Side.CLIENT)
     public IIcon glow(int s, int meta) {
         if (meta < 0 || meta >= TYPES) return null;
-        return s == 1 ? glowTop[meta] : s >= 2 ? glowSide[meta] : null;
+        return s == 1 ? glowTop[meta] : s >= 2 ? glowSide[meta] : glowBottom[meta];
     }
 }

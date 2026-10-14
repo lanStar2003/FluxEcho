@@ -19,8 +19,11 @@ import com.fluxecho.nexus.TileNexus;
  * <p>
  * Two shapes ({@link DomeGeneratorShape#MOORED} on its legs, {@link DomeGeneratorShape#FLOATING} the pod alone): the
  * floating one is only tried once the nexus it stands over has grown to phase IV (the job that releases the legs
- * comes with the sky ring), so at phases II and III a pod whose legs were broken comes apart instead of floating. The
- * nexus's preview shows it floating from phase IV.
+ * comes with the sky ring, 0.16.0), so at phases II and III a pod whose legs were broken comes apart instead of
+ * floating; a pod that last stood floating is also tried floating while no formed nexus is known, so it stays up
+ * while its nexus is apart. The nexus's preview shows it floating from phase IV. Floating, its blueprint and its build
+ * are the pod's
+ * own box (0.16.0), so it covers nothing under its floor, and its datum is where its controller stands.
  * <p>
  * Over high ground the pod stands lower (0.14.1, {@link DomeGeneratorShape#datum}): on shorter legs, as the moored
  * shapes {@code moored_36}, {@code moored_32} and {@code moored_28} appended after the two. The builder names the one
@@ -51,17 +54,22 @@ public class TileDomeGenerator extends TileCityModule {
         return COLOR;
     }
 
-    /** The build of the shape it stands (or last stood) as: the moored one at its datum, the full legs' floating. */
+    /**
+     * The build of the shape it stands (or last stood) as: the moored one at its datum; floating, the pod in its own
+     * box (0.16.0, {@link DomeGeneratorShape#FLOATING_BUILD}; up to 0.15.0 the full legs' build).
+     */
     @Override
     public CityBuild build() {
         DomeGeneratorShape.Moor m = DomeGeneratorShape.moored(shapeName());
-        return m == null ? DomeGeneratorShape.BUILD : m.build;
+        return m == null ? DomeGeneratorShape.FLOATING_BUILD : m.build;
     }
 
     /**
-     * Its sky datum F, the pod floor's height over the nexus's base layer (0.14.1): a moored shape's own; floating, the
-     * one the base layer of the nexus it is docked to gives (as the client heard it, on the client); 40 when that is
-     * not known.
+     * Its sky datum F, the pod floor's height over the nexus's base layer (0.14.1): a moored shape's own; floating
+     * (0.16.0), where its controller stands over the base layer of the nexus it is docked to (as the client heard it,
+     * on the client; {@link DomeGeneratorShape#podDatum}), which is exact for a pod built by hand on the full legs over
+     * high ground too (up to 0.15.0 it was the datum that base layer gives a pod built now); 40 when that nexus is not
+     * known.
      */
     public int datum() {
         DomeGeneratorShape.Moor m = DomeGeneratorShape.moored(shapeName());
@@ -70,9 +78,12 @@ public class TileDomeGenerator extends TileCityModule {
         if (worldObj != null && worldObj.isRemote) c = clientNexus;
         else {
             TileNexus n = nexus();
+            if (n == null) n = under();
             if (n != null) c = n.centre();
         }
-        return c == null || c.length < 2 ? DomeGeneratorShape.FLOOR_UP : DomeGeneratorShape.datum(c[1]);
+        if (c == null || c.length < 2) return DomeGeneratorShape.FLOOR_UP;
+        int f = DomeGeneratorShape.podDatum(yCoord, c[1]);
+        return DomeGeneratorShape.isDatum(f) ? f : DomeGeneratorShape.datum(c[1]);
     }
 
     @Override
@@ -113,15 +124,20 @@ public class TileDomeGenerator extends TileCityModule {
     }
 
     /**
-     * Floating only over a nexus of phase IV or more (CITY.md §3). On its legs: over a known nexus only the moored
-     * shape its cell stands for (0.14.1, {@link DomeGeneratorShape#mooredAt}: the datum its base layer gives, or the
-     * full legs where 0.14.0 stood them), at any datum while the nexus is not known (a wrong one fails at its first
-     * cell).
+     * Floating only over a nexus of phase IV or more (CITY.md §3), or (0.16.0), while no formed nexus is known, when it
+     * last stood floating: a released pod has no legs to stand on, so it stays formed while its nexus is apart (a
+     * broken block, its own repair) as a moored pod does, rather than coming apart, turning its dissolved cells back
+     * into blocks and leaving its sky modules without the pod they float by. On its legs: over a known nexus only the
+     * moored shape its cell stands for (0.14.1, {@link DomeGeneratorShape#mooredAt}: the datum its base layer gives,
+     * or the full legs where 0.14.0 stood them), at any datum while the nexus is not known (a wrong one fails at its
+     * first cell).
      */
     @Override
     protected boolean tries(Shape s) {
         TileNexus n = under();
-        if (DomeGeneratorShape.FLOATING.equals(s.name)) return n != null && n.phase() >= DomeGeneratorShape.FLOAT_PHASE;
+        if (DomeGeneratorShape.FLOATING.equals(s.name))
+            return n == null ? DomeGeneratorShape.FLOATING.equals(shapeName())
+                : n.phase() >= DomeGeneratorShape.FLOAT_PHASE;
         if (n == null) return true;
         DomeGeneratorShape.Moor m = mooredOver(n);
         return m != null && s.name.equals(m.name);

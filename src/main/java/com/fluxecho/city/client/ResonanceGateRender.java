@@ -3,12 +3,23 @@ package com.fluxecho.city.client;
 import static com.fluxecho.client.FluxDraw.WHITE;
 
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.world.World;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.campus.ModuleSpec;
+import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.city.TileCityModule;
 import com.fluxecho.city.TileResonanceGate;
 import com.fluxecho.client.Motes;
 import com.fluxecho.logic.GateLook;
 import com.fluxecho.logic.ModuleLook;
+import com.fluxecho.logic.ResonanceGateShape;
+import com.fluxecho.logic.SiteFamily;
+import com.fluxecho.logic.SkyLook;
+import com.fluxecho.logic.SkyRing;
+import com.fluxecho.nexus.ClientTiles;
+import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.render.Shapes;
 
 import cpw.mods.fml.relauncher.Side;
@@ -135,11 +146,14 @@ final class ResonanceGateRender {
         if (p <= 0.01f) return;
         int accent = g.moduleColor(), dark = Shapes.mix(accent, STEEL, 0.45), light = Shapes.mix(CRYSTAL, accent, 0.2);
         boolean far = tier == ModuleLook.FAR, nearby = tier == ModuleLook.NEAR;
-        double[] s = GateLook.spire(t);
+        // under the weather station's platform at the lowest sky datum, or a block floating within its reach, the spire
+        // is shorter (0.16.0)
+        double top = spireTop(g, f), halfH = GateLook.halfHeight(top);
+        double[] s = GateLook.spire(t, top);
         double cx = f.x(GateLook.AXIS_X, GateLook.AXIS_Z), cy = f.y(s[0]), cz = f.z(GateLook.AXIS_X, GateLook.AXIS_Z);
         float a = (0.7f * life + 0.2f) * p;
         Shapes.begin(false);
-        Shapes.crystal(cx, cy, cz, GateLook.SPIRE_HALF_W, GateLook.SPIRE_HALF_H, s[1], light, dark, a);
+        Shapes.crystal(cx, cy, cz, GateLook.SPIRE_HALF_W, halfH, s[1], light, dark, a);
         double[][] shards = new double[GateLook.SHARDS][];
         for (int k = 0; k < GateLook.SHARDS; k++) {
             shards[k] = GateLook.shard(k, t, on);
@@ -163,7 +177,7 @@ final class ResonanceGateRender {
                 cy,
                 cz,
                 GateLook.SPIRE_HALF_W * 0.45,
-                GateLook.SPIRE_HALF_H * 0.8,
+                halfH * 0.8,
                 -1.5 * s[1],
                 WHITE,
                 accent,
@@ -193,7 +207,8 @@ final class ResonanceGateRender {
     private static void beam(TileResonanceGate g, CityFrame f, double t, float p, boolean nearby) {
         if (p <= 0.01f) return;
         int accent = g.moduleColor();
-        double foot = GateLook.spire(t)[0] - GateLook.SPIRE_HALF_H;
+        double top = spireTop(g, f);
+        double foot = GateLook.spire(t, top)[0] - GateLook.halfHeight(top);
         double x = f.x(GateLook.AXIS_X, GateLook.AXIS_Z), z = f.z(GateLook.AXIS_X, GateLook.AXIS_Z);
         Shapes.begin(true);
         Shapes.beam(
@@ -245,6 +260,49 @@ final class ResonanceGateRender {
         }
         tes.draw();
         Shapes.end();
+    }
+
+    /**
+     * Where the spire's top stands in the gate's frame ({@link GateLook#spireTop}, 0.16.0): under the deck of a sky
+     * module whose light pillar falls on the spire (its platform's middle within {@link SkyLook#LINK_REACH} of the
+     * spire's axis, as {@code SkyRender} links the two), or under the first block standing in the spire's column
+     * ({@link #blockOver}), whichever is lower; else the full spire. The column covers what has no controller to ask:
+     * a platform whose floating foundation is laid long before its controller, and one whose controller was broken.
+     * The drawing of 0.15.0 wherever nothing floats over the gate.
+     */
+    static double spireTop(TileResonanceGate g, CityFrame f) {
+        World w = g.getWorldObj();
+        double sx = f.x(GateLook.AXIS_X, GateLook.AXIS_Z) + RenderManager.renderPosX,
+            sz = f.z(GateLook.AXIS_X, GateLook.AXIS_Z) + RenderManager.renderPosZ;
+        double deck = 0;
+        for (TileMultiblock o : ClientTiles.all()) {
+            if (!(o instanceof TileCityModule m) || o.getWorldObj() != w || o.isInvalid()) continue;
+            ModuleSpec spec = ModuleSpecs.get(m.moduleKey());
+            if (spec == null || spec.family != SiteFamily.SKY) continue;
+            int[] mid = m.worldOf(SkyRing.MID, 0, SkyRing.MID);
+            if (Math.hypot(mid[0] + 0.5 - sx, mid[2] + 0.5 - sz) > SkyLook.LINK_REACH) continue;
+            double over = f.local(mid[1]);
+            if (deck <= 0 || over < deck) deck = over;
+        }
+        return GateLook.spireTop(GateLook.lowerDeck(deck, blockOver(g, w)));
+    }
+
+    /**
+     * The lowest layer of the spire's axis column, in the gate's frame, where a block that stops movement stands within
+     * the spire's reach ({@link GateLook#OVER_FROM} to {@link GateLook#OVER_TO}), read from the client's world each
+     * time as {@code SkyRender} reads its pillar's column (nothing is kept); 0 when the column is clear there or not
+     * here. Snow and plants stop nothing, so they never shorten the spire.
+     */
+    private static int blockOver(TileResonanceGate g, World w) {
+        if (w == null) return 0;
+        for (int layer = GateLook.OVER_FROM; layer <= GateLook.OVER_TO; layer++) {
+            int[] at = g.worldOf(ResonanceGateShape.MID, layer, ResonanceGateShape.CORE_Z);
+            if (!w.blockExists(at[0], at[1], at[2])) continue;
+            if (w.getBlock(at[0], at[1], at[2])
+                .getMaterial()
+                .blocksMovement()) return layer;
+        }
+        return 0;
     }
 
     private static void fail(int part, Throwable x) {

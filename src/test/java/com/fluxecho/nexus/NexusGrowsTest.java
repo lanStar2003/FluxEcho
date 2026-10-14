@@ -194,6 +194,38 @@ class NexusGrowsTest {
         }
     }
 
+    /**
+     * The same a phase further (0.16.0): a nexus grown to phase III with stage 4 raised on it stands as phase IV once
+     * its teams have {@code phase_4}, and as phase III until then.
+     */
+    @Test
+    void aPhaseThreeNexusWithStageFourStandsAsPhaseFour() throws ReflectiveOperationException {
+        FakeWorld w = FakeWorld.create();
+        Grower n = phaseTwo(w, "phase_2", "phase_3");
+        try {
+            raise(w, 3);
+            recheck(n);
+            assertEquals("phase3", n.shapeName());
+            assertEquals(3, n.phase());
+            raise(w, 4);
+            recheck(n);
+            assertTrue(n.formed());
+            assertEquals("phase3", n.shapeName(), "phase IV is not researched");
+            assertEquals(3, n.phase());
+            // the research comes in: the next check finds it grown
+            n.done.add("phase_4");
+            recheck(n);
+            assertTrue(n.formed());
+            assertEquals("phase4", n.shapeName(), "the fullest phase that stands");
+            assertEquals(4, n.phase(), "grown");
+            assertEquals(4, n.grown());
+            recheck(n);
+            assertEquals("phase4", n.shapeName());
+        } finally {
+            clearCells(n);
+        }
+    }
+
     @Test
     void withoutPhaseThreesResearchItStaysPhaseTwo() throws ReflectiveOperationException {
         FakeWorld w = FakeWorld.create();

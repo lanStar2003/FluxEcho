@@ -41,10 +41,17 @@ final class CityFrame {
     private final int ctrlY;
 
     CityFrame(TileCityModule m) {
+        this(m, m.build());
+    }
+
+    /**
+     * The frame of another build of the module round the same controller (0.16.0): the deep root's well is drawn in
+     * the well's own frame, which lies the chamber's height up in the deep root's.
+     */
+    CityFrame(TileCityModule m, CityBuild b) {
         ForgeDirection f = m.front();
         fx = f.offsetX;
         fz = f.offsetZ;
-        CityBuild b = m.build();
         width = b.width();
         height = b.height();
         depth = b.depth();

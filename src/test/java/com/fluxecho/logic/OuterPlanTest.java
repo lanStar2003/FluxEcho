@@ -390,10 +390,11 @@ class OuterPlanTest {
                 if (!own.contains(w) && !oldTiles.contains(w)) notch++;
             }
             if (site == 2) assertTrue(notch > 0, "the rectangle's notch beside the forecourt");
-            // and the protection the outer establish gets is the same ground from bedrock to the sky
+            // and the protection the outer establish gets is the same ground from bedrock to the sky ring's deck
+            // (0.16.0: two cells under the lowest deck the base layer gives)
             for (int[] p : archive.outerProtect(cp, site, CX, Y0, CZ, f[0], f[1])) {
                 assertEquals(0, p[1]);
-                assertEquals(255, p[4]);
+                assertEquals(SkyRing.groundTop(Y0), p[4]);
                 assertTrue(own.contains(col(p[0], p[2])) && own.contains(col(p[3], p[5])));
             }
         }

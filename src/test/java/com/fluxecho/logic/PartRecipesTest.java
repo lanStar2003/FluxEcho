@@ -67,8 +67,8 @@ class PartRecipesTest {
         for (int m = 0; m < Parts.FITTING_TYPES; m++)
             assertNotNull(PartRecipes.get(Parts.fitting(m)), Parts.FITTING_NAMES[m]);
         int[] frames = { Parts.FR_BASE, Parts.FR_BASE_LIT, Parts.FR_PILLAR, Parts.FR_CONDUIT, Parts.FR_RING,
-            Parts.FR_FOUNDATION, Parts.FR_SHELF, Parts.FR_CONSOLE, Parts.FR_ANCHOR };
-        int[] yields = { 8, 4, 4, 1, 4, 8, 32, 2, 4 };
+            Parts.FR_FOUNDATION, Parts.FR_SHELF, Parts.FR_CONSOLE, Parts.FR_ANCHOR, Parts.FR_FLOAT };
+        int[] yields = { 8, 4, 4, 1, 4, 8, 32, 2, 4, 8 };
         for (int i = 0; i < frames.length; i++)
             assertEquals(yields[i], PartRecipes.get(Parts.frame(frames[i])).yield, "frame " + frames[i]);
         assertNotNull(PartRecipes.get(Parts.SUPPLY_PORT));
@@ -87,7 +87,7 @@ class PartRecipesTest {
         assertNull(PartRecipes.get(Parts.WATER), "water is paid in EU alone");
         for (int m = 0; m < Parts.MODULE_CORES; m++) assertNull(PartRecipes.get(Parts.moduleCore(m)));
         assertEquals(
-            9 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 2,
+            10 + Parts.DECK_TYPES + Parts.FITTING_TYPES + 2,
             PartRecipes.all()
                 .size());
         int last = -1;
@@ -197,6 +197,34 @@ class PartRecipesTest {
         assertEquals(
             map("item:minecraft:stonebrick@32767", 32768, "ore:plateSteel", 4096, "item:minecraft:paper", 8192),
             PartRecipes.cost(Parts.deck(Parts.D_CANVAS)));
+    }
+
+    /**
+     * The floating foundation of 0.16.0 (CITY.md §1.4): four frame bases and four stainless plates round an
+     * anti-gravity
+     * lattice make eight, so one costs a quarter of stone bricks, three quarters of a stainless plate, a sixteenth of
+     * flux grit and an eighth of a lattice.
+     */
+    @Test
+    void theFloatingFoundationCosts() {
+        PartRecipes.Recipe r = PartRecipes.get(Parts.frame(Parts.FR_FLOAT));
+        assertNotNull(r);
+        assertArrayEquals(new String[] { "BSB", "SLS", "BSB" }, r.pattern);
+        assertEquals(8, r.yield);
+        assertEquals(PartRecipes.part(Parts.frame(Parts.FR_BASE)), r.keys.get('B'));
+        assertEquals("ore:plateStainlessSteel", r.keys.get('S'));
+        assertEquals("ore:latticeAntiGravity", r.keys.get('L'));
+        assertEquals(
+            map(
+                "item:minecraft:stonebrick@32767",
+                U / 4,
+                "ore:plateStainlessSteel",
+                U * 3 / 4,
+                "ore:dustFluxGrit",
+                U / 16,
+                "ore:latticeAntiGravity",
+                U / 8),
+            PartRecipes.cost(Parts.frame(Parts.FR_FLOAT)));
     }
 
     /** The light-lift pad of 0.12.0: four lit panels, four flux crystals and an ender eye make one. */

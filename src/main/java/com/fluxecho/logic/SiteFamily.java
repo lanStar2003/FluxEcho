@@ -47,8 +47,11 @@ public enum SiteFamily {
      * +-19 (reserved; the four + sides at phase IV, the - sides at V, on the outer establish's ground).
      */
     OUTER_FLANK(4, SiteFamily.OUTER_GROUND, 20, 21, 22, 23, 24, 25, 26, 27),
-    /** The sky ring S0..S7 at Y0 + 40 round the pod, sites 30 to 37 (S0, S2, S4, S6 at phase IV, the rest at V). */
-    SKY(4, null, 30, 31, 32, 33, 34, 35, 36, 37),
+    /**
+     * The sky ring S0..S7 at Y0 + 40 round the pod, sites 30 to 37 (S0, S2, S4, S6 at phase IV, the rest at V), on the
+     * floating pod's ground (0.16.0, {@link #POD_FLOATS}): its modules are offered once the pod floats.
+     */
+    SKY(4, SiteFamily.POD_FLOATS, 30, 31, 32, 33, 34, 35, 36, 37),
     /** The orbital anchor's deck over the pod, site 40 (phase V). */
     ORBIT(5, null, 40),
     /** The third ring's sixteen 41 x 41 sites, T00..T15, sites 50 to 65 (phase V, on the third ring's ground). */
@@ -63,6 +66,13 @@ public enum SiteFamily {
      * establish (0.15.0) for the outer diagonals and flankers, the third ring's for the third ring.
      */
     public static final String OUTER_GROUND = "establish:outer", THIRD_GROUND = "establish:third";
+    /**
+     * The ground of the sky ring (0.16.0, CITY.md §4.12): the Echo Dome Generator's pod standing formed as it floats.
+     * No campus job of its own lays it (the release job takes the legs away, and a dome job offered once the pod may
+     * float builds it floating), and it is no plan key: the campus answers it from the pod that stands now, so the sky
+     * modules wait while the pod is moored, or gone.
+     */
+    public static final String POD_FLOATS = "pod:floating";
 
     /** The nexus phase the family's first sites open at. */
     public final int opens;
@@ -100,8 +110,9 @@ public enum SiteFamily {
 
     /**
      * The plan key of the campus job that lays the ground the family's sites stand on ({@link #OUTER_GROUND},
-     * {@link #THIRD_GROUND}), or null when the forum is their ground (the inner city, the axis, the sky over the
-     * forum): a site waits for that job to have run before a module is offered on it (0.14.1).
+     * {@link #THIRD_GROUND}), or null when the forum is their ground (the inner city, the axis, the orbit): a site
+     * waits for that job to have run before a module is offered on it (0.14.1). The sky ring's is the floating pod
+     * ({@link #POD_FLOATS}, 0.16.0), which no job lays: its sites wait for the pod to float.
      */
     public String ground() {
         return ground;
@@ -161,14 +172,15 @@ public enum SiteFamily {
      * stands, and the 0.9.2 ring's slot 0 on the gate road), the axis sites by name: 天顶 the zenith, 根位 the root;
      * since 0.15.0 the outer ring's sites by their CITY.md names, the outer diagonals O1, O3, O5, O7
      * ({@code build.gui.site_o1}…) and the reserved flankers O0+, O0−, O2+ … O6− ({@code build.gui.site_o0p}, with
-     * {@code p} for the + side and {@code m} for the − side). The site's number is given to every key; only the inner
-     * ring's uses it.
+     * {@code p} for the + side and {@code m} for the − side); since 0.16.0 the sky ring's S0 … S7
+     * ({@code build.gui.site_s0}…). The site's number is given to every key; only the inner ring's uses it.
      */
     public static String labelKey(int site) {
         if (site == ZENITH_SITE) return "build.gui.site_zenith";
         if (site == ROOT_SITE) return "build.gui.site_root";
         if (site == 0) return "build.gui.site_gate";
         SiteFamily f = of(site);
+        if (f == SKY) return "build.gui.site_s" + (site - SkyRing.SITE0);
         if (f == OUTER_DIAG) return "build.gui.site_o" + (site - 10);
         if (f == OUTER_FLANK) return "build.gui.site_o" + (site - 20) / 2 * 2 + ((site - 20) % 2 == 0 ? "p" : "m");
         return "build.gui.site";

@@ -133,6 +133,7 @@ public final class TerminalView {
         if (j == null) return b;
         b.setString("k", j.key());
         b.setString("pk", j.planKey());
+        if (j.deepens()) b.setBoolean("dr", true);
         b.setString(
             "st",
             j.state()

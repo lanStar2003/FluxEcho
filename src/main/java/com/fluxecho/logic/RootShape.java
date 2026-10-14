@@ -10,9 +10,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The root under the nexus (0.12.0, CITY.md §4.9): one module, {@code root}, whose shapes grow downward. This version
- * builds its first shape, 潮汐井 the Tidal Well ({@link #WELL}); the deep root and the ley core are ported as data only
- * ({@link #deepRoot()}, {@link #leyCore()}) for the batches that build them.
+ * The root under the nexus (0.12.0, CITY.md §4.9): one module, {@code root}, whose shapes grow downward. Its first
+ * shape is 潮汐井 the Tidal Well ({@link #WELL}); since 0.16.0 a formed well grows into 深根 the deep root
+ * ({@link Deep}); the ley core is ported as data only ({@link #leyCore()}) for the batch that builds it.
+ * <p>
+ * The deep root takes the room the ground leaves (0.16.0, "root by room", CITY.md §1.3 Vertical): with D the depth of
+ * the well it grows from, a chamber of 13 layers under the well's floor slab where its own slab stays at y
+ * {@link #LOWEST_SLAB} or over ({@link #DEEP}), else one of 7 ({@link #ROOT_7}), else the roots come down into the
+ * well itself ({@link #ROOT_IN}, {@link #ROOT_IN_20}, {@link #ROOT_IN_14}, {@link #ROOT_IN_8}): every campus that has a
+ * well has a deep root ({@link #deepFor}). Each keeps the well's cells, its controller and its taps (slots 0 to 7) and
+ * adds eight bays (slots 8 to 15).
  * <p>
  * The well adapts to low ground (0.14.1, CITY.md §1.3 Vertical): its depth D is the deepest of 26, 20, 14 and 8 whose
  * floor slab, Y0 - D, stays at y {@link #LOWEST_SLAB} or over, clear of the bedrock ({@link #depth}). Each depth is a
@@ -82,10 +89,42 @@ public final class RootShape {
      * rest is the gap over its start).
      */
     public static final double RAMP_START = 200, RAMP_TURN = 0.97;
-    /** The rings give way to the rendered tide rings; players pass through them (nobody stands where they hang). */
-    public static final String DISSOLVES = "R", PASSES = "R";
-    /** The ring segment's character. */
-    public static final char RING = 'R';
+    /**
+     * The rings give way to the rendered tide rings, and (0.16.0) the deep root's hanging conduits to its flowing light
+     * veins; players pass through both (nobody stands where the rings hang, and a conduit hangs over the chamber's
+     * floor
+     * or the pool). The wells have no conduit, so nothing changes for them.
+     */
+    public static final String DISSOLVES = "RC", PASSES = "RC";
+    /** The ring segment's character, and (0.16.0) the deep root's conduit's. */
+    public static final char RING = 'R', CONDUIT = 'C';
+
+    /**
+     * The deep root's other shapes over lower ground (0.16.0, "root by room"): the chamber one 6-layer band lower, and
+     * the in-well forms over a well 26, 20, 14 and 8 deep; names only ever appended, after {@link #WELL_8}. The full
+     * deep root is {@link #DEEP}.
+     */
+    public static final String ROOT_7 = "root_7", ROOT_IN = "root_in", ROOT_IN_20 = "root_in_20",
+        ROOT_IN_14 = "root_in_14", ROOT_IN_8 = "root_in_8";
+    /**
+     * The deep root's chamber heights in layers (its floor slab and its walls), fullest first: 13, or one 6-layer band
+     * less over lower ground (the same step the well's depths take).
+     */
+    private static final int[] CHAMBER_LIST = { 13, 7 };
+    /**
+     * The in-well form's bays stand where the eight lines cross the basin rim (octagon radius 8), its conduits hang at
+     * radius 6, just outside the tide rings (at most 5.5).
+     */
+    public static final int INWELL_BAY_RING = 8, INWELL_CONDUIT_R = 6;
+    /** The chamber's octagon {@code oct(12, 16)}, one wider than the well's. */
+    public static final int CHAMBER_R = 12, CHAMBER_K = 16;
+    /** The phase the deep root stands from (CITY.md §3: phase IV). */
+    public static final int DEEP_PHASE = 4;
+    /**
+     * The samples every root tile keeps (0.16.0): the well's eight taps and the deep root's eight bays. A well shows
+     * the taps' only; its 8-slot saves load into the first eight.
+     */
+    public static final int SLOTS = 16;
 
     /** The stages of its job (CITY.md §4.9): the caisson, the draining, the floor, the fittings, commissioning. */
     public static final int R_SINK = 0, R_DRAIN = 1, R_FLOOR = 2, R_FIT = 3, R_COMMISSION = 4, R_STAGES = 5;
@@ -110,6 +149,28 @@ public final class RootShape {
             for (int i = 0; i < 8; i++) {
                 if (!Arrays.equals(w.units.unit(i).cells.get(0), UNITS.unit(i).cells.get(0)))
                     throw new IllegalStateException("a tap moved " + w.depth + " deep");
+            }
+        }
+    }
+
+    /** The columns of the deep root's chamber octagon, and those of its wall. */
+    private static final Set<Long> CHAMBER_PLAN = plan(SIZE, CHAMBER_R, CHAMBER_K),
+        CHAMBER_WALL = ShapeKit.thickBoundary(CHAMBER_PLAN);
+    /**
+     * The deep root's shapes (0.16.0), in the order their names were appended: the full chamber ({@link #DEEP}), the
+     * 7-layer chamber, then the in-well forms over the wells 26, 20, 14 and 8 deep.
+     */
+    private static final List<Deep> DEEPS = makeDeeps();
+
+    static {
+        for (Deep d : DEEPS) {
+            if (d.units.size() != 16 || d.units.slots() != SLOTS)
+                throw new IllegalStateException("the deep root's units changed: " + d.name);
+            // its taps keep the well's cells (moved up by the chamber) and slots 0..7; its bays follow
+            for (int i = 0; i < 8; i++) {
+                int[] t = d.units.unit(i).cells.get(0), w = UNITS.unit(i).cells.get(0);
+                if (t[0] != w[0] || t[1] != w[1] + d.h || t[2] != w[2] || !"tap".equals(d.units.unit(i).kind))
+                    throw new IllegalStateException("a tap moved in " + d.name);
             }
         }
     }
@@ -249,6 +310,276 @@ public final class RootShape {
         List<Well> out = new ArrayList<>();
         for (int d : depths) out.add(new Well(d));
         return Collections.unmodifiableList(out);
+    }
+
+    /**
+     * 深根 The deep root in one of its forms (0.16.0, CITY.md §4.9, "root by room"): the Tidal Well it grows from, and
+     * either a chamber of {@link #h} layers under that well's floor slab (the generator's {@code deep_root(h)}: 13, or
+     * 7
+     * over lower ground) or, where no chamber fits, the roots come down into the well itself ({@code deep_root_in(D)},
+     * {@code h} 0): eight bays on the basin rim and eight conduits from the lid, the well's own box, nothing dug.
+     * <p>
+     * Its frame is its shape's own: x across, y up from its lowest layer (the chamber's floor slab at Y0 - D - h, or
+     * the
+     * well's at Y0 - D), z from the front. The well lies at y {@code h} and up, its cells as the well's but for the
+     * 24-cell grate in its floor slab and the slab's open centre over a chamber; the controller is the well's, at
+     * {@code (12, h + 3, 10)}, the same block in the world. Its units are the well's eight taps first (slots 0 to 7,
+     * the well's), then the eight bays (slots 8 to 15), though the chamber's generator lists the bays first.
+     */
+    public static final class Deep {
+
+        /** The well it grows from: the full well under a chamber, the well of its own depth in-well. */
+        public final Well well;
+        /** Its chamber's layers under the well's floor slab (13 or 7), or 0 for an in-well form. */
+        public final int h;
+        /** Its shape's name in the structure definitions ({@link #DEEP} for the full chamber). */
+        public final String name;
+        /** Its cells, units, checked blueprint and build. */
+        public final ShapeKit.Shape shape;
+        public final UnitLayout units;
+        public final Blueprint blueprint;
+        public final CityBuild build;
+        /** The bays' cells, as {@link ShapeKit.Shape#pos} keys. */
+        private final Set<Long> bays = new java.util.HashSet<>();
+
+        private Deep(int h, Well well) {
+            if (h > 0 && well.depth != DEPTH) throw new IllegalArgumentException("a chamber under a shallower well");
+            this.h = h;
+            this.well = well;
+            name = deepName(h, well.depth);
+            String gen = h == 0 ? (well.depth == DEPTH ? "deep_root_in" : "deep_root_in_" + well.depth)
+                : h == CHAMBER_LIST[0] ? "deep_root" : "deep_root_" + h;
+            shape = new ShapeKit.Shape(gen, SIZE, h + well.depth, SIZE);
+            shape.groundOutside = false;
+            List<Object[]> taps, bayUnits;
+            if (h > 0) {
+                // the generator's deep_root(h): the chamber, the well over it, the grate in the well's floor
+                bayUnits = rootInto(shape, 0, h);
+                taps = wellInto(shape, h, well.depth);
+                grate(shape, h);
+            } else {
+                // its deep_root_in(D): the well, and the roots come down into it
+                taps = wellInto(shape, 0, well.depth);
+                bayUnits = inWell(shape, well.depth);
+            }
+            Map<String, Integer> usedFrom = new HashMap<>();
+            for (Object[] u : taps) addUnit(shape, u);
+            for (Object[] u : bayUnits) {
+                addUnit(shape, u);
+                @SuppressWarnings("unchecked")
+                List<int[]> cells = (List<int[]>) u[2];
+                for (int[] c : cells) bays.add(ShapeKit.Shape.pos(c[0], c[1], c[2]));
+                // an in-well bay stands on the floor level, among the taps, so the plan shows them on one storey
+                if (h == 0) usedFrom.put((String) u[0], FLOOR_Y);
+            }
+            units = new UnitLayout(shape, usedFrom);
+            blueprint = RootShape.blueprint(shape);
+            final Deep self = this;
+            build = new CityBuild(
+                KEY,
+                shape,
+                shape.H,
+                blueprint,
+                units,
+                Parts.moduleCore(ModuleCores.ROOT),
+                new CityBuild.Stages() {
+
+                    @Override
+                    public int stage(int x, int y, int z, char ch) {
+                        return self.stage(x, y, z, ch);
+                    }
+
+                    @Override
+                    public int fitRank(int x, int y, int z, char ch) {
+                        return RootShape.fitRank(x, y, z, ch);
+                    }
+                });
+        }
+
+        /** The character of a cell: the checked legend, a soft character, {@code -} or a space. */
+        public char cell(int x, int y, int z) {
+            return shape.get(x, y, z);
+        }
+
+        /** The character the well it grows from has at a cell of this frame (a space under or over the well). */
+        public char wellCell(int x, int y, int z) {
+            return well.cell(x, y - h, z);
+        }
+
+        /**
+         * Whether a cell belongs to the chamber: under the well's floor slab, or the ring round that slab between the
+         * chamber's wall and the well's ({@code oct(12, 16)} less {@code oct(11, 15)}). None in-well.
+         */
+        public boolean inChamber(int x, int y, int z) {
+            if (h == 0 || y < 0 || !CHAMBER_PLAN.contains(ShapeKit.key(x, z))) return false;
+            return y < h || y == h && !inWell(x, z);
+        }
+
+        /** Whether a cell is the chamber's shell: its floor slab, its walls, the ring under the well's floor. */
+        public boolean chamberShell(int x, int y, int z) {
+            return inChamber(x, y, z) && (y == 0 || y == h || CHAMBER_WALL.contains(ShapeKit.key(x, z)));
+        }
+
+        /** Whether a cell lies inside the chamber's shell: what its caisson digs out and drains. */
+        public boolean chamberInside(int x, int y, int z) {
+            return inChamber(x, y, z) && !chamberShell(x, y, z);
+        }
+
+        /** Whether a cell is the shell of the whole form: the chamber's, or the well's over it. */
+        public boolean shell(int x, int y, int z) {
+            return chamberShell(x, y, z) || y >= h && well.shell(x, y - h, z);
+        }
+
+        /** Whether a cell lies inside the shell of the whole form: the chamber's inside, or the well's. */
+        public boolean inside(int x, int y, int z) {
+            return chamberInside(x, y, z) || y > h && well.inside(x, y - h, z);
+        }
+
+        /** Whether a cell is one of a bay's (its plinth or its socket). */
+        public boolean bay(int x, int y, int z) {
+            return bays.contains(ShapeKit.Shape.pos(x, y, z));
+        }
+
+        /**
+         * The stage of a cell that is not part of a tide tap: the chamber's shell SINK; its conduits (and the in-well
+         * conduits) and the bays FIT; every cell of the well as the well's ({@link Well#stage}), the grate and the open
+         * centre in its floor slab with the slab in SINK.
+         */
+        public int stage(int x, int y, int z, char ch) {
+            if (ch == ShapeKit.CONTROLLER) return R_COMMISSION;
+            if (ch == CONDUIT || bay(x, y, z)) return R_FIT;
+            if (inChamber(x, y, z)) {
+                if (chamberShell(x, y, z)) return R_SINK;
+                throw new IllegalStateException("no stage for '" + ch + "' at " + x + "," + y + "," + z);
+            }
+            return well.stage(x, y - h, z, ch);
+        }
+
+        /**
+         * Where its controller stands under the nexus: the well's ({@link Well#controller}), campus (A 2, R 0, Y0 - D +
+         * 3), the same block for every form.
+         *
+         * @throws IllegalArgumentException if the site is not the root's or the front not a horizontal unit vector
+         */
+        public int[] controller(int site, int cx, int y0, int cz, int fx, int fz) {
+            return well.controller(site, cx, y0, cz, fx, fz);
+        }
+
+        /**
+         * The box {x0, y0, z0, x1, y1, z1} nothing but its own jobs takes a block down in: with a chamber its
+         * octagon's box and one more round it (the chamber's wider wall) from the chamber's floor slab (Y0 - D - h) to
+         * the lid; in-well the well's own.
+         */
+        public List<int[]> protect(int cx, int y0, int cz, int fx, int fz) {
+            if (h == 0) return well.protect(cx, y0, cz, fx, fz);
+            int[] b = footprint(cx, cz, fx, fz, 1);
+            return Collections.singletonList(new int[] { b[0], y0 - well.depth - h, b[1], b[2], y0 - 1, b[3] });
+        }
+
+        /** A point of the form as a campus cell {a, r, dy} (dy from the base layer, negative under it). */
+        public int[] toCampus(int x, int y, int z) {
+            return new int[] { MID - z, MID - x, y - h - well.depth };
+        }
+
+        /** A campus cell {a, r, dy} as a point of the form {x, y, z} (it may lie outside its box). */
+        public int[] fromCampus(int a, int r, int dy) {
+            return new int[] { MID - r, dy + h + well.depth, MID - a };
+        }
+    }
+
+    private static List<Deep> makeDeeps() {
+        List<Deep> out = new ArrayList<>();
+        for (int h : CHAMBER_LIST) out.add(new Deep(h, well(DEPTH)));
+        for (int d : DEPTH_LIST) out.add(new Deep(0, well(d)));
+        return Collections.unmodifiableList(out);
+    }
+
+    /** The deep root's chamber heights, fullest first: 13, 7. */
+    public static int[] chambers() {
+        return CHAMBER_LIST.clone();
+    }
+
+    /**
+     * The deep root's chamber over a campus whose base layer is {@code y0} and whose formed well is {@code depth} deep
+     * (0.16.0, the generator's {@code chamber(y0, D)}): the first of 13 and 7 whose floor slab, Y0 - D - h, stays at y
+     * {@link #LOWEST_SLAB} or over, or 0 when none fits (the in-well form). The depth is the well the root actually
+     * stands as (its controller's height), never {@link #depth}: a 0.14.0 well dug by hand over low ground is 26 deep.
+     * Under the full well 13 for Y0 >= 45, 7 for 39..44, 0 under that.
+     */
+    public static int chamber(int y0, int depth) {
+        for (int h : CHAMBER_LIST) if (y0 - depth - h >= LOWEST_SLAB) return h;
+        return 0;
+    }
+
+    /**
+     * How long a root conduit hanging from a ceiling slab at layer {@code ceil} (the floor slab at 0) is (0.16.0, the
+     * generator's {@code conduit_len}): through the upper half of the room, never lower than 3 over the layer people
+     * stand on ({@code stand}), so 1.2 over a head: 6 in the 13-chamber, 3 in the 7-chamber, 12, 9, 6 and 2 in the
+     * wells 26, 20, 14 and 8 deep.
+     */
+    public static int conduitLen(int ceil, int stand) {
+        return Math.min(Math.floorDiv(ceil - 1, 2), ceil - stand - 3);
+    }
+
+    /**
+     * The shape name of the deep root with a chamber of {@code h} layers (13 or 7) under the full well, or with
+     * {@code h} 0 in the well {@code depth} deep.
+     *
+     * @throws IllegalArgumentException for a chamber height or a depth it has no shape for
+     */
+    public static String deepName(int h, int depth) {
+        if (h == CHAMBER_LIST[0]) return DEEP;
+        if (h == CHAMBER_LIST[1]) return ROOT_7;
+        if (h != 0) throw new IllegalArgumentException("no deep root chamber " + h + " high");
+        well(depth);
+        return depth == DEPTH ? ROOT_IN : ROOT_IN + "_" + depth;
+    }
+
+    /** The deep root's forms (0.16.0): the two chambers, then the in-well forms, as their names were appended. */
+    public static List<Deep> deeps() {
+        return DEEPS;
+    }
+
+    /** The deep root's form whose shape has the name, or null for any other name (a well's too). */
+    public static Deep deep(String name) {
+        for (Deep d : DEEPS) if (d.name.equals(name)) return d;
+        return null;
+    }
+
+    /**
+     * The deep root a formed well {@code w} grows into over a campus whose base layer is {@code y0} (0.16.0, "root by
+     * room", the generator's {@code deep_root_for}): the chamber when one fits under it ({@link #chamber}), else the
+     * in-well form of its depth. A chamber only ever lies under the full well; a shallower well (under Y0 32) never
+     * has room for one.
+     */
+    public static Deep deepFor(int y0, Well w) {
+        int h = w.depth == DEPTH ? chamber(y0, w.depth) : 0;
+        return deep(deepName(h, w.depth));
+    }
+
+    /**
+     * The deep root's form the deepen job would grow the root into now (0.16.0, CITY.md §4.9), or null when there is
+     * none to offer: the nexus has grown to phase IV ({@code phase}), its teams have the deep root's research
+     * ({@code researched}), and the root docked under it stands formed as a well ({@code formed}, {@code shape}). The
+     * well's depth is read from its controller's height ({@code ctrlY}) over the base layer {@code y0}, the depth it
+     * really stands at (a 0.14.0 well dug by hand over low ground is 26 deep), and must be the well it formed as; its
+     * form is then {@link #deepFor}. A root that stands as a deep root already has nothing to grow.
+     */
+    public static String deepenTo(int phase, boolean researched, boolean formed, String shape, int y0, int ctrlY) {
+        if (phase < DEEP_PHASE || !researched || !formed) return null;
+        Well w = named(shape);
+        if (w == null || y0 + CTRL_Y - ctrlY != w.depth) return null;
+        return deepFor(y0, w).name;
+    }
+
+    /**
+     * Where the well's frame lies in the frame of the shape named (0.16.0): the layer of the well's floor slab, the
+     * chamber's height under a chamber, 0 for a well and an in-well form. The well's drawing ({@link RootLook}) adds
+     * it.
+     */
+    public static int base(String shapeName) {
+        Deep d = deep(shapeName);
+        return d == null ? 0 : d.h;
     }
 
     /** The flux-layer bands that fit under a lid at layer {@code lid}: those whose cornice stays under it. */
@@ -446,10 +777,15 @@ public final class RootShape {
     /**
      * The box {x0, y0, z0, x1, y1, z1} nothing but its own jobs takes a block down in: its octagon's box from the floor
      * slab (Y0 - D; Y0 - 26 under the full well) to the lid (Y0 - 1). The forum over it stays the nexus's own; a
-     * grading or a repair of the campus stops at the lid.
+     * grading or a repair of the campus stops at the lid. Where the deep root has a chamber under the well (0.16.0,
+     * Y0 39 and up, {@link #chamber}) the box takes in the ground it grows into: one wider (the chamber's wall) and
+     * down
+     * to the chamber's floor slab, so no other job digs there before or after; nothing else ever digs that ground.
      */
     public static List<int[]> protect(int cx, int y0, int cz, int fx, int fz) {
-        return forBase(y0).protect(cx, y0, cz, fx, fz);
+        Well w = forBase(y0);
+        int h = w.depth == DEPTH ? chamber(y0, w.depth) : 0;
+        return h > 0 ? deep(deepName(h, w.depth)).protect(cx, y0, cz, fx, fz) : w.protect(cx, y0, cz, fx, fz);
     }
 
     /**
@@ -612,30 +948,34 @@ public final class RootShape {
     }
 
     /**
-     * {@code root_into(s, base)}: the deep-root chamber {@code oct(12, 16)} with its floor slab at {@code base} and its
-     * ceiling the well's floor slab at base + 13: walls, the ring under the well floor, the pad, eight hanging root
-     * conduits and eight root bays with lit veins to the middle.
+     * {@code root_into(s, base, h)}: the deep-root chamber {@code oct(12, 16)} of {@code h} layers (13, or 7 over lower
+     * ground, 0.16.0) with its floor slab at {@code base} and its ceiling the well's floor slab at base + h: walls, the
+     * ring under the well floor, the pad, eight hanging root conduits ({@link #conduitLen} long) and eight root bays
+     * with lit veins to the middle. Returns the bays {name, kind, cells, slots} in the generator's order.
      */
-    private static void rootInto(ShapeKit.Shape s, int base) {
+    private static List<Object[]> rootInto(ShapeKit.Shape s, int base, int h) {
         final int C = MID;
-        Set<Long> plan = plan(SIZE, 12, 16), edge = ShapeKit.thickBoundary(plan);
+        Set<Long> plan = plan(SIZE, CHAMBER_R, CHAMBER_K), edge = ShapeKit.thickBoundary(plan);
+        List<Object[]> units = new ArrayList<>();
         for (long k : plan) s.set(ShapeKit.keyX(k), base, ShapeKit.keyZ(k), edge.contains(k) ? 'F' : 'B');
         for (long k : edge) {
             int x = ShapeKit.keyX(k), z = ShapeKit.keyZ(k), du = x - C, dv = z - C;
             boolean rib = du == 0 || dv == 0 || Math.abs(du) == Math.abs(dv);
-            for (int y = 1; y < 13; y++) s.set(x, base + y, z, y == 12 ? 'n' : rib ? 'L' : y == 1 ? 'w' : 'W');
+            for (int y = 1; y < h; y++) s.set(x, base + y, z, y == h - 1 ? 'n' : rib ? 'L' : y == 1 ? 'w' : 'W');
         }
         // the ring under the well floor between the two walls, at the ceiling's level
         for (long k : plan) {
             int x = ShapeKit.keyX(k), z = ShapeKit.keyZ(k);
-            if (!ShapeKit.octo(x - C, z - C, WELL_R, WELL_K)) s.set(x, base + 13, z, 'B');
+            if (!ShapeKit.octo(x - C, z - C, WELL_R, WELL_K)) s.set(x, base + h, z, 'B');
         }
         s.lift(C, base, C);
-        // hanging root conduits from the ceiling at radius 5, six cells down
+        // hanging root conduits from the ceiling at radius 5: six cells down in the full chamber, three in the
+        // 7-chamber
+        int len = conduitLen(h, 1);
         for (int t = 0; t < 8; t++) {
             double a = radians(45 * t);
             int x = C + (int) Math.rint(5 * StrictMath.sin(a)), z = C - (int) Math.rint(5 * StrictMath.cos(a));
-            for (int y = 7; y < 13; y++) s.set(x, base + y, z, 'C');
+            for (int y = h - len; y < h; y++) s.set(x, base + y, z, CONDUIT);
         }
         // eight root bays: a plinth and a socket against the wall, a lit vein to the middle
         for (int t = 0; t < 8; t++) {
@@ -647,26 +987,65 @@ public final class RootShape {
             }
             s.set(x, base + 1, z, 'p');
             s.set(x, base + 2, z, 'o');
+            List<int[]> cells = new ArrayList<>();
+            cells.add(new int[] { x, base + 1, z });
+            cells.add(new int[] { x, base + 2, z });
+            units.add(new Object[] { "bay-" + (t + 1), "bay", cells, 1 });
             for (int r = 2; r < 10; r++) {
                 int px = C + (int) Math.rint(r * sin), pz = C - (int) Math.rint(r * cos);
                 if (s.get(px, base, pz) == 'B' && (px != x || pz != z)) s.set(px, base, pz, 'g');
             }
         }
+        return units;
+    }
+
+    /**
+     * {@code in_well(s, D)} (0.16.0): the deep root where no chamber fits under the well, the roots come down into the
+     * well {@code depth} deep already in {@code s} (its slab at y0). Eight root bays where the eight lines cross the
+     * basin rim ({@link #INWELL_BAY_RING}: plinth y2, socket y3, on the axes at the bridges' outer ends (0, 8), on the
+     * diagonals on the rim (5, 5)); eight root conduits from the lid at radius {@link #INWELL_CONDUIT_R}, outside the
+     * tide rings, {@code conduitLen(lid, 2)} long. Only cells the well leaves empty are set. Returns the bays.
+     *
+     * @throws IllegalStateException when a cell it sets is not empty
+     */
+    private static List<Object[]> inWell(ShapeKit.Shape s, int depth) {
+        final int C = MID, lid = depth - 1, len = conduitLen(lid, 2);
+        List<Object[]> units = new ArrayList<>();
+        for (int k = 0; k < 8; k++) {
+            double a = radians(45 * k), sin = StrictMath.sin(a), cos = StrictMath.cos(a);
+            // the line's unit step as the generator rounds it (0, 1 or 0.707: no halves, so rint is Python's round)
+            int sx = (int) Math.rint(sin), sz = -(int) Math.rint(cos);
+            int t = 1;
+            while (t < 12 && onorm(t * sx, t * sz) != INWELL_BAY_RING) t++;
+            if (t == 12) throw new IllegalStateException("no bay on line " + k);
+            int x = C + t * sx, z = C + t * sz;
+            List<int[]> cells = new ArrayList<>();
+            int[][] parts = { { 2, 'p' }, { 3, 'o' } };
+            for (int[] yc : parts) {
+                if (s.get(x, yc[0], z) != ShapeKit.NONE)
+                    throw new IllegalStateException("a bay on a cell of the well at " + x + "," + yc[0] + "," + z);
+                s.set(x, yc[0], z, (char) yc[1]);
+                cells.add(new int[] { x, yc[0], z });
+            }
+            units.add(new Object[] { "bay-" + (k + 1), "bay", cells, 1 });
+            int cx = C + (int) Math.rint(INWELL_CONDUIT_R * sin), cz = C - (int) Math.rint(INWELL_CONDUIT_R * cos);
+            for (int y = lid - len; y < lid; y++) {
+                if (s.get(cx, y, cz) != ShapeKit.NONE)
+                    throw new IllegalStateException("a conduit on a cell of the well at " + cx + "," + y + "," + cz);
+                s.set(cx, y, cz, CONDUIT);
+            }
+        }
+        return units;
     }
 
     /**
      * {@code deep_root()}: the Tidal Well over the deep-root chamber, its floor opened round the island by a grate ring
-     * and over the lower pad, 25 x 39 x 25 (the chamber's floor slab Y0 - 39 at y0). Data for a later batch (CITY.md
-     * §4.9, phase IV): its cells only. Its units, when they are built, must keep the well's eight taps first (their
-     * slots are the well's), though the generator lists the bays before them.
+     * and over the lower pad, 25 x 39 x 25 (the chamber's floor slab Y0 - 39 at y0): the shape of {@link #DEEP}
+     * (0.16.0, {@link Deep}), its units the well's eight taps first (their slots are the well's), then the bays, though
+     * the generator lists the bays before them.
      */
     public static ShapeKit.Shape deepRoot() {
-        ShapeKit.Shape s = new ShapeKit.Shape("deep_root", SIZE, 39, SIZE);
-        s.groundOutside = false;
-        rootInto(s, 0);
-        wellInto(s, 13, DEPTH);
-        grate(s, 13);
-        return s;
+        return deep(DEEP).shape;
     }
 
     /**
@@ -678,7 +1057,7 @@ public final class RootShape {
         final double radius = 8.5;
         ShapeKit.Shape s = new ShapeKit.Shape("ley_core", SIZE, 57, SIZE);
         s.groundOutside = false;
-        rootInto(s, baseRoot);
+        rootInto(s, baseRoot, CHAMBER_LIST[0]);
         wellInto(s, baseRoot + 13, DEPTH);
         grate(s, baseRoot + 13);
         // the sphere's shell: cells of the ball with a side neighbour outside it, lit on the eight lines and the

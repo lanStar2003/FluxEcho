@@ -76,6 +76,12 @@ public final class CityOffer {
      * {@link CampusSplit}: its inner square, or an outer diagonal it took first): no site is left to adapt to.
      */
     public static final String TRIMMED = WHY + "trimmed";
+    /**
+     * Its sites are the sky ring's, open at the phase, but the Echo Dome Generator's pod does not stand floating
+     * (0.16.0, {@link SiteFamily#POD_FLOATS}): it is moored (its release job takes the legs away), or there is no pod
+     * at all (its dome job is offered by itself). The text says the pod must be released first.
+     */
+    public static final String POD = WHY + "pod";
 
     /** What {@link Sites#blocker} says of a free site, and of a site something other than a 0.9.2 hall stands on. */
     public static final int FREE = -1, OTHER = -2;
@@ -206,14 +212,15 @@ public final class CityOffer {
      * The sites a kind may take at the phase, in order: its own preference list, then the rest of its family's sites
      * (so a kind whose favourite sites another kind took, or a player moved it off, still has its family's others),
      * only those open at the phase ({@link SiteFamily#opensAt}) on ground already laid ({@link SiteFamily#ground},
-     * asked of {@code groundLaid}).
+     * asked of {@code groundLaid}). Never one of the sky ring's berths (0.16.0, {@link SkyRing#berth}): those are the
+     * orbit job's.
      */
     public static int[] candidates(Kind k, int phase, Predicate<String> groundLaid) {
         String ground = k.family.ground();
         if (ground != null && (groundLaid == null || !groundLaid.test(ground))) return new int[0];
         Set<Integer> order = new LinkedHashSet<>();
         for (int s : k.sites) order.add(s);
-        for (int s : k.family.sites()) order.add(s);
+        for (int s : k.family.sites()) if (!SkyRing.berth(s)) order.add(s);
         List<Integer> open = new ArrayList<>();
         for (int s : order) if (SiteFamily.opensAt(s) <= phase) open.add(s);
         int[] out = new int[open.size()];
@@ -263,7 +270,8 @@ public final class CityOffer {
                 // where it would go once nothing stops it: any of its sites when the phase or the ground holds it
                 boolean any = PHASE.equals(why) || GROUND.equals(why)
                     || GROUND_DECLINED.equals(why)
-                    || GROUND_WAITS.equals(why);
+                    || GROUND_WAITS.equals(why)
+                    || POD.equals(why);
                 int s = firstFree(k, any ? allSites(k) : open, claimed, sites);
                 out.add(new Offer(k, s, true, why, -1));
                 continue;
@@ -346,10 +354,11 @@ public final class CityOffer {
     /**
      * Why a kind whose sites wait for their family's ground is not offered (0.15.0): the job that lays it was cancelled
      * lately ({@link #GROUND_DECLINED}), waits for the jobs before it ({@link #GROUND_WAITS}), or is to be started or
-     * offered ({@link #GROUND}).
+     * offered ({@link #GROUND}); the sky ring's (0.16.0) because the pod does not float yet ({@link #POD}).
      */
     private static String groundReason(String ground, Map<String, Long> declined, long now,
         Predicate<String> groundWaits) {
+        if (SiteFamily.POD_FLOATS.equals(ground)) return POD;
         if (declined(declined, ground, now)) return GROUND_DECLINED;
         if (ground != null && groundWaits != null && groundWaits.test(ground)) return GROUND_WAITS;
         return GROUND;
@@ -452,11 +461,11 @@ public final class CityOffer {
         return until != null && now < until;
     }
 
-    /** Its preference list, then the rest of its family's sites, whatever the phase. */
+    /** Its preference list, then the rest of its family's sites (never a berth), whatever the phase. */
     private static int[] allSites(Kind k) {
         Set<Integer> order = new LinkedHashSet<>();
         for (int s : k.sites) order.add(s);
-        for (int s : k.family.sites()) order.add(s);
+        for (int s : k.family.sites()) if (!SkyRing.berth(s)) order.add(s);
         int[] out = new int[order.size()];
         int i = 0;
         for (int s : order) out[i++] = s;

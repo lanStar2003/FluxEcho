@@ -146,6 +146,42 @@ class GrowPlanTest {
         }
     }
 
+    /**
+     * The growth to phase IV (0.16.0, offered from now on, CITY.md §3): the fourth stage alone, 16 pillars, 16 ring
+     * segments, 3 conduits and the seat at Y0 + 16 to + 20, bottom-up and with no lift pad; it clears the base's
+     * columns
+     * from Y0 + 16 to Y0 + 22, below the lowest the dome generator's pod ever floats (Y0 + 28).
+     */
+    @Test
+    void phaseFourAddsItsStageWithoutAPad() {
+        for (int[] f : FACINGS) {
+            int[] c = ctrl(f);
+            Plan plan = BuildPlan.grow(4, CX, Y0, CZ, f[0], f[1], c[0], c[1], c[2]);
+            assertEquals("grow:4", plan.key);
+            assertEquals(36, plan.steps.size());
+            java.util.Map<Character, Integer> counts = new java.util.HashMap<>();
+            int y = Integer.MIN_VALUE;
+            for (Step s : plan.steps) {
+                assertTrue(s.part != Parts.fitting(Parts.F_LIFT), "no pad");
+                assertTrue(s.y >= Y0 + 16 && s.y <= Y0 + 20, "in the fourth stage: " + s.y);
+                assertTrue(s.y >= y, "bottom-up");
+                y = s.y;
+                counts.merge(charOf(s.part), 1, Integer::sum);
+            }
+            assertEquals(16, (int) counts.get(NexusShape.PILLAR), "pillars");
+            assertEquals(16, (int) counts.get(NexusShape.RING), "ring segments");
+            assertEquals(3, (int) counts.get(NexusShape.CONDUIT), "conduits");
+            assertEquals(1, (int) counts.get(NexusShape.SEAT), "the seat");
+            assertEquals(4, counts.size(), "nothing else");
+            for (BuildPlan.Column col : plan.clear) {
+                assertEquals(Y0 + 16, col.yFrom);
+                assertEquals(Y0 + 22, col.yTo);
+                assertTrue(col.yTo < Y0 + 28, "under the lowest floating pod");
+            }
+            assertEquals(4, BuildPlan.growPhase(plan.key));
+        }
+    }
+
     @Test
     void phaseOneIsUnchanged() {
         assertEquals(0, NexusShape.PHASE_1.count(NexusShape.LIFT), "the lift pad is only in phase II and up");
