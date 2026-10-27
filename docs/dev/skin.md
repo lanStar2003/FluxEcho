@@ -274,7 +274,7 @@
 - 潮汐井、全息沙盘、气象站、秘法庭的墙裙光线（读 `SkinPalette`）和名牌、扫光、核心贴图（还读 `TileX.COLOR`）颜色不一样；`TileX.COLOR` 属各楼绿区，随各楼那一版改。
 - 探针在半空摆时告示牌会掉，之后找不回；`swatch clear` 只能把地面放回草和泥土；`ProbeMarkers` 每秒扫一次（≤ 1 秒延迟）；门控一轮出异常就整局全显、要重启。
 - `cam` 在生存模式下打开的飞行不会自己关。
-- `fluxecho.cmd.usage`（`/help` 里那条）还只列旧命令；新命令词错时报 `fluxecho.cmd.probe.usage`。要列全只改值、不改键。
+- `fluxecho.cmd.usage`（`/help` 里那条）在 0.17.0 的标签提交里改了值（键不变），列上了 `swatch`、`probe`、`cam`；新命令词错时报 `fluxecho.cmd.probe.usage`。
 - 新码没有配方和成本；窗的连续框（按 `Quad.conn` 选框）没做，贴图每格都是整框；`ShapeRender` 没有 `ThreadSafeISBRH`。
 - 花床的花悬空 4/16。
 
