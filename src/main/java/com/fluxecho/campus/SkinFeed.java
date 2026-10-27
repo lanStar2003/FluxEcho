@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -380,16 +381,37 @@ public final class SkinFeed {
 
     // ---- the players: every campus's feed, who has which
 
-    /** Where the feed sends: a player (an {@code EntityPlayerMP} in the game), a kind, the payload. */
+    /** Where the feed sends: a viewer (a player's UUID in the game, {@link #viewer}), a kind, the payload. */
     public interface Sender {
 
         void send(Object player, int kind, NBTTagCompound data);
     }
 
-    /** Sends on the nexus channel. */
+    /** Sends on the nexus channel, to the player online now under the viewer's key ({@link #viewer}). */
     public static final Sender NETWORK = (player, kind, data) -> {
-        if (player instanceof EntityPlayerMP p) NexusNet.tell(p, kind, data);
+        EntityPlayerMP p = online(player);
+        if (p != null) NexusNet.tell(p, kind, data);
     };
+
+    /**
+     * The key a player is a viewer under: an {@link EntityPlayer} by their UUID, so the new player object a respawn
+     * makes (a death, the way back from the End) is the same viewer as the old one, and the old object is neither kept
+     * nor sent to once the player logs out; anything else (the tests' players) as it is.
+     */
+    static Object viewer(Object player) {
+        return player instanceof EntityPlayer p ? p.getUniqueID() : player;
+    }
+
+    /** The online player a viewer's key stands for, or null (logged out, or no server). */
+    private static EntityPlayerMP online(Object viewer) {
+        if (viewer instanceof EntityPlayerMP p) return p;
+        if (!(viewer instanceof UUID u)) return null;
+        MinecraftServer server = MinecraftServer.getServer();
+        if (server == null || server.getConfigurationManager() == null) return null;
+        for (Object o : server.getConfigurationManager().playerEntityList)
+            if (o instanceof EntityPlayerMP p && u.equals(p.getUniqueID())) return p;
+        return null;
+    }
 
     /** Where the feed sends; tests put their own. */
     static Sender sender = NETWORK;
@@ -436,32 +458,40 @@ public final class SkinFeed {
 
     /** A player logged in: the whole table of their dimension's campuses within 512 blocks. */
     public static void login(Object player, int dim, double x, double z) {
-        enter(player, dim, x, z);
+        enter(viewer(player), dim, x, z);
     }
 
     /** A player changed dimension: the old table goes, the new dimension's comes whole. */
     public static void changedDimension(Object player, int dim, double x, double z) {
-        enter(player, dim, x, z);
+        enter(viewer(player), dim, x, z);
     }
 
-    /** A player respawned: a change of dimension when it put them in another one. */
+    /**
+     * A player respawned: a change of dimension when it put them in another one. In the same dimension the client kept
+     * its world, and its table with it.
+     */
     public static void respawned(Object player, int dim, double x, double z) {
-        Integer had = VIEWERS.dim(player);
-        if (had == null || had != dim) enter(player, dim, x, z);
+        Object v = viewer(player);
+        Integer had;
+        synchronized (SkinFeed.class) {
+            had = VIEWERS.dim(v);
+        }
+        if (had == null || had != dim) enter(v, dim, x, z);
     }
 
     /** The check every 100 ticks: the campuses a player came within 512 blocks of since, each whole. */
     public static void check(Object player, int dim, double x, double z) {
+        Object v = viewer(player);
         List<Long> came;
         synchronized (SkinFeed.class) {
-            came = VIEWERS.check(player, dim, x, z, sites());
+            came = VIEWERS.check(v, dim, x, z, sites());
         }
-        if (came == null) enter(player, dim, x, z);
-        else if (!came.isEmpty()) table(player, dim, false, came);
+        if (came == null) enter(v, dim, x, z);
+        else if (!came.isEmpty()) table(v, dim, false, came);
     }
 
     public static synchronized void logout(Object player) {
-        VIEWERS.leave(player);
+        VIEWERS.leave(viewer(player));
     }
 
     /** Forgets every feed and player (the server stops; the tests start over). */

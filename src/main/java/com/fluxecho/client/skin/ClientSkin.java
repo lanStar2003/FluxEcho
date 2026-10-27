@@ -101,6 +101,17 @@ public final class ClientSkin {
         return v.dim == worldDim ? v.glow(x, y, z, part) : LampRule.UNTOUCHED;
     }
 
+    /**
+     * Whether a client world of dimension {@code unloadedDim} going away takes the table with it: only when the table
+     * is that dimension's. On a change of dimension the server sends the new dimension's table right after the respawn
+     * packet, and the channel's pump hands it over at the start of a client tick, before vanilla handles the respawn
+     * and unloads the old world; forgetting the table then would leave the new dimension without one until the next
+     * login.
+     */
+    static boolean unloadForgets(SkinView v, int unloadedDim) {
+        return v.dim == unloadedDim;
+    }
+
     /** Forgets the table (the world closed). */
     static void clear() {
         view = SkinView.EMPTY;
@@ -136,7 +147,9 @@ public final class ClientSkin {
 
         @SubscribeEvent
         public void onWorldUnload(WorldEvent.Unload e) {
-            if (e.world != null && e.world.isRemote) clear();
+            if (e.world == null || !e.world.isRemote) return;
+            // a table of the dimension the player went to may have come first; it stays (unloadForgets)
+            if (e.world.provider == null || unloadForgets(view, e.world.provider.dimensionId)) clear();
         }
     }
 }
