@@ -8,10 +8,14 @@ import net.minecraft.item.ItemStack;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipes;
+import com.fluxecho.voyage.ScoreBridgeServer;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
-/** The Echo Codex and the ledger behind it. Always on: it only shows what the other modules wrote down. */
+/**
+ * The Echo Codex and the ledger behind it. Always on: it only shows what the other modules wrote down. Since 0.17.0 it
+ * also starts the scoreboard bridge ({@link ScoreBridgeServer}), which hands the same progress to the quest book.
+ */
 public final class CodexModule {
 
     public static Item codex;
@@ -22,6 +26,7 @@ public final class CodexModule {
         codex = new ItemCodex();
         GameRegistry.registerItem(codex, "codex");
         EchoNet.init();
+        ScoreBridgeServer.init();
     }
 
     /** A book bound with an ender pearl, the link to the flux layer. */

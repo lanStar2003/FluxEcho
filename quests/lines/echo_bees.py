@@ -5,8 +5,8 @@ from questkit import checkbox, echo_machine, give, item, quest, retrieval, write
 
 def line():
     lore = quest(
-        "echo_bees/lore", "§3§l通量回响 · 养蜂",
-        ECHO_LORE + "\n\n养蜂这一边：你配出过的每一种蜂都在通量层里留着回响。"
+        "echo_bees/lore", "§3§l拾遗 · 蜂",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——一种会酿蜜的小东西，它们原来的世界大概全是花。我配出过的每一种蜂，海里都留着它的纹。"
         "拓下它的基因，以后要多少公主就培育多少，不用再找环境、不用再碰运气突变。\n\n"
         "还能像基因工业那样拆开来用：从不同的蜂身上拓下单个性状的基因样本，想要哪些性状就组合哪些，"
         "拼出你要的那只蜂。",
@@ -84,6 +84,6 @@ def line():
     placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (edit, (144, 0)), (splice, (192, 0)),
               (assembler, (240, 0)), (incubator, (144, 48)), (others, (192, 48))]
     return write_line(
-        "line/echo_bees", "FluxEchoBees", "§3通量回响 · 养蜂",
-        "拓下一只真蜂的全部基因，以后要多少原始公主就培育多少；拓下单个性状的基因样本，想要哪些性状就组合哪些。",
+        "line/echo_bees", "FluxEchoBees", "§3拾遗 · 蜂",
+        "从别的岸漂来的蜂。拓下一只真蜂的全部基因，以后要多少原始公主就培育多少；拓下单个性状的基因样本，想要哪些性状就组合哪些。",
         item("fluxecho:bee_imprint"), placed, ["Forestry"])

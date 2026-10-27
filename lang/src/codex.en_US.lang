@@ -1,7 +1,7 @@
 
 # codex
 item.fluxecho.codex.name=Echo Codex
-fluxecho.codex.tip=§3What your team did once and the flux layer remembers§r\nRight-click: imprinted bees, trees and butterflies, learned aspects, hunted prey, imprinted crops, ...\nItem tooltips say whether something echoes already
+fluxecho.codex.tip=§3Your ship's log: everything this world remembered for you is in it§r\nRight-click: imprinted bees, trees and butterflies, learned aspects, hunted prey, imprinted crops, ...\nItem tooltips say whether something echoes already
 fluxecho.codex.title=Echo Codex
 fluxecho.codex.total=%s in all
 fluxecho.codex.done=FluxEcho: your team has done this once
@@ -21,3 +21,8 @@ fluxecho.codex.todo.mob=FluxEcho: no imprint yet - carry a blank prey imprint an
 fluxecho.codex.todo.crop=FluxEcho: not imprinted yet - scan it to the top, then into a Seed Imprinter with paper
 fluxecho.codex.todo.infusion=FluxEcho: not echoed yet - make one by hand and put it into an Infusion Echo
 fluxecho.codex.todo.orb=FluxEcho: not used yet - bind it and put it into a Blood Echo
+fluxecho.codex.tab.records=Records
+fluxecho.codex.tab.volumes=Volumes
+fluxecho.codex.tab.halls=Cabin Logs
+fluxecho.codex.halls.count=%s / %s logged
+fluxecho.codex.halls.locked=This cabin has not been built yet. When it first forms, Evenstar writes it into the cabin logs.

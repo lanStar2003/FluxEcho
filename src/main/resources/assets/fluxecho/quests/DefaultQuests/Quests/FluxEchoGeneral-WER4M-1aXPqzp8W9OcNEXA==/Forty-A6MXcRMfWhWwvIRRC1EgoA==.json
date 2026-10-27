@@ -1,0 +1,51 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -5455299105760848835,
+      "questIDLow:4": -8231370957624887783
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "四十道纹。晶核亮得比从前久了，像是在用这些纹一点一点想起什么。\n\n[note]团队的回响图鉴里有 40 条记录（记分项 feRec）。记得越多，中枢压回响晶就越快。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:codex"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3四十道纹",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 262078977737185813,
+  "questIDLow:4": -5711544743795548000,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "operation:8": "MORE_OR_EQUAL",
+      "scoreDisp:8": "回响记录",
+      "scoreName:8": "feRec",
+      "target:3": 40,
+      "taskID:8": "bq_standard:scoreboard",
+      "type:8": "dummy",
+      "unitConversion:5": 1.0,
+      "unitSuffix:8": "",
+      "index:3": 0
+    }
+  }
+}

@@ -14,6 +14,11 @@ public final class ClientLedger {
 
     /** The key the team's research comes under: no category is called that. */
     public static final String RESEARCH = "@research";
+    /**
+     * The key the buildings whose cabin log the player may read come under (0.17.0): those formed for the team, as the
+     * scoreboard bridge keeps them. No category is called that either.
+     */
+    public static final String HALLS = "@halls";
 
     private static volatile Map<String, Set<String>> done = Collections.emptyMap();
 
@@ -45,11 +50,18 @@ public final class ClientLedger {
         return keys(RESEARCH);
     }
 
-    /** Entries of every category, the research left out. */
+    /** The buildings whose cabin log the player may read. */
+    public static Set<String> halls() {
+        return keys(HALLS);
+    }
+
+    /** Entries of every category, the research and the cabin logs left out. */
     public static int records() {
         int n = 0;
-        for (Map.Entry<String, Set<String>> e : done.entrySet()) if (!RESEARCH.equals(e.getKey())) n += e.getValue()
-            .size();
+        for (Map.Entry<String, Set<String>> e : done.entrySet()) if (!e.getKey()
+            .startsWith("@"))
+            n += e.getValue()
+                .size();
         return n;
     }
 

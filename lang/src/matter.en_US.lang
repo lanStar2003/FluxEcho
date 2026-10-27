@@ -1,21 +1,21 @@
 
 # flux materials (0.9.0)
 item.fluxecho.flux_grit.name=Flux Grit
-fluxecho.flux_grit.tip=§3Dust that falls off the deep layer's shards while a collector condenses ores§r\nOnly the Flux Shard Collector gives it off\nGrows into flux crystal in GT's autoclave with ender pearl dust and distilled water
+fluxecho.flux_grit.tip=§3The nexus's ash, sunk to the sea floor among this shore's shards§r\nOnly the Flux Shard Collector gives it off\nGrows into flux crystal in GT's autoclave with ender pearl dust and distilled water
 item.fluxecho.flux_crystal.name=Flux Crystal
-fluxecho.flux_crystal.tip=§3The first matter the flux layer takes on in the real world§r\nThe Flux Nexus's frame, conduits and core are made of it
+fluxecho.flux_crystal.tip=§3The ship's ash, grown back into bone§r\nThe Flux Nexus's frame, conduits and core are made of it
 item.fluxecho.echo_crystal.name=Echo Crystal
 fluxecho.echo_crystal.holds=§dHolds: %s · %s
-fluxecho.echo_crystal.tip=§3A flux crystal the Flux Nexus pressed one Echo Codex entry into§r\nThe entry itself is kept; the same entry can be pressed once a day\nResearch, modules and the Echo Library take it
+fluxecho.echo_crystal.tip=§3One thing this world remembers for you§r\nThe entry itself is kept; the same entry can be pressed once a day\nResearch, modules and the Echo Archive take it
 item.fluxecho.phase_alloy.name=Phase Alloy
-fluxecho.phase_alloy.tip=§3Titanium smelted with flux crystals and an echo crystal: deep blue metal with the flux layer's phase running slowly through it§r\nMade in GT's electric blast furnace (EV, 2700 K)\nPhase II of the nexus and the modules of the phase take it; GT's wiremill draws it into the wire of memory filament
+fluxecho.phase_alloy.tip=§3Hull plate: the sea's phase lines drift slowly over it§r\nMade in GT's electric blast furnace (EV, 2700 K)\nPhase II of the nexus and the modules of the phase take it; GT's wiremill draws it into the wire of memory filament
 item.fluxecho.resonant_glass.name=Resonant Glass
-fluxecho.resonant_glass.tip=§3Borosilicate glass the nexus tuned with phase alloy: clear, its edge rippling cyan when machines near it run§r\nManifested at the Flux Nexus once Phase II is researched\nThe Echo Dome Generator and the Tidal Well take it, the resonant windows later
+fluxecho.resonant_glass.tip=§3A porthole: its edge ripples when something turns outside§r\nManifested at the Flux Nexus once Phase II is researched\nThe Echo Dome Generator and the Tidal Well take it, the resonant windows later
 item.fluxecho.phase_alloy_wire.name=Phase Alloy Wire
-fluxecho.phase_alloy_wire.tip=§3Phase alloy drawn as fine as a hair§r\nDrawn in GT's wiremill (IV), eight to an ingot\nCoated with an echo crystal at the Flux Nexus it becomes memory filament
+fluxecho.phase_alloy_wire.tip=§3A nerve that has not learned to remember yet§r\nDrawn in GT's wiremill (IV), eight to an ingot\nCoated with an echo crystal at the Flux Nexus it becomes memory filament
 item.fluxecho.memory_filament.name=Memory Filament
-fluxecho.memory_filament.tip=§3Phase alloy wire coated with an echo crystal: a fine filament glowing like a string of light, holding what flowed through it§r\nManifested at the Flux Nexus from the wiremill's phase alloy wire once Phase II is researched\nPhase III of the nexus, the outer ring and the phase's buildings take it
+fluxecho.memory_filament.tip=§3A nerve: it remembers what flows through it§r\nManifested at the Flux Nexus from the wiremill's phase alloy wire once Phase II is researched\nPhase III of the nexus, the outer ring and the phase's buildings take it
 item.fluxecho.manifest_matter.name=Manifest Matter
-fluxecho.manifest_matter.tip=§3A little of the flux layer made matter: black-gold liquid metal that never stops slowly changing shape§r\nManifested at a Flux Nexus of phase III or later from phase alloy, an echo crystal and an LuV circuit once the Sophon Array is researched; the table draws a great deal of power while it makes it\nPhase IV of the nexus, the sky ring, the anti-gravity lattice and the phase's buildings take it
+fluxecho.manifest_matter.tip=§3This world's matter, learning the ship's shape for the first time§r\nManifested at a Flux Nexus of phase III or later from phase alloy, an echo crystal and an LuV circuit once the Sophon Array is researched; the table draws a great deal of power while it makes it\nPhase IV of the nexus, the sky ring, the anti-gravity lattice and the phase's buildings take it
 item.fluxecho.anti_gravity_lattice.name=Anti-gravity Lattice
-fluxecho.anti_gravity_lattice.tip=§3A lattice cube that hangs in the air, a lifting light under it§r\nManifested at the Flux Nexus from manifest matter and resonant glass once the Sky Ring is researched\nThe floating foundations of the sky ring's platforms and the sky ring's buildings take it
+fluxecho.anti_gravity_lattice.tip=§3This world's matter, learning to float for the first time§r\nManifested at the Flux Nexus from manifest matter and resonant glass once the Mast is researched\nThe floating foundations of the sky ring's platforms and the sky ring's buildings take it

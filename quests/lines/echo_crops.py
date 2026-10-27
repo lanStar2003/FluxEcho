@@ -5,8 +5,8 @@ from questkit import checkbox, echo_machine, give, item, quest, retrieval, write
 
 def line():
     lore = quest(
-        "echo_crops/lore", "§a§l通量回响 · 作物",
-        ECHO_LORE + "\n\n作物这一边：你杂交出的每一种作物、刷出的每一组属性，都在通量层里留着回响。"
+        "echo_crops/lore", "§a§l拾遗 · 作物",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——一片被人一代代杂交过的田。我杂交出的每一种作物、刷出的每一组属性，海里都留着它的纹。"
         "拓下一袋好种子，以后要多少袋就出多少袋，不用再守着作物架等杂交。",
         item("fluxecho:crop_imprint"),
         [checkbox()])
@@ -39,6 +39,6 @@ def line():
         pre=["echo_crops/first_imprint"])
     placed = [(lore, (0, 24)), (imprinter, (48, 24)), (first, (96, 24)), (echo, (144, 24))]
     return write_line(
-        "line/echo_crops", "FluxEchoCrops", "§a通量回响 · 作物",
-        "一袋扫满的种子拓成印记，以后直接出同属性的种子。杂交一次就够了。",
+        "line/echo_crops", "FluxEchoCrops", "§a拾遗 · 作物",
+        "从别的岸漂来的田。一袋扫满的种子拓成印记，以后直接出同属性的种子。杂交一次就够了。",
         item("fluxecho:crop_imprint"), placed, ["IC2"])

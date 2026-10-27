@@ -5,8 +5,8 @@ from questkit import checkbox, echo_machine, give, item, quest, retrieval, write
 
 def line():
     lore = quest(
-        "echo_mana/lore", "§b§l通量回响 · 植物魔法",
-        ECHO_LORE + "\n\n植物魔法这一边：花儿产出的魔力流经魔力池，也流过通量层，在那里留下了回响。"
+        "echo_mana/lore", "§b§l拾遗 · 魔力",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——一个被世界树连起来的时空，花在那里会产出魔力。花儿产出的魔力流经魔力池，也流过海，在那里留下了纹。"
         "亲手做出魔力池和魔力发射器，就能用电把这份回响引回地面，不用再伺候一排产魔花。",
         item("Botania:pool"),
         [checkbox()])
@@ -34,6 +34,6 @@ def line():
         [checkbox()],
         pre=["echo_mana/mana_echo"], main=False)
     return write_line(
-        "line/echo_mana", "FluxEchoMana", "§b通量回响 · 植物魔法",
-        "用电把魔力的回响引回地面，直接涌进魔力池。不用再伺候产魔花。",
+        "line/echo_mana", "FluxEchoMana", "§b拾遗 · 魔力",
+        "从别的岸漂来的花。用电把魔力的回响引回地面，直接涌进魔力池。不用再伺候产魔花。",
         item("Botania:pool"), [(lore, (0, 24)), (echo, (48, 24)), (tiers, (96, 24))], ["Botania"])

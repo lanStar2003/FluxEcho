@@ -1,0 +1,44 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": -6668424360455153693,
+      "questIDLow:4": -8291053245572588529
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "我开始明白这片滩为什么这么奇怪。蜂、魔法、血、会自己翻页的书、天上那些别的星球……它们都不是这里自己长出来的。\n\n它们和我一样，是从别的岸漂来的。\n\n[note]回响图鉴的「卷」页：图鉴里有了第一条记录，卷二就翻开了。读完它，把这一项勾上。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:codex"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3它们也是漂来的",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": 2591667114494876622,
+  "questIDLow:4": -7285106602521714944,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "taskID:8": "bq_standard:checkbox",
+      "index:3": 0
+    }
+  }
+}
