@@ -45,6 +45,12 @@ fluxecho.fitting.basin.tip=§3A low rim with a lit lip§r\nThe edge of a planter
 tile.fluxecho.fitting.lift.name=Light Lift Pad
 fluxecho.fitting.lift.tip=§3A flush plate with an iris of light§r\nPads stacked in one column make a light lift: stand on one and jump to rise to the next pad up, sneak to sink to the next pad down\nOn the way you pass through the pads and the nexus's own blocks in the shaft, and take no fall damage
 
+# the hull-number tile and the planting bed (0.17.0, style FINAL §3.7)
+tile.fluxecho.deck.hull_number.name=Hull-Number Tile
+fluxecho.deck.hull_number.tip=§3A footing-dark floor tile with an octagonal hull number§r\nOne lies before every building's door on the way home
+tile.fluxecho.fitting.bed.name=Planting Bed
+fluxecho.fitting.bed.tip=§3A trough of soil with a warm lip§r\nFlowers and crops grow on it, Botania's flowers too
+
 # construction, campus, supply port (0.10.0)
 fluxecho.build.job.establish=Establish the nexus
 fluxecho.build.job.forum=Lay the forum

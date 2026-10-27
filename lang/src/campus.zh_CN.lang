@@ -45,6 +45,12 @@ fluxecho.fitting.basin.tip=§3带发光唇边的矮沿§r\n种植床和水池的
 tile.fluxecho.fitting.lift.name=光梯
 fluxecho.fitting.lift.tip=§3嵌进地面、顶面一圈光圈的平板§r\n同一竖列叠放的光梯组成一条光梯井：站在上面跳跃升到上一个光梯，潜行降到下一个光梯\n途中会穿过光梯和井里中枢自己的方块，不受摔落伤害
 
+# the hull-number tile and the planting bed (0.17.0, style FINAL §3.7)
+tile.fluxecho.deck.hull_number.name=舷号砖
+fluxecho.deck.hull_number.tip=§3玄基色的地砖上一枚八角舷号§r\n归途之路上每座楼门前一块
+tile.fluxecho.fitting.bed.name=花床
+fluxecho.fitting.bed.tip=§3顶面是土的种植槽，唇边一道暖光§r\n花和作物能直接种在上面，植物魔法的花也行
+
 # construction, campus, supply port (0.10.0)
 fluxecho.build.job.establish=建立中枢
 fluxecho.build.job.forum=铺设广场
