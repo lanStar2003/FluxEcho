@@ -19,6 +19,7 @@ import com.fluxecho.client.HoloStore;
 import com.fluxecho.core.Owners;
 import com.fluxecho.gate.Sight;
 import com.fluxecho.research.Research;
+import com.fluxecho.voyage.ScoreBridgeServer;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -74,6 +75,10 @@ public final class EchoNet {
         NBTTagList research = new NBTTagList();
         for (String id : Research.done(team)) research.appendTag(new NBTTagString(id));
         snap.setTag(ClientLedger.RESEARCH, research);
+        // and the cabin logs the player may read (0.17.0), from the scoreboard bridge's ladders
+        NBTTagList halls = new NBTTagList();
+        for (String key : ScoreBridgeServer.halls(p)) halls.appendTag(new NBTTagString(key));
+        snap.setTag(ClientLedger.HALLS, halls);
         channel.sendTo(new MsgLedger(snap), p);
     }
 
