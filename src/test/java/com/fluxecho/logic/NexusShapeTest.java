@@ -134,16 +134,58 @@ class NexusShapeTest {
         assertEquals("phase1", NexusShape.shapeName(0));
     }
 
+    /**
+     * What dissolves (0.17.0, style §4.1 and §7.2: the white ribs): only the conduits and the crystal seats, the column
+     * of light in the middle; the ribs and the rings stay as white frame blocks you see, bump into and see mirrored.
+     * Before 0.17.0 the ribs and rings dissolved too, into drawn steel.
+     */
     @Test
     void whatDissolves() {
-        assertTrue(NexusShape.dissolves(NexusShape.PILLAR));
-        assertTrue(NexusShape.dissolves(NexusShape.RING));
         assertTrue(NexusShape.dissolves(NexusShape.CONDUIT));
         assertTrue(NexusShape.dissolves(NexusShape.SEAT));
+        assertFalse(NexusShape.dissolves(NexusShape.PILLAR), "the ribs are white frame blocks now");
+        assertFalse(NexusShape.dissolves(NexusShape.RING), "so are the rings");
         assertFalse(NexusShape.dissolves(NexusShape.BASE));
         assertFalse(NexusShape.dissolves(NexusShape.LIT));
         assertFalse(NexusShape.dissolves(NexusShape.CONSOLE));
+        assertFalse(NexusShape.dissolves(NexusShape.LIFT));
         assertFalse(NexusShape.dissolves('~'));
+        assertFalse(NexusShape.dissolves(' '));
+    }
+
+    /**
+     * The white ribs change what dissolves, never the shape (0.17.0): the shape names are still {@code phase1} to
+     * {@code phase5}, and every phase's blueprint is cell for cell the 0.16.0 one, pinned here by a CRC over its size
+     * and every cell, so an old campus's nexus checks out as before (no {@code BuildJob.V} bump).
+     */
+    @Test
+    void theShapesAreThoseOfZeroSixteen() {
+        String[] names = { "phase1", "phase2", "phase3", "phase4", "phase5" };
+        long[] crc = { PHASE_CRC[0], PHASE_CRC[1], PHASE_CRC[2], PHASE_CRC[3], PHASE_CRC[4] };
+        assertEquals("phase", NexusShape.SHAPE_PREFIX);
+        assertEquals(5, NexusShape.PHASES);
+        for (int p = 1; p <= NexusShape.PHASES; p++) {
+            assertEquals(names[p - 1], NexusShape.shapeName(p));
+            assertEquals(p, NexusShape.phaseOf(names[p - 1]));
+            assertEquals(crc[p - 1], crc(NexusShape.phase(p)), "phase " + p + "'s cells");
+        }
+    }
+
+    /** The CRC32 of each phase's blueprint as 0.16.0 shipped it (width, depth, height, then every cell). */
+    private static final long[] PHASE_CRC = { 2333808964L, 2735349194L, 1214403110L, 527458410L, 3955066853L };
+
+    /** A CRC32 over a blueprint's size and every cell, layer by layer from the top, row by row, across. */
+    static long crc(Blueprint s) {
+        java.util.zip.CRC32 c = new java.util.zip.CRC32();
+        c.update(s.width());
+        c.update(s.depth());
+        c.update(s.height());
+        for (int b = 0; b < s.height(); b++) for (int r = 0; r < s.depth(); r++) for (int a = 0; a < s.width(); a++) {
+            char ch = s.at(a, b, r);
+            c.update(ch >> 8);
+            c.update(ch);
+        }
+        return c.getValue();
     }
 
     @Test

@@ -10,8 +10,10 @@ import java.util.List;
  * five stages: the column of five floating rings of the finished nexus.
  * <p>
  * The controller sits on a console stand at the front of the base, at eye height for someone standing there. Once
- * formed, the ribs, conduits, seats and rings give way to what they stood for: curved ribs, a column of light, floating
- * crystal cores and turning rings ({@link #dissolves}); the base and the console stay.
+ * formed, the conduits and seats give way to what they stood for: a column of light and floating crystal cores
+ * ({@link #dissolves}). The ribs and rings stay (0.17.0, the white ribs of the redesign's "mast"): white frame blocks
+ * that are seen, cast shadows, show in the mirror pool and are bumped into, where before 0.17.0 they dissolved into
+ * drawn steel. The shape itself, its names and every cell are those of 0.16.0.
  */
 public final class NexusShape {
 
@@ -175,8 +177,12 @@ public final class NexusShape {
         return s == 4 && inRing(dx, dz) ? RING : ' ';
     }
 
-    /** Whether a cell's block gives way to its rendered form when the nexus forms (and lets players through). */
+    /**
+     * Whether a cell's block gives way to its rendered form when the nexus forms (and lets players through): the
+     * conduits and the crystal seats, the column in the middle the light lift rides up. The ribs and rings no longer
+     * do (0.17.0, style §4.1): they stay white blocks, and the lift's column in the middle stays clear of them.
+     */
     public static boolean dissolves(char ch) {
-        return ch == PILLAR || ch == CONDUIT || ch == RING || ch == SEAT;
+        return ch == CONDUIT || ch == SEAT;
     }
 }

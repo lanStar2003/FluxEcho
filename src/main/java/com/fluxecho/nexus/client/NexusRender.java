@@ -45,10 +45,12 @@ import com.fluxecho.render.Shapes;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * What a formed Flux Nexus is (blueprint 3.3): its pillars, conduits, seat and ring have given way to four curved,
- * segmented ribs rising from the base's corners and leaning in to hold a turning ring, a thinner one against it, and
- * the crystal core floating in the ring's middle over a cradle of light. Seams of light breathe in the ribs' joints.
- * While powered, a beam runs from the core up into the sky, pulses climbing it, seen from as far as the nexus is
+ * What a formed Flux Nexus is (blueprint 3.3): its conduits and seat have given way to a column of light and the
+ * crystal core floating in the top ring's middle over a cradle of light. Its ribs and rings stay as white frame blocks
+ * (0.17.0, the white ribs: they used to give way to drawn steel ribs and turning steel rings, which are gone); two thin
+ * lines of light run in each ring's seam underneath, and every four seconds a sheet of light slides down each rib from
+ * the top stage to the dais, the nexus's heartbeat (style §4.1). While powered, a beam runs from the core up into the
+ * sky, pulses climbing it, seen from as far as the nexus is
  * loaded. While it researches, a constellation turns above the ring with data streaming up to it; while it
  * manifests, motes spiral in to the core. Bridges of light run out to the modules docked on its ring, and the open
  * slots show their outline to whoever holds a terminal or a module's core (not on an active campus: its masterplan
@@ -60,7 +62,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  */
 public final class NexusRender {
 
-    private static final int STEEL = 0x1C3446, STEEL_LIGHT = 0x2C5470, STEEL_DARK = 0x0E1C28, CORE = 0xE8FBFF;
+    private static final int CORE = 0xE8FBFF;
     /** How far (blocks) a powered nexus's sky beam is drawn when the rest of it is not. */
     private static final double BEAM_RANGE = 512;
     /**
@@ -68,11 +70,23 @@ public final class NexusRender {
      * from its own middle, which lies within 160 of the controller).
      */
     private static final double LANDMARK_RANGE = 512 + 160;
-    /** Rib segments, and the rib's path in (out from the centre, up from the base): a curve through three points. */
-    private static final int RIB_SEGMENTS = 7;
-    private static final double[] RIB_FOOT = { 4.5, 0.0 }, RIB_BEND = { 4.7, 3.0 }, RIB_HEAD = { 3.0, 4.4 };
-    /** An upper stage's rib (0.12.0): its foot on the outer edge of the ring below, half a block under the stage. */
-    private static final double[] UPPER_FOOT = { 3.4, -0.38 }, UPPER_BEND = { 4.3, 2.4 };
+    /**
+     * A white rib's outer edge (0.17.0), the way its light sheet slides down a stage: {out along the diagonal, up from
+     * the stage's foot}, from the head to the foot. The rib is two frame posts five sixteenths in from their cells'
+     * sides: the upper at (2, 2) on the stage's layers 2 and 3, the lower at (3, 3) on layers 0 and 1; the light runs
+     * a hair outside their outer corners.
+     */
+    private static final double[][] RIB_EDGE = { { 2.2075 * Math.sqrt(2), 4 }, { 2.2075 * Math.sqrt(2), 2 },
+        { 3.2075 * Math.sqrt(2), 2 }, { 3.2075 * Math.sqrt(2), 0 } };
+    /** The heartbeat: its period, and the share of it the rib light takes to slide from the top to the dais. */
+    private static final double BEAT_TICKS = 80, SLIDE = 0.25;
+    /** The rib light's length along the rib (blocks) and its core's and halo's widths. */
+    private static final double SHEET = 0.9, SHEET_CORE = 0.07, SHEET_HALO = 0.28;
+    /**
+     * Where the two lines of light in a ring's seam run (0.17.0): just under the ring's slab of frame (its frame
+     * block is a slab from five to eleven sixteenths up its cell), seen from the dais under it.
+     */
+    private static final double SEAM_UNDER = 3 / 16.0 + 0.01;
     /** Set when finding a site module's door failed once: every module keeps its ring bridge from then on. */
     private static boolean siteBridgesOff;
     /** Set once drawing a multiblock has failed and been logged. */
@@ -187,18 +201,12 @@ public final class NexusRender {
             : (float) Math
                 .max(0, Math.min(1, (System.currentTimeMillis() - n.formedAt) / (double) TileMultiblock.SWEEP_MS));
         p *= 0.2f + 0.8f * appear;
-        double spin = on ? t * 0.004 : 0;
 
-        // the solid parts: ribs and the ring of every stage it has grown (0.12.0: a stage a phase, CITY.md §3), the
-        // upper stages' ribs springing from the ring below, every other ring turning the other way
+        // the ribs and rings of every stage it has grown (0.12.0: a stage a phase, CITY.md §3) are its own white frame
+        // blocks (0.17.0); only the crystal core is drawn solid
         int phase = Math.max(1, Math.min(NexusShape.PHASES, n.phase()));
         double top = base + NexusShape.STAGE * (phase - 1);
         Shapes.begin(false);
-        for (int st = 0; st < phase; st++) {
-            double sb = base + NexusShape.STAGE * st, sry = sb + 4.5, sspin = st % 2 == 0 ? spin : -spin;
-            for (int i = 0; i < 4; i++) rib(cx, sb, cz, i, 0.95f * appear * fade, st > 0);
-            ring(cx, sry, cz, sspin, 0.95f * appear * fade);
-        }
         double ry = top + 4.5;
         double bob = Math.sin(t * 0.04) * 0.1, core = ry + bob;
         boolean making = (n.clientActivity & TileNexus.MANIFESTING) != 0;
@@ -216,11 +224,12 @@ public final class NexusRender {
         Shapes.beam(cx, base, cz, top + 3.1, 0.3, CORE, 0.5f * p, 0.8f * p);
         if (on) skyBeam(cx, core, cz, n.yCoord, t, p);
         for (int st = 0; st < phase; st++) {
-            double sry = base + NexusShape.STAGE * st + 4.5, sspin = st % 2 == 0 ? spin : -spin;
+            // the ring's seam: two thin lines of light under its slab, standing still as the white ring does
+            double sry = base + NexusShape.STAGE * st + 4.5, seam = sry - SEAM_UNDER;
             for (int k = 0; k < 8; k++) {
-                double a0 = sspin + k * Math.PI / 4 + 0.05, a1 = sspin + (k + 1) * Math.PI / 4 - 0.05;
-                Shapes.ring(cx, sry + 0.13, cz, 3.34, 3.44, a0, a1, CYAN, 0.9f * p, CYAN, 0.9f * p);
-                Shapes.ring(cx, sry + 0.13, cz, 2.56, 2.66, a0, a1, CYAN, 0.6f * p, CYAN, 0.6f * p);
+                double a0 = k * Math.PI / 4 + 0.05, a1 = (k + 1) * Math.PI / 4 - 0.05;
+                Shapes.ring(cx, seam, cz, 3.34, 3.44, a0, a1, CYAN, 0.9f * p, CYAN, 0.9f * p);
+                Shapes.ring(cx, seam, cz, 2.56, 2.66, a0, a1, CYAN, 0.6f * p, CYAN, 0.6f * p);
             }
             // the seat of a stage the core has risen past: a soft glow on its ring's axis
             if (st < phase - 1) Shapes.disc(cx, sry, cz, 0.9, CYAN, 0.35f * p * pulse, 0f);
@@ -228,10 +237,10 @@ public final class NexusRender {
         double counter = on ? -t * 0.008 : 0;
         for (int k = 0; k < 24; k += 2) {
             double a0 = counter + k * Math.PI / 12, a1 = a0 + Math.PI / 12 * 0.8;
-            Shapes.ring(cx, ry, cz, 3.78, 3.88, a0, a1, VIOLET, 0.65f * p, VIOLET, 0.65f * p);
+            // just clear of the top ring's blocks, whose outermost corners reach 3.8 out
+            Shapes.ring(cx, ry, cz, 3.95, 4.05, a0, a1, VIOLET, 0.65f * p, VIOLET, 0.65f * p);
         }
-        for (int st = 0; st < phase; st++)
-            for (int i = 0; i < 4; i++) seams(cx, base + NexusShape.STAGE * st, cz, i, t, p, st > 0);
+        ribLight(cx, base, cz, phase, t, p);
         boolean researching = (n.clientActivity & TileNexus.RESEARCHING) != 0;
         if (researching) constellation(n, cx, top + 8.5, cz, t, p);
         if (sweep != Double.MAX_VALUE) sweep(cx, ry(sweep), cz, appear);
@@ -287,105 +296,57 @@ public final class NexusRender {
         if (n.clientHologram) hologram(n, t, fade);
     }
 
-    /**
-     * A point of a rib's curve, {@code f} from its foot (0) to its head (1): {out, up}. A rib of an upper stage
-     * ({@code upper}, 0.12.0) springs from the outer edge of the ring below instead of from the dais.
-     */
-    private static double[] ribAt(double f, boolean upper) {
-        double g = 1 - f;
-        double[] foot = upper ? UPPER_FOOT : RIB_FOOT, bend = upper ? UPPER_BEND : RIB_BEND;
-        return new double[] { g * g * foot[0] + 2 * g * f * bend[0] + f * f * RIB_HEAD[0],
-            g * g * foot[1] + 2 * g * f * bend[1] + f * f * RIB_HEAD[1] };
-    }
-
-    /** One stage's ring of steel at height {@code ry}, turned {@code spin}: eight segments with a gap between each. */
-    private static void ring(double cx, double ry, double cz, double spin, float a) {
-        for (int k = 0; k < 8; k++) {
-            double a0 = spin + k * Math.PI / 4 + 0.05, a1 = spin + (k + 1) * Math.PI / 4 - 0.05;
-            Shapes.ring(cx, ry + 0.12, cz, 2.6, 3.4, a0, a1, STEEL, a, STEEL_LIGHT, a);
-            Shapes.ring(cx, ry - 0.12, cz, 2.6, 3.4, a0, a1, STEEL, a, STEEL, a);
-            Shapes.band(cx, cz, 3.4, ry - 0.12, ry + 0.12, a0, a1, STEEL_LIGHT, a, a);
-            Shapes.band(cx, cz, 2.6, ry - 0.12, ry + 0.12, a0, a1, STEEL, a, a);
-        }
-    }
-
     /** Rib {@code i}'s way out from the centre: a diagonal, {x, z}. */
     private static double[] ribDir(int i) {
         double s = Math.sqrt(0.5);
         return new double[] { (i % 2 == 0 ? -s : s), (i < 2 ? -s : s) };
     }
 
-    /** A rib: segments of steel along the curve, a small gap between each, thinning towards the head. */
-    private static void rib(double cx, double base, double cz, int i, float a, boolean upper) {
-        double[] u = ribDir(i);
-        double[] side = { -u[1], 0, u[0] };
-        for (int k = 0; k < RIB_SEGMENTS; k++) {
-            double f0 = (k + 0.06) / RIB_SEGMENTS, f1 = (k + 0.94) / RIB_SEGMENTS;
-            double[] p = ribAt(f0, upper), q = ribAt(f1, upper);
-            double dr = q[0] - p[0], dh = q[1] - p[1], len = Math.hypot(dr, dh);
-            // across the rib in the plane it bends in, away from the centre
-            double[] out = { u[0] * dh / len, -dr / len, u[1] * dh / len };
-            double w = 0.2 - 0.06 * k / (double) RIB_SEGMENTS, d = 0.16 - 0.04 * k / (double) RIB_SEGMENTS;
-            prism(
-                new double[] { cx + u[0] * p[0], base + p[1], cz + u[1] * p[0] },
-                new double[] { cx + u[0] * q[0], base + q[1], cz + u[1] * q[0] },
-                side,
-                out,
-                w,
-                d,
-                a);
-        }
-    }
-
     /**
-     * A square bar from {@code a} to {@code b}: half-width {@code w} along {@code side}, {@code d} along {@code out}.
+     * The heartbeat down the white ribs (0.17.0, style §4.1): every {@link #BEAT_TICKS} ticks a sheet of light, a
+     * white core in a cyan halo (two quads), slides down each of the four ribs from the top stage's head to the dais
+     * in {@link #SLIDE} of the beat, a stage at a time; between beats nothing is drawn. It follows the world time
+     * alone, so a frame drawn again behind a light gate looks the same.
      */
-    private static void prism(double[] a, double[] b, double[] side, double[] out, double w, double d, float alpha) {
-        double[][] c = new double[8][];
-        int[][] signs = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
-        for (int k = 0; k < 4; k++) {
-            double sw = signs[k][0] * w, sd = signs[k][1] * d;
-            c[k] = new double[] { a[0] + side[0] * sw + out[0] * sd, a[1] + side[1] * sw + out[1] * sd,
-                a[2] + side[2] * sw + out[2] * sd };
-            c[k + 4] = new double[] { b[0] + side[0] * sw + out[0] * sd, b[1] + side[1] * sw + out[1] * sd,
-                b[2] + side[2] * sw + out[2] * sd };
+    private static void ribLight(double cx, double base, double cz, int phase, double t, float p) {
+        double beat = (t % BEAT_TICKS + BEAT_TICKS) % BEAT_TICKS / BEAT_TICKS;
+        if (beat >= SLIDE) return;
+        // how far down the whole rib, top stage first; the stage it is on and how far down that stage
+        double down = beat / SLIDE * phase;
+        int st = phase - 1 - Math.min(phase - 1, (int) down);
+        double f = down - (phase - 1 - st), sb = base + NexusShape.STAGE * st;
+        double[] a = edgeAt(f), b = edgeAt(Math.min(1, f + SHEET / edgeLength()));
+        // it brightens as it leaves the core and fades as it reaches the dais
+        float k = p * (float) Math.sin(Math.PI * Math.min(1, 0.08 + 0.92 * beat / SLIDE));
+        for (int i = 0; i < 4; i++) {
+            double[] u = ribDir(i);
+            double x0 = cx + u[0] * a[0], z0 = cz + u[1] * a[0], x1 = cx + u[0] * b[0], z1 = cz + u[1] * b[0];
+            Shapes.string(x0, sb + a[1], z0, x1, sb + b[1], z1, SHEET_HALO, CYAN, 0.45f * k, 0f);
+            Shapes.string(x0, sb + a[1], z0, x1, sb + b[1], z1, SHEET_CORE, WHITE, 0.95f * k, 0.2f * k);
         }
-        // the outer face catches the light, the inner one is in shadow, the sides between
-        int[] shade = { STEEL_DARK, STEEL, STEEL_LIGHT, STEEL };
-        for (int k = 0; k < 4; k++) {
-            int n = (k + 1) % 4;
-            Shapes.quadShade(c[k], c[n], c[n + 4], c[k + 4], shade[k], Shapes.mix(shade[k], STEEL_DARK, 0.3), alpha);
-        }
-        Shapes.quadShade(c[0], c[1], c[2], c[3], STEEL_DARK, STEEL_DARK, alpha);
-        Shapes.quadShade(c[4], c[5], c[6], c[7], STEEL_LIGHT, STEEL_LIGHT, alpha);
     }
 
-    /** The light in a rib: its joints and a line up its inner edge, breathing slowly. */
-    private static void seams(double cx, double base, double cz, int i, double t, float p, boolean upper) {
-        double[] u = ribDir(i);
-        float breath = 0.35f + 0.65f * (float) (0.5 + 0.5 * Math.sin(t * 0.035 + i * Math.PI / 2));
-        for (int k = 0; k <= RIB_SEGMENTS; k++) {
-            double[] q = ribAt(k / (double) RIB_SEGMENTS, upper);
-            double x = cx + u[0] * q[0], y = base + q[1], z = cz + u[1] * q[0];
-            double sx = -u[1] * 0.24, sz = u[0] * 0.24;
-            Shapes.string(x - sx, y, z - sz, x + sx, y, z + sz, 0.07, CYAN, 0.9f * p * breath, 0.9f * p * breath);
+    /** The length of a rib's outer edge down one stage ({@link #RIB_EDGE}). */
+    private static double edgeLength() {
+        double l = 0;
+        for (int k = 1; k < RIB_EDGE.length; k++)
+            l += Math.hypot(RIB_EDGE[k][0] - RIB_EDGE[k - 1][0], RIB_EDGE[k][1] - RIB_EDGE[k - 1][1]);
+        return l;
+    }
+
+    /** The point {@code f} of the way down a rib's outer edge (0 its head, 1 its foot): {out, up}. */
+    private static double[] edgeAt(double f) {
+        double want = Math.max(0, Math.min(1, f)) * edgeLength();
+        for (int k = 1; k < RIB_EDGE.length; k++) {
+            double[] a = RIB_EDGE[k - 1], b = RIB_EDGE[k];
+            double l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (want <= l || k == RIB_EDGE.length - 1) {
+                double g = l == 0 ? 0 : Math.min(1, want / l);
+                return new double[] { a[0] + (b[0] - a[0]) * g, a[1] + (b[1] - a[1]) * g };
+            }
+            want -= l;
         }
-        for (int k = 0; k < RIB_SEGMENTS * 2; k++) {
-            double[] a = ribAt(k / (RIB_SEGMENTS * 2.0), upper), b = ribAt((k + 1) / (RIB_SEGMENTS * 2.0), upper);
-            // a hair inside the rib's inner face
-            double ia = a[0] - 0.17, ib = b[0] - 0.17;
-            Shapes.string(
-                cx + u[0] * ia,
-                base + a[1],
-                cz + u[1] * ia,
-                cx + u[0] * ib,
-                base + b[1],
-                cz + u[1] * ib,
-                0.04,
-                CYAN,
-                0.5f * p * breath,
-                0.5f * p * breath);
-        }
+        return RIB_EDGE[RIB_EDGE.length - 1].clone();
     }
 
     /** The beam from the core up into the sky, its top at least at y 320, with pulses climbing it. */
