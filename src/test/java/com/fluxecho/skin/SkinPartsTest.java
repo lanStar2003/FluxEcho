@@ -81,7 +81,7 @@ class SkinPartsTest {
     }
 
     @Test
-    void theCreativeTabListsTheCodedShapes() {
+    void theCreativeTabListsTheCodedShapes() throws IOException {
         Item item = new Item();
         int listed = 0;
         for (BlockSkin b : SkinModule.all()) {
@@ -107,6 +107,13 @@ class SkinPartsTest {
                     "skin_script_form")),
             names,
             "the registry names of ids.md §3.1");
+        // preInit writes each name out (the ID snapshot reads the registrations from the source)
+        String src = new String(
+            Files.readAllBytes(Paths.get("src/main/java/com/fluxecho/skin/SkinModule.java")),
+            StandardCharsets.UTF_8);
+        for (BlockSkin b : SkinModule.all()) assertTrue(
+            src.contains("ItemBlockSkin.class, \"" + b.registryName() + "\");"),
+            b.registryName() + " is registered under its name");
     }
 
     /**

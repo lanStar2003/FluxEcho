@@ -32,10 +32,20 @@ public final class SkinModule {
         scriptForm = new BlockSkin(Family.SKIN_SCRIPT, false);
     }
 
-    /** Makes and registers the eight blocks with their items, under the names of ids.md §3.1. */
+    /**
+     * Makes and registers the eight blocks with their items, under the names of ids.md §3.1: each block's
+     * {@code registryName()}, written out so that the ID snapshot's source scan can read them.
+     */
     public static void preInit() {
         create();
-        for (BlockSkin b : all()) GameRegistry.registerBlock(b, ItemBlockSkin.class, b.registryName());
+        GameRegistry.registerBlock(hull, ItemBlockSkin.class, "hull");
+        GameRegistry.registerBlock(hullForm, ItemBlockSkin.class, "hull_form");
+        GameRegistry.registerBlock(footing, ItemBlockSkin.class, "footing");
+        GameRegistry.registerBlock(footingForm, ItemBlockSkin.class, "footing_form");
+        GameRegistry.registerBlock(garden, ItemBlockSkin.class, "skin_garden");
+        GameRegistry.registerBlock(gardenForm, ItemBlockSkin.class, "skin_garden_form");
+        GameRegistry.registerBlock(script, ItemBlockSkin.class, "skin_script");
+        GameRegistry.registerBlock(scriptForm, ItemBlockSkin.class, "skin_script_form");
     }
 
     /** The eight blocks, whole and shape id of each family in family order; empty before they are made. */
