@@ -384,8 +384,8 @@ class ShapeGeoTest {
 
     /**
      * 5. A quarter turn of the neighbourhood turns the output a quarter: the same quads (any starting vertex), turned,
-     * with the same normals, faces, overlays and surfaces; for the ruled shapes over all 16,384 neighbourhoods of the
-     * model, for every shape over neighbourhoods of our own shapes drawn at random.
+     * with the same normals, faces, overlays and surfaces; for the ruled shapes over every third of the 16,384
+     * neighbourhoods of the model, for every shape over neighbourhoods of our own shapes drawn at random.
      */
     @Test
     void aQuarterTurnTurnsTheShape() {
