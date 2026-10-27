@@ -1,0 +1,34 @@
+# FluxEcho golden saves of 0.16.0 (refactor/FINAL.md 5.1 (2), 6.4; card F02). Never edited by hand.
+tag: 0.16.0
+commit: 1cc50f2
+made by: src/test/java/com/fluxecho/save/gen/GoldenSaveGen.java, run once in a work tree of the tag
+  (git worktree add --detach D:/Code/FluxEcho-wt/golden-0.16.0 0.16.0;
+   ./gradlew --offline test --tests '*GoldenSaveGen*' -PgoldenGen -Dorg.gradle.workers.max=2)
+made on: 2026-10-27
+format: gzipped NBT (CompressedStreamTools), as Minecraft's level.dat and data/*.dat
+read by: src/test/java/com/fluxecho/save/LegacySaveTest.java (which checks every sum below)
+
+a56450bdb969a1ba588dbb393035aaa943dd6df8cdd988b18d41abd0d81c3cd9  campus/ev/info.dat
+1c0063ffaf6d4e740fcaccc28f5cd384a2fe4f2be17124320d08c13ab3a8bb5a  campus/ev/modules.dat
+f8a1de6df6e9ba1a8b04bc3fa98bd099d026f7667dda5ac040196dc44fcab4d8  campus/ev/nexus.dat
+8380e51132619cc86bfbb6bcae17791e2063249583ea3fc702841f05739bd626  campus/ev/world.dat
+8d37297a7d1712df51c0cd298816cca4923791396e42833ffa407cd43b74b0fe  campus/hv/info.dat
+080f029a55de4a98e60afee1824d92072d4474c7f5d7d850111ebbc609866d37  campus/hv/modules.dat
+5fb6d450cd539637410320f4213284fdd41b3c6618d2dd46ce3a7bc5c4eff1b9  campus/hv/nexus.dat
+9695c77a852bb36363734cde5fb6d1d073ccefc45375ef8a5fc33d8fdbb9b783  campus/hv/world.dat
+33274dd92658079e5c07f54f39a011d6e500efcbedc81d9420e9aefd5d01323e  campus/iv/info.dat
+35be1d54d06f9c5fe204a784d2443ef71d2a1f95ba7db577095ea9ebd559bda2  campus/iv/modules.dat
+19644b108304bdf4fa69271ad24de25917d7558f9baeb50e1aed19f97439d3e0  campus/iv/nexus.dat
+7ded1ef4ad71d73ae445c9d1349ba11e3a823f5e238da05d9d8a60fdb9c67b3e  campus/iv/world.dat
+26057054613e97ae1c74d59f2c5107098b4f45c13443f388b7d85720d2c848b5  campus/luv/info.dat
+96493164aece88d3f37c27139d915268f7a3b57eff406ae95654a2b86826b0ab  campus/luv/modules.dat
+4c7311555ba2807c2734773c72fb6f195ec611889ccc5fc7cd7da88d944908c6  campus/luv/nexus.dat
+5fc21d741c8228c82f41eb22e193c14ff1999888f541e55b5e6cafda05a9987f  campus/luv/world.dat
+746dbf8f74dbd271841553799c8092ec38ee4dd0f09e73aa038f0c35bae67b9b  data/fluxecho_campus.dat
+07b8968ec071fd0382cd039ddad7a9d6aeac8f847450b80e14a0ad4111b5592a  data/fluxecho_gates.dat
+a78b1d694eaa58f458d1ce3e49ebaf38b37e32ecf3d3108ed65730450b5abd0c  data/fluxecho_ledger.dat
+00261584c1ef399f679a5ca118c2720714ed37f0957194c74fd56cc5cfd565e7  data/fluxecho_recycle.dat
+c8d9b1de76d3818ce727ccda2d9ca9415413ac9951bca8f310408e69540bac4c  data/fluxecho_research.dat
+09dba797075a7571668653fe1d7dc06fa38d8279d60cd7f0d631dc0b147b86e8  data/fluxecho_vault.dat
+f7321dc03b5934e2be08ab1d086ef822271796777cfd412871a221cdfc44004c  items/nexus_core.dat
+3bd87d061157adf915d92ade8616af80c9d637c5c499e1ab0eac0ce7435eb2d2  modules/every_shape.dat
