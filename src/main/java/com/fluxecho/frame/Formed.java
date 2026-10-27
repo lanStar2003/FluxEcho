@@ -10,7 +10,11 @@ import net.minecraft.world.World;
 /**
  * Which blocks of formed multiblocks have given way to what the multiblock draws in their place
  * (blueprint principle 5): hidden ones render nothing ({@link #HIDE}), some also let players through ({@link #PASS}).
- * Each formed controller sets its cells here on both sides; the frame blocks ask.
+ * Each formed controller sets its cells here on both sides; the frame blocks ask, and (0.17.0, style FINAL §3.9.8) so
+ * do the new material families' ({@code skin.BlockSkin}, {@code client.shape.ShapeRender}), whose neighbours draw
+ * their faces toward a hidden one again. The redesign dissolves none of the new families in normal play (DECISIONS
+ * B9: only door-heart crystals, crown crystals and the struts under floating bodies, all frame blocks); a building that
+ * ever lets one through proves in its walk test that nobody can reach it.
  * <p>
  * The client has one world at a time and its chunk builder may ask from another thread, so its table is an immutable
  * map swapped whole. The server keeps one per dimension and is only asked on the server thread.

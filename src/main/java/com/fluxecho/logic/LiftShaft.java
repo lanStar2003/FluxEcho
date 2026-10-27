@@ -4,8 +4,10 @@ package com.fluxecho.logic;
  * 光梯 The light lift (0.12.0, CITY.md §2.5): light-lift pads (fitting LIFT) stacked in one column form a shaft. A
  * player standing on a pad who jumps rises to the next pad up, one who sneaks sinks to the next pad down, at
  * {@link #SPEED} blocks a tick. While riding the player passes through the pads and through our frame and fitting
- * blocks on the shaft line (the nexus's middle column, whether the nexus is formed or not), and stops below anything
- * else; a ride takes no fall damage, nor does anything for {@link #GRACE} ticks after it.
+ * blocks on the shaft line (the nexus's middle column, whether the nexus is formed or not), and (0.17.0, critique
+ * feasibility #19) through the new material families' blocks, hull, footing and skins, so a shaft that runs through a
+ * hull floor or a footing course still rides; it stops below anything else; a ride takes no fall damage, nor does
+ * anything for {@link #GRACE} ticks after it.
  * <p>
  * This is the rule both sides share: what a ride does ({@link #plan}), where the player is moved each tick
  * ({@link #motion}, {@link #ease}), when the ride ends ({@link #ended}; since 0.14.1 exactly on its pad,
@@ -54,7 +56,7 @@ public final class LiftShaft {
     public enum Cell {
         /** Nothing a player collides with (air, a plant, water). */
         OPEN,
-        /** One of our frame or fitting blocks: a rider passes through it. */
+        /** One of our frame or fitting blocks, or (0.17.0) of the new material families: a rider passes through it. */
         OURS,
         /** A light-lift pad: a rider passes through it, a ride stops standing on it. */
         PAD,

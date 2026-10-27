@@ -13,6 +13,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.campus.BlockFitting;
+import com.fluxecho.client.shape.BedDraw;
 import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
 
@@ -87,6 +88,10 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                 break;
             case Parts.F_LIFT:
                 drawn = lift(w, x, y, z, fit, meta, r);
+                break;
+            case Parts.F_BED:
+                // the planting bed (0.17.0) is drawn with the new families' textures
+                drawn = BedDraw.draw(w, x, y, z, fit, r);
                 break;
             default:
                 // the plinth, the crown, the glazing (whose shouldSideBeRendered hides the faces between two panes)
@@ -360,6 +365,9 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                 }
                 break;
             }
+            case Parts.F_BED:
+                BedDraw.inventory(fit, r);
+                break;
             case Parts.F_LIFT:
                 // the pad's iris on top
                 PartDraw.inventoryBox(r, fit, own, 0, 0, 0, 1, 1, 1);

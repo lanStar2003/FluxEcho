@@ -1,5 +1,6 @@
 package com.fluxecho.logic;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +12,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.zip.CRC32;
+
+import com.fluxecho.logic.shape.Family;
+import com.fluxecho.logic.shape.Form;
+import com.fluxecho.logic.shape.FormCodes;
 
 /**
  * The kit the City of Echoes' building shapes are drawn with (0.11.0): a port of the scratch generators' shared
@@ -22,8 +28,11 @@ import java.util.TreeMap;
  * <p>
  * A {@link Shape} is a box of characters in the local frame every module uses: {@code x} across {@code 0..W-1}
  * ({@code MID} the middle), {@code y} up ({@code y0} the foundation layer people stand on), {@code z} from the front
- * (the side that faces the nexus). One legend ({@link #partOf}, CITY.md Appendix A) gives every part one character
- * across the whole city, so a shape never needs its own table. A cell is <em>checked</em> (the structure check looks
+ * (the side that faces the nexus). One legend ({@link #partOf(char)}, CITY.md Appendix A) gives every part one
+ * character across the whole city. That base legend is frozen in 0.17.0 (style FINAL §3.8.5): with the new material
+ * families there are more parts than characters, so every new building declares its own characters in its own legend
+ * ({@link Shape#legend(char, int, boolean)}, read by {@link #partOf(Shape, char)}), and a character of the base legend
+ * never changes its part. A cell is <em>checked</em> (the structure check looks
  * at it), <em>soft</em> ({@link #SOFT}: built but never checked, may be asymmetric), <em>must-be-air</em> ({@code -}),
  * or empty (a space: anything); decor cells lie outside the box and are built unchecked. A building's gate niche
  * (内境门位, CITY.md §4.15) is wall drawn in the soft twins of its parts ({@link Shape#gateNiche}): the same blocks,
@@ -207,6 +216,92 @@ public final class ShapeKit {
             default:
                 throw new IllegalArgumentException("not a city legend character: '" + ch + "'");
         }
+    }
+
+    // ---- every building's own legend (0.17.0, style FINAL §3.8.5) ----
+
+    /**
+     * Whether the base legend ({@link #partOf(char)}, kit.py's {@code LEGEND_BASE}) has the character, or it is one of
+     * the three every shape reserves (the controller, must-be-air, nothing). The base legend is frozen: no character in
+     * it ever changes its part, and no character is added to it; a building's own characters go in its own legend.
+     */
+    public static boolean inBase(char ch) {
+        if (ch == CONTROLLER || ch == NONE || ch == AIR) return true;
+        try {
+            partOf(ch);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The part code a character stands for in a shape (0.17.0, style FINAL §3.8.5): the shape's own legend first
+     * ({@link Shape#legend(char, int)}), then the frozen base legend. A shape without a legend reads exactly as
+     * {@link #partOf(char)}, so every shape before 0.17.0 keeps every part.
+     *
+     * @throws IllegalArgumentException for a character neither legend has
+     */
+    public static int partOf(Shape s, char ch) {
+        Integer own = s == null ? null : s.legend.get(ch);
+        return own != null ? own : partOf(ch);
+    }
+
+    /** Whether a character is a soft cell in a shape: a base soft character or one its legend makes soft. */
+    public static boolean soft(Shape s, char ch) {
+        return s == null ? soft(ch) : s.isSoft(ch);
+    }
+
+    /** Whether a character is a cell the structure check looks at in a shape. */
+    public static boolean checked(Shape s, char ch) {
+        return ch != NONE && ch != AIR && !soft(s, ch);
+    }
+
+    /**
+     * How a legend names a part, as the generators write it ({@code kit.py}'s {@code legend_text}): the new families
+     * by family and shape number ({@code hull:2}, {@code skin_garden:7}), the live materials by their number
+     * ({@code live:0} the birch log to {@code live:4} the flower), the frame, deck and fittings by their meta
+     * ({@code deck:13}), anything else by its code ({@code part:53}).
+     */
+    public static String legendName(int code) {
+        Family f = FormCodes.family(code);
+        if (f != null) return f.id + ":" + FormCodes.number(code);
+        if (Parts.isLive(code)) return "live:" + (code - Parts.BIRCH);
+        if (Parts.isFrame(code)) return "frame:" + Parts.meta(code);
+        if (Parts.isDeck(code)) return "deck:" + Parts.meta(code);
+        if (Parts.isFitting(code)) return "fitting:" + Parts.meta(code);
+        return "part:" + code;
+    }
+
+    /**
+     * A shape's own legend as text, one line a character in character order, {@code <ch>=<name>} and
+     * {@code " soft"} for a soft one ({@link #legendName}); empty for a shape without a legend. {@code kit.py}'s
+     * {@code legend_text} writes the same text, so a building's checksum ({@link #crc}) is the generator's.
+     */
+    public static String legendText(Shape s) {
+        StringBuilder b = new StringBuilder();
+        for (Map.Entry<Character, Integer> e : new TreeMap<>(s.legend).entrySet()) {
+            if (b.length() > 0) b.append('\n');
+            b.append(e.getKey())
+                .append('=')
+                .append(legendName(e.getValue()));
+            if (s.softChars.indexOf(String.valueOf(e.getKey())) >= 0) b.append(" soft");
+        }
+        return b.toString();
+    }
+
+    /**
+     * A shape's checksum as the generators and the shape tests take it ({@code zlib.crc32}): every layer
+     * ({@link #layers}) joined with newlines, and (0.17.0, style FINAL §3.8.5) for a shape with its own legend a blank
+     * line and the legend's text after them, so a legend that changes changes the checksum even where no cell does. A
+     * shape without a legend sums its layers alone, as every shape test has since 0.11.0.
+     */
+    public static long crc(Shape s) {
+        String text = String.join("\n", layers(s));
+        if (!s.legend.isEmpty()) text += "\n\n" + legendText(s);
+        CRC32 c = new CRC32();
+        c.update(text.getBytes(StandardCharsets.UTF_8));
+        return c.getValue();
     }
 
     // ---- geometry helpers (kit.py) ----
@@ -646,7 +741,7 @@ public final class ShapeKit {
             StringBuilder row = new StringBuilder(s.W);
             for (int x = 0; x < s.W; x++) {
                 char ch = s.get(x, y, z);
-                row.append(soft(ch) ? NONE : ch);
+                row.append(s.isSoft(ch) ? NONE : ch);
             }
             layers[height - 1 - y][z] = row.toString();
         }
@@ -714,6 +809,14 @@ public final class ShapeKit {
         public final Set<Long> niche = new LinkedHashSet<>();
         /** Whether the ground round the box counts as a floor at y0 (the paved apron). */
         public boolean groundOutside = true;
+        /**
+         * The building's own legend (0.17.0, style FINAL §3.8.5): characters the frozen base legend does not have, each
+         * with its part code, in the order declared; empty for every shape before 0.17.0.
+         */
+        private final Map<Character, Integer> legend = new LinkedHashMap<>();
+        /** The legend's soft characters, and those a body stands in or on as on a half slab (the walk's view). */
+        private final StringBuilder softChars = new StringBuilder(), passChars = new StringBuilder(),
+            halfChars = new StringBuilder();
 
         public Shape(String name, int w, int h, int d) {
             this.name = name;
@@ -752,6 +855,60 @@ public final class ShapeKit {
 
         public void clear(int x, int y, int z) {
             if (inb(x, y, z)) g[index(x, y, z)] = NONE;
+        }
+
+        // ---- its own legend (0.17.0, style FINAL §3.8.5)
+
+        /**
+         * Declares one of the building's own legend characters, checked ({@link #legend(char, int, boolean)}). A live
+         * material is soft whatever is declared.
+         */
+        public Shape legend(char ch, int code) {
+            return legend(ch, code, false);
+        }
+
+        /**
+         * Declares one of the building's own legend characters (style FINAL §3.8.5; {@code b_<shape>.py}'s
+         * {@code LEGEND}): it places part {@code code}, soft (built, never checked) when {@code soft} says so or the
+         * part
+         * is a live material ({@link LiveParts}). The base legend is frozen, so the character must not be one of its
+         * characters (nor the controller, must-be-air or nothing), and a character is declared once.
+         *
+         * @throws IllegalArgumentException when the character is the base legend's, is declared already, or the code
+         *                                  is no part
+         */
+        public Shape legend(char ch, int code, boolean soft) {
+            if (inBase(ch))
+                throw new IllegalArgumentException(name + ": '" + ch + "' is the base legend's, which is frozen");
+            if (legend.containsKey(ch)) throw new IllegalArgumentException(name + ": '" + ch + "' declared twice");
+            if (code < 0) throw new IllegalArgumentException(name + ": '" + ch + "' places no part");
+            legend.put(ch, code);
+            boolean live = Parts.isLive(code);
+            if (soft || live) softChars.append(ch);
+            // what a body meets there: vines, flowers and lily pads it walks through, a half slab or a step it stands
+            // on
+            if (live && code != Parts.BIRCH && code != Parts.OAK_LEAVES) passChars.append(ch);
+            Form f = FormCodes.form(code);
+            if (f == Form.HALF || f == Form.STEP) halfChars.append(ch);
+            return this;
+        }
+
+        /** The building's own legend: character to part code, in the order declared; empty before 0.17.0. */
+        public Map<Character, Integer> legend() {
+            return Collections.unmodifiableMap(legend);
+        }
+
+        /** Whether a character of this shape is a soft cell: a base soft character or one its legend makes soft. */
+        public boolean isSoft(char ch) {
+            return soft(ch) || softChars.indexOf(String.valueOf(ch)) >= 0;
+        }
+
+        private boolean isPassable(char ch) {
+            return PASSABLE.indexOf(ch) >= 0 || passChars.indexOf(String.valueOf(ch)) >= 0;
+        }
+
+        private boolean isHalf(char ch) {
+            return HALF.indexOf(ch) >= 0 || halfChars.indexOf(String.valueOf(ch)) >= 0;
         }
 
         /**
@@ -814,13 +971,13 @@ public final class ShapeKit {
         /** Checked cells: everything but spaces, soft cells and must-be-air. */
         public int checkedCount() {
             int n = 0;
-            for (char ch : g) if (checked(ch)) n++;
+            for (char ch : g) if (checked(this, ch)) n++;
             return n;
         }
 
         public int softCount() {
             int n = 0;
-            for (char ch : g) if (soft(ch)) n++;
+            for (char ch : g) if (isSoft(ch)) n++;
             return n;
         }
 
@@ -845,7 +1002,7 @@ public final class ShapeKit {
                 char ch = get(x, y, z);
                 if (ch == NONE) continue;
                 char m = get(W - 1 - x, y, z);
-                if (soft(ch) || soft(m)) continue;
+                if (isSoft(ch) || isSoft(m)) continue;
                 if (m != ch && !asym.contains(pos(x, y, z)) && !asym.contains(pos(W - 1 - x, y, z)))
                     bad.add(new int[] { x, y, z, ch, m });
             }
@@ -856,13 +1013,13 @@ public final class ShapeKit {
             if (!inb(x, y, z)) return y <= 0 && groundOutside;
             char ch = get(x, y, z);
             if (y == 0 && ch == NONE && groundOutside) return true;
-            return PASSABLE.indexOf(ch) < 0 && HALF.indexOf(ch) < 0;
+            return !isPassable(ch) && !isHalf(ch);
         }
 
         boolean passable(int x, int y, int z) {
             if (!inb(x, y, z)) return y >= 1 || !groundOutside;
             if (y == 0 && get(x, y, z) == NONE && groundOutside) return false;
-            return PASSABLE.indexOf(get(x, y, z)) >= 0;
+            return isPassable(get(x, y, z));
         }
 
         /** The standing heights (in half blocks) the column offers, lowest first. */
@@ -870,7 +1027,7 @@ public final class ShapeKit {
             List<Integer> out = new ArrayList<>();
             int hi = H + 2;
             for (int y = 0; y < hi; y++) {
-                if (inb(x, y, z) && HALF.indexOf(get(x, y, z)) >= 0) {
+                if (inb(x, y, z) && isHalf(get(x, y, z))) {
                     if (passable(x, y + 1, z) && passable(x, y + 2, z)) out.add(2 * y + 1);
                     continue;
                 }
@@ -952,8 +1109,7 @@ public final class ShapeKit {
         public List<int[]> idleTreads(Set<Long> reached) {
             List<int[]> out = new ArrayList<>();
             for (int y = 0; y < H; y++) for (int z = 0; z < D; z++) for (int x = 0; x < W; x++) {
-                if (HALF.indexOf(get(x, y, z)) >= 0 && !reached.contains(state(x, z, 2 * y + 1)))
-                    out.add(new int[] { x, y, z });
+                if (isHalf(get(x, y, z)) && !reached.contains(state(x, z, 2 * y + 1))) out.add(new int[] { x, y, z });
             }
             return out;
         }
@@ -1054,9 +1210,17 @@ public final class ShapeKit {
         /** The treads nobody reached stands on, {x, y, z} ({@link Shape#idleTreads}; empty without starts). */
         public final List<int[]> idleTreads;
         public final Map<Character, Integer> counts;
+        /**
+         * The characters the shape holds that neither its own legend nor the base legend has (0.17.0, style FINAL
+         * §3.8.5): empty for a shape the builder can place.
+         */
+        public final List<Character> unknown;
 
         Summary(Shape s, List<int[]> starts) {
             counts = Collections.unmodifiableMap(new LinkedHashMap<>(s.counts()));
+            List<Character> odd = new ArrayList<>();
+            for (char ch : counts.keySet()) if (!inBase(ch) && !s.legend.containsKey(ch)) odd.add(ch);
+            unknown = Collections.unmodifiableList(odd);
             checked = s.checkedCount();
             soft = s.softCount();
             air = s.airCount();

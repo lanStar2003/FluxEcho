@@ -16,9 +16,12 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.common.EnumPlantType;
+import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.client.shape.SkinIcons;
 import com.fluxecho.frame.FrameEvents;
 import com.fluxecho.logic.Parts;
 
@@ -30,7 +33,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * fitting metas). Three of them make bookcases together with the echo shelf (a plinth, three shelves, a crown, posts
  * between the units); the others are the gallery's rails, the stair treads, the windows and the hologram pedestals,
  * and (0.11.0) the city's sample sockets (a 2..14/16 column whose side faces each hold one item in a recess) and basin
- * rims (a 10/16 slab with a lit lip; water and beds lie beside it).
+ * rims (a 10/16 slab with a lit lip; water and beds lie beside it). 0.17.0 adds meta 14, the planting bed (style FINAL
+ * §3.7, code 46): a 12/16 trough with soil on top and a warm lip (light 4), on which grass plants and crops grow
+ * ({@link #canSustainPlant}: a flower, Botania's flowers among them, or a crop planted by a player after the building
+ * is built); metas 10 to 13 and 15 stay unregistered (ids.md §1.2).
  * They are not opaque and let light through, so a room full of furniture stays lit; each has its own box. Drawn into
  * the chunk mesh by {@code client.FittingRender}, so they work with shader packs.
  */
@@ -58,6 +64,9 @@ public class BlockFitting extends Block {
     public static final float RAIL_HEIGHT = 1.5f;
     /** The basin rim's top (0.11.0). */
     public static final float BASIN_TOP = 10 / 16f;
+    /** The planting bed's top (0.17.0) and its light, the warm lip's. */
+    public static final float BED_TOP = 12 / 16f;
+    public static final int BED_LIGHT = 4;
 
     @SideOnly(Side.CLIENT)
     private IIcon[] side, top, glows;
@@ -73,13 +82,19 @@ public class BlockFitting extends Block {
         setLightOpacity(0);
     }
 
+    /** Whether the meta is a registered fitting: the run of 0.16.0, and (0.17.0) the planting bed. */
+    public static boolean known(int meta) {
+        return meta >= 0 && meta < Parts.FITTING_TYPES || meta == Parts.F_BED;
+    }
+
     /** The meta clamped to a known fitting type; unknown metas behave like a plinth (a whole cube). */
     public static int type(int meta) {
-        return meta >= 0 && meta < Parts.FITTING_TYPES ? meta : Parts.F_PLINTH;
+        return known(meta) ? meta : Parts.F_PLINTH;
     }
 
     /** The light a fitting of this meta gives. */
     public static int light(int meta) {
+        if (meta == Parts.F_BED) return BED_LIGHT;
         return meta >= 0 && meta < Parts.FITTING_TYPES ? Parts.FITTING_LIGHT[meta] : 0;
     }
 
@@ -109,6 +124,9 @@ public class BlockFitting extends Block {
             case Parts.F_BASIN:
                 // a 10/16 slab: too high to walk up, low enough to look over at the bed it rims
                 return new float[] { 0, 0, 0, 1, BASIN_TOP, 1 };
+            case Parts.F_BED:
+                // a 12/16 trough (0.17.0): a step up from the floor, its soil under a standing player's knees
+                return new float[] { 0, 0, 0, 1, BED_TOP, 1 };
             default:
                 return new float[] { 0, 0, 0, 1, 1, 1 };
         }
@@ -147,6 +165,7 @@ public class BlockFitting extends Block {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void getSubBlocks(Item item, CreativeTabs tab, List list) {
         for (int i = 0; i < Parts.FITTING_TYPES; i++) list.add(new ItemStack(item, 1, i));
+        list.add(new ItemStack(item, 1, Parts.F_BED));
     }
 
     @Override
@@ -169,13 +188,34 @@ public class BlockFitting extends Block {
         return light(w.getBlockMetadata(x, y, z));
     }
 
-    /** The whole cubes are solid on every side, a tread and a basin rim on their undersides only. */
+    /** The whole cubes are solid on every side, a tread, a basin rim and a planting bed on their undersides only. */
     @Override
     public boolean isSideSolid(IBlockAccess w, int x, int y, int z, ForgeDirection side) {
         int meta = w.getBlockMetadata(x, y, z);
         if (full(meta)) return true;
         int t = type(meta);
-        return (t == Parts.F_TREAD || t == Parts.F_BASIN) && side == ForgeDirection.DOWN;
+        return (t == Parts.F_TREAD || t == Parts.F_BASIN || t == Parts.F_BED) && side == ForgeDirection.DOWN;
+    }
+
+    /**
+     * The planting bed (0.17.0, style FINAL §3.7) bears what grows in grass and what grows in farmland: plants of the
+     * plains (flowers, saplings, Botania's mystical and functional flowers) and crops; nothing of the desert, the
+     * nether, caves or water. The other fittings bear what vanilla's rule lets them.
+     */
+    @Override
+    public boolean canSustainPlant(IBlockAccess w, int x, int y, int z, ForgeDirection direction,
+        IPlantable plantable) {
+        if (type(w.getBlockMetadata(x, y, z)) != Parts.F_BED)
+            return super.canSustainPlant(w, x, y, z, direction, plantable);
+        if (direction != ForgeDirection.UP) return false;
+        EnumPlantType kind = plantable.getPlantType(w, x, y + 1, z);
+        return kind == EnumPlantType.Plains || kind == EnumPlantType.Crop;
+    }
+
+    /** A crop on the planting bed grows as on watered farmland. */
+    @Override
+    public boolean isFertile(World w, int x, int y, int z) {
+        return type(w.getBlockMetadata(x, y, z)) == Parts.F_BED || super.isFertile(w, x, y, z);
     }
 
     @Override
@@ -314,6 +354,8 @@ public class BlockFitting extends Block {
             top[i] = r.registerIcon(p + "_top");
             if (Parts.FITTING_LIGHT[i] > 0) glows[i] = r.registerIcon(p + "_glow");
         }
+        // the planting bed's (0.17.0), drawn by tools/HullTextures.java
+        SkinIcons.registerBed(r);
     }
 
     @Override
@@ -326,6 +368,7 @@ public class BlockFitting extends Block {
     @SideOnly(Side.CLIENT)
     public IIcon icon(int meta, int s) {
         int t = type(meta);
+        if (t == Parts.F_BED) return SkinIcons.bed(s);
         return s <= 1 ? top[t] : side[t];
     }
 

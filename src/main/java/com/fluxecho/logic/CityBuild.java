@@ -7,8 +7,9 @@ import java.util.List;
 /**
  * A city module's shape as the generic module plan reads it ({@link BuildPlan.ModuleBuild}, 0.11.0): a
  * {@link ShapeKit.Shape} drawn in the city legend, its units ({@link UnitLayout}), the part its controller is placed as
- * (its module core), and its stage rule. Every cell's part comes from the legend ({@link ShapeKit#partOf}); the
- * controller is the module's core. The DECOR stage takes the shape's canopy and the seeded ornaments.
+ * (its module core), and its stage rule. Every cell's part comes from the legend (0.17.0: the shape's own legend first,
+ * then the frozen base legend, {@link ShapeKit#partOf(ShapeKit.Shape, char)}); the controller is the module's core. The
+ * DECOR stage takes the shape's canopy and the seeded ornaments.
  * <p>
  * The blueprint usually is the shape's box itself. A module whose structure reaches out of its shape's box (0.12.0: the
  * Echo Dome Generator's legs reach 39 blocks down from its pod to the forum) gives the blueprint cell of the shape's
@@ -79,7 +80,7 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
         for (UnitLayout.Unit unit : layout.units()) u.add(unit.cells);
         units = Collections.unmodifiableList(u);
         List<int[]> d = new ArrayList<>();
-        for (int[] c : shape.decor) d.add(new int[] { c[0], c[1], c[2], ShapeKit.partOf((char) c[3]) });
+        for (int[] c : shape.decor) d.add(new int[] { c[0], c[1], c[2], ShapeKit.partOf(shape, (char) c[3]) });
         decor = Collections.unmodifiableList(d);
     }
 
@@ -137,7 +138,13 @@ public final class CityBuild implements BuildPlan.ModuleBuild {
 
     @Override
     public int part(int x, int y, int z, char ch) {
-        return ch == ShapeKit.CONTROLLER ? corePart : ShapeKit.partOf(ch);
+        return ch == ShapeKit.CONTROLLER ? corePart : ShapeKit.partOf(shape, ch);
+    }
+
+    /** Soft as its shape reads the character: the base legend's soft characters and its own legend's (0.17.0). */
+    @Override
+    public boolean soft(int x, int y, int z, char ch) {
+        return shape.isSoft(ch);
     }
 
     @Override

@@ -1,0 +1,76 @@
+# the new material families (0.17.0, style FINAL §3.5, §3.8.1): one name a shape number, one tip a material
+
+tile.fluxecho.hull.whole.name=Hull Block
+tile.fluxecho.hull.seam.name=Hull Panel
+tile.fluxecho.hull.round.name=Hull Round
+tile.fluxecho.hull.slope.name=Hull Slope
+tile.fluxecho.hull.half.name=Hull Slab
+tile.fluxecho.hull.step.name=Hull Step
+tile.fluxecho.hull.rib.name=Hull Rib
+tile.fluxecho.hull.column.name=Hull Column
+tile.fluxecho.hull.window.name=Hull Window
+tile.fluxecho.hull.louvre.name=Hull Louvre
+tile.fluxecho.hull.light_seam.name=Hull Light Seam
+tile.fluxecho.hull.keel.name=Hull Keel
+tile.fluxecho.hull.lamp.name=Hull Lamp Window
+tile.fluxecho.hull.soffit.name=Hull Soffit
+tile.fluxecho.hull.floor.name=Hull Floor
+tile.fluxecho.hull.relief.name=Hull Relief
+
+tile.fluxecho.footing.whole.name=Footing Block
+tile.fluxecho.footing.seam.name=Footing Panel
+tile.fluxecho.footing.round.name=Footing Round
+tile.fluxecho.footing.slope.name=Footing Slope
+tile.fluxecho.footing.half.name=Footing Slab
+tile.fluxecho.footing.step.name=Footing Step
+tile.fluxecho.footing.coping.name=Footing Coping
+tile.fluxecho.footing.column.name=Footing Column
+tile.fluxecho.footing.soffit.name=Footing Soffit
+tile.fluxecho.footing.pool_lip.name=Footing Pool Lip
+tile.fluxecho.footing.light_seam.name=Footing Light Seam
+tile.fluxecho.footing.spout.name=Footing Spout
+tile.fluxecho.footing.planter.name=Footing Planter Lip
+tile.fluxecho.footing.grate.name=Footing Grate
+tile.fluxecho.footing.floor.name=Footing Floor
+tile.fluxecho.footing.relief.name=Footing Relief
+
+tile.fluxecho.skin_garden.moss_whole.name=Moss Bronze Block
+tile.fluxecho.skin_garden.moss_seam.name=Moss Bronze Panel
+tile.fluxecho.skin_garden.moss_round.name=Moss Bronze Round
+tile.fluxecho.skin_garden.moss_slope.name=Moss Bronze Slope
+tile.fluxecho.skin_garden.moss_light_seam.name=Moss Bronze Light Seam
+tile.fluxecho.skin_garden.moss_lamp.name=Moss Bronze Lamp Window
+tile.fluxecho.skin_garden.moss_soffit.name=Moss Bronze Soffit
+tile.fluxecho.skin_garden.moss_window.name=Moss Bronze Bronze-Framed Window
+tile.fluxecho.skin_garden.marble_whole.name=White Marble Block
+tile.fluxecho.skin_garden.marble_seam.name=White Marble Panel
+tile.fluxecho.skin_garden.marble_round.name=White Marble Round
+tile.fluxecho.skin_garden.marble_slope.name=White Marble Slope
+tile.fluxecho.skin_garden.marble_light_seam.name=White Marble Light Seam
+tile.fluxecho.skin_garden.marble_lamp.name=White Marble Lamp Window
+tile.fluxecho.skin_garden.marble_soffit.name=White Marble Soffit
+tile.fluxecho.skin_garden.marble_baluster.name=White Marble Baluster
+
+tile.fluxecho.skin_script.ink_whole.name=Ink Slate Block
+tile.fluxecho.skin_script.ink_seam.name=Ink Slate Panel
+tile.fluxecho.skin_script.ink_round.name=Ink Slate Round
+tile.fluxecho.skin_script.ink_slope.name=Ink Slate Slope
+tile.fluxecho.skin_script.ink_light_seam.name=Ink Slate Light Seam
+tile.fluxecho.skin_script.ink_lamp.name=Ink Slate Lamp Window
+tile.fluxecho.skin_script.ink_soffit.name=Ink Slate Soffit
+tile.fluxecho.skin_script.ink_grate.name=Ink Slate Lattice
+tile.fluxecho.skin_script.paper_whole.name=Xuan Paper Block
+tile.fluxecho.skin_script.paper_seam.name=Xuan Paper Panel
+tile.fluxecho.skin_script.paper_round.name=Xuan Paper Round
+tile.fluxecho.skin_script.paper_slope.name=Xuan Paper Slope
+tile.fluxecho.skin_script.paper_light_seam.name=Xuan Paper Light Seam
+tile.fluxecho.skin_script.paper_lantern.name=Xuan Paper Lantern Panel
+tile.fluxecho.skin_script.paper_soffit.name=Xuan Paper Soffit
+tile.fluxecho.skin_script.paper_picture.name=Xuan Paper Picture
+
+fluxecho.skin.hull.tip=§3Pearl-white composite panels: the city's bones and crowns§r\nEvery building is built round them, with a nexus-cyan keel pointing home
+fluxecho.skin.footing.tip=§3Warm black basalt, dressed and coursed: the stone under every building§r\nThere are never lamp windows in it
+fluxecho.skin.moss.tip=§3Bronze gone green, the raised parts rubbed bright: a skin of the garden§r
+fluxecho.skin.marble.tip=§3Warm white stone with gilt bands: a skin of the garden§r
+fluxecho.skin.ink.tip=§3Ink-black slate with fine upright brushing: a skin of the scriptorium§r
+fluxecho.skin.paper.tip=§3Warm white paper fibre; a lantern panel glows warm from behind: a skin of the scriptorium§r

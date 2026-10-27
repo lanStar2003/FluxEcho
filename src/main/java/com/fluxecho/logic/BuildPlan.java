@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1210,6 +1211,15 @@ public final class BuildPlan {
         /** The part a cell is built as (the controller's: the module's core). */
         int part(int x, int y, int z, char ch);
 
+        /**
+         * Whether a cell is soft: built, never checked (0.17.0: a shape with its own legend says which of its
+         * characters are; before, the base legend's soft characters alone, {@link ShapeKit#soft(char)}). A live
+         * material is laid soft whatever this says ({@link LiveParts}).
+         */
+        default boolean soft(int x, int y, int z, char ch) {
+            return ShapeKit.soft(ch);
+        }
+
         /** The stage ({@code M_FLOOR .. M_COMMISSION}) of a cell that belongs to no unit. */
         int stage(int x, int y, int z, char ch);
 
@@ -1432,7 +1442,9 @@ public final class BuildPlan {
      * </ul>
      * A soft cell is a SOFT step, {@code -} an AIR step, every other cell a HARD step placed where
      * {@link Blueprint#world} puts it for the module's controller ({@link #moduleController}), so the HARD steps are
-     * exactly the cells the structure check looks at.
+     * exactly the cells the structure check looks at. A live material (0.17.0, {@link LiveParts}: birch, leaves, vine,
+     * lily, flower) is always a SOFT step, and whatever stage the module gives it, it is laid at the end of the last
+     * stage before the commissioning, bottom-up, after everything it grows on or hangs from.
      *
      * @throws IllegalArgumentException if the site is neither a hall site, a pavilion site, the gate site nor an outer
      *                                  diagonal, or the front not a horizontal unit vector
@@ -1523,11 +1535,12 @@ public final class BuildPlan {
                 continue;
             }
             int[] p = at.world(x, y, z);
-            byte kind = ch == ShapeKit.AIR ? AIR : ShapeKit.soft(ch) ? SOFT : HARD;
+            int part = m.part(x, y, z, ch);
+            byte kind = ch == ShapeKit.AIR ? AIR : m.soft(x, y, z, ch) || Parts.isLive(part) ? SOFT : HARD;
             int stage = m.stage(x, y, z, ch);
             if (stage <= M_CLEAR || stage >= M_STAGES)
                 throw new IllegalStateException(m.key() + ": no stage for '" + ch + "' at " + x + "," + y + "," + z);
-            Draft dr = new Draft(f, p[0], p[1], p[2], m.part(x, y, z, ch), kind, NO_GROUP);
+            Draft dr = new Draft(f, p[0], p[1], p[2], part, kind, NO_GROUP);
             if (stage == M_FIT) {
                 int rank = m.fitRank(x, y, z, ch);
                 if (rank == 0) throw new IllegalStateException(m.key() + ": a fitting ranked with the units");
@@ -1572,6 +1585,12 @@ public final class BuildPlan {
             throw new IllegalStateException("the units hold " + units.size() + " cells, the shape " + shapeUnitCells);
         }
 
+        // the live materials (0.17.0, LiveParts): out of whatever stage the module put them in, to be laid last
+        List<Draft> live = new ArrayList<>();
+        for (List<Draft> st : stages) takeLive(st, live);
+        takeLive(before, live);
+        takeLive(after, live);
+
         // FLOOR ripples out from the nexus; the other stages but FIT go by their cells' order, each order bottom-up
         // (with every order 0, as before 0.13.0, that is bottom-up alone: the same comparisons, the same plan)
         Comparator<Draft> ranked = Comparator.<Draft>comparingInt(dr -> dr.rank)
@@ -1589,9 +1608,25 @@ public final class BuildPlan {
 
         // the stages in the module's order (0.15.0): by position, each holding the stage its order names there
         int[] order = stageOrder(m);
+        // the live materials at the end of the last stage before the commissioning, bottom-up: the water a lily
+        // floats on, the wall a vine hangs from, the grass a flower stands in are all laid before them (no module
+        // before 0.17.0 has any, so every plan before is the same plan)
+        live.sort(BOTTOM_UP);
+        stages.get(order[M_COMMISSION - 1])
+            .addAll(live);
         List<List<Step>> out = empty(M_STAGES);
         for (int p = M_FLOOR; p < M_STAGES; p++) out.set(p, steps(stages.get(order[p]), p));
         return new Plan(moduleKey(m.key(), site), M_STAGES, out, columns(clear));
+    }
+
+    /** Moves the live materials' drafts ({@link Parts#isLive}) out of a stage's list into {@code live}. */
+    private static void takeLive(List<Draft> stage, List<Draft> live) {
+        for (Iterator<Draft> it = stage.iterator(); it.hasNext();) {
+            Draft dr = it.next();
+            if (!Parts.isLive(dr.part)) continue;
+            live.add(dr);
+            it.remove();
+        }
     }
 
     /**
