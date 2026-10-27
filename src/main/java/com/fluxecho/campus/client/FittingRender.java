@@ -14,8 +14,10 @@ import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.client.shape.BedDraw;
+import com.fluxecho.client.skin.ClientSkin;
 import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.skin.LampRule;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -31,6 +33,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * with vanilla lighting, then its light line again at full brightness with smooth lighting off, only on the sides
  * where it can be seen: a post's and a unit's line only where no wall, shelf or post stands against it, a tread's nose
  * only where the stair is open. That keeps the lines lit under a shader pack.
+ * <p>
+ * 0.17.0 (refactor §5.6): every fitting that glows is a lamp window of the old building it belongs to. Its line follows
+ * the client's box table: left out while the building's lamps are dark (by day, asleep, without power), drawn in the
+ * building's accent while they are lit; a fitting outside every building of the table glows as before.
  */
 @SideOnly(Side.CLIENT)
 public final class FittingRender implements ISimpleBlockRenderingHandler {
@@ -66,28 +72,30 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
     public boolean renderWorldBlock(IBlockAccess w, int x, int y, int z, Block block, int modelId, RenderBlocks r) {
         if (!(block instanceof BlockFitting fit)) return false;
         int meta = w.getBlockMetadata(x, y, z);
+        // what its glow is this time: an old building's lamp follows the box table (refactor §5.6)
+        int c = ClientSkin.glow(w, x, y, z, Parts.fitting(meta));
         boolean drawn;
         switch (meta) {
             case Parts.F_POST:
-                drawn = post(w, x, y, z, fit, meta, r);
+                drawn = post(w, x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_RAIL:
-                drawn = rail(w, x, y, z, fit, meta, r);
+                drawn = rail(w, x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_TREAD:
-                drawn = tread(w, x, y, z, fit, meta, r);
+                drawn = tread(w, x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_PEDESTAL:
-                drawn = pedestal(x, y, z, fit, meta, r);
+                drawn = pedestal(x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_SOCKET:
-                drawn = socket(x, y, z, fit, meta, r);
+                drawn = socket(x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_BASIN:
-                drawn = basin(w, x, y, z, fit, meta, r);
+                drawn = basin(w, x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_LIFT:
-                drawn = lift(w, x, y, z, fit, meta, r);
+                drawn = lift(w, x, y, z, fit, meta, r, c);
                 break;
             case Parts.F_BED:
                 // the planting bed (0.17.0) is drawn with the new families' textures
@@ -95,38 +103,41 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
                 break;
             default:
                 // the plinth, the crown, the glazing (whose shouldSideBeRendered hides the faces between two panes)
-                drawn = cube(w, x, y, z, fit, meta, r);
+                drawn = cube(w, x, y, z, fit, meta, r, c);
         }
         r.setRenderBounds(0, 0, 0, 1, 1, 1);
         return drawn;
     }
 
     /** The upright between two units: a column with a lit seam up each side that is open to view. */
-    private static boolean post(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean post(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         boolean drawn = PartDraw.box(r, fit, x, y, z, POST_MIN, 0, POST_MIN, POST_MAX, 1, POST_MAX);
         boolean[] lit = new boolean[6];
         for (int s = 2; s < 6; s++) lit[s] = open(w, x, y, z, s);
-        return overlay(r, fit, x, y, z, meta, lit, POST_MIN, 0, POST_MIN, POST_MAX, 1, POST_MAX) || drawn;
+        return overlay(c, r, fit, x, y, z, meta, lit, POST_MIN, 0, POST_MIN, POST_MAX, 1, POST_MAX) || drawn;
     }
 
     /** A whole cube; the plinth's kick light and the crown's index strip on the sides that are open to view. */
-    private static boolean cube(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean cube(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         boolean drawn = PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, 1, 1);
         boolean[] lit = new boolean[6];
         for (int s = 2; s < 6; s++)
             lit[s] = (r.renderAllFaces || PartDraw.shows(w, x, y, z, fit, s)) && open(w, x, y, z, s);
-        return overlay(r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
+        return overlay(c, r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
     }
 
     /**
      * The light-lift pad (0.12.0): a whole steel cube whose top is the lit iris of the shaft, at full brightness when
      * nothing covers it; its sides are plain steel.
      */
-    private static boolean lift(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean lift(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         boolean drawn = PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, 1, 1);
         boolean[] lit = new boolean[6];
         lit[1] = r.renderAllFaces || PartDraw.shows(w, x, y, z, fit, 1);
-        return overlay(r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
+        return overlay(c, r, fit, x, y, z, meta, lit, 0, 0, 0, 1, 1, 1) || drawn;
     }
 
     /**
@@ -135,7 +146,8 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
      * bumps into. The handrail's light line runs along both faces of each panel and round the baluster. Every face is
      * drawn: most of them lie inside the block, where no neighbour may hide them.
      */
-    private static boolean rail(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean rail(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         boolean[] arm = new boolean[6];
         for (int s = 2; s < 6; s++) arm[s] = BlockFitting.railArm(w, x, y, z, ForgeDirection.getOrientation(s));
         PartDraw.inner(
@@ -156,13 +168,13 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             PartDraw.inner(r, fit, x, y, z, null, b[0], b[1], b[2], b[3], b[4], b[5]);
         }
         boolean[] round = { false, false, true, true, true, true };
-        overlay(r, fit, x, y, z, meta, round, BALUSTER_MIN, 0, BALUSTER_MIN, BALUSTER_MAX, 1, BALUSTER_MAX);
+        overlay(c, r, fit, x, y, z, meta, round, BALUSTER_MIN, 0, BALUSTER_MIN, BALUSTER_MAX, 1, BALUSTER_MAX);
         for (int s = 2; s < 6; s++) if (arm[s]) {
             double[] b = arm(s);
             // the panel's two broad faces: east and west for a panel running north-south, and the other way round
             boolean[] faces = s < 4 ? new boolean[] { false, false, false, false, true, true }
                 : new boolean[] { false, false, true, true, false, false };
-            overlay(r, fit, x, y, z, meta, faces, b[0], b[1], b[2], b[3], b[4], b[5]);
+            overlay(c, r, fit, x, y, z, meta, faces, b[0], b[1], b[2], b[3], b[4], b[5]);
         }
         return true;
     }
@@ -182,7 +194,8 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
     }
 
     /** A stair tread: a half slab whose lit nose shows on every side the stair is open. */
-    private static boolean tread(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean tread(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         boolean drawn = PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, TREAD_TOP, 1);
         boolean[] lit = new boolean[6];
         for (int s = 2; s < 6; s++) {
@@ -191,15 +204,16 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             lit[s] = (r.renderAllFaces || PartDraw.shows(w, x, y, z, fit, s)) && !Neighbours.solid(w, nx, y, nz)
                 && !Neighbours.fitting(w, nx, y, nz, Parts.F_TREAD);
         }
-        return overlay(r, fit, x, y, z, meta, lit, 0, 0, 0, 1, TREAD_TOP, 1) || drawn;
+        return overlay(c, r, fit, x, y, z, meta, lit, 0, 0, 0, 1, TREAD_TOP, 1) || drawn;
     }
 
     /** The hologram pedestal: a short block whose collar's ring of light runs round all four sides. */
-    private static boolean pedestal(int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean pedestal(int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r, int c) {
         boolean drawn = PartDraw
             .box(r, fit, x, y, z, PEDESTAL_MIN, 0, PEDESTAL_MIN, PEDESTAL_MAX, PEDESTAL_TOP, PEDESTAL_MAX);
         boolean[] round = { false, false, true, true, true, true };
         return overlay(
+            c,
             r,
             fit,
             x,
@@ -221,11 +235,11 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
      * opening itself). Every face of its parts is drawn: the recesses' floors and ceilings lie inside the block,
      * where the whole column's rule (a face at its top or foot is hidden against an opaque block) must not hide them.
      */
-    private static boolean socket(int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean socket(int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r, int c) {
         for (double[] b : SOCKET)
             PartDraw.inner(r, fit, x, y, z, null, b[0] / 16, b[1] / 16, b[2] / 16, b[3] / 16, b[4] / 16, b[5] / 16);
         boolean[] round = { false, false, true, true, true, true };
-        overlay(r, fit, x, y, z, meta, round, SOCKET_MIN, 0, SOCKET_MIN, SOCKET_MAX, 1, SOCKET_MAX);
+        overlay(c, r, fit, x, y, z, meta, round, SOCKET_MIN, 0, SOCKET_MIN, SOCKET_MAX, 1, SOCKET_MAX);
         return true;
     }
 
@@ -234,7 +248,8 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
      * another basin rim stands at the same height (as a rail's arms do), its top and its sides lit; a rim alone shows
      * only the lip's knot in its middle.
      */
-    private static boolean basin(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r) {
+    private static boolean basin(IBlockAccess w, int x, int y, int z, BlockFitting fit, int meta, RenderBlocks r,
+        int c) {
         PartDraw.box(r, fit, x, y, z, 0, 0, 0, 1, BASIN_TOP, 1);
         boolean[] arm = new boolean[6];
         for (int s = 2; s < 6; s++) {
@@ -247,7 +262,7 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             boolean[] lit = { false, true, true, true, true, true };
             // an arm's end lies against the next rim's arm: no light there
             for (int s = 2; s < 6; s++) if (arm[s] && touches(b, s)) lit[s] = false;
-            overlay(r, fit, x, y, z, meta, lit, b[0], b[1], b[2], b[3], b[4], b[5]);
+            overlay(c, r, fit, x, y, z, meta, lit, b[0], b[1], b[2], b[3], b[4], b[5]);
         }
         return true;
     }
@@ -284,12 +299,14 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
     }
 
     /**
-     * Draws the meta's glow overlay on the chosen sides of a box, at full brightness with smooth lighting off. Nothing
-     * while the breaking animation overrides the texture, or when the meta does not glow.
+     * Draws the meta's glow overlay on the chosen sides of a box, at full brightness with smooth lighting off, in the
+     * colour the box table gives ({@link ClientSkin#glow}: white as 0.16 drew it, an old building's accent for its lit
+     * lamps). Nothing while the breaking animation overrides the texture, when the meta does not glow, or when it is an
+     * unlit lamp.
      */
-    private static boolean overlay(RenderBlocks r, BlockFitting fit, int x, int y, int z, int meta, boolean[] sides,
-        double x0, double y0, double z0, double x1, double y1, double z1) {
-        if (r.hasOverrideBlockTexture()) return false;
+    private static boolean overlay(int colour, RenderBlocks r, BlockFitting fit, int x, int y, int z, int meta,
+        boolean[] sides, double x0, double y0, double z0, double x1, double y1, double z1) {
+        if (r.hasOverrideBlockTexture() || colour == LampRule.DARK) return false;
         boolean ao = r.enableAO, lit = false;
         for (int s = 0; s < 6; s++) {
             if (!sides[s]) continue;
@@ -297,6 +314,8 @@ public final class FittingRender implements ISimpleBlockRenderingHandler {
             if (g == null) continue;
             if (!lit) {
                 PartDraw.glowOn(r);
+                // a lit lamp of an old building in its accent
+                if (colour >= 0) Tessellator.instance.setColorOpaque_I(colour);
                 r.setRenderBounds(x0, y0, z0, x1, y1, z1);
                 lit = true;
             }

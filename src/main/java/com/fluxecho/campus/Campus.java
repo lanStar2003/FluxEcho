@@ -127,6 +127,8 @@ public final class Campus {
     };
     /** What the builder took down (0.10.1); every change marks the campus to be saved. */
     private final RecycleStore recycle = new RecycleStore(this::dirty);
+    /** The box table of the campus's buildings (0.17.0, style §3.9): saved as {@code Skn}, sent to the players near. */
+    private final SkinFeed skin = new SkinFeed(this);
 
     private boolean active, hinted, skipBlocked;
     /** Every job of this nexus is free (an operator's switch, NBT {@code Fb}). */
@@ -534,6 +536,7 @@ public final class Campus {
             loaded = true;
             afterLoad();
         }
+        skin.tick(now);
         if (now % 100 == 50) takeOverflow();
         if (!active) {
             legacyHint(now);
@@ -1981,6 +1984,11 @@ public final class Campus {
 
     TileNexus nexus() {
         return nexus;
+    }
+
+    /** The campus's box table feed (0.17.0). */
+    SkinFeed skin() {
+        return skin;
     }
 
     World world() {
@@ -3445,6 +3453,7 @@ public final class Campus {
             t.setLong("Rc", resumeCheckAt);
             t.setString("Rj", resumeJob);
         }
+        skin.write(t);
         tile.setTag("Campus", t);
     }
 
@@ -3468,6 +3477,7 @@ public final class Campus {
         intake.setStackInSlot(0, null);
         instantJob = null;
         recycle.read(null);
+        skin.read(null);
         if (tile == null || !tile.hasKey("Campus")) {
             active = false;
             hinted = false;
@@ -3529,6 +3539,7 @@ public final class Campus {
             resumeCheckAt = t.getLong("Rc");
             resumeJob = t.getString("Rj");
         }
+        skin.read(t);
     }
 
     // ---- the client copy

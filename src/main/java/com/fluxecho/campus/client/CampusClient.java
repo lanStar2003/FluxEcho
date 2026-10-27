@@ -2,6 +2,7 @@ package com.fluxecho.campus.client;
 
 import com.fluxecho.campus.BlockDeck;
 import com.fluxecho.campus.BlockFitting;
+import com.fluxecho.client.skin.ClientSkin;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.relauncher.Side;
@@ -32,5 +33,7 @@ public final class CampusClient {
         // the light lift's input, motion and feel, and its beams (0.12.0)
         LiftClient.register();
         LiftRender.register();
+        // the box table's lamp clock (0.17.0)
+        ClientSkin.register();
     }
 }
