@@ -46,12 +46,13 @@ public final class CampusModule {
     }
 
     /**
-     * The campus's handlers: the capture of what a block spills while the builder takes it down, and (0.12.0) the light
-     * lift's riders.
+     * The campus's handlers: the capture of what a block spills while the builder takes it down, (0.12.0) the light
+     * lift's riders, and (0.17.0) the box table's players.
      */
     public static void init() {
         DropCapture.register();
         Lift.register();
+        SkinFeed.register();
     }
 
     /**
