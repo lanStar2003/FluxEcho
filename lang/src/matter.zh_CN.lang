@@ -1,0 +1,21 @@
+
+# flux materials (0.9.0)
+item.fluxecho.flux_grit.name=通量碎屑
+fluxecho.flux_grit.tip=§3碎片采集器凝结矿石时，从深层碎片上落下来的粉§r\n只有通量碎片采集器会出\n在 GT 高压釜里和末影珍珠粉、蒸馏水一起长成通量结晶
+item.fluxecho.flux_crystal.name=通量结晶
+fluxecho.flux_crystal.tip=§3通量层在现实里凝成的第一种物质§r\n通量中枢的构架、导能柱和晶核都要用它
+item.fluxecho.echo_crystal.name=回响晶
+fluxecho.echo_crystal.holds=§d记录：%s · %s
+fluxecho.echo_crystal.tip=§3通量中枢把一条图鉴记录压进通量结晶里§r\n记录本身不消耗，同一条记录一天只能压一次\n研究、模块和回响书库都要用它
+item.fluxecho.phase_alloy.name=相位合金
+fluxecho.phase_alloy.tip=§3钛和通量结晶、回响晶一起熔炼出来的深蓝金属，通量层的相位纹路在表面缓慢流动§r\n在 GT 电力高炉里做（EV，2700 K）\n中枢的相位 II 和这一相位的模块都要用；GT 线材轧机把它拉成记忆丝用的相位合金丝
+item.fluxecho.resonant_glass.name=共鸣玻璃
+fluxecho.resonant_glass.tip=§3通量中枢用相位合金调谐过的硼硅玻璃：透明，附近的机器运转时边缘泛起青色涟漪§r\n研究相位 II 后在通量中枢显化\n回响穹顶发生器和潮汐井要用，以后还有共鸣窗
+item.fluxecho.phase_alloy_wire.name=相位合金丝
+fluxecho.phase_alloy_wire.tip=§3拉得像头发一样细的相位合金§r\n在 GT 线材轧机里拉丝（IV），一锭八根\n在通量中枢镀上回响晶就是记忆丝
+item.fluxecho.memory_filament.name=记忆丝
+fluxecho.memory_filament.tip=§3镀上回响晶的相位合金丝：一根发光的细丝，像一根光弦，记得流过它的东西§r\n研究相位 II 后在通量中枢用线材轧机拉出的相位合金丝显化\n中枢的相位 III、外环和这一相位的建筑都要用
+item.fluxecho.manifest_matter.name=显化物质
+fluxecho.manifest_matter.tip=§3一小块显化成物质的通量层：不停缓慢变形的黑金液态金属§r\n研究智子阵列后，在相位 III 起的通量中枢用相位合金、回响晶和 LuV 电路显化；显化台做它的时候耗电很大\n中枢的相位 IV、天环、反重力晶格和这一相位的建筑都要用
+item.fluxecho.anti_gravity_lattice.name=反重力晶格
+fluxecho.anti_gravity_lattice.tip=§3悬在半空的晶格方块，下面有托举的光§r\n研究天环后在通量中枢用显化物质和共鸣玻璃显化\n天环平台的浮空地基和天环上的建筑都要用

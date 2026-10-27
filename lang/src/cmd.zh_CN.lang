@@ -1,0 +1,16 @@
+fluxecho.cmd.usage=/fluxecho research <all|reset> [玩家] 或 /fluxecho build <free [on|off]|finish|status>
+fluxecho.cmd.not_player=这条命令要由玩家执行（研究命令可以指定在线玩家）
+fluxecho.cmd.unknown_player=找不到在线玩家 %s
+fluxecho.cmd.no_nexus=%s 格内没有已加载的通量中枢
+fluxecho.cmd.research_all=已为 %s 的团队完成本版本能做的全部研究（新增 %s 项；后续阶段的研究仍未开放）
+fluxecho.cmd.research_reset=已清空 %s 的团队的研究（%s 项）
+fluxecho.cmd.at_nexus=（%s 的通量中枢）
+fluxecho.cmd.status.head=%s 的通量中枢
+fluxecho.cmd.status.legacy=这座中枢还没有园区（0.9.2 的方式）：在中枢界面的「建造」页按「铺设广场」
+fluxecho.cmd.status.job=任务：%s · %s
+fluxecho.cmd.status.progress=已放 %s / %s · 已清理 %s · 受阻 %s · 跳过 %s · 未加载 %s
+fluxecho.cmd.status.ground=将清理 %s · 要填 %s · 已填 %s · 将拆除机器/箱子 %s
+fluxecho.cmd.status.cost=免费：%s · 全部免费：%s · 还要约 %s 秒
+fluxecho.cmd.status.queue=排队：%s
+fluxecho.cmd.yes=是
+fluxecho.cmd.no=否

@@ -1,0 +1,23 @@
+
+# codex
+item.fluxecho.codex.name=Echo Codex
+fluxecho.codex.tip=§3What your team did once and the flux layer remembers§r\nRight-click: imprinted bees, trees and butterflies, learned aspects, hunted prey, imprinted crops, ...\nItem tooltips say whether something echoes already
+fluxecho.codex.title=Echo Codex
+fluxecho.codex.total=%s in all
+fluxecho.codex.done=FluxEcho: your team has done this once
+fluxecho.codex.cat.bee=Bees
+fluxecho.codex.cat.tree=Trees
+fluxecho.codex.cat.butterfly=Butterflies
+fluxecho.codex.cat.aspect=Aspects
+fluxecho.codex.cat.mob=Prey
+fluxecho.codex.cat.crop=Crops
+fluxecho.codex.cat.infusion=Infusion & arcane
+fluxecho.codex.cat.orb=Blood orbs
+fluxecho.codex.todo.bee=FluxEcho: not imprinted yet - put this bee into a Bee Imprinter with paper
+fluxecho.codex.todo.tree=FluxEcho: not imprinted yet - put a sapling or pollen into a Bee Imprinter with paper
+fluxecho.codex.todo.butterfly=FluxEcho: not imprinted yet - put the butterfly into a Bee Imprinter with paper
+fluxecho.codex.todo.aspect=FluxEcho: not learned yet - put it into any Thaumcraft echo machine, or right-click one with it
+fluxecho.codex.todo.mob=FluxEcho: no imprint yet - carry a blank prey imprint and kill one
+fluxecho.codex.todo.crop=FluxEcho: not imprinted yet - scan it to the top, then into a Seed Imprinter with paper
+fluxecho.codex.todo.infusion=FluxEcho: not echoed yet - make one by hand and put it into an Infusion Echo
+fluxecho.codex.todo.orb=FluxEcho: not used yet - bind it and put it into a Blood Echo

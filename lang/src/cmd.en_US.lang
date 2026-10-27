@@ -1,0 +1,16 @@
+fluxecho.cmd.usage=/fluxecho research <all|reset> [player] or /fluxecho build <free [on|off]|finish|status>
+fluxecho.cmd.not_player=Only a player can use this (the research commands can name an online player)
+fluxecho.cmd.unknown_player=No online player called %s
+fluxecho.cmd.no_nexus=No loaded Flux Nexus within %s blocks
+fluxecho.cmd.research_all=Completed every research this version offers for %s's team (%s new; later phases stay locked)
+fluxecho.cmd.research_reset=Cleared the research of %s's team (%s nodes)
+fluxecho.cmd.at_nexus= (Flux Nexus at %s)
+fluxecho.cmd.status.head=Flux Nexus at %s
+fluxecho.cmd.status.legacy=This nexus has no campus yet (placed the 0.9.2 way): press Lay the forum on the Build page of its GUI
+fluxecho.cmd.status.job=Job: %s · %s
+fluxecho.cmd.status.progress=Placed %s / %s · cleared %s · blocked %s · skipped %s · unloaded %s
+fluxecho.cmd.status.ground=To clear %s · to fill %s · filled %s · machines/chests to dismantle %s
+fluxecho.cmd.status.cost=Free: %s · everything free: %s · about %s s left
+fluxecho.cmd.status.queue=Queue: %s
+fluxecho.cmd.yes=yes
+fluxecho.cmd.no=no

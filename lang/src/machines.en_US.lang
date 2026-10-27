@@ -1,0 +1,222 @@
+
+# bees
+gt.blockmachines.fluxecho.bee_imprinter.name=Bee Imprinter
+gt.blockmachines.fluxecho.larva_incubator.name=Larva Incubator
+fluxecho.recipe.bee_imprinter=Bee Imprinting
+fluxecho.recipe.larva_incubator=Larva Incubation
+fluxecho.bee_imprinter.tip=§3Takes the genes of a real bee, sapling (or pollen) or butterfly, unharmed§r\nSpecial slot: the sample (or an imprint, or a gene sample); it stays there\nPaper, no circuit: an imprint of all the sample's genes\nPaper + programmed circuit: a gene sample of just the circuit's genes\nImprint of the same kind + circuit: those genes written straight onto it (species kept)\nBees: 1 speed  2 lifespan  3 fertility  4 temperature  5 nocturnal  6 humidity\n  7 rain  8 cave  9 flower  10 pollination  11 territory  12 effect\n  13 every environment gene (4-8)  14 every gene but the species\nTrees: 1-12 one gene, 14 all; butterflies: 1-13 one gene, 14 all\n%s s per run, %s EU/t
+fluxecho.larva_incubator.tip=§3Grows the bee, tree or butterfly of an imprint§r\nAnalysed, pure-bred; climate does not matter\nSpecial slot: an imprint (or a real sample); it stays there\nBees (honey drops): no circuit or circuit 1 %3$s drops -> 1 pristine princess + %4$s drones; circuit 2 %5$s drops -> %6$s drones\nTrees (Forestry fertilizer): %7$s -> %8$s saplings\nButterflies (honey drops): %9$s -> %10$s butterflies\nA princess left in the output holds the next batch\n%1$s s per batch, %2$s EU/t
+item.fluxecho.bee_imprint.name=Bee Imprint
+fluxecho.bee_imprint.of=Bee Imprint: %s
+fluxecho.bee_imprint.blank=Blank imprint\nPut a bee into the Bee Imprinter's special slot and paper into its input to imprint all its genes
+fluxecho.bee_imprint.unknown=This pack has no such species: %s
+fluxecho.bee_imprint.shift=Hold Shift for the genes
+fluxecho.bee_imprint.missing=Some genes no longer exist in this pack; incubated bees get the species' default for them
+fluxecho.gene.SPEED=Speed
+fluxecho.gene.LIFESPAN=Lifespan
+fluxecho.gene.FERTILITY=Fertility
+fluxecho.gene.TEMPERATURE_TOLERANCE=Temperature tolerance
+fluxecho.gene.NOCTURNAL=Nocturnal
+fluxecho.gene.HUMIDITY_TOLERANCE=Humidity tolerance
+fluxecho.gene.TOLERANT_FLYER=Rain-tolerant flyer
+fluxecho.gene.CAVE_DWELLING=Cave dwelling
+fluxecho.gene.FLOWER_PROVIDER=Flowers
+fluxecho.gene.FLOWERING=Pollination
+fluxecho.gene.TERRITORY=Territory
+fluxecho.gene.EFFECT=Effect
+fluxecho.tree_imprint.of=Tree Imprint: %s
+fluxecho.butterfly_imprint.of=Butterfly Imprint: %s
+fluxecho.gene.GROWTH=Growth
+fluxecho.gene.HEIGHT=Height
+fluxecho.gene.FRUITS=Fruits
+fluxecho.gene.YIELD=Yield
+fluxecho.gene.PLANT=Soil
+fluxecho.gene.SAPPINESS=Sappiness
+fluxecho.gene.MATURATION=Maturation
+fluxecho.gene.GIRTH=Girth
+fluxecho.gene.FIREPROOF=Fireproof
+fluxecho.gene.SIZE=Size
+fluxecho.gene.METABOLISM=Metabolism
+fluxecho.gene.FIRE_RESIST=Fire resistance
+gt.blockmachines.fluxecho.gene_assembler.name=Gene Assembler
+fluxecho.recipe.gene_assembler=Gene Assembly
+fluxecho.gene_assembler.tip=§3Puts gene samples together: the traits you want, and only those§r\nWhatever is in the inputs is one job:\n  an imprint + gene samples -> the imprint with their genes (species kept)\n  two or more gene samples -> one sample with all their genes\nBees, trees and butterflies do not mix; two samples that disagree on a gene do not go together\nUses one of each; with AE turn on blocking mode\nSame result as putting them together in a crafting grid\n%s s per run, %s EU/t
+item.fluxecho.gene_sample.name=Gene Sample
+fluxecho.gene_sample.bee=Bee Gene Sample
+fluxecho.gene_sample.tree=Tree Gene Sample
+fluxecho.gene_sample.butterfly=Butterfly Gene Sample
+fluxecho.gene_sample.one=%s: %s (%s)
+fluxecho.gene_sample.many=%s: %s (%d genes)
+fluxecho.gene_sample.shape.environment=Environment
+fluxecho.gene_sample.shape.traits=All traits
+fluxecho.gene_sample.shape.set=Combined
+fluxecho.gene_sample.blank=Blank gene sample\nBee Imprinter: a bee in the special slot, paper in, pick a programmed circuit
+fluxecho.gene_sample.use=§8In a crafting grid with an imprint of the same kind: writes these genes onto it (species kept)\n§8Several samples together: one sample with all their genes\n§8The Gene Assembler does the same automatically
+
+# thaumcraft
+gt.blockmachines.fluxecho.essentia_echo.name=Essentia Echo
+tile.fluxecho.essentia_outlet.name=Essentia Outlet
+fluxecho.recipe.essentia_echo=Essentia Echo
+fluxecho.essentia_echo.tip=§3Synthesizes, on demand, every aspect your team has held once: no alchemical furnace, no alembics§r\nNeeds an Essentia Outlet next to it: an infusion matrix within 12 blocks draws from the outlet, essentia tubes pull from it\nPer essentia: its primal units x %s EU (a primal is 1 unit, Lux 2, ...)\nPlus shard credit: one vis crystal shard pays for %s units; keep shards in the input\nLearn aspects: put a filled phial, jar or crystal into the input (it goes to the output), or right-click the machine with it\nTakes up to %3$s A
+fluxecho.aspect.no_owner=This machine has no recorded owner and cannot learn aspects. Break it and place it again.
+fluxecho.aspect.learned=Learned: %s (your team knows %s aspects)
+fluxecho.aspect.known=Already known: %s (your team knows %s aspects)
+fluxecho.aspect.waila=Aspects known to the team: %s  Shard credit: %s
+fluxecho.essentia_echo.linked=Essentia Echo: the team knows %s aspects, %s EU stored
+fluxecho.essentia_outlet.selected=Outlet aspect: %s (sent when a tube asks for no aspect in particular)
+fluxecho.essentia_outlet.selected_now=Selected aspect: %s, %s can be made right now
+fluxecho.essentia_outlet.none=No aspect selected: right-click the outlet with a filled phial, jar or crystal
+fluxecho.essentia_outlet.no_echo=No Essentia Echo next to this outlet
+
+gt.blockmachines.fluxecho.insight_echo.name=Insight Echo
+gt.blockmachines.fluxecho.crucible_echo.name=Crucible Echo
+fluxecho.recipe.insight_echo=Insight Echo
+fluxecho.recipe.crucible_echo=Crucible Echo
+fluxecho.insight_echo.tip=§3Scans what you have scanned again, for research points§r\nSpecial slot: an item its owner has scanned with a thaumometer; it stays there\nEach cycle takes a paper and gives the owner that item's research points again (Thaumcraft's own cap still applies)\nThe owner must be online\n%s s per cycle, %s EU/t
+fluxecho.crucible_echo.tip=§3Crucible recipes without throwing anything into a crucible§r\nPut the catalyst in; the essentia the recipe needs is synthesized: %s EU per unit, one vis crystal shard pays for %s units (keep shards in the input)\nOnly recipes the owner has researched and whose aspects the team has learned\nWhen one catalyst fits several recipes, a programmed circuit picks which
+gt.blockmachines.fluxecho.infusion_echo.name=Infusion Echo
+fluxecho.recipe.infusion_echo=Infusion Echo
+fluxecho.infusion_echo.tip=§3Repeats an infusion you made by hand: no pedestals, no instability§r\nSpecial slot: a finished item you infused (or made at the arcane workbench) once; it stays there\nInputs: everything its recipe takes (infusion: the centre and every component; arcane: every ingredient)\nAn infusion's essentia is synthesized from EU: %s EU per unit, a vis crystal shard pays %s units (shards in the inputs)\nAn arcane recipe's vis costs 1 primal unit per vis\nOnly recipes the owner researched and whose aspects the team learned; no warp
+
+# blood magic
+gt.blockmachines.fluxecho.blood_echo.name=Blood Echo
+fluxecho.recipe.blood_echo=Blood Echo
+fluxecho.blood_echo.tip=§3Makes LP from EU and a little meat: no more self-sacrifice§r\nSpecial slot: a bound blood orb; it stays there and its level sets the pace (weak %s LP/t ... transcendent %s LP/t)\n%s EU per LP; one raw meat or rotten flesh in the input per %s LP\nNo circuit or circuit 1: into the main tank of a blood altar within %s blocks (%s up or down)\nCircuit 2: into the orb owner's soul network, up to the orb's capacity\nWaits while the altar or network is full
+fluxecho.blood_echo.waila_altar=Altar mode: %s LP/t, %s LP waiting
+fluxecho.blood_echo.waila_network=Soul network mode: %s LP/t, %s LP waiting
+
+# prey
+gt.blockmachines.fluxecho.mob_echo.name=Prey Echo
+fluxecho.recipe.mob_echo=Prey Echo
+fluxecho.mob_echo.tip=§3A mob you killed once, its loot from EU from now on§r\nSpecial slot: a prey imprint; it stays there\nInput: a weapon (optional); its Looting counts and it loses 1 durability per kill\nEach kill costs by the mob's max health: %s EU per point, at least %s s\nBosses (the Wither, Twilight Forest bosses, ...) take %s times the EU and time\nDrop tables come from MobsInfo, as for the Extreme Entity Crusher
+item.fluxecho.mob_imprint.name=Prey Imprint
+fluxecho.mob_imprint.of=Prey Imprint: %s
+fluxecho.mob_imprint.blank=Blank prey imprint\nCarry it and kill a mob yourself to write that mob on it\nOr right-click a living mob with it: if your statistics show you killed its kind, it is written right away
+fluxecho.mob_imprint.written=Prey imprint written: %s
+fluxecho.mob_imprint.not_killed=You have not killed a %s yet: carry a blank imprint and kill one
+fluxecho.mob_imprint.no_drops=MobsInfo has no drop table for %s; it cannot be echoed
+
+# crops
+gt.blockmachines.fluxecho.seed_imprinter.name=Seed Imprinter
+gt.blockmachines.fluxecho.seed_echo.name=Seed Echo
+fluxecho.recipe.seed_imprinter=Seed Imprinting
+fluxecho.recipe.seed_echo=Seed Echo
+fluxecho.seed_imprinter.tip=§3Imprints a fully scanned seed bag, seeds kept§r\nSpecial slot: a seed bag scanned to the top (or a crop imprint); it stays there\nPaper in: an imprint of the crop and its growth, gain and resistance\nCrop imprint + programmed circuit in: the sample's stats written onto it (crop kept)\n  1 growth  2 gain  3 resistance  4 all\n%s s per run, %s EU/t
+fluxecho.seed_echo.tip=§3Seed bags straight from a crop imprint, no more cross-breeding§r\nSpecial slot: a crop imprint; it stays there\n%s crop sticks in -> 1 fully scanned seed bag with the imprint's stats\n%s s per bag, %s EU/t
+item.fluxecho.crop_imprint.name=Crop Imprint
+fluxecho.crop_imprint.of=Crop Imprint: %s
+fluxecho.crop_imprint.blank=Blank crop imprint\nPut a fully scanned seed bag into the Seed Imprinter's special slot and paper into its input
+fluxecho.crop_imprint.stats=Growth %s  Gain %s  Resistance %s
+
+# botania
+gt.blockmachines.fluxecho.mana_echo.name=Mana Echo Spring
+fluxecho.spring.lore=Mana your flowers made flowed through the flux layer and left its echo there; the spring draws it back up with EU
+fluxecho.spring.core=A circuit in the core (LV to LuV) sets its voltage, output and reach; without one it stays idle
+fluxecho.spring.shift=Hold Shift for every tier
+fluxecho.spring.row=%s V · %s mana/t · %s EU/t · petal %s · reach %s / ±%s
+fluxecho.spring.petal=Mystical petals tune the echo: each tier draws 4x the mana and a petal is worth 4x as much, so it always takes about %s petals a minute
+fluxecho.spring.pools=The mana wells straight into the mana pools in reach, nearest first, each one full before the next; no spreaders
+fluxecho.spring.charge=A mana tablet or ring in the charge slot is filled first; hoppers can take it out once full
+fluxecho.spring.holo=A screwdriver switches the hologram (off by default)
+fluxecho.spring.voltage=A higher circuit raises the input voltage: mind your cables and power
+fluxecho.spring.gui.core=%s core · %s V
+fluxecho.spring.gui.no_core=No circuit in the core
+fluxecho.spring.gui.insert_core=Put an LV to LuV circuit in the core to start
+fluxecho.spring.gui.rate=%s mana/t · %s EU/t
+fluxecho.spring.gui.petal=A petal %s mana · %s left
+fluxecho.spring.gui.per_minute=~%s/min
+fluxecho.spring.gui.pools=%s pools · %s / %s
+fluxecho.spring.gui.no_pool=No mana pool in reach
+fluxecho.spring.gui.charge=Charging %s%%
+fluxecho.spring.gui.sent=Sent %s
+fluxecho.spring.gui.reach=Reach %s / ±%s
+fluxecho.spring.gui.energy=%s / %s EU
+fluxecho.spring.gui.buffer=Basin %s / %s
+fluxecho.spring.gui.pools_title=Pools %s
+fluxecho.spring.gui.pools_tip=The 4 nearest mana pools in reach\nfilled nearest first
+fluxecho.spring.gui.reach_tip=Reach\n%s blocks sideways, %s up and down
+fluxecho.spring.gui.slot.core=Core: an LV to LuV circuit\nsets voltage, output, petal worth and reach
+fluxecho.spring.gui.slot.petal=Mystical petals (any colour)\neach tunes a stretch of the echo
+fluxecho.spring.gui.slot.charge=Charge slot: a mana tablet or ring\nfilled before the pools
+fluxecho.spring.gui.holo.on=Hologram: on
+fluxecho.spring.gui.holo.off=Hologram: off
+fluxecho.spring.status.idle=Idle
+fluxecho.spring.status.working=Welling up
+fluxecho.spring.status.no_core=No core circuit
+fluxecho.spring.status.no_petal=Out of mystical petals
+fluxecho.spring.status.no_pool=No mana pool in reach
+fluxecho.spring.status.pool_full=All mana pools are full
+fluxecho.spring.status.no_power=Not enough power
+fluxecho.spring.status.disabled=The Botania module is switched off in the config
+fluxecho.spring.holo.title=Mana Echo Spring
+fluxecho.spring.holo.rate=%s mana/t
+fluxecho.spring.holo.eu=%s EU/t
+fluxecho.spring.holo.petals=Petals %s · %s left
+fluxecho.spring.holo.on=Mana Echo Spring: hologram on
+fluxecho.spring.holo.off=Mana Echo Spring: hologram off
+fluxecho.spring.waila.petals=%s petals · %s mana left
+fluxecho.spring.waila.holo.on=Hologram: on (screwdriver)
+fluxecho.spring.waila.holo.off=Hologram: off (screwdriver)
+fluxecho.spring.nei.title=Mana Echo Spring
+fluxecho.spring.nei.tag=Mana Echo
+fluxecho.spring.nei.mana=Mana/t
+fluxecho.spring.nei.eu=EU/t
+fluxecho.spring.nei.petal=A petal
+fluxecho.spring.nei.petals=Petals/min
+fluxecho.spring.nei.reach=Reach
+fluxecho.spring.nei.in=Core · petals
+fluxecho.spring.nei.out=Pools · tablet
+fluxecho.spring.nei.note=Mana wells straight into the pools in reach; no spreaders
+
+# ae2
+tile.fluxecho.echo_provider.name=Echo ME Provider
+fluxecho.echo_provider.status=Echo ME Provider: online, offering %s patterns to AE
+fluxecho.echo_provider.offline=Echo ME Provider: not on an AE network (or no channel or power); the machines next to it have %s patterns
+
+# machine types (GT's "Machine Type" line)
+fluxecho.bee_imprinter.type=Gene Imprinting
+fluxecho.larva_incubator.type=Breeding
+fluxecho.essentia_echo.type=Essentia Synthesis
+fluxecho.insight_echo.type=Research Points
+fluxecho.crucible_echo.type=Alchemy
+fluxecho.blood_echo.type=LP Generation
+fluxecho.mob_echo.type=Mob Drops
+fluxecho.infusion_echo.type=Infusion
+fluxecho.seed_imprinter.type=Crop Imprinting
+fluxecho.seed_echo.type=Seed Breeding
+fluxecho.mana_echo.type=Mana Generation
+fluxecho.gene_assembler.type=Gene Splicing
+
+# Flux Vis Pedestal
+tile.fluxecho.vis_pedestal.name=Flux Vis Pedestal
+fluxecho.vis_pedestal.type=Vis Charging
+fluxecho.vis_pedestal.tip=§3The aspects lie thick deep in the flux layer: the pedestal draws the six primals up with EU, live, into the wand floating above it§r\nRight-click with a wand, sceptre, staff or vis amulet to put it on; empty hand to take it back; power, modules and the wand's vis show in a hologram above it\n%s vis per primal per second, %s EU per vis; extraction modules make it faster\nPower from GT cables (any side but the top, any voltage) or the team's wireless network with a link module; holds %s EU\nUp to %s modules: right-click with one to install, sneak-right-click with an empty hand to take one out
+item.fluxecho.vis_module.extraction.name=Extraction Module
+item.fluxecho.vis_module.wireless.name=Wireless Charging Module
+item.fluxecho.vis_module.link.name=Flux Link Module
+fluxecho.vis_module.extraction.tip=§3Draws one more stream of primals up from the depths§r\n%s more vis per primal per second; they add up, up to 4
+fluxecho.vis_module.wireless.tip=§3Sends the vis straight to the team§r\nFills the wands, sceptres, staves and vis amulets team members carry within %s blocks, in this world
+fluxecho.vis_module.link.tip=§3Links the pedestal to the team's GT wireless network (FluxLite's flux network)§r\nDraws power when the pedestal is below half, up to %s EU/t; no cables needed
+fluxecho.vis_module.install=§8Right-click a Flux Vis Pedestal with it to install; sneak-right-click with an empty hand takes the last one out\n§8One wireless and one link module at most
+fluxecho.vis_pedestal.installed=Installed: %s (%s/%s)
+fluxecho.vis_pedestal.no_slot=No room: up to 4 modules, and one wireless and one link module at most
+fluxecho.vis_pedestal.status=Flux Vis Pedestal: %s / %s EU stored; %s vis per primal per second (about %s EU/s with all six charging); modules %s/%s
+fluxecho.aspect.gui=%s aspects known · %s shard credit
+fluxecho.insight_echo.gui_online=Owner online · points for %s aspects to give
+fluxecho.insight_echo.gui_offline=Owner offline · points kept (%s aspects)
+fluxecho.mob_echo.gui=Looting %s · weapon %s%%
+fluxecho.mob_echo.gui_bare=No weapon: drops as with Looting 0
+fluxecho.blood_echo.gui_altar=%s LP/t · %s LP waiting → blood altar
+fluxecho.blood_echo.gui_network=%s LP/t · %s LP waiting → soul network
+fluxecho.bee_imprinter.gui_sample=Sample: a bee, a sapling (or pollen), a butterfly, an imprint or a gene sample\nIt stays in the slot
+fluxecho.larva_incubator.gui_sample=Sample: an imprint (or a bee, sapling or butterfly)\nIt stays in the slot
+fluxecho.insight_echo.gui_sample=Sample: an item the owner has scanned\nIt stays in the slot
+fluxecho.blood_echo.gui_sample=Sample: a bound blood orb\nIts tier sets the LP a tick; it stays in the slot
+fluxecho.mob_echo.gui_sample=Sample: a prey imprint\nIt stays in the slot
+fluxecho.infusion_echo.gui_sample=Sample: a finished item you infused (or crafted at the arcane workbench) by hand\nIt stays in the slot
+fluxecho.seed_imprinter.gui_sample=Sample: a fully scanned seed bag (or a crop imprint)\nIt stays in the slot
+fluxecho.seed_echo.gui_sample=Sample: a crop imprint\nIt stays in the slot
+
+# 0.7.2
+fluxecho.gene.yes=Yes
+fluxecho.gene.no=No

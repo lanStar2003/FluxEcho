@@ -1,0 +1,23 @@
+
+# codex
+item.fluxecho.codex.name=回响图鉴
+fluxecho.codex.tip=§3团队亲手做过一次、通量层记住了的东西§r\n右键打开：拓过的蜂、树、蝴蝶，学会的要素，杀过的怪，拓过的作物……\n物品的提示里也会标出"已回响"或"还没亲手做过"
+fluxecho.codex.title=回响图鉴
+fluxecho.codex.total=共 %s 项
+fluxecho.codex.done=通量回响：团队已经亲手做过
+fluxecho.codex.cat.bee=蜂种
+fluxecho.codex.cat.tree=树种
+fluxecho.codex.cat.butterfly=蝶种
+fluxecho.codex.cat.aspect=要素
+fluxecho.codex.cat.mob=猎物
+fluxecho.codex.cat.crop=作物
+fluxecho.codex.cat.infusion=注魔与奥术
+fluxecho.codex.cat.orb=血宝珠
+fluxecho.codex.todo.bee=通量回响：还没拓过——把这只蜂放进蜂种拓印机，输入纸
+fluxecho.codex.todo.tree=通量回响：还没拓过——把树苗或花粉放进蜂种拓印机，输入纸
+fluxecho.codex.todo.butterfly=通量回响：还没拓过——把蝴蝶放进蜂种拓印机，输入纸
+fluxecho.codex.todo.aspect=通量回响：还没学会——放进任意一台神秘回响机器，或拿着它右键机器
+fluxecho.codex.todo.mob=通量回响：还没拓过——带着空白猎物印记杀一只
+fluxecho.codex.todo.crop=通量回响：还没拓过——扫描满级后放进种子拓印机，输入纸
+fluxecho.codex.todo.infusion=通量回响：还没回响过——亲手做一件，放进注魔回响台的特殊槽
+fluxecho.codex.todo.orb=通量回响：还没用过——绑定后放进鲜血回响器

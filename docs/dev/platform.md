@@ -147,7 +147,29 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 
 - **ID 账的导出**（0.17.0 起）：`java tools/IdsCsv.java` 把 [ids.md](ids.md) §19 的 JSON 导出成 `docs/dev/ids.csv`（一行一个 ID：类、节、值、含义、归属、首发版本、状态、出处；`--check` 只比较）。`ids.md` 是唯一的账，改了它的 JSON 就重跑；`IdsCsvTest` 在测试里编译这个工具、比对提交的 CSV。逐版计划数据在 `src/test/resources/plan/batches.csv`（版本、首发新形状的楼「顺序号:楼键」、环段数、可见星数和 MVP 星数、main 和 test 估值），`BatchPlanTest` 读它。
 
-- **资源**：`mcmod.info`（三个条目，后两个 `parent` 指向 fluxecho）；`assets/fluxecho/lang/{en_US,zh_CN}.lang`（行一一对应，按版本 `#` 分节）；`textures/{blocks,items,gui,effects}`；`quests/{index.json, DefaultQuests/...}`。
+- **资源**：`mcmod.info`（三个条目，后两个 `parent` 指向 fluxecho）；`assets/fluxecho/lang/{en_US,zh_CN}.lang`（0.17.0 起是 `tools/LangMerge.java` 从分片生成的，见下面「lang 分片」；行一一对应）；`textures/{blocks,items,gui,effects}`；`quests/{index.json, DefaultQuests/...}`。
+- **lang 分片**（0.17.0 起，refactor §⑧ 8.3「五个分片」）：fluxecho 的键只写在仓库根的 `lang/src/<区>.<语言>.lang`（`en_US`、`zh_CN` 两份同改，同一个区里两种语言的键和顺序一样），**不要直接改** `assets/fluxecho/lang/*.lang`——改完分片跑 `java tools/LangMerge.java`，把生成的两份 lang 和分片一起提交（`--check` 只比较）。合并是固定的：先按 `lang/src/order.txt`（0.16.0 两份 lang 的 1,155 个键的顺序，永不改）写老键，每个键连着分片里它上面的注释和空行；再按分区表的顺序一个区一个区写其余的键。所以分片前后生成的 lang 和 0.16.0 逐字节相等，新键只会落在后面。合并冲突了（两个分支都动了生成的 lang），合完分片再跑一次 `LangMerge` 就是答案。`LangShardTest` 守着：提交的 lang = 合并结果；两种语言每个区的键相同；一个键只在一个分片；每个键在它前缀所属的区；0.16.0 的键都还在。FluxLite（`assets/fluxlite/lang`，251 行）和 FluxDepths（`assets/fluxdepths/lang`，127 行）不分片：各自只属于一个子系统，没有并行改它们的计划，照旧直接改两份（`LangTest` 照样查）。
+- **分区表**（机器可读的是 `lang/src/areas.txt`；「前缀」以 `.` 结尾 = 它下面的键，以 `*` 结尾 = 以它开头的键，别的 = 这个键和它下面的键；一个键归匹配最长的那个区，几个区共用同一个前缀时放哪个都行；新区在那一版的接口提交里加一行、建两个空文件）：
+
+| 区 | 前缀 | 归谁 |
+|---|---|---|
+| `core` | `itemGroup.fluxecho`、`fluxecho.quests.` `status.` `machine.` `gui.` `holo.` `waila.` `nei.` | 平台 |
+| `machines` | `gt.blockmachines.fluxecho.`、`fluxecho.recipe.`，各回响机器和它们的物品（`bee_imprinter.`…`echo_provider.`，含 `fluxecho.spring.`、`gene.`、`aspect.`、源质出口、灵气基座和模块） | 回响机器 |
+| `codex` | `item.fluxecho.codex.`、`fluxecho.codex.`（卷、舱志等更长的前缀归 `narrative`） | 图鉴 |
+| `gates` | `tile.fluxecho.light_gate.` `interior_shell.` `interior_glass.`、`fluxecho.gate.` | 光门 |
+| `matter` | 九种通量物质的 `item.fluxecho.<m>.` 和 `fluxecho.<m>.`（碎屑、结晶、回响晶、相位合金、共鸣玻璃、相位合金丝、记忆丝、显化物质、反重力晶格） | 中枢 |
+| `frame` | `tile.fluxecho.frame.`、`fluxecho.frame.` | 中枢 |
+| `nexus` | `tile.fluxecho.nexus.`、`fluxecho.nexus.`、`fluxecho.dock.` | 中枢 |
+| `research` | `fluxecho.research.`（0.18 的 `branch.*`、`node.*` 也在这里） | 研究 / 叙事 |
+| `city` | `fluxecho.city.`、`fluxecho.unit.`（0.16.0 的 24 种单元）、`fluxecho.module.`、`tile.fluxecho.module_core.`（各楼的区没有的） | 城市框架 |
+| `library` | `tile.fluxecho.library.`、`fluxecho.library.`、`library_card`、`fluxecho.module.library` | 档案馆 |
+| 每座楼一个区：`eco_dome` `root` `dome_generator` `dual_foil_vault` `mana_fountain` `arcane_court` `resonance_gate` `sophon_array` `holo_table` `blood_covenant` `hunting_ground` `observatory` `sky_sails` `weather_station` `droplet_hangar`（`Buildings` 行序） | `fluxecho.module.<楼键>`（和它下面的）、`fluxecho.<楼键>.`、`tile.fluxecho.module_core.<楼键>.`、`fluxecho.fixture.<楼键>.`、`fluxecho.issue.module.<楼键>.`、新的单元种类 `fluxecho.unit.` | 那座楼 |
+| `campus` | `fluxecho.build.`、`deck`、`fitting`、`supply_port`、`recycle_bin`（`tile.` 和 `fluxecho.` 两种） | 营造 |
+| `cmd` | `fluxecho.cmd.` | 命令 |
+| `skin` | `fluxecho.skin.`、`tile.fluxecho.hull*`、`footing*`、`skin_*` | 渲染（0.17 起，空） |
+| `narrative` | `fluxecho.codex.vol.` `glance.` `drift.` `hall.` `xiang.` `shore.` `whisper.`、`fluxecho.voyage.` | 叙事（0.17 起，空，给 T01） |
+
+以后的区随版本加（ids.md §8）：`ui`（`fluxecho.ui.`、`fluxecho.issue.`，0.18）、`drift`（`fluxecho.capsule.`，0.18）、`site`（`fluxecho.site.`、`fluxecho.build.job.recast` 等，0.19）、`orbital_anchor` `source_heart` `leap_ring`（随楼）。
 - **lang 键约定**：机器 `gt.blockmachines.fluxecho.<key>.name`；方块 `tile.fluxecho.<name>.name`；物品 `item.fluxecho.<name>.name`；创造栏 `itemGroup.fluxecho`；其余一律 `fluxecho.<area>.<…>`（`status.*`、`recipe.<key>`、`<key>.tip/.type/.gui_sample`、`nei.*`、`gui.*`、`holo.*`、`codex.*`、`waila.*`、`research.*`、`nexus.*`、`spring.*`、`gate.*`…）；文本里 `\n` 写字面量。
 
 ## 11. 测试（`src/test/java/com/fluxecho/`，JUnit 5，不需要 MC 运行时）
@@ -155,6 +177,7 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 | 测试 | 守住什么 |
 |---|---|
 | `LangTest` | en/zh 键集合一致、无重复、占位符一致；代码里**字面写出**的键都存在（`EchoText.t/lines("x")` → `fluxecho.x`，`ChatComponentTranslation`/`translateToLocal("fluxecho.…")`）。**运行时拼出来的键查不出**，要自己核对。0.11.0 加 `everyChatMessageGetsItsArguments`：代码里字面写出的 `new ChatComponentTranslation("fluxecho.…", …)` 和 `UnitUse` 的 `tell(p, "x", …)`（= `fluxecho.city.unit.x`）给的参数不少于两份 lang 里的占位符（`%s`/`%d`，`%n$s` 按最大的 n）——1.7.10 在客户端格式化聊天时占位符比参数多会抛异常、客户端崩溃（0.11.0 开发中 `city.unit.full` 就少传了一个）；拼出来的键、经别的辅助方法发的消息它看不到 |
+| `LangShardTest`（0.17.0） | 提交的两份 fluxecho lang 就是 `tools/LangMerge.java` 合并 `lang/src` 分片的结果（逐字节）；两种语言每个区的键（和顺序）相同；一个键只在一个分片；每个键在它前缀所属的区（自己读 `areas.txt`，不借工具的判定）；`order.txt` 是 0.16.0 的 1,155 个键、都还在（见 §10「lang 分片」） |
 | `IsolationTest` | 读 `build/classes/java/main` 常量池：`forestry/`→`bees`、`thaumcraft/`→`thaumcraft`、`WayofTime/`→`blood`、`betterquesting/`→`quest/bq`、`com/kuba6000/mobsinfo/`→`mobs`、`ic2/`→`crops`、`vazkii/botania/`→`mana`、`appeng/`→`ae`。只看 `com/fluxecho/`（"The dev classpath always has Forestry (GT pulls it in), so a leak would never show in a dev run"） |
 | `plan/IdsCsvTest`、`plan/BatchPlanTest`（0.17.0） | `docs/dev/ids.csv` 就是 `tools/IdsCsv.java` 从 `ids.md` 导出的、每行有类和值、状态只取 已发布/新增/本版/预留/作废；`plan/batches.csv` 的格式（0.17.0–0.28.0 各一行）、楼按总平面顺序号首发、每版新形状的楼不超过 3 座（同一座楼的两种形态算一座）、环段和星只增不减、每版 main 估值不过 21,741 和计划线 20,000、0.17.0 那一行（以后每版补自己那一行的断言，refactor §2.5）。测试里编译 `tools/*.java` 用 `com.fluxecho.Tools`（JDK 自带的编译器，输出到 `build/tmp/tools-test/`） |
 | `ConfigTest` | `older()` 版本比较；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth`；0.15.0 的 `buildMinSpacing` 312 和 `bumpsMinSpacing`（`campusSpacingOf0150`：只有存的 "144" 改成 312） |

@@ -1,0 +1,38 @@
+# The lang shards of the fluxecho domain, one area a line: "<area>: <prefix> <prefix> ...", in the order
+# tools/LangMerge.java writes the keys that are not in order.txt. Each area has the two files
+# lang/src/<area>.en_US.lang and lang/src/<area>.zh_CN.lang.
+#
+# A prefix ending in "." takes the keys under it, one ending in "*" every key that starts with what comes before the
+# "*", any other one the key itself and the keys under it. A key belongs to the area whose matching prefix is the
+# longest; where two areas share that prefix (fluxecho.unit.: the city's 0.16.0 unit kinds, a building's new ones),
+# it may sit in either. LangShardTest checks every key against this table. A new area (a building's, at its version's
+# interface commit) is a new line with both files, possibly empty; docs/dev/platform.md section 10 has the table.
+core: itemGroup.fluxecho fluxecho.quests. fluxecho.status. fluxecho.machine. fluxecho.gui. fluxecho.holo. fluxecho.waila. fluxecho.nei.
+machines: gt.blockmachines.fluxecho. fluxecho.recipe. fluxecho.bee_imprinter. fluxecho.larva_incubator. item.fluxecho.bee_imprint. fluxecho.bee_imprint. fluxecho.gene. fluxecho.tree_imprint. fluxecho.butterfly_imprint. fluxecho.gene_assembler. item.fluxecho.gene_sample. fluxecho.gene_sample. tile.fluxecho.essentia_outlet. fluxecho.essentia_outlet. fluxecho.essentia_echo. fluxecho.aspect. fluxecho.insight_echo. fluxecho.crucible_echo. fluxecho.infusion_echo. tile.fluxecho.vis_pedestal. fluxecho.vis_pedestal. item.fluxecho.vis_module. fluxecho.vis_module. fluxecho.blood_echo. fluxecho.mob_echo. item.fluxecho.mob_imprint. fluxecho.mob_imprint. fluxecho.seed_imprinter. fluxecho.seed_echo. item.fluxecho.crop_imprint. fluxecho.crop_imprint. fluxecho.spring. fluxecho.mana_echo. tile.fluxecho.echo_provider. fluxecho.echo_provider.
+codex: item.fluxecho.codex. fluxecho.codex.
+gates: tile.fluxecho.light_gate. tile.fluxecho.interior_shell. tile.fluxecho.interior_glass. fluxecho.gate.
+matter: item.fluxecho.flux_grit. fluxecho.flux_grit. item.fluxecho.flux_crystal. fluxecho.flux_crystal. item.fluxecho.echo_crystal. fluxecho.echo_crystal. item.fluxecho.phase_alloy. fluxecho.phase_alloy. item.fluxecho.resonant_glass. fluxecho.resonant_glass. item.fluxecho.phase_alloy_wire. fluxecho.phase_alloy_wire. item.fluxecho.memory_filament. fluxecho.memory_filament. item.fluxecho.manifest_matter. fluxecho.manifest_matter. item.fluxecho.anti_gravity_lattice. fluxecho.anti_gravity_lattice.
+frame: tile.fluxecho.frame. fluxecho.frame.
+nexus: tile.fluxecho.nexus. fluxecho.nexus. fluxecho.dock.
+research: fluxecho.research.
+city: fluxecho.city. fluxecho.unit. fluxecho.module. tile.fluxecho.module_core.
+library: tile.fluxecho.library. fluxecho.library. item.fluxecho.library_card. fluxecho.library_card. fluxecho.module.library fluxecho.fixture.library. fluxecho.issue.module.library. fluxecho.unit.
+eco_dome: fluxecho.module.eco_dome fluxecho.eco_dome. tile.fluxecho.module_core.eco_dome. fluxecho.fixture.eco_dome. fluxecho.issue.module.eco_dome. fluxecho.unit.
+root: fluxecho.module.root fluxecho.root. tile.fluxecho.module_core.root. fluxecho.fixture.root. fluxecho.issue.module.root. fluxecho.unit.
+dome_generator: fluxecho.module.dome_generator fluxecho.dome_generator. tile.fluxecho.module_core.dome_generator. fluxecho.fixture.dome_generator. fluxecho.issue.module.dome_generator. fluxecho.unit.
+dual_foil_vault: fluxecho.module.dual_foil_vault fluxecho.dual_foil_vault. tile.fluxecho.module_core.dual_foil_vault. fluxecho.fixture.dual_foil_vault. fluxecho.issue.module.dual_foil_vault. fluxecho.unit.
+mana_fountain: fluxecho.module.mana_fountain fluxecho.mana_fountain. tile.fluxecho.module_core.mana_fountain. fluxecho.fixture.mana_fountain. fluxecho.issue.module.mana_fountain. fluxecho.unit.
+arcane_court: fluxecho.module.arcane_court fluxecho.arcane_court. tile.fluxecho.module_core.arcane_court. fluxecho.fixture.arcane_court. fluxecho.issue.module.arcane_court. fluxecho.unit.
+resonance_gate: fluxecho.module.resonance_gate fluxecho.resonance_gate. tile.fluxecho.module_core.resonance_gate. fluxecho.fixture.resonance_gate. fluxecho.issue.module.resonance_gate. fluxecho.unit.
+sophon_array: fluxecho.module.sophon_array fluxecho.sophon_array. tile.fluxecho.module_core.sophon_array. fluxecho.fixture.sophon_array. fluxecho.issue.module.sophon_array. fluxecho.unit.
+holo_table: fluxecho.module.holo_table fluxecho.holo_table. tile.fluxecho.module_core.holo_table. fluxecho.fixture.holo_table. fluxecho.issue.module.holo_table. fluxecho.unit.
+blood_covenant: fluxecho.module.blood_covenant fluxecho.blood_covenant. tile.fluxecho.module_core.blood_covenant. fluxecho.fixture.blood_covenant. fluxecho.issue.module.blood_covenant. fluxecho.unit.
+hunting_ground: fluxecho.module.hunting_ground fluxecho.hunting_ground. tile.fluxecho.module_core.hunting_ground. fluxecho.fixture.hunting_ground. fluxecho.issue.module.hunting_ground. fluxecho.unit.
+observatory: fluxecho.module.observatory fluxecho.observatory. tile.fluxecho.module_core.observatory. fluxecho.fixture.observatory. fluxecho.issue.module.observatory. fluxecho.unit.
+sky_sails: fluxecho.module.sky_sails fluxecho.sky_sails. tile.fluxecho.module_core.sky_sails. fluxecho.fixture.sky_sails. fluxecho.issue.module.sky_sails. fluxecho.unit.
+weather_station: fluxecho.module.weather_station fluxecho.weather_station. tile.fluxecho.module_core.weather_station. fluxecho.fixture.weather_station. fluxecho.issue.module.weather_station. fluxecho.unit.
+droplet_hangar: fluxecho.module.droplet_hangar fluxecho.droplet_hangar. tile.fluxecho.module_core.droplet_hangar. fluxecho.fixture.droplet_hangar. fluxecho.issue.module.droplet_hangar. fluxecho.unit.
+campus: fluxecho.build. tile.fluxecho.deck. fluxecho.deck. tile.fluxecho.fitting. fluxecho.fitting. tile.fluxecho.supply_port. fluxecho.supply_port. tile.fluxecho.recycle_bin. fluxecho.recycle_bin.
+cmd: fluxecho.cmd.
+skin: fluxecho.skin. tile.fluxecho.hull* tile.fluxecho.footing* tile.fluxecho.skin_*
+narrative: fluxecho.codex.vol. fluxecho.codex.glance. fluxecho.codex.drift. fluxecho.codex.hall. fluxecho.codex.xiang. fluxecho.codex.shore. fluxecho.codex.whisper. fluxecho.voyage.

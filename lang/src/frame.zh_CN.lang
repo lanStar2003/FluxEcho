@@ -1,0 +1,24 @@
+
+# flux frame (0.9.0)
+tile.fluxecho.frame.base.name=构架基座
+fluxecho.frame.base.tip=§3通量中枢的地面§r\n八角形底座的大部分
+tile.fluxecho.frame.base_lit.name=导能基座
+fluxecho.frame.base_lit.tip=§3埋着导能线的基座§r\n通量中枢底座上的八条辐线，把通量送到中心
+tile.fluxecho.frame.pillar.name=构架支柱
+fluxecho.frame.pillar.tip=§3构架的骨架§r\n通量中枢里成型后化作弧形肋架，可以穿过；回响书库的四角和屋檐也用它
+tile.fluxecho.frame.conduit.name=导能柱
+fluxecho.frame.conduit.tip=§3里面流着通量的柱子§r\n通量中枢中心的柱子，成型后化成一道光柱
+tile.fluxecho.frame.ring.name=悬浮环段
+fluxecho.frame.ring.tip=§3一段环§r\n通量中枢顶上的十六段，成型后浮起来转动
+tile.fluxecho.frame.seat.name=晶核座
+fluxecho.frame.seat.tip=§3放晶核的底座§r\n通量中枢的心，成型后晶核浮在半空
+tile.fluxecho.frame.foundation.name=模块地基
+fluxecho.frame.foundation.tip=§3模块站在上面的地基§r\n回响书库等模块都搭在它上面
+tile.fluxecho.frame.shelf.name=回响书格
+fluxecho.frame.shelf.tip=§3放一本书的书格§r\n回响书库的墙。成型后走进书库：拿着样本右键放书，空手右键取书，拿空白索引卡右键写卡
+tile.fluxecho.frame.console.name=控制台座
+fluxecho.frame.console.tip=§3齐腰高的操作台§r\n垫在中枢核心下面，核心就在眼睛的高度；书库大厅中间的阅读台也是它\n成型后右键它，打开所属机器的界面
+tile.fluxecho.frame.anchor.name=覆层锚点
+fluxecho.frame.anchor.tip=§3每一面都带一块六角插板的构架块§r\n城里的建筑上都有几个；以后版本的覆层从这里长出来
+tile.fluxecho.frame.float.name=浮空地基
+fluxecho.frame.float.tip=§3反重力晶格方块：上面是能走的格栅，底下一层托举的光§r\n天环平台的甲板，浮在城市上空
