@@ -18,13 +18,20 @@ import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.frame.BlockFrame;
+import com.fluxecho.logic.shape.Family;
+import com.fluxecho.logic.shape.Form;
+import com.fluxecho.logic.shape.FormCodes;
+import com.fluxecho.logic.shape.Nbhd;
+import com.fluxecho.logic.shape.ShapeGeo;
 
 /**
  * Every move the city kit's walk ({@link ShapeKit.Shape#walk}) takes, in every city shape, checked against the
  * collision boxes the blocks really have ({@link BlockFrame#box}, {@link BlockFitting#box} and the rail's
  * {@link BlockFitting#RAIL_HEIGHT}; every deck part, grass, dirt, the lift pad and the module core are whole cubes,
  * water and air have none), so a stair the kit passes can never again cost the head in game. 0.11.0 to 0.14.0's walk
- * passed the Eco Dome's crown stair, whose fourth step put the head into the crown island's grass (0.14.1).
+ * passed the Eco Dome's crown stair, whose fourth step put the head into the crown island's grass (0.14.1). The new
+ * families' shapes (0.17.0: hull, footing and the skins, {@link FormCodes}) take their boxes from
+ * {@link ShapeGeo#boxes}, the very list their blocks give the game, in the neighbourhood the shape gives each cell.
  * <p>
  * The player is 1.8 high and steps up half a block. A move from a stand {@code s} to a neighbouring column's stand
  * {@code s2} fits when the body crossing at {@code max(s, s2)} meets no box in either column between that column's own
@@ -176,6 +183,58 @@ class KitClimbTest {
         throw new IllegalArgumentException("no box for '" + ch + "'");
     }
 
+    /**
+     * The collision boxes of legend character {@code ch} at {@code (x, y, z)} of a shape, {minX, minY, minZ, maxX,
+     * maxY, maxZ} inside its cell, empty for none: a shape of the new families takes them from {@link ShapeGeo#boxes}
+     * in the neighbourhood the shape gives it ({@link #around}; style FINAL §3.3.5), every older part fills its cell
+     * across between {@link #extent}'s heights.
+     */
+    static List<double[]> cellBoxes(ShapeKit.Shape s, int x, int y, int z, char ch, String passes) {
+        Form form = formOf(ch);
+        if (form != null) return ShapeGeo.boxes(form, around(s, x, y, z, familyOf(ch), passes));
+        double[] e = extent(ch);
+        return e == null ? Collections.emptyList() : Collections.singletonList(new double[] { 0, e[0], 0, 1, e[1], 1 });
+    }
+
+    /** The new families' shape a legend character places, or null for an older part, water, air or nothing. */
+    static Form formOf(char ch) {
+        if (ch == ShapeKit.NONE || ch == ShapeKit.AIR || ch == '=' || ch == ShapeKit.CONTROLLER) return null;
+        return FormCodes.form(ShapeKit.partOf(ch));
+    }
+
+    private static Family familyOf(char ch) {
+        return FormCodes.family(ShapeKit.partOf(ch));
+    }
+
+    /**
+     * The neighbourhood a shape gives its cell {@code (x, y, z)}, as the block would read it in the world: the new
+     * families' shapes by form and family, water, the older parts that fill their cell as opaque cubes, the paved
+     * apron and the graded ground round the box as opaque, everything else open (air, the cells the formed module
+     * lets through, the older parts that do not fill their cell, the air over the box).
+     */
+    static Nbhd around(ShapeKit.Shape s, int x, int y, int z, Family family, String passes) {
+        Nbhd.Builder b = new Nbhd.Builder();
+        for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++)
+            if (dx != 0 || dy != 0 || dz != 0) b.set(dx, dy, dz, code(s, x + dx, y + dy, z + dz, family, passes));
+        return b.build();
+    }
+
+    /**
+     * What the cell {@code (x, y, z)} of a shape is to a neighbour of family {@code family}, as an {@link Nbhd} code.
+     */
+    private static int code(ShapeKit.Shape s, int x, int y, int z, Family family, String passes) {
+        if (x < 0 || x >= s.W || y < 0 || y >= s.H || z < 0 || z >= s.D)
+            return y <= 0 && s.groundOutside ? Nbhd.SOLID : Nbhd.OPEN;
+        char ch = s.get(x, y, z);
+        if (y == 0 && ch == ShapeKit.NONE && s.groundOutside) return Nbhd.SOLID;
+        if (passes.indexOf(ch) >= 0) return Nbhd.OPEN;
+        if (ch == '=') return Nbhd.WATER;
+        Form form = formOf(ch);
+        if (form != null) return Nbhd.ours(form, familyOf(ch) == family);
+        double[] e = extent(ch);
+        return e != null && e[0] == 0 && e[1] == 1 ? Nbhd.SOLID : Nbhd.OPEN;
+    }
+
     /** A shape's columns as the boxes the player meets, built or formed. */
     private static final class Boxes {
 
@@ -205,13 +264,13 @@ class KitClimbTest {
                     continue;
                 }
                 if (passes.indexOf(ch) >= 0) continue;
-                double[] e = extent(ch);
-                if (e != null) out.add(new double[] { y + e[0], y + e[1], x, y, z, ch });
+                for (double[] b : cellBoxes(s, x, y, z, ch, passes))
+                    out.add(new double[] { y + b[1], y + b[4], x, y, z, ch });
             }
             for (int[] d : s.decor) {
                 if (d[0] != x || d[2] != z) continue;
-                double[] e = extent((char) d[3]);
-                if (e != null) out.add(new double[] { d[1] + e[0], d[1] + e[1], x, d[1], z, d[3] });
+                for (double[] b : cellBoxes(s, x, d[1], z, (char) d[3], passes))
+                    out.add(new double[] { d[1] + b[1], d[1] + b[4], x, d[1], z, d[3] });
             }
             return out;
         }
@@ -381,6 +440,66 @@ class KitClimbTest {
         assertNull(extent(' '));
         assertNull(extent('-'));
         assertNull(extent('='));
+    }
+
+    /**
+     * The new families' shapes (0.17.0) stand in the walk as their blocks do: every part code's boxes, in every
+     * neighbourhood of its six faces and eight edges, lie inside the cell and fill it without a gap from the floor up
+     * to the top, or to half height for a half or a step, so the kit's whole and half blocks are never less than the
+     * real collision (style FINAL §3.3.5: a slope cut along its diagonal is two boxes, the lower half and the upper
+     * half on its closed side, and stands the player on its top). The neighbourhood a shape gives its cells reads the
+     * older parts, water, the apron and the ground as the blocks would.
+     */
+    @Test
+    void theNewShapesStandAsWholeOrHalfBlocks() {
+        List<Form> forms = new ArrayList<>();
+        int codes = 0;
+        for (int code = 0; code < 256; code++) {
+            Form form = FormCodes.form(code);
+            if (form == null) continue;
+            codes++;
+            if (!forms.contains(form)) forms.add(form);
+        }
+        assertEquals(36, codes, "the batch's part codes (ids.md §1.2, §1.4)");
+        for (Form form : forms) {
+            double top = form == Form.HALF || form == Form.STEP ? 0.5 : 1;
+            for (int mask = 0; mask < 1 << 14; mask++) {
+                List<double[]> boxes = new ArrayList<>(ShapeGeo.boxes(form, Nbhd.ofMask(mask)));
+                assertFalse(boxes.isEmpty());
+                boxes.sort((a, b) -> Double.compare(a[1], b[1]));
+                double hi = 0;
+                for (double[] b : boxes) {
+                    for (int i = 0; i < 3; i++) if (!(b[i] >= -EPS && b[i] < b[i + 3] && b[i + 3] <= 1 + EPS))
+                        throw new AssertionError(form + " " + mask + ": outside the cell " + Arrays.toString(b));
+                    if (b[1] > hi + EPS)
+                        throw new AssertionError(form + " " + mask + ": a gap under " + Arrays.toString(b));
+                    hi = Math.max(hi, b[4]);
+                }
+                if (Math.abs(top - hi) > EPS) throw new AssertionError(form + " " + mask + ": the top at " + hi);
+            }
+        }
+        // a slope cut along its diagonal (its west and north sides closed, the corners at the ends of the cut too, so
+        // the south-west and north-east cells): two boxes, from the floor and from half height
+        List<double[]> s2 = ShapeGeo
+            .boxes(Form.SLOPE, Nbhd.ofMask(Nbhd.WEST | Nbhd.NORTH | Nbhd.SW | Nbhd.NE | Nbhd.DOWN));
+        assertEquals(2, s2.size());
+        assertEquals(0, s2.get(0)[1], EPS);
+        assertEquals(0.5, s2.get(1)[1], EPS);
+
+        // the neighbourhood: deck below, water east, a rail west, open over the top of the box, the apron under a
+        // cell of the ground layer the shape leaves empty, the ground round the box
+        ShapeKit.Shape s = new ShapeKit.Shape("kit_nbhd", 3, 2, 3);
+        s.set(1, 0, 1, 'd');
+        s.set(2, 1, 1, '=');
+        s.set(0, 1, 1, 'r');
+        Nbhd n = around(s, 1, 1, 1, Family.HULL, "");
+        assertTrue(n.solid(0, -1, 0), "the deck under it");
+        assertTrue(n.water(1, 0, 0), "the water east");
+        assertFalse(n.closed(-1, 0, 0), "the rail west does not fill its cell");
+        assertTrue(n.solid(0, -1, 1), "the apron");
+        assertFalse(n.closed(0, 1, 0), "the air over the box");
+        assertTrue(around(s, 1, 0, 1, Family.HULL, "").solid(-1, -1, 0), "the ground round the box");
+        assertFalse(around(s, 1, 1, 1, Family.HULL, "d").solid(0, -1, 0), "a deck the formed module lets through");
     }
 
     /**
