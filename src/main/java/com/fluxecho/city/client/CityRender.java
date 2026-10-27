@@ -51,6 +51,7 @@ import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.RootLook;
 import com.fluxecho.logic.ShapeKit;
+import com.fluxecho.logic.skin.SkinPalette;
 import com.fluxecho.nexus.TileMultiblock;
 import com.fluxecho.render.Shapes;
 
@@ -72,9 +73,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * too, and the Droplet Hangar's {@link DropletHangarRender}; and the deep root's flowing light over the Tidal Well's,
  * {@link RootRender#deep}).
  * <ul>
- * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the module's
- * own colour while docked and powered (a soft pulse running round it), amber breathing while docked without power, a
- * dim grey-blue otherwise. Not formed (a panel mined, the last cells not yet built) the line stays, dimmer, along the
+ * <li>A line of light along the plinth course of its walls ({@link ModuleLook#course}), in its dock state: the
+ * building's accent while docked and powered (0.17.0: from {@link SkinPalette}, the city's one palette; a soft pulse
+ * running round it), amber breathing while docked without power, a dim grey-blue otherwise. Not formed (a panel mined,
+ * the last cells not yet built) the line stays, dimmer, along the
  * stretches of wall that stand, and nothing else is drawn.</li>
  * <li>While it forms, a plane of its colour sweeps up through its box (the Echo Dome Generator's up its legs and
  * through its pod).</li>
@@ -313,7 +315,7 @@ public final class CityRender {
     // ---- the plinth course
 
     /**
-     * The light along the plinth course, in the dock state: the module's colour docked and powered (a soft pulse
+     * The light along the plinth course, in the dock state: its accent docked and powered (a soft pulse
      * running round the building), amber docked without power, dim when not docked, dimmer still when not formed. A
      * bright core and, near, a soft halo. An unformed module lights only the faces whose course block stands (a module
      * core alone, or a module half built, shows no line in the air), each looked up in the world without an array.
@@ -333,7 +335,8 @@ public final class CityRender {
             rgb = IDLE;
             a = 0.25f;
         } else if (on) {
-            rgb = m.moduleColor();
+            // the building's accent from the one palette (0.17.0, style §3.6), the root's by the form it stands as
+            rgb = SkinPalette.accentOr(m.moduleKey(), m.shapeName(), m.moduleColor());
             a = 0.55f;
         } else if (docked) {
             rgb = AMBER;
