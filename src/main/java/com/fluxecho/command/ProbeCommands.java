@@ -141,6 +141,9 @@ final class ProbeCommands {
         ProbeFrame f = ProbeWorld.frame(p);
         int[] box = ProbeWorld.box(f, ProbeRigs.Bed.volume(kinds.size()));
         check(w, box);
+        // the bed rig's sign stands outside its rows: it may not stand on a block entity either
+        int[] at = ProbeMarker.signAt(ProbeMarker.Kind.BED, f);
+        check(w, new int[] { at[0], at[1], at[2], at[0], at[1], at[2] });
         List<String> failed = new ArrayList<>();
         ProbeWorld.quietly(() -> {
             clear(w, box);
