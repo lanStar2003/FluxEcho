@@ -17,9 +17,9 @@ import com.fluxecho.logic.probe.SwatchLayout;
  * wall of {@link SwatchLayout}, set out of real blocks in front of the operator (its middle column on their line of
  * sight, its face eight cells ahead, a mirror pool between), or built again where one already stands within
  * {@value #NEAR} blocks; {@code clear} takes the nearest one within {@value #NEAR} down again, the pool's water and the
- * ground course put back as grass over dirt. A wall is never set over a chest or a machine: if a block entity stands in
- * its box, nothing is touched. The accents and the lit lamps are the client's ({@code client/probe/SwatchLooks}), found
- * from the wall's marker sign.
+ * ground course put back as grass over dirt. A wall is never set over a chest, a machine or a building: if a block
+ * entity or a campus part stands in its box, nothing is touched. The accents and the lit lamps are the client's
+ * ({@code client/probe/SwatchLooks}), found from the wall's marker sign.
  */
 final class SwatchCommand {
 
@@ -35,7 +35,7 @@ final class SwatchCommand {
         ProbeFrame f = old != null ? ProbeWorld.frameOf(w, old, ProbeMarker.Kind.SWATCH) : ProbeWorld.frame(p);
         int[] box = SwatchLayout.box(f);
         if (!ProbeWorld.fits(box)) throw new CommandException(P + "probe.height");
-        int[] te = ProbeWorld.blockEntityIn(w, box);
+        int[] te = ProbeWorld.occupied(w, box);
         if (te != null) throw new CommandException(P + "probe.blocked", ProbeWorld.at(te));
         ProbeWorld.quietly(() -> {
             for (SwatchLayout.Placement pl : SwatchLayout.placements()) {
@@ -65,7 +65,7 @@ final class SwatchCommand {
         TileEntitySign s = ProbeWorld.marker(w, ProbeMarker.Kind.SWATCH, p.posX, p.posY, p.posZ, NEAR);
         if (s == null) throw new CommandException(P + "swatch.none", (int) NEAR);
         ProbeFrame f = ProbeWorld.frameOf(w, s, ProbeMarker.Kind.SWATCH);
-        int[] te = ProbeWorld.blockEntityIn(w, SwatchLayout.box(f));
+        int[] te = ProbeWorld.occupied(w, SwatchLayout.box(f));
         if (te != null) throw new CommandException(P + "probe.blocked", ProbeWorld.at(te));
         ProbeWorld.quietly(() -> {
             // from the top down, so nothing is left hanging for a moment; the ground back last

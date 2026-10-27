@@ -39,8 +39,8 @@ import com.fluxecho.mana.BedFlowers;
  * player would place it; the ones that do not take are listed in the chat. Botania's classes stay in the
  * {@code mana} package ({@link BedFlowers}).</li>
  * </ul>
- * A rig never overwrites a block entity, and clears its volume of natural blocks so nothing stands between the eye and
- * what it shows.
+ * A rig never overwrites a block entity or a campus part, and clears its volume of other blocks so nothing stands
+ * between the eye and what it shows.
  */
 final class ProbeCommands {
 
@@ -188,14 +188,14 @@ final class ProbeCommands {
         return used && w.getBlock(bed[0], bed[1] + 1, bed[2]) == want;
     }
 
-    /** Refuses a box out of the world's heights or with a block entity in it. */
+    /** Refuses a box out of the world's heights or with a block entity or a campus part in it. */
     private static void check(World w, int[] box) {
         if (!ProbeWorld.fits(box)) throw new CommandException("fluxecho.cmd.probe.height");
-        int[] te = ProbeWorld.blockEntityIn(w, box);
+        int[] te = ProbeWorld.occupied(w, box);
         if (te != null) throw new CommandException("fluxecho.cmd.probe.blocked", ProbeWorld.at(te));
     }
 
-    /** Clears a box of what stands in it (no block entity stands there: {@link #check}). */
+    /** Clears a box of what stands in it (no block entity or campus part stands there: {@link #check}). */
     private static void clear(World w, int[] box) {
         for (int y = box[4]; y >= box[1]; y--) for (int x = box[0]; x <= box[3]; x++)
             for (int z = box[2]; z <= box[5]; z++) if (!w.isAirBlock(x, y, z)) w.setBlockToAir(x, y, z);
