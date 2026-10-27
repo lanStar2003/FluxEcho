@@ -62,8 +62,7 @@ final class OldShapes {
         if (all != null) return all;
         List<Shape> out = new ArrayList<>();
         try {
-            Method flags = TileMultiblock.class
-                .getDeclaredMethod("flags", char.class, int.class, int.class, int.class);
+            Method flags = TileMultiblock.class.getDeclaredMethod("flags", char.class, int.class, int.class, int.class);
             flags.setAccessible(true);
             for (Map.Entry<String, Class<? extends TileMultiblock>> e : IdExport.structures()
                 .entrySet()) {

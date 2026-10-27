@@ -90,8 +90,12 @@ class SkinSyncTest {
         assertArrayEquals(b, d.box);
         assertNotNull(d.lamp);
         for (int i = 0; i < 3; i++) assertTrue(d.lamp[i] >= d.box[i] && d.lamp[i + 3] <= d.box[i + 3]);
-        assertNotNull(SkinProfiles.legacyMask("eco_dome", "main", dome.build()
-            .blueprint()));
+        assertNotNull(
+            SkinProfiles.legacyMask(
+                "eco_dome",
+                "main",
+                dome.build()
+                    .blueprint()));
         // the nexus's lamps are its lift pad and its taken-in rings and spokes, inside its box
         assertNotNull(n.lamp);
     }
@@ -190,7 +194,10 @@ class SkinSyncTest {
 
         // the nexus is saved with its campus, the dome's chunk unloads, the nexus is read back as a new tile
         NBTTagCompound saved = new NBTTagCompound();
-        nexus.writeToNBT(saved);
+        saved.setBoolean("Formed", true);
+        saved.setByte("Facing", (byte) 2);
+        nexus.campus()
+            .writeNBT(saved);
         NBTTagCompound campus = saved.getCompoundTag("Campus");
         assertTrue(campus.hasKey("Skn"), "the campus saves its table as Skn");
         world.unload(DX, DZ);
@@ -202,8 +209,10 @@ class SkinSyncTest {
         g.evaluate(100);
         SkinEntry after = find(g.entries(), "eco_dome");
         assertEquals(before, after, "the entry it last knew");
-        assertEquals(2, g.entries()
-            .size());
+        assertEquals(
+            2,
+            g.entries()
+                .size());
 
         // the chunk loads again: the live tile takes over
         world.load(DX, DZ);
@@ -222,8 +231,10 @@ class SkinSyncTest {
         world.unload(DX, DZ);
         world.load(DX, DZ);
         f.evaluate(40);
-        assertEquals(1, f.entries()
-            .size());
+        assertEquals(
+            1,
+            f.entries()
+                .size());
         assertEquals(2, sent.size());
         SkinCodec.Delta d = delta(1);
         assertNull(d.entry, "removed");

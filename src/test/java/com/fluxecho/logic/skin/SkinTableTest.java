@@ -81,8 +81,8 @@ class SkinTableTest {
         assertEquals(SkinState.FORMED, t.state());
         assertEquals(0, t.entry().formedAt, "no sweep for a building that stood before the table knew it");
         assertTrue(t.entry().powered, "the power first seen is taken at once");
-        SkinTrack broken = SkinTrack.seen(NEXUS, "eco_dome", "main", 2, new int[] { 10, 64, 10 }, box(), false,
-            false, 500);
+        SkinTrack broken = SkinTrack
+            .seen(NEXUS, "eco_dome", "main", 2, new int[] { 10, 64, 10 }, box(), false, false, 500);
         assertEquals(SkinState.HOLD, broken.state(), "a recorded building found apart is on hold");
     }
 
@@ -298,14 +298,17 @@ class SkinTableTest {
     @Test
     void anEntryIsSmall() throws IOException {
         // about 45 bytes an entry (§3.9.2): ours is a little more with the lamp box and the shape's name
-        int n = SkinCodec.write(new SkinCodec.Table(0, false, new long[] { NEXUS }, Collections.singletonList(sample())))
-            .length;
+        int n = SkinCodec
+            .write(new SkinCodec.Table(0, false, new long[] { NEXUS }, Collections.singletonList(sample()))).length;
         assertTrue(n < 110, n + " bytes");
         byte[] tooLong = new byte[SkinEntry.EXTRA_MAX + 1];
-        assertThrows(IllegalArgumentException.class, () -> SkinEntry.builder()
-            .key("leap_ring")
-            .extra(tooLong)
-            .build(), "extra is at most 64 bytes");
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SkinEntry.builder()
+                .key("leap_ring")
+                .extra(tooLong)
+                .build(),
+            "extra is at most 64 bytes");
     }
 
     @Test
@@ -385,7 +388,9 @@ class SkinTableTest {
         assertEquals(Collections.singletonList(Arrays.toString(dome.lamp)), boxes(c));
         int pilaster = com.fluxecho.logic.Parts.deck(com.fluxecho.logic.Parts.D_PANEL_LIT);
         assertEquals(LampRule.DARK, v.glow(60, 75, 0, pilaster));
-        assertEquals(LampRule.UNTOUCHED, v.glow(60, 75, 0, com.fluxecho.logic.Parts.deck(com.fluxecho.logic.Parts.D_LIT)));
+        assertEquals(
+            LampRule.UNTOUCHED,
+            v.glow(60, 75, 0, com.fluxecho.logic.Parts.deck(com.fluxecho.logic.Parts.D_LIT)));
         assertEquals(LampRule.UNTOUCHED, v.glow(200, 75, 0, pilaster), "no entry here: as 0.16 drew it");
         assertEquals(Collections.emptyList(), v.due(6000));
 
@@ -401,9 +406,13 @@ class SkinTableTest {
         assertEquals(Collections.emptyList(), v.due(12_600));
 
         // the power goes off (a delta): the lamps go dark through the queue, not at once
-        c = v.delta(SkinCodec.Delta.put(0, dome.toBuilder()
-            .powered(false)
-            .build()), 13_000);
+        c = v.delta(
+            SkinCodec.Delta.put(
+                0,
+                dome.toBuilder()
+                    .powered(false)
+                    .build()),
+            13_000);
         v = c.view;
         assertEquals(Collections.emptyList(), boxes(c), "a changed entry waits for the throttle");
         assertEquals(dome.accent, v.glow(60, 75, 0, pilaster), "still drawn lit");
@@ -449,9 +458,14 @@ class SkinTableTest {
         assertEquals(Double.POSITIVE_INFINITY, SkinDevelop.developedTo(formed, skin, 1040), "done");
         // a late client sees it done; a building formed before the table knew it never sweeps
         assertEquals(Double.POSITIVE_INFINITY, SkinDevelop.developedTo(formed, skin, 9000));
-        assertEquals(Double.POSITIVE_INFINITY, SkinDevelop.developedTo(formed.toBuilder()
-            .formedAt(0)
-            .build(), skin, 1000));
+        assertEquals(
+            Double.POSITIVE_INFINITY,
+            SkinDevelop.developedTo(
+                formed.toBuilder()
+                    .formedAt(0)
+                    .build(),
+                skin,
+                1000));
         assertEquals(40, SkinDevelop.SWEEP_TICKS, "the forming sweep's 2 s (TileMultiblock.SWEEP_MS)");
         // the old buildings never show blueprint colours (§3.9.9)
         assertFalse(SkinProfiles.LEGACY.develops);
@@ -467,8 +481,8 @@ class SkinTableTest {
         assertEquals(0xFFFFFF, SkinDevelop.blueprintColour(0xFFFFFF), "white stays white (the hull is not touched)");
         assertEquals(0x808080, SkinDevelop.blueprintColour(0x808080));
         int c = SkinDevelop.blueprintColour(0x7BE08A);
-        float[] hsv = java.awt.Color.RGBtoHSB(0x7B, 0xE0, 0x8A, null), half = java.awt.Color
-            .RGBtoHSB(c >> 16 & 255, c >> 8 & 255, c & 255, null);
+        float[] hsv = java.awt.Color.RGBtoHSB(0x7B, 0xE0, 0x8A, null),
+            half = java.awt.Color.RGBtoHSB(c >> 16 & 255, c >> 8 & 255, c & 255, null);
         assertEquals(hsv[1] / 2, half[1], 0.01);
         assertEquals(hsv[2], half[2], 0.01);
         assertEquals(hsv[0], half[0], 0.01);

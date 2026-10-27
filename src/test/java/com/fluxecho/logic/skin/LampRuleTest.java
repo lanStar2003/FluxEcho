@@ -70,8 +70,11 @@ class LampRuleTest {
         assertFalse(LampRule.lit(SkinState.FORMED, true, 23_540, 64));
         // the nexus itself (d = 0) first
         assertTrue(LampRule.lit(SkinState.FORMED, true, 12_500, 0));
-        // across midnight of the world clock: a late lamp that went on just before 24,000 is still on after it
-        assertTrue(LampRule.lit(SkinState.FORMED, true, 24_000 + 100, 64));
+        // the next day the same, the clock read mod a day
+        assertFalse(LampRule.lit(SkinState.FORMED, true, 24_000 + 12_539, 64));
+        assertTrue(LampRule.lit(SkinState.FORMED, true, 24_000 + 12_540, 64));
+        // the first ticks of a day are morning (world time 0 is sunrise): a late lamp is out by then
+        assertFalse(LampRule.lit(SkinState.FORMED, true, 24_000 + 10, 64));
     }
 
     @Test

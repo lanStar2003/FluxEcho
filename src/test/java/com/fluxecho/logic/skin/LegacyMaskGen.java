@@ -13,11 +13,11 @@ import com.fluxecho.logic.Parts;
 
 /**
  * The generator of the old buildings' lamp masks (refactor §5.6, {@code LEGACY_MASKS}), run in the tests: from every
- * old shape's character map ({@link OldShapes}) it takes the cells of the parts that are lamp windows, the pilasters
- * (deck 9, {@code panel_lit}), the cornices (deck 11) and every fitting 0.16's {@code FittingRender} draws a glow
- * overlay on (all but the glazing, whose light is 0), and, for a building whose always-lit glow outshone 3% of its outer
- * surface by day, the parts it takes in besides ({@link #EXTRA}). Its result is what the runtime's
- * {@link SkinProfiles#mask} must give, and its checksums are pinned in {@link LegacyGlowShareTest}.
+ * old shape's character map ({@link OldShapes}) it takes the cells of the parts that are lamp windows (the pilasters,
+ * deck 9; the cornices, deck 11; every fitting 0.16's {@code FittingRender} draws a glow overlay on, all but the
+ * glazing) and, for a building whose always-lit glow outshone 3% of its outer surface by day, the parts it takes in
+ * besides ({@link #EXTRA}). Its result is what the runtime's {@link SkinProfiles#legacyMask} must give, and its
+ * checksums are pinned in {@link LegacyGlowShareTest}.
  */
 final class LegacyMaskGen {
 

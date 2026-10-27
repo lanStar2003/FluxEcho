@@ -26,17 +26,17 @@ import com.fluxecho.logic.Parts;
 
 /**
  * The gate on "the old town's windows light one by one at dusk" (refactor §5.6): for every shape of 0.16.0, the glowing
- * area of its formed building by day may be at most 3% of its outer surface (G6's accent budget; 0.16's always-lit parts
- * count) and at night, with its lamp windows lit, at most 12%. A shape over 3% by day takes its always-lit parts into
- * its mask, largest first, until it is not ({@link LegacyMaskGen#EXTRA}); the masks the runtime makes are the
+ * area of its formed building by day may be at most 3% of its outer surface (G6's accent budget; 0.16's always-lit
+ * parts count) and at night, with its lamp windows lit, at most 12%. A shape over 3% by day takes its always-lit parts
+ * into its mask, largest first, until it is not ({@link LegacyMaskGen#EXTRA}); the masks the runtime makes are the
  * generator's, cell for cell, and their checksums are pinned here.
  * <p>
  * How it is measured, cell by cell over the blueprint (the formed building: cells that give way to its drawing are not
  * there): a face of a part is outer surface when what lies beyond it is no opaque whole block of the building (air, a
  * space, must-be-air, water, glass, a slim part, a cell given way, the outside of the box); its area is the face of the
  * part's own box (a whole block 1, a post 12/16 wide, a tread half high...). A face glows where the part's renderer
- * draws a glow overlay on it ({@code DeckRender}, {@code FittingRender}, {@code FrameRender}, with 0.16's rules: the lit
- * strip not underneath, a fitting's line round its sides, the lift's iris on top, the frame's tops and sides as its
+ * draws a glow overlay on it ({@code DeckRender}, {@code FittingRender}, {@code FrameRender}, with 0.16's rules: the
+ * lit strip not underneath, a fitting's line round its sides, the lift's iris on top, the frame's tops and sides as its
  * icons have them, the conduit's core and the seat's crystal whole), and its glowing area is the face's area times the
  * share of lit pixels in the overlay's texture (all frames of its animation). World-drawn light (③, the module's own
  * render) is not a block and has its own budget.
@@ -47,10 +47,26 @@ class LegacyGlowShareTest {
     static final double DAY = 0.03, NIGHT = 0.12;
 
     /**
-     * The masks of the old shapes as the 0.16.0 code gives them: shape, cells, CRC-32 of the cells
-     * ({@link LegacyMaskGen#crc}).
+     * The masks of the old shapes as the 0.16.0 code gives them (pinned in 0.17.0): shape, cells, and the CRC-32 of
+     * the cells by {@link LegacyMaskGen#crc}.
      */
-    static final String[][] MASKS = {};
+    static final String[][] MASKS = { { "arcane_court:main", "617", "17ba3378" },
+        { "blood_covenant:main", "497", "6bb9cd43" }, { "dome_generator:moored", "164", "ff2ece4e" },
+        { "dome_generator:floating", "164", "afaf1cd1" }, { "dome_generator:moored_36", "164", "ff2ece4e" },
+        { "dome_generator:moored_32", "164", "ff2ece4e" }, { "dome_generator:moored_28", "164", "ff2ece4e" },
+        { "droplet_hangar:main", "506", "942b8612" }, { "dual_foil_vault:main", "1307", "e4cf1e3b" },
+        { "eco_dome:main", "899", "886a4873" }, { "holo_table:main", "480", "4d374a09" },
+        { "hunting_ground:main", "429", "5846ce1e" }, { "library:main", "1815", "257a9b6d" },
+        { "library:hall", "169", "475b95f0" }, { "mana_fountain:main", "573", "1c11ae6c" },
+        { "nexus:phase1", "49", "cd5ac72" }, { "nexus:phase2", "65", "1954763c" }, { "nexus:phase3", "81", "6a3490e7" },
+        { "nexus:phase4", "97", "20a3db4f" }, { "nexus:phase5", "113", "585edcdc" },
+        { "observatory:main", "569", "451e680d" }, { "resonance_gate:main", "566", "98ceaaa3" },
+        { "root:well", "437", "63c5d4ea" }, { "root:well_20", "317", "85efb2a" }, { "root:well_14", "197", "4abadd07" },
+        { "root:well_8", "77", "c5c8a404" }, { "root:root", "638", "65b02214" }, { "root:root_7", "590", "a9eafae" },
+        { "root:root_in", "453", "d72eb39a" }, { "root:root_in_20", "333", "c62a4567" },
+        { "root:root_in_14", "213", "ac770f0e" }, { "root:root_in_8", "93", "98f1fd30" },
+        { "sky_sails:main", "540", "e9c25ed9" }, { "sophon_array:main", "453", "3444c9e" },
+        { "weather_station:main", "460", "ad9b316a" } };
 
     // ---- the masks
 
@@ -86,13 +102,13 @@ class LegacyGlowShareTest {
             table.append(String.format("{ \"%s\", \"%d\", \"%x\" }, ", s.id(), gen.size(), crc));
             String[] p = pinned.get(s.id());
             if (p == null) wrong.add(s.id() + ": not pinned");
-            else if (Integer.parseInt(p[1]) != gen.size() || Long.parseLong(p[2], 16) != crc)
-                wrong.add(s.id() + ": was " + p[1] + " cells " + p[2] + ", is " + gen.size() + " " + Long.toHexString(crc));
+            else if (Integer.parseInt(p[1]) != gen.size() || Long.parseLong(p[2], 16) != crc) wrong
+                .add(s.id() + ": was " + p[1] + " cells " + p[2] + ", is " + gen.size() + " " + Long.toHexString(crc));
             // the box the client marks for a rebuild holds every lamp cell
             if (!gen.isEmpty()) {
                 int[] b = run.bounds();
-                for (int[] c : gen) for (int i = 0; i < 3; i++)
-                    assertTrue(c[i] >= b[i] && c[i] <= b[i + 3], s.id() + " lamp box");
+                for (int[] c : gen)
+                    for (int i = 0; i < 3; i++) assertTrue(c[i] >= b[i] && c[i] <= b[i + 3], s.id() + " lamp box");
             }
         }
         System.out.println("LEGACY_MASKS: " + table);
@@ -119,7 +135,8 @@ class LegacyGlowShareTest {
                 for (OldShapes.Shape s : e.getValue()) {
                     Share sh = share(s, p -> LegacyMaskGen.LAMPS.contains(p) || taken.contains(p));
                     if (sh.day / sh.area <= DAY) continue;
-                    for (Map.Entry<Integer, Double> g : sh.dayByPart.entrySet()) left.merge(g.getKey(), g.getValue(), Double::sum);
+                    for (Map.Entry<Integer, Double> g : sh.dayByPart.entrySet())
+                        left.merge(g.getKey(), g.getValue(), Double::sum);
                 }
                 if (left.isEmpty()) break;
                 int most = -1;
@@ -142,8 +159,7 @@ class LegacyGlowShareTest {
         Map<String, Set<Integer>> runtime = new TreeMap<>();
         for (String key : SkinKeys.keys()) {
             Set<Integer> s = new TreeSet<>();
-            for (int p = 0; p < 256; p++)
-                if (SkinProfiles.isLamp(key, p) && !LegacyMaskGen.LAMPS.contains(p)) s.add(p);
+            for (int p = 0; p < 256; p++) if (SkinProfiles.isLamp(key, p) && !LegacyMaskGen.LAMPS.contains(p)) s.add(p);
             if (!s.isEmpty()) runtime.put(key, s);
         }
         assertEquals(derived, runtime, "the runtime's taken-in parts");
@@ -180,9 +196,9 @@ class LegacyGlowShareTest {
             if (!LegacyMaskGen.EXTRA.containsKey(s.key)) continue;
             Share base = share(s, LegacyMaskGen.LAMPS::contains);
             boolean anyOver = false;
-            for (OldShapes.Shape o : OldShapes.all())
-                if (o.key.equals(s.key)) anyOver |= share(o, LegacyMaskGen.LAMPS::contains).day
-                    / share(o, LegacyMaskGen.LAMPS::contains).area > DAY;
+            for (OldShapes.Shape o : OldShapes.all()) if (o.key.equals(s.key))
+                anyOver |= share(o, LegacyMaskGen.LAMPS::contains).day / share(o, LegacyMaskGen.LAMPS::contains).area
+                    > DAY;
             assertTrue(anyOver, s.key + " needs no parts taken in");
             assertTrue(base.day >= share(s, p -> SkinProfiles.isLamp(s.key, p)).day);
         }
@@ -216,8 +232,14 @@ class LegacyGlowShareTest {
             for (int side = 0; side < 6; side++) {
                 // the blueprint counts its layers from the top: up is one layer less
                 int na = a + OFFSET[side][0], nb = b - OFFSET[side][1], nc = c + OFFSET[side][2];
-                boolean outer = na < 0 || nb < 0 || nc < 0 || na >= w || nb >= h || nc >= d || !solid(s.part[na][nb][nc])
-                    || s.hidden[na][nb][nc] || !opaque(s.part[na][nb][nc]);
+                boolean outer = na < 0 || nb < 0
+                    || nc < 0
+                    || na >= w
+                    || nb >= h
+                    || nc >= d
+                    || !solid(s.part[na][nb][nc])
+                    || s.hidden[na][nb][nc]
+                    || !opaque(s.part[na][nb][nc]);
                 if (!outer) continue;
                 out.area += area(p, side);
                 double g = glow(p, side);

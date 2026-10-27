@@ -57,8 +57,8 @@ class PreviewSkinTest {
 
         // every cell of the box resolves to it, nothing outside
         int[] b = e.box;
-        for (int x = b[0] - 1; x <= b[3] + 1; x += 3) for (int y = b[1] - 1; y <= b[4] + 1; y += 3)
-            for (int z = b[2] - 1; z <= b[5] + 1; z += 3) {
+        for (int x = b[0] - 1; x <= b[3] + 1; x += 3)
+            for (int y = b[1] - 1; y <= b[4] + 1; y += 3) for (int z = b[2] - 1; z <= b[5] + 1; z += 3) {
                 boolean in = x >= b[0] && x <= b[3] && y >= b[1] && y <= b[4] && z >= b[2] && z <= b[5];
                 SkinEntry r = SkinTable.resolve(preview, x, y, z);
                 if (in) assertSame(e, r, x + "," + y + "," + z);
@@ -67,9 +67,12 @@ class PreviewSkinTest {
 
         // built again (another facing, the slider moved): still one entry, the new one
         dome.readFromNBT(tag(5));
+        preview.put(dome, 0, 64, 0);
         SkinFeed.preview(dome);
-        assertEquals(1, SkinTable.preview(preview)
-            .size());
+        assertEquals(
+            1,
+            SkinTable.preview(preview)
+                .size());
         assertEquals(
             5,
             SkinTable.preview(preview)
@@ -107,8 +110,10 @@ class PreviewSkinTest {
         dome.readFromNBT(tag(2));
         preview.put(dome, 0, 64, 0);
         SkinFeed.preview(dome);
-        assertEquals(1, SkinTable.preview(preview)
-            .size());
+        assertEquals(
+            1,
+            SkinTable.preview(preview)
+                .size());
         // the preview closes: nothing but the registry knows its world, which must not keep it
         WeakReference<FakeWorld> ref = new WeakReference<>(preview);
         preview = null;
