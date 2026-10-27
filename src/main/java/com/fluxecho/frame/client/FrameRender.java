@@ -8,8 +8,11 @@ import net.minecraft.world.IBlockAccess;
 
 import org.lwjgl.opengl.GL11;
 
+import com.fluxecho.client.skin.ClientSkin;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.Formed;
+import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.skin.LampRule;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -21,6 +24,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * the sky platforms' undersides glow with a shader pack on and need no drawing of their own), the conduit's core and
  * the seat's crystal glowing whole. A part that gave way to a formed multiblock's drawing ({@link Formed#HIDE}) draws
  * nothing. A shelf that is a body of a shelf unit is drawn by {@link ShelfUnits}.
+ * <p>
+ * 0.17.0 (refactor §5.6): the old buildings whose always-lit frame glow outshone 3% of their surface by day took those
+ * frame parts into their lamp windows (the nexus's lit spokes and rings, the hall's lit foundation, the sky platforms'
+ * floating foundation): their bright lines follow the client's box table, left out while the building's lamps are
+ * dark, drawn as before while they are lit. Every other frame part, and these outside every building of the table, as
+ * 0.16 drew them.
  */
 @SideOnly(Side.CLIENT)
 public final class FrameRender implements ISimpleBlockRenderingHandler {
@@ -50,7 +59,9 @@ public final class FrameRender implements ISimpleBlockRenderingHandler {
         Tessellator t = Tessellator.instance;
         t.setBrightness(BRIGHT);
         t.setColorOpaque_F(1f, 1f, 1f);
-        for (int s = 0; s < 6; s++) {
+        // a lamp of an old building is left out while its lamps are dark
+        boolean dark = !r.hasOverrideBlockTexture() && ClientSkin.glow(w, x, y, z, Parts.frame(meta)) == LampRule.DARK;
+        for (int s = 0; s < 6 && !dark; s++) {
             IIcon g = frame.glow(s, meta);
             if (g != null && (r.renderAllFaces || faceShows(w, x, y, z, block, s))) face(r, block, x, y, z, s, g);
         }

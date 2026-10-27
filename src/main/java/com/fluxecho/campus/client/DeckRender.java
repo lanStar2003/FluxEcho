@@ -9,6 +9,9 @@ import net.minecraft.world.IBlockAccess;
 import org.lwjgl.opengl.GL11;
 
 import com.fluxecho.campus.BlockDeck;
+import com.fluxecho.client.skin.ClientSkin;
+import com.fluxecho.logic.Parts;
+import com.fluxecho.logic.skin.LampRule;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -19,6 +22,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * light, the tile's bright lines again on every face that shows and has an overlay ({@link BlockDeck#glow}: the lit
  * strip's floor cross only on top, a level line on its upright faces), at full brightness with smooth lighting off.
  * That is how the frame's lit parts are drawn too, and it keeps the lines lit under a shader pack.
+ * <p>
+ * 0.17.0 (refactor §5.6): the pilasters (meta 9) and cornices (meta 11) of an old building are its lamp windows. Their
+ * overlay follows the client's box table ({@link ClientSkin#glow}): left out while the building's lamps are dark (by
+ * day, asleep, without power), drawn in the building's accent while they are lit; outside every building of the table
+ * they glow as before. The other metas are drawn as in 0.16.
  */
 @SideOnly(Side.CLIENT)
 public final class DeckRender implements ISimpleBlockRenderingHandler {
@@ -36,11 +44,17 @@ public final class DeckRender implements ISimpleBlockRenderingHandler {
         boolean drawn = PartDraw.box(r, block, x, y, z, 0, 0, 0, 1, 1, 1);
         // the breaking animation draws the block again with its own texture: no overlays then
         if (r.hasOverrideBlockTexture()) return drawn;
+        int colour = ClientSkin.glow(w, x, y, z, Parts.deck(meta));
+        if (colour == LampRule.DARK) return drawn;
         boolean ao = r.enableAO, lit = false;
         for (int s = 0; s < 6; s++) {
             IIcon g = deck.glow(meta, s);
             if (g == null || !(r.renderAllFaces || PartDraw.shows(w, x, y, z, block, s))) continue;
-            if (!lit) PartDraw.glowOn(r);
+            if (!lit) {
+                PartDraw.glowOn(r);
+                // a lit lamp window in its building's accent
+                if (colour >= 0) Tessellator.instance.setColorOpaque_I(colour);
+            }
             lit = true;
             PartDraw.face(r, block, x, y, z, s, g);
         }
