@@ -22,12 +22,11 @@ import com.fluxecho.Tools;
  * The seven-row recolouring as committed (0.17.0, style §7.1): every texture of the seven rows changed together, each
  * one's mean lightness in the band its row asks for (the frame and the fittings the hull's white, the floor the
  * silver-grey rock at L* about 63, the panels a pale grey, the plinth course, the grate and the basin rims the
- * footing's
- * warm black, the canvas rice paper); every glow overlay of those rows draws a white core in every frame of its
- * animation and an edge in its light's colour, the nexus cyan or warm white (G6, style §3.6); and the two generators
- * draw their light in {@link SkinPalette}'s colours. The textures are only ever drawn by
- * {@code tools/NexusTextures.java}
- * and {@code tools/CampusTextures.java} ({@code GeneratedTexturesTest} checks the committed files are what they draw).
+ * footing's warm black, the canvas rice paper); every glow overlay of those rows draws a white core in every frame of
+ * its animation and an edge in its light's colour, the nexus cyan or warm white (G6, style §3.6); and the two
+ * generators draw their light in {@link SkinPalette}'s colours. The textures are only ever drawn by
+ * {@code tools/NexusTextures.java} and {@code tools/CampusTextures.java} ({@code GeneratedTexturesTest} checks the
+ * committed files are what they draw).
  */
 class PaletteSyncTest {
 
@@ -133,8 +132,7 @@ class PaletteSyncTest {
     /**
      * G6 and style §3.6: in every frame of every glow of the seven rows a white core shows, and the rest of the glow
      * (its edge, lifted towards white as the swell passes) is on average its light's colour: the nexus cyan on the
-     * frame,
-     * the flux channels and the lift, warm white on everything at a person's scale.
+     * frame, the flux channels and the lift, warm white on everything at a person's scale.
      */
     @Test
     void everyGlowHasAWhiteCoreAndAnEdgeOfItsLight() throws IOException {

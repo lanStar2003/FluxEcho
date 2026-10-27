@@ -48,13 +48,12 @@ import cpw.mods.fml.relauncher.SideOnly;
  * Sneaking, clicking a side, or clicking a frame, deck or fitting block places the core the 0.9.2 way: a legacy
  * nexus the player builds by hand.
  * <p>
- * A lifted placement is refused when the nexus could not grow there: its base outside the campus band (too close to
- * the top of the world, or since 0.14.1 too close to the bedrock for any well, {@link CampusBand}; never for a core put
+ * A lifted placement is refused when the nexus could not grow there: its base outside the campus band (too close to the
+ * top of the world, or since 0.14.1 too close to the bedrock for any well, {@link CampusBand}; never for a core put
  * back where it stood), no open sky over the core, its base on a module, or another campus within
  * {@code CampusConfig.buildMinSpacing}. Only the server decides a lifted placement; the client applies the same rule
- * and
- * then waits for the block instead of guessing, so a refused or moved placement never leaves a ghost block or a wrong
- * stack count behind.
+ * and then waits for the block instead of guessing, so a refused or moved placement never leaves a ghost block or a
+ * wrong stack count behind.
  * <p>
  * A core broken off a nexus ({@link BlockNexusCore}) carries the campus's credit ({@link #CREDIT}: the ledger's raw
  * credit and parts, the recycle store) and the manifestation that was still running ({@link #PENDING},
@@ -255,8 +254,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
      * The centre of a campus, or of a loaded nexus that has none yet (a 0.9.2 nexus may lay its forum later), closer
      * than {@code spacing} (Chebyshev) to the centre {@code c}; null when there is none. A new core keeps
      * {@code CampusConfig.buildMinSpacing} (312 by default since 0.15.0, room for both outer rings); a core put back
-     * where it
-     * stood only the inner discs' spacing ({@link Campus#innerSpacing}).
+     * where it stood only the inner discs' spacing ({@link Campus#innerSpacing}).
      */
     static int[] tooClose(World w, int[] c, int spacing) {
         if (spacing <= 0) return null;

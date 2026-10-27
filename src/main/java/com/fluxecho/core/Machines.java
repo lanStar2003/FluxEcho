@@ -12,8 +12,7 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 
 /**
  * FluxEcho's GT machines, each on its fixed id from {@link GeneralConfig#firstMachineId}. The modules create their
- * machines
- * and hand them over here; this class never touches an optional mod.
+ * machines and hand them over here; this class never touches an optional mod.
  */
 public final class Machines {
 

@@ -260,9 +260,8 @@ class PartsTest {
 
     /**
      * 0.17.0's free codes (style FINAL §3.8.1): the live materials 54 to 58, the hull 96 to 107, the footing 108 to
-     * 117,
-     * the script skin 118 to 125 and the garden skin 126, 127 and 59 to 62: each of the 41 used once, none in an old
-     * family, each family's shape number back to its code.
+     * 117, the script skin 118 to 125 and the garden skin 126, 127 and 59 to 62: each of the 41 used once, none in an
+     * old family, each family's shape number back to its code.
      */
     @Test
     void theFreeCodesOf017() {

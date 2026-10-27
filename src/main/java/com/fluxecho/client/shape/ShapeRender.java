@@ -44,9 +44,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * </ul>
  * It keeps no state between calls but the caches of {@code ShapeAccess} (concurrent) and reads only blocks, metas and
  * immutable tables, so a chunk builder may call it from any thread. It carries no {@code ThreadSafeISBRH} mark
- * (Angelica
- * is not a compile dependency): Angelica then builds these blocks on the main thread, as it does for every renderer of
- * the mod so far.
+ * (Angelica is not a compile dependency): Angelica then builds these blocks on the main thread, as it does for every
+ * renderer of the mod so far.
  */
 @SideOnly(Side.CLIENT)
 public final class ShapeRender implements ISimpleBlockRenderingHandler {

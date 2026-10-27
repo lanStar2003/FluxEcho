@@ -100,11 +100,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * The preview, while holding the nexus core and aiming at a block (not sneaking): what a lifted placement there would
  * raise, worked out with the item's own rules ({@link ItemBlockNexusCore#ground}, {@link ItemBlockNexusCore#lift},
  * {@link ItemBlockNexusCore#facingFor}): the dais, the forum, the promenade ring, the gate and the graded disc's edge
- * round the nexus centre the core would get, its front the way the core would face. It turns red, with the reason
- * over the core, when the client can already tell the server will refuse: the base outside the campus band (the nexus
- * would reach past the top of the world, or since 0.14.1 no well fits over the bedrock; {@link CampusBand}, never for
- * a core put back where it stood), no sky over the core ({@code CampusConfig.buildRequireSky}), the dais on a module,
- * or
+ * round the nexus centre the core would get, its front the way the core would face. It turns red, with the reason over
+ * the core, when the client can already tell the server will refuse: the base outside the campus band (the nexus would
+ * reach past the top of the world, or since 0.14.1 no well fits over the bedrock; {@link CampusBand}, never for a core
+ * put back where it stood), no sky over the core ({@code CampusConfig.buildRequireSky}), the dais on a module, or
  * another nexus it knows of closer than {@code CampusConfig.buildMinSpacing}. Nothing when the campus is off.
  * <p>
  * Shader-safe like {@link Shapes} (drawn after the world, skipped in the shadow pass, relative to the camera, quads

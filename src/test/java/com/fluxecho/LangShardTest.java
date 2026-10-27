@@ -24,8 +24,7 @@ import org.junit.jupiter.api.Test;
  * The fluxecho lang files are generated from shards ({@code lang/src/<area>.<language>.lang}, the area table
  * {@code lang/src/areas.txt}) by {@code tools/LangMerge.java}. The committed files must be exactly its output, both
  * languages must have the same keys shard by shard, a key lives in one shard only, every key sits in the area its
- * prefix
- * gives, and 0.16.0's keys are all still there.
+ * prefix gives, and 0.16.0's keys are all still there.
  */
 class LangShardTest {
 

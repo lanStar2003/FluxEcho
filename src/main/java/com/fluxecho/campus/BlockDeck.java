@@ -32,8 +32,7 @@ import cpw.mods.fml.relauncher.SideOnly;
  * 0.14.0 adds the canvas (meta 12, CITY.md §1.4), the wall a module's unit paints its item on: units can be made of
  * deck cells now, so a use of a deck block is offered to the formed modules first ({@link #onUse}), as a frame's and a
  * fitting's is. 0.17.0 adds meta 13, the hull-number tile (style FINAL §3.7, code 29): a footing-dark floor tile with
- * an
- * octagonal badge, laid in front of every building's door on the way home, its number and whether it is lit the box
+ * an octagonal badge, laid in front of every building's door on the way home, its number and whether it is lit the box
  * table's to say; it gives no light of its own. Metas 14 and 15 stay unregistered (ids.md §1.2).
  */
 public class BlockDeck extends Block {

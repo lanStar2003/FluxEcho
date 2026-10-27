@@ -81,10 +81,8 @@ public final class Golden {
     /**
      * The four campuses: an HV campus of phase I (the Archive standing, the Eco Dome half built), an EV one of phase II
      * (eleven buildings: the three halls, the four pavilions, the gate, the moored pod and the Tidal Well), an IV one
-     * of
-     * phase III (the outer ring laid, the Sophon Array standing, the Holo Sand Table being built) and the LuV one of
-     * the
-     * user's own save: phase IV, sixteen buildings, the sky ring on S0 to S6 (sites 30 to 36), the pod released and
+     * of phase III (the outer ring laid, the Sophon Array standing, the Holo Sand Table being built) and the LuV one of
+     * the user's own save: phase IV, sixteen buildings, the sky ring on S0 to S6 (sites 30 to 36), the pod released and
      * floating, the root grown into the Deep Root. Each faces another way and stands somewhere else.
      */
     public static final Tier[] TIERS = {

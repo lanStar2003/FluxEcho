@@ -86,8 +86,7 @@ public final class SkinProfiles {
         // every fitting 0.16's FittingRender draws a glow overlay on: the ones that give light (not the glazing)
         for (int m = 0; m < Parts.FITTING_TYPES; m++) if (Parts.FITTING_LIGHT[m] > 0) LAMPS[Parts.fitting(m)] = true;
         // over 3% by day without (LegacyGlowShareTest): the nexus's spokes and rings, the hall's lit foundation, the
-        // sky
-        // platforms' floating foundation
+        // sky platforms' floating foundation
         EXTRA.put("nexus", new int[] { Parts.frame(Parts.FR_BASE_LIT), Parts.frame(Parts.FR_RING) });
         EXTRA.put("library", new int[] { Parts.frame(Parts.FR_FOUNDATION) });
         for (String sky : new String[] { "droplet_hangar", "observatory", "sky_sails", "weather_station" })

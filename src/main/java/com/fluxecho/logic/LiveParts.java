@@ -32,8 +32,7 @@ public final class LiveParts {
     /**
      * The meta a live part is placed with: the birch log upright (2), the oak leaves with their no-decay bit (4), the
      * rest 0. A vine of meta 0 hangs from the block over it, so a plan puts its vines under a solid block (the coping
-     * of
-     * a retaining wall); from there they spread down the wall by themselves.
+     * of a retaining wall); from there they spread down the wall by themselves.
      *
      * @throws IllegalArgumentException for a part that is not live
      */

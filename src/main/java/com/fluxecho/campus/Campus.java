@@ -2431,11 +2431,10 @@ public final class Campus {
     }
 
     /**
-     * 铺设广场 on a legacy nexus: the campus becomes active and the forum job is made (grading, floor, fixtures).
-     * Refused when another campus lies so near that their inner discs would overlap ({@link #innerSpacing}; up to
-     * 0.14.2 the whole {@code CampusConfig.buildMinSpacing}, whose default 0.15.0 raised for new campuses: the nexus
-     * stands
-     * here already, and the outer rings share their ground, {@link CampusSplit}); and since 0.14.1 when its base lies
+     * 铺设广场 on a legacy nexus: the campus becomes active and the forum job is made (grading, floor, fixtures). Refused
+     * when another campus lies so near that their inner discs would overlap ({@link #innerSpacing}; up to 0.14.2 the
+     * whole {@code CampusConfig.buildMinSpacing}, whose default 0.15.0 raised for new campuses: the nexus stands here
+     * already, and the outer rings share their ground, {@link CampusSplit}); and since 0.14.1 when its base lies
      * outside the campus band ({@link CampusBand}): a nexus built by hand may stand anywhere, but a campus over Y0 225
      * could not grow, one under Y0 14 has no room for its well.
      */

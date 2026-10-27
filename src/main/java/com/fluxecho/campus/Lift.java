@@ -127,8 +127,7 @@ public final class Lift {
     /**
      * Whether an entity passes through the block of ours at {@code (x, y, z)} ({@code pad}: a light-lift pad, else a
      * frame or fitting block, or (0.17.0) a block of the new material families) because it rides the lift there: only a
-     * riding player (or one in its grace), only in the
-     * ride's column and span ({@link LiftShaft#passes}).
+     * riding player (or one in its grace), only in the ride's column and span ({@link LiftShaft#passes}).
      */
     public static boolean passes(Entity e, int x, int y, int z, boolean pad) {
         if (!(e instanceof EntityPlayer) || e.worldObj == null) return false;

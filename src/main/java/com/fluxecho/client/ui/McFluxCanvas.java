@@ -31,12 +31,11 @@ import cpw.mods.fml.relauncher.SideOnly;
  * {@link #world}, for cards drawn in the world, where every vertex gets a normal (shader packs light by it) and nothing
  * is clipped.
  * <p>
- * Shapes go into one open batch until something needs a different GL state (the atlas texture, text, an item, a clip,
- * a transform, a blend mode), which draws the batch first; so a page costs a handful of draw calls, not one per shape.
+ * Shapes go into one open batch until something needs a different GL state (the atlas texture, text, an item, a clip, a
+ * transform, a blend mode), which draws the batch first; so a page costs a handful of draw calls, not one per shape.
  * The 2D transform and the clip are tracked in an {@link Xform} next to the GL matrix, so clips follow the transform
  * and nest (ui/FINAL.md section 2.3.2). {@link #begin} and {@link #end} wrap a frame and restore every state they
- * touch,
- * ending with texturing switched on by hand (Angelica only hears about glEnable / glDisable, not glPopAttrib).
+ * touch, ending with texturing switched on by hand (Angelica only hears about glEnable / glDisable, not glPopAttrib).
  */
 @SideOnly(Side.CLIENT)
 public final class McFluxCanvas implements FluxCanvas {

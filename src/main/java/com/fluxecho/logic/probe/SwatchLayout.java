@@ -39,10 +39,9 @@ import com.fluxecho.logic.skin.SkinPalette;
  * the wall a footing course. The reserved rows are left as air.
  * <p>
  * <b>Where.</b> In the {@link ProbeFrame} of the operator who set it out: column {@link #CENTRE} on their line of
- * sight,
- * the wall's face {@link #BACK} cells ahead of them, the front layer {@link #FRONT}, the pool {@link #POOL_NEAR} to
- * {@link #POOL_FAR}, the front rim {@link #RIM}; row 0 on their floor. The marker sign stands on the front rim's left
- * corner ({@link ProbeMarker.Kind#SWATCH}).
+ * sight, the wall's face {@link #BACK} cells ahead of them, the front layer {@link #FRONT}, the pool {@link #POOL_NEAR}
+ * to {@link #POOL_FAR}, the front rim {@link #RIM}; row 0 on their floor. The marker sign stands on the front rim's
+ * left corner ({@link ProbeMarker.Kind#SWATCH}).
  * <p>
  * <b>Light.</b> Which accent a light seam, lamp or keel shows, and whether a lamp is lit, are not blocks but the box
  * table's say ({@code SkinTable}, style §3.9); the swatch tells the client's chunk renderer through {@link #glows}, and

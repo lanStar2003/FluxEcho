@@ -870,9 +870,8 @@ public final class ShapeKit {
         /**
          * Declares one of the building's own legend characters (style FINAL §3.8.5; {@code b_<shape>.py}'s
          * {@code LEGEND}): it places part {@code code}, soft (built, never checked) when {@code soft} says so or the
-         * part
-         * is a live material ({@link LiveParts}). The base legend is frozen, so the character must not be one of its
-         * characters (nor the controller, must-be-air or nothing), and a character is declared once.
+         * part is a live material ({@link LiveParts}). The base legend is frozen, so the character must not be one of
+         * its characters (nor the controller, must-be-air or nothing), and a character is declared once.
          *
          * @throws IllegalArgumentException when the character is the base legend's, is declared already, or the code
          *                                  is no part

@@ -9,9 +9,8 @@ import java.math.RoundingMode;
  * {@code 30.7k}, {@code 1.97M}, {@code 2.10G}), whole percentages with one decimal below 10%, countdowns as
  * {@code 14:20} or {@code 1:57:03}, game time as {@code D3 · 23:40} with midnight at tick 18000, slot counts in four
  * glyphs. A number and its unit are separate strings: the number is FluxMono N1 / N2, the unit FluxMono at caption
- * size,
- * 2 px apart on one baseline (1.4.3 rule 2). Everything a number format makes for the large sizes is drawn from the
- * large FluxMono glyphs ({@link FluxMono#inLarge}). Pure functions, no Minecraft classes.
+ * size, 2 px apart on one baseline (1.4.3 rule 2). Everything a number format makes for the large sizes is drawn from
+ * the large FluxMono glyphs ({@link FluxMono#inLarge}). Pure functions, no Minecraft classes.
  */
 public final class Fmt {
 
