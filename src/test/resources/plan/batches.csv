@@ -1,0 +1,13 @@
+version,name,buildings,ring_segments,stars,stars_mvp,main_est,test_est
+0.17.0,白舟,,0,29,27,16900,15300
+0.18.0,航图,,0,32,31,17600,14100
+0.19.0,上岸,3:library,5,33,32,18600,16200
+0.20.0,生园,4:eco_dome,6,35,32,17500,14500
+0.21.0,锚定,5:root 6:dome_generator,8,44,35,18200,15100
+0.22.0,箔与泉,7:dual_foil_vault 8:resonance_gate 9:mana_fountain,11,49,36,20000,17700
+0.23.0,外舷,10:arcane_court 11:sophon_array 12:holo_table,14,53,37,17100,12400
+0.24.0,礼与猎,13:hunting_ground 14:blood_covenant,16,55,37,12400,10700
+0.25.0,立桅,15:root 16:observatory 17:sky_sails,18,61,42,14300,11300
+0.26.0,天环,18:weather_station 19:droplet_hangar,20,65,42,10000,9000
+0.27.0,源点,20:orbital_anchor 21:root 22:orbital_anchor 23:source_heart,22,77,52,15600,12600
+0.28.0,跃升,24:leap_ring,23,83,56,10900,8000

@@ -145,6 +145,8 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 | `CampusTextures.java` | 0.10.0 营造：`blocks/deck/*`、`blocks/fitting/*`、书架单元（`frame/shelf_niche`、`shelf_board`、`book_spine`）、`blocks/supply_port/*`；0.10.1 的回收箱 `blocks/recycle_bin/{top,side,front}`（补给口那种深蓝钢箱体，紫到青的进料口）；0.11.0 的样本座 `fitting/socket`、`socket_top`、`socket_glow`（凹槽在 11–15/16 高，和 `ModuleLook` 的常量一致）和池沿 `fitting/basin`、`basin_top`、`basin_glow`；0.12.0 的光梯 `fitting/lift`、`lift_top`（光圈）、`lift_glow`（动画）；0.14.0 的画布 `deck/canvas`（深蓝织纹、两像素的经纬、每半格一条淡青网格线，不发光、没有 `_glow`）；深色科技调色板锁定 |
 | `DepthsTextures.java` / `DepthsGuiTextures.java` | FluxDepths 的方块、物品、GUI |
 
+- **ID 账的导出**（0.17.0 起）：`java tools/IdsCsv.java` 把 [ids.md](ids.md) §19 的 JSON 导出成 `docs/dev/ids.csv`（一行一个 ID：类、节、值、含义、归属、首发版本、状态、出处；`--check` 只比较）。`ids.md` 是唯一的账，改了它的 JSON 就重跑；`IdsCsvTest` 在测试里编译这个工具、比对提交的 CSV。逐版计划数据在 `src/test/resources/plan/batches.csv`（版本、首发新形状的楼「顺序号:楼键」、环段数、可见星数和 MVP 星数、main 和 test 估值），`BatchPlanTest` 读它。
+
 - **资源**：`mcmod.info`（三个条目，后两个 `parent` 指向 fluxecho）；`assets/fluxecho/lang/{en_US,zh_CN}.lang`（行一一对应，按版本 `#` 分节）；`textures/{blocks,items,gui,effects}`；`quests/{index.json, DefaultQuests/...}`。
 - **lang 键约定**：机器 `gt.blockmachines.fluxecho.<key>.name`；方块 `tile.fluxecho.<name>.name`；物品 `item.fluxecho.<name>.name`；创造栏 `itemGroup.fluxecho`；其余一律 `fluxecho.<area>.<…>`（`status.*`、`recipe.<key>`、`<key>.tip/.type/.gui_sample`、`nei.*`、`gui.*`、`holo.*`、`codex.*`、`waila.*`、`research.*`、`nexus.*`、`spring.*`、`gate.*`…）；文本里 `\n` 写字面量。
 
@@ -154,6 +156,7 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 |---|---|
 | `LangTest` | en/zh 键集合一致、无重复、占位符一致；代码里**字面写出**的键都存在（`EchoText.t/lines("x")` → `fluxecho.x`，`ChatComponentTranslation`/`translateToLocal("fluxecho.…")`）。**运行时拼出来的键查不出**，要自己核对。0.11.0 加 `everyChatMessageGetsItsArguments`：代码里字面写出的 `new ChatComponentTranslation("fluxecho.…", …)` 和 `UnitUse` 的 `tell(p, "x", …)`（= `fluxecho.city.unit.x`）给的参数不少于两份 lang 里的占位符（`%s`/`%d`，`%n$s` 按最大的 n）——1.7.10 在客户端格式化聊天时占位符比参数多会抛异常、客户端崩溃（0.11.0 开发中 `city.unit.full` 就少传了一个）；拼出来的键、经别的辅助方法发的消息它看不到 |
 | `IsolationTest` | 读 `build/classes/java/main` 常量池：`forestry/`→`bees`、`thaumcraft/`→`thaumcraft`、`WayofTime/`→`blood`、`betterquesting/`→`quest/bq`、`com/kuba6000/mobsinfo/`→`mobs`、`ic2/`→`crops`、`vazkii/botania/`→`mana`、`appeng/`→`ae`。只看 `com/fluxecho/`（"The dev classpath always has Forestry (GT pulls it in), so a leak would never show in a dev run"） |
+| `plan/IdsCsvTest`、`plan/BatchPlanTest`（0.17.0） | `docs/dev/ids.csv` 就是 `tools/IdsCsv.java` 从 `ids.md` 导出的、每行有类和值、状态只取 已发布/新增/本版/预留/作废；`plan/batches.csv` 的格式（0.17.0–0.28.0 各一行）、楼按总平面顺序号首发、每版新形状的楼不超过 3 座（同一座楼的两种形态算一座）、环段和星只增不减、每版 main 估值不过 21,741 和计划线 20,000、0.17.0 那一行（以后每版补自己那一行的断言，refactor §2.5）。测试里编译 `tools/*.java` 用 `com.fluxecho.Tools`（JDK 自带的编译器，输出到 `build/tmp/tools-test/`） |
 | `ConfigTest` | `older()` 版本比较；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth`；0.15.0 的 `buildMinSpacing` 312 和 `bumpsMinSpacing`（`campusSpacingOf0150`：只有存的 "144" 改成 312） |
 | `core/MachineIdTest` | offset 唯一且 < 40；不碰 FluxDepths |
 | `core/EchoRecipesTest` | `forForge` |

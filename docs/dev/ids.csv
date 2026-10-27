@@ -1,0 +1,1077 @@
+class,section,value,meaning,owner,since,status,source
+part_ranges,1.1,0–10,frame meta 0–10（已发布的 11 种形）,引擎,≤0.16,已发布,H logic/Parts
+part_ranges,1.1,11–15,frame meta 11–15：只给溶解件（只有 frame 族查 Formed）,留空,—,预留,S §3.8.3(d)
+part_ranges,1.1,16–28,deck meta 0–12,引擎,≤0.16,已发布,H logic/Parts
+part_ranges,1.1,29–31,deck meta 13 舷号砖 / 14 位垫 / 15 留空,风格 / 魔法组 / 留空,0.17 / 0.22 / —,新增,S §3.8.3(d)；R §4.8
+part_ranges,1.1,32–41,fitting meta 0–9,引擎,≤0.16,已发布,H logic/Parts
+part_ranges,1.1,42–47,fitting meta 10 显化台面 / 11 路灯灯头 / 12、13 留空 / 14 花床 / 15 留空,中枢组 / 总平面 / — / 风格,0.21 / 0.19 / — / 0.17,新增,S §3.8.3(d)；R §4.8、§4.12
+part_ranges,1.1,48–53,书库核心、供料口、草、泥、回收箱、水,引擎,≤0.16,已发布,H logic/Parts
+part_ranges,1.1,54–62,第一批：活物料 54–58、苔铜 59–62,风格,0.17,新增,S §3.8.1；R §4.8
+part_ranges,1.1,63,空气（清场占位）,引擎,≤0.16,已发布,H logic/Parts
+part_ranges,1.1,64–79,module_core meta 0–15（码 = 64 + meta）,引擎,≤0.16,已发布,H logic/ModuleCores
+part_ranges,1.1,80–95,module_core2 meta 0–15（码 = 80 + meta；按发布顺序用，不跳号）,发电 / 终局,0.27 起,新增,S §3.8.3(a)；R §4.10
+part_ranges,1.1,96–127,第一批皮材形：舟壳 96–107、玄基 108–117、skin_script 118–125、苔铜 126–127,风格,0.17,新增,S §3.8.1
+part_ranges,1.1,128–203,扩宽批：各族其余形 128–155、skin_rite 156–171、skin_flux 172–187、skin_void 188–203（≥ 128 的码只走 BUILD_FX2）,风格,0.20,新增,R §4.8
+part_ranges,1.1,204–219,第 13 种材质「显化黑金」skin_manifest,风格,0.25,新增,R §4.8
+part_ranges,1.1,220–235,fluxecho:fixture 0–15：全城共用题材件（220 点火台，其余留空）,统筹,0.20,新增,S §3.8.3(a)(b)
+part_ranges,1.1,236–237,fluxecho:module_port 0 进 / 1 出,统筹,0.20,新增,S §3.8.3(b)
+part_ranges,1.1,238–255,共用件余量,统筹,—,预留,S §3.8.3(a)
+part_ranges,1.1,256–415,各组题材件：fixture2…fixture11，每个方块 ID 一整块 16 码（码 = 段首 + meta）,各组,0.20 起,新增,S §3.8.3(b)
+part_ranges,1.1,416–1023,留空（客户端图标缓存上限 1024）,—,—,预留,S §3.8.2
+part_codes_bound,1.2,0,frame · 0 base 底座,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,1,frame · 1 base_lit 亮底座,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,2,frame · 2 pillar 柱,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,3,frame · 3 conduit 导管,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,4,frame · 4 ring 环,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,5,frame · 5 seat 座（溶解件；冠肋梢座、拱心晶座、点火台顶框座都用它）,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,6,frame · 6 foundation 地基,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,7,frame · 7 shelf 架,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,8,frame · 8 console 控制台座（中枢、档案馆、跃迁环墩台都用它）,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,9,frame · 9 anchor 覆层锚点,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,10,frame · 10 float 浮台,引擎,≤0.16,已发布,H Parts.FR_*
+part_codes_bound,1.2,11–15,frame · 11–15,留空（只给溶解件，用前写进本账）,—,预留,S §3.8.3(d)
+part_codes_bound,1.2,16,deck · 0 deck,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,17,deck · 1 trim,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,18,deck · 2 lit,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,19,deck · 3 grate,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,20,deck · 4 dark,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,21,deck · 5 skirt,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,22,deck · 6 chevron,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,23,deck · 7 well,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,24,deck · 8 panel,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,25,deck · 9 panel_lit,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,26,deck · 10 panel_dark,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,27,deck · 11 cornice,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,28,deck · 12 canvas,引擎,≤0.16,已发布,H Parts.DECK_NAMES
+part_codes_bound,1.2,29,deck · 13 舷号砖,风格（地面）,0.17,新增,S §3.8.3(d)；R §4.8
+part_codes_bound,1.2,30,deck · 14 位垫（泉阵池位下的催化座、秘法庭坛位；软格）,魔法组,0.22,新增,S §3.8.3(d)；R §4.8
+part_codes_bound,1.2,31,deck · 15,留空（全城最后一个绑定 deck meta，只给地面计划）,—,预留,S §3.8.3(d)
+part_codes_bound,1.2,32,fitting · 0 post,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,33,fitting · 1 plinth,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,34,fitting · 2 crown,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,35,fitting · 3 rail（栏杆，环冠廊照用）,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,36,fitting · 4 tread,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,37,fitting · 5 glaze（回望窗用它，不另开码）,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,38,fitting · 6 pedestal,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,39,fitting · 7 socket,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,40,fitting · 8 basin,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,41,fitting · 9 lift（光梯照用）,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
+part_codes_bound,1.2,42,fitting · 10 显化台面 manifest_desk（代理 TE fluxecho:manifest_deck）,中枢组,0.21,新增,R §4.8、§4.12；B/nexus/nexus §7
+part_codes_bound,1.2,43,fitting · 11 路灯灯头（发电「控件」退路作废）,总平面 / 风格,0.19,新增,R §4.8、§4.12
+part_codes_bound,1.2,44,fitting · 12,留空（发电燃料口已并进 module_port）,—,预留,S §3.8.3(d)
+part_codes_bound,1.2,45,fitting · 13,留空,—,预留,S §3.8.3(d)
+part_codes_bound,1.2,46,fitting · 14 花床,风格,0.17,新增,S §3.8.3(d)；R §4.8
+part_codes_bound,1.2,47,fitting · 15,留空,—,预留,S §3.8.3(d)
+part_codes_bound,1.2,48,LIBRARY_CORE 书库核心,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,49,SUPPLY_PORT 供料口,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,50,GRASS 草,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,51,DIRT 泥,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,52,RECYCLE_BIN 回收箱,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,53,WATER 水,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,54,活物料 · 白桦,风格,0.17,新增,S §3.8.1；R §4.8
+part_codes_bound,1.2,55,活物料 · 橡叶,风格,0.17,新增,S §3.8.1；R §4.8
+part_codes_bound,1.2,56,活物料 · 藤,风格,0.17,新增,S §3.8.1；R §4.8
+part_codes_bound,1.2,57,活物料 · 睡莲,风格,0.17,新增,S §3.8.1；R §4.8
+part_codes_bound,1.2,58,活物料 · 花,风格,0.17,新增,S §3.8.1；R §4.8
+part_codes_bound,1.2,59,skin_garden 苔铜 · 形 3 坡,风格（生态穹）,0.17,新增,S §3.8.1
+part_codes_bound,1.2,60,skin_garden 苔铜 · 形 4 光缝,风格（生态穹）,0.17,新增,S §3.8.1
+part_codes_bound,1.2,61,skin_garden 苔铜 · 形 5 灯窗,风格（生态穹）,0.17,新增,S §3.8.1
+part_codes_bound,1.2,62,skin_garden 苔铜 · 形 7 铜框窗,风格（生态穹）,0.17,新增,S §3.8.1
+part_codes_bound,1.2,63,AIR 空气,引擎,≤0.16,已发布,H Parts
+part_codes_bound,1.2,64,module_core · 0 eco_dome,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,65,module_core · 1 dual_foil_vault,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,66,module_core · 2 arcane_court,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,67,module_core · 3 blood_covenant,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,68,module_core · 4 hunting_ground,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,69,module_core · 5 mana_fountain,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,70,module_core · 6 resonance_gate,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,71,module_core · 7 dome_generator,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,72,module_core · 8 root,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,73,module_core · 9 sophon_array,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,74,module_core · 10 holo_table,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,75,module_core · 11 sky_sails,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,76,module_core · 12 observatory,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,77,module_core · 13 droplet_hangar,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,78,module_core · 14 weather_station,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,79,module_core · 15 orbital_anchor（码早有；TE 首发 0.27）,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
+part_codes_bound,1.2,80,module_core2 · 0 source_heart 源点之心,发电组,0.27,新增,R §4.10、§4.12
+part_codes_bound,1.2,81,module_core2 · 1 leap_ring 跃迁环（拱心晶）,终局组,0.28,新增,R §4.10、§4.12；D C2
+part_codes_bound,1.2,82–95,module_core2 · 2–15,留空（渡舟坞等，D B8；按发布顺序用，不跳号）,—,预留,S §3.8.3(a)
+fixture_blocks,1.3,fluxecho:fixture,codes: 220–235 · used_meta: 0（点火台）,全城共用,0.20,新增,
+fixture_blocks,1.3,fluxecho:module_port,codes: 236–237 · used_meta: 0、1,全城共用（一个 TE id，meta 分进出）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture2,codes: 256–271 · used_meta: 0–2,生态,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture3,codes: 272–287 · used_meta: 0–5,发电,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture4,codes: 288–303 · used_meta: 0–11,守护（穹顶、气象站、水滴机库）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture5,codes: 304–319 · used_meta: 0–10,门与仓（谐振塔、二向箔仓）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture6,codes: 320–335 · used_meta: 0–6,魔法（魔力泉阵、秘法庭）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture7,codes: 336–351 · used_meta: 0–9,血猎（血契坛、回响猎场）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture8,codes: 352–367 · used_meta: 0–7（8 备用）,算力（智子、沙盘、观星台）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture9,codes: 368–383 · used_meta: 0–14,终局 · 桅顶（轨道锚 / 冠）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture10,codes: 384–399 · used_meta: 0–3、5–9、11（4、10 作废）,终局 · 环（含 anchor_in 三件）,0.20,新增,
+fixture_blocks,1.3,fluxecho:fixture11,codes: 400–415 · used_meta: 0–9、11–13（10 作废）,终局 · 乡忆室与原乡露台,0.20,新增,
+skin_codes,1.4,96,舟壳 hull / hull_form · 形 0 整,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,97,舟壳 hull / hull_form · 形 1 缝,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,98,舟壳 hull / hull_form · 形 2 圆,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,99,舟壳 hull / hull_form · 形 3 坡,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,100,舟壳 hull / hull_form · 形 4 半,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,101,舟壳 hull / hull_form · 形 5 阶,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,102,舟壳 hull / hull_form · 形 6 肋,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,103,舟壳 hull / hull_form · 形 7 柱,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,104,舟壳 hull / hull_form · 形 10 光缝,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,105,舟壳 hull / hull_form · 形 11 龙骨,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,106,舟壳 hull / hull_form · 形 13 拱腹,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,107,舟壳 hull / hull_form · 形 15 饰,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,108,玄基 footing / footing_form · 形 0 整,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,109,玄基 footing / footing_form · 形 1 缝,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,110,玄基 footing / footing_form · 形 2 圆,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,111,玄基 footing / footing_form · 形 3 坡,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,112,玄基 footing / footing_form · 形 4 半,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,113,玄基 footing / footing_form · 形 5 阶,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,114,玄基 footing / footing_form · 形 6 压顶,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,115,玄基 footing / footing_form · 形 9 池沿,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,116,玄基 footing / footing_form · 形 11 水口,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,117,玄基 footing / footing_form · 形 12 种植沿,风格,0.17,新增,S §3.8.1
+skin_codes,1.4,118,skin_script · 形 0 墨 整,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,119,skin_script · 形 2 墨 圆,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,120,skin_script · 形 4 墨 光缝,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,121,skin_script · 形 7 墨 格栅,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,122,skin_script · 形 8 宣 整,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,123,skin_script · 形 9 宣 缝,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,124,skin_script · 形 12 宣 光缝,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,125,skin_script · 形 13 宣 灯笼板,风格（档案馆）,0.17,新增,S §3.8.1
+skin_codes,1.4,126,skin_garden 苔铜 · 形 0 整,风格（生态穹）,0.17,新增,S §3.8.1
+skin_codes,1.4,127,skin_garden 苔铜 · 形 2 圆,风格（生态穹）,0.17,新增,S §3.8.1
+skin_codes,1.4,（59–62）,skin_garden 苔铜 · 形 3、4、5、7（码在 59–62，见 §1.2）,风格（生态穹）,0.17,新增,S §3.8.1
+skin_codes,1.4,128–131,舟壳其余 4 形：128 = 形 8、129 = 形 9、130 = 形 12、131 = 形 14（窗、格、灯窗、地）,风格,0.20,新增,S §3.8.2；R §4.8；L03
+skin_codes,1.4,132–137,玄基其余 6 形：132 = 形 7、133 = 8、134 = 10、135 = 13、136 = 14、137 = 15（柱、拱腹、光缝、格栅、地、饰）,风格,0.20,新增,S §3.8.2；L03
+skin_codes,1.4,138–145,skin_script 其余 8 形：138–141 = 墨 形 1、3、5、6；142–145 = 宣 形 10、11、14、15,风格（档案馆）,0.20,新增,S §3.8.2；L03
+skin_codes,1.4,146–147,skin_garden 苔铜 形 1、6,风格（生态穹）,0.20,新增,S §3.8.2；L03
+skin_codes,1.4,148–155,skin_garden 汉白玉 形 8–15（码 = 140 + 形号）,风格（生态穹）,0.20,新增,S §3.8.2；L03
+skin_codes,1.4,156–171,skin_rite / _form 形 0–15（码 = 156 + 形号）,风格（血猎、魔法）,0.20,新增,R §4.8
+skin_codes,1.4,172–187,skin_flux / _form 形 0–15（码 = 172 + 形号）,风格（共鸣晶）,0.20,新增,R §4.8
+skin_codes,1.4,188–203,skin_void / _form 形 0–15（码 = 188 + 形号）,风格,0.20,新增,R §4.8
+skin_codes,1.4,204–219,skin_manifest / _form「显化黑金」形 0–15（码 = 204 + 形号）,风格,0.25,新增,R §4.8
+fixture_codes,1.5,220,block_meta: fixture · 0 · part: 点火台（= 守护 G9「点火栓」= 算力「点火台」= 环「点火台台座」） · building: 跃迁环两墩、观星台、气象站 · body: 柱头（头 = 火盆）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,221–235,block_meta: fixture · 1–15 · part: 留空（装置件语法的通用件，用前写进本账） · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,236,block_meta: module_port · 0 · part: 物品口 · 进 · building: 生态穹、潮汐井、箔仓、血契坛等 · body: 箱（口面）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,237,block_meta: module_port · 1 · part: 物品口 · 出 · building: 生态穹、箔仓、猎场、根位等 · body: 箱（口面）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,238–255,block_meta: — · part: 共用件余量 · building: — · body: —,,—,预留,S §3.8.3(a)
+fixture_codes,1.5,256,block_meta: fixture2 · 0 · part: 名签（eco·0） · building: 生态穹 · body: 牌（立）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,257,block_meta: fixture2 · 1 · part: 气候碑（兼拓影台，eco·1） · building: 生态穹 · body: 牌（立，碑）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,258,block_meta: fixture2 · 2 · part: 种子屉（eco·2） · building: 生态穹 · body: 箱（屉面）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,259–271,block_meta: fixture2 · 3–15 · part: 生态组余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,272,block_meta: fixture3 · 0 · part: 阀体（原「暂记 360」） · building: 根位（潮汐井） · body: 柱头（头 = 阀）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,273,block_meta: fixture3 · 1 · part: 根龛（原 361） · building: 根位（深根） · body: 箱（龛）,,0.25,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,274,block_meta: fixture3 · 2 · part: 帆柜（原 362） · building: 天光帆阵 · body: 箱,,0.25,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,275,block_meta: fixture3 · 3 · part: 瓣龛（原 363） · building: 源点之心 · body: 箱（龛）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,276,block_meta: fixture3 · 4 · part: 承尘坛（原 364） · building: 源点之心 · body: 箱（台）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,277,block_meta: fixture3 · 5 · part: 控件（潮闸 / 拨杆 / 面板 / 车钟 / 舵轮 / 系索栏，种类由形状 controls 表给；原 365） · building: 根位、帆阵、心 · body: 栏杆件,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,278–287,block_meta: fixture3 · 6–15 · part: 发电组余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,288,block_meta: fixture4 · 0 · part: 守护台（G0） · building: 回响穹顶 · body: 箱（台）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,289,block_meta: fixture4 · 1 · part: 合舱台（G1） · building: 回响穹顶 · body: 箱（台）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,290,block_meta: fixture4 · 2 · part: 天候窗（G2） · building: 回响穹顶 · body: 牌（挂）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,291,block_meta: fixture4 · 3 · part: 旋钮（罩径 / 巡态）（G3） · building: 回响穹顶、水滴机库 · body: 柱头（头 = 旋钮）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,292,block_meta: fixture4 · 4 · part: 闸（张力闸 / 放出收回）（G4） · building: 回响穹顶、水滴机库 · body: 栏杆件（闸）,,0.21,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,293,block_meta: fixture4 · 5 · part: 天气盘象限板（G5） · building: 天穹气象站 · body: 牌（平铺）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,294,block_meta: fixture4 · 6 · part: 放云索（G6） · building: 天穹气象站 · body: 栏杆件（索）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,295,block_meta: fixture4 · 7 · part: 潮汐卷（G7） · building: 天穹气象站 · body: 申（卷筒）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,296,block_meta: fixture4 · 8 · part: 刻片座（带小钟）（G8） · building: 天穹气象站 · body: 柱头,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,297,block_meta: fixture4 · 9 · part: 扇区格（G10） · building: 水滴机库 · body: 牌（平铺）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,298,block_meta: fixture4 · 10 · part: 经验口（G11） · building: 水滴机库 · body: 箱（口面）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,299,block_meta: fixture4 · 11 · part: 拾取滤网（G12） · building: 水滴机库 · body: 栏杆件（栅）,,0.26,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,300–303,block_meta: fixture4 · 12–15 · part: 守护组余位（G9 点火栓 = 220，不占本块） · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,304,block_meta: fixture5 · 0 · part: 弦座（GV-01） · building: 谐振塔（阙） · body: 柱头,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,305,block_meta: fixture5 · 1 · part: 调音环（GV-02） · building: 谐振塔（阙） · body: 申（环）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,306,block_meta: fixture5 · 2 · part: 律管位（GV-03） · building: 谐振塔（阙） · body: 柱头（头 = 管口）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,307,block_meta: fixture5 · 3 · part: 潮摆托（GV-04） · building: 谐振塔（阙） · body: 柱头（头 = 托盘）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,308,block_meta: fixture5 · 4 · part: 定音承口（GV-05） · building: 谐振塔（阙） · body: 柱头（头 = 承口）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,309,block_meta: fixture5 · 5 · part: 压床（GV-06） · building: 二向箔仓 · body: 箱（台）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,310,block_meta: fixture5 · 6 · part: 入舱栅（GV-07） · building: 二向箔仓 · body: 栏杆件（栅）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,311,block_meta: fixture5 · 7 · part: 白印座「留」（GV-08） · building: 二向箔仓 · body: 柱头（头 = 印）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,312,block_meta: fixture5 · 8 · part: 朱印座「化」（GV-09） · building: 二向箔仓 · body: 柱头（头 = 印）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,313,block_meta: fixture5 · 9 · part: 升维台（GV-10） · building: 二向箔仓 · body: 箱（台）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,314,block_meta: fixture5 · 10 · part: 箔夹（碑签座 / 折箔架）（GV-11） · building: 二向箔仓 · body: 牌（挂）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,315–319,block_meta: fixture5 · 11–15 · part: 门与仓余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,320,block_meta: fixture6 · 0 · part: 泉心（TE fluxecho:mana_heart）（M1） · building: 魔力泉阵 · body: 申（池）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,321,block_meta: fixture6 · 1 · part: 泉口（M2） · building: 魔力泉阵 · body: 柱头（头 = 喇叭口）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,322,block_meta: fixture6 · 2 · part: 收魔垫（TE fluxecho:dew_pad）（M3） · building: 魔力泉阵 · body: 牌（平铺）,,0.22,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,323,block_meta: fixture6 · 3 · part: 墨瓮（TE fluxecho:aspect_urn）（M4） · building: 秘法庭 · body: 柱头（头 = 瓮）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,324,block_meta: fixture6 · 4 · part: 炉眼（M5） · building: 秘法庭 · body: 灯座（贴墙）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,325,block_meta: fixture6 · 5 · part: 抄经台（M6） · building: 秘法庭 · body: 箱（台）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,326,block_meta: fixture6 · 6 · part: 铭文口（TE fluxecho:ward_inlet）（M7） · building: 秘法庭 · body: 牌（挂）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,327–335,block_meta: fixture6 · 7–15 · part: 魔法组余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,336,block_meta: fixture7 · 0 · part: 宝珠托（B1） · building: 血契坛 · body: 柱头（头 = 托盘）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,337,block_meta: fixture7 · 1 · part: 仪灯（B2） · building: 血契坛 · body: 灯座,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,338,block_meta: fixture7 · 2 · part: 契龛（B3） · building: 血契坛 · body: 箱（龛）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,339,block_meta: fixture7 · 3 · part: 献牲槽（B4） · building: 血契坛 · body: 箱（槽）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,340,block_meta: fixture7 · 4 · part: 心座（B5） · building: 血契坛 · body: 柱头（头 = 球座）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,341,block_meta: fixture7 · 5 · part: 契台嵌板（B6） · building: 血契坛 · body: 牌（平铺）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,342,block_meta: fixture7 · 6 · part: 印记匣（B7） · building: 回响猎场 · body: 箱（匣）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,343,block_meta: fixture7 · 7 · part: 挂钩（B8） · building: 回响猎场 · body: 桅件（钩）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,344,block_meta: fixture7 · 8 · part: 兽谱格（B9） · building: 回响猎场 · body: 牌（挂）,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,345,block_meta: fixture7 · 9 · part: 发射盘短柱灯（B10） · building: 回响猎场 · body: 灯座,,0.24,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,346–351,block_meta: fixture7 · 10–15 · part: 血猎余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,352,block_meta: fixture8 · 0 · part: 存储机架（K1） · building: 智子阵列 · body: 箱（格面）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,353,block_meta: fixture8 · 1 · part: 展开度拉杆（K2） · building: 智子阵列 · body: 栏杆件（把手）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,354,block_meta: fixture8 · 2 · part: 图层台（K3） · building: 全息沙盘 · body: 箱（台）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,355,block_meta: fixture8 · 3 · part: 沙盘桌（桌沿 + 海图槽）（K4） · building: 全息沙盘 · body: 箱（台）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,356,block_meta: fixture8 · 4 · part: 舵台（起航按钮所在）（K5） · building: 全息沙盘 · body: 箱（台）,,0.23,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,357,block_meta: fixture8 · 5 · part: 目镜座（K6） · building: 观星台 · body: 柱头,,0.25,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,358,block_meta: fixture8 · 6 · part: 星轨刻台（K7） · building: 观星台 · body: 箱（台）,,0.25,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,359,block_meta: fixture8 · 7 · part: 刻片匣（K8） · building: 观星台 · body: 箱（匣）,,0.25,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,360,block_meta: fixture8 · 8 · part: 算力组备用（K9） · building: 算力组 · body: —,,不发,预留,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,361–367,block_meta: fixture8 · 9–15 · part: 算力组余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,368,block_meta: fixture9 · 0 · part: 发射轨 · building: 轨道锚 / 源点之冠 · body: 桅件,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,369,block_meta: fixture9 · 1 · part: 发射轨矮爪（anchor_low） · building: 轨道锚 / 源点之冠 · body: 桅件（钩）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,370,block_meta: fixture9 · 2 · part: 发射闸 · building: 轨道锚 / 源点之冠 · body: 栏杆件（闸）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,371,block_meta: fixture9 · 3 · part: 发射环（相位合金刻度环） · building: 轨道锚 / 源点之冠 · body: 申（环）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,372,block_meta: fixture9 · 4 · part: 发射环嵌环件 · building: 轨道锚 / 源点之冠 · body: 申（环）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,373,block_meta: fixture9 · 5 · part: 刻度盘件（3 × 3 拼） · building: 轨道锚 / 源点之冠 · body: 牌（平铺）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,374,block_meta: fixture9 · 6 · part: 中继口 relay_port（单元方块，27 格只进缓冲） · building: 轨道锚 / 源点之冠 · body: 箱（口面）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,375,block_meta: fixture9 · 7 · part: 测绘罗盘地纹 · building: 轨道锚 / 源点之冠 · body: 牌（平铺）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,376,block_meta: fixture9 · 8 · part: 应答灯柱 · building: 轨道锚 / 源点之冠 · body: 灯座,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,377,block_meta: fixture9 · 9 · part: 锚链绞盘 · building: 轨道锚 / 源点之冠 · body: 申（卷筒）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,378,block_meta: fixture9 · 10 · part: 举晶座 · building: 轨道锚 / 源点之冠 · body: 柱头（头 = 承口）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,379,block_meta: fixture9 · 11 · part: 孔径拨盘把手 · building: 轨道锚 / 源点之冠 · body: 栏杆件（把手）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,380,block_meta: fixture9 · 12 · part: 源核座 · building: 轨道锚 / 源点之冠 · body: 柱头（头 = 球座）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,381,block_meta: fixture9 · 13 · part: 边匣 · building: 轨道锚 / 源点之冠 · body: 箱（匣）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,382,block_meta: fixture9 · 14 · part: 承尘槽 · building: 轨道锚 / 源点之冠 · body: 箱（槽）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,383,block_meta: fixture9 · 15 · part: 桅顶余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,384,block_meta: fixture10 · 0 · part: 托架闸一体件 · building: 轨道锚（anchor_in） · body: 栏杆件（闸）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,385,block_meta: fixture10 · 1 · part: 罗盘台 · building: 轨道锚（anchor_in） · body: 箱（台）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,386,block_meta: fixture10 · 2 · part: 拨盘柱 · building: 轨道锚（anchor_in） · body: 柱头（头 = 旋钮）,,0.27,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,387,block_meta: fixture10 · 3 · part: 段牌（每墩 10 块，ring:fit 放） · building: 跃迁环 · body: 牌（挂）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,388,block_meta: fixture10 · 4 · part: 墩台 → 现有 frame console（码 8），不占题材件码 · building: 跃迁环 · body: —,,不发,作废,B/endgame/leap_ring §7；L01
+fixture_codes,1.5,389,block_meta: fixture10 · 5 · part: 电容柱芯（ring:bank 装进柱心；裂纹 / 活态由盒子表画） · building: 跃迁环 · body: 柱头（高）,,0.27,新增,B/endgame/leap_ring §7；L01
+fixture_codes,1.5,390,block_meta: fixture10 · 6 · part: 充能闸 · building: 跃迁环 · body: 栏杆件（闸）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,391,block_meta: fixture10 · 7 · part: 地脉闸 · building: 跃迁环 · body: 栏杆件（闸）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,392,block_meta: fixture10 · 8 · part: 钟座（钟拱 = 舟壳柱 + 拱腹，不占码） · building: 跃迁环（阴墩） · body: 桅件（拱）,,0.20,新增,B/endgame/leap_ring §7；L01
+fixture_codes,1.5,393,block_meta: fixture10 · 9 · part: 箔钩（每墩 4 只） · building: 跃迁环 · body: 桅件（钩）,,0.20,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,394,block_meta: fixture10 · 10 · part: 回望窗框 → 舟壳框 + 现有 fitting glaze（码 37），不占题材件码 · building: 跃迁环 · body: —,,不发,作废,B/endgame/leap_ring §2.4、§7；L01
+fixture_codes,1.5,395,block_meta: fixture10 · 11 · part: 墩支管法兰 · building: 跃迁环 · body: 栏杆件,,0.20,新增,B/endgame/leap_ring §7；L01
+fixture_codes,1.5,396–399,block_meta: fixture10 · 12–15 · part: 环余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,400,block_meta: fixture11 · 0 · part: 乡忆龛（×7） · building: 乡忆室 · body: 箱（龛）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,401,block_meta: fixture11 · 1 · part: 船名册宣板（×8） · building: 乡忆室 · body: 牌（挂）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,402,block_meta: fixture11 · 2 · part: 书台 · building: 乡忆室 · body: 箱（台）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,403,block_meta: fixture11 · 3 · part: 钟绳 · building: 乡忆室 · body: 栏杆件（索）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,404,block_meta: fixture11 · 4 · part: 星坐标架 · building: 乡忆室 · body: 箱（格面）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,405,block_meta: fixture11 · 5 · part: 封门框 · building: 乡忆室 · body: 牌（框）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,406,block_meta: fixture11 · 6 · part: 窗座 · building: 乡忆室 · body: 箱（台）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,407,block_meta: fixture11 · 7 · part: 玻璃门 · building: 乡忆室 · body: 申（门）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,408,block_meta: fixture11 · 8 · part: 回滩门拱 · building: 原乡露台 · body: 申（门）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,409,block_meta: fixture11 · 9 · part: 书桌 · building: 原乡露台 · body: 箱（台）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,410,block_meta: fixture11 · 10 · part: 白椅 → 舟壳「半 / 阶」的亮面变体，不占码 · building: 原乡露台 · body: —,,不发,作废,R §4.8；L02
+fixture_codes,1.5,411,block_meta: fixture11 · 11 · part: 桌灯 · building: 原乡露台 · body: 灯座,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,412,block_meta: fixture11 · 12 · part: 港口钟桩 · building: 原乡露台 · body: 柱头,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,413,block_meta: fixture11 · 13 · part: 名牌「长庚」 · building: 原乡露台 · body: 牌（挂）,,0.28,新增,S §3.8.3(c)；R §4.8
+fixture_codes,1.5,414–415,block_meta: fixture11 · 14–15 · part: 终局余位 · building: — · body: —,,—,预留,S §3.8.3(c)
+fixture_codes,1.5,416–1023,block_meta: — · part: 留空 · building: — · body: —,,—,预留,S §3.8.3(a)
+buildings,2,drift_capsule,row: 00 · name: 搁浅舱 · core: 方块 drift_capsule（不是模块核心） · code: — · te: fluxecho:drift_capsule · site_new: —（随手放） · site_old: — · order: 1 · ring_segment: — · score: feB00,,0.18,新增,
+buildings,2,nexus,row: 01 · name: 中枢 · core: 方块 nexus · code: — · te: fluxecho:nexus · site_new: 园区原点 · site_old: 同 · order: 2 · ring_segment: 0（托环） · score: feB01,,0.21（玩法）,已发布,
+buildings,2,library,row: 02 · name: 回响档案馆 · core: 方块 library（书库核心码 48） · code: 48 · te: fluxecho:library · site_new: 72 · site_old: HALL 4（偏好；4 / 2 / 6） · order: 3 · ring_segment: 21 · score: feB02,,0.19,已发布,
+buildings,2,eco_dome,row: 03 · name: 生态穹 · core: module_core · 0 · code: 64 · te: fluxecho:eco_dome · site_new: 73 · site_old: HALL 2（偏好；2 / 6 / 4） · order: 4 · ring_segment: 3 · score: feB03,,0.20,已发布,
+buildings,2,root,row: 04 · name: 根位（井 / 深根 / 地脉核同一行，形态按形状名分） · core: module_core · 8 · code: 72 · te: fluxecho:root · site_new: 9 · site_old: 9（原地 reform:9） · order: 5 / 15 / 21 · ring_segment: 20 · score: feB04,,0.21 / 0.25 / 0.27,已发布,
+buildings,2,dome_generator,row: 05 · name: 回响穹顶 · core: module_core · 7 · code: 71 · te: fluxecho:dome_generator · site_new: 8 · site_old: 8（原地 reform:8） · order: 6 · ring_segment: 4 · score: feB05,,0.21,已发布,
+buildings,2,dual_foil_vault,row: 06 · name: 二向箔仓 · core: module_core · 1 · code: 65 · te: fluxecho:dual_foil_vault · site_new: 76 · site_old: HALL 6（偏好；6 / 2 / 4） · order: 7 · ring_segment: 19 · score: feB06,,0.22,已发布,
+buildings,2,mana_fountain,row: 07 · name: 魔力泉阵 · core: module_core · 5 · code: 69 · te: fluxecho:mana_fountain · site_new: 77 · site_old: PAV 1（偏好；1 / 7 / 3 / 5） · order: 9 · ring_segment: 6 · score: feB07,,0.22,已发布,
+buildings,2,arcane_court,row: 08 · name: 秘法庭 · core: module_core · 2 · code: 66 · te: fluxecho:arcane_court · site_new: 78 · site_old: PAV 7（偏好；7 / 1 / 5 / 3） · order: 10 · ring_segment: 7 · score: feB08,,0.23,已发布,
+buildings,2,resonance_gate,row: 09 · name: 谐振塔（阙） · core: module_core · 6 · code: 70 · te: fluxecho:resonance_gate · site_new: 0 · site_old: 0（原地 reform:0） · order: 8 · ring_segment: 5 · score: feB09,,0.22,已发布,
+buildings,2,sophon_array,row: 10 · name: 智子阵列 · core: module_core · 9 · code: 73 · te: fluxecho:sophon_array · site_new: 80 · site_old: OUTER_DIAG 11（偏好；11 / 17 / 13 / 15） · order: 11 · ring_segment: 18 · score: feB10,,0.23,已发布,
+buildings,2,holo_table,row: 11 · name: 全息沙盘 · core: module_core · 10 · code: 74 · te: fluxecho:holo_table · site_new: 81 · site_old: OUTER_DIAG 17（偏好；17 / 11 / 15 / 13） · order: 12 · ring_segment: 17 · score: feB11,,0.23,已发布,
+buildings,2,blood_covenant,row: 12 · name: 血契坛 · core: module_core · 3 · code: 67 · te: fluxecho:blood_covenant · site_new: 82 · site_old: PAV 5（偏好；5 / 3 / 7 / 1） · order: 14 · ring_segment: 8 · score: feB12,,0.24,已发布,
+buildings,2,hunting_ground,row: 13 · name: 回响猎场 · core: module_core · 4 · code: 68 · te: fluxecho:hunting_ground · site_new: 83 · site_old: PAV 3（偏好；3 / 5 / 1 / 7） · order: 13 · ring_segment: 16 · score: feB13,,0.24,已发布,
+buildings,2,observatory,row: 14 · name: 观星台 · core: module_core · 12 · code: 76 · te: fluxecho:observatory · site_new: 84 · site_old: SKY 34 · order: 16 · ring_segment: 9 · score: feB14,,0.25,已发布,
+buildings,2,sky_sails,row: 15 · name: 天光帆阵 · core: module_core · 11 · code: 75 · te: fluxecho:sky_sails · site_new: 85 · site_old: SKY 32 或 36 · order: 17 · ring_segment: 10 · score: feB15,,0.25,已发布,
+buildings,2,weather_station,row: 16 · name: 天穹气象站 · core: module_core · 14 · code: 78 · te: fluxecho:weather_station · site_new: 86 · site_old: SKY 30 · order: 18 · ring_segment: 15 · score: feB16,,0.26,已发布,
+buildings,2,droplet_hangar,row: 17 · name: 水滴机库 · core: module_core · 13 · code: 77 · te: fluxecho:droplet_hangar · site_new: 87 · site_old: SKY 36 或 32 · order: 19 · ring_segment: 14 · score: feB17,,0.26,已发布,
+buildings,2,orbital_anchor,row: 18 · name: 轨道锚 / 源点之冠 · core: module_core · 15 · code: 79 · te: fluxecho:orbital_anchor（0.27 新 TE） · site_new: 40 · site_old: 40（新旧同位，只有新形状） · order: 20 / 22 · ring_segment: 13（桅顶） · score: feB18,,0.27,新增,
+buildings,2,source_heart,row: 19 · name: 源点之心 · core: module_core2 · 0 · code: 80 · te: fluxecho:source_heart · site_new: 89 · site_old: —（旧图不提供） · order: 23 · ring_segment: 11 · score: feB19,,0.27,新增,
+buildings,2,leap_ring,row: 20 · name: 跃迁环 · core: module_core2 · 1（拱心晶）；合拢前无核心 · code: 81 · te: fluxecho:leap_ring · site_new: 90（91 乡忆室属它） · site_old: —（老园区随重铸串立 establish:ring） · order: 24 · ring_segment: 12（拱心）；环本身含托环与 23 段 · score: feB20,,0.19（断环）/ 0.28（合拢）,新增,
+buildings,2,ascension,row: 21 · name: 跃升演出（占位：无核心、无场地） · core: — · code: — · te: — · site_new: — · site_old: — · order: — · ring_segment: — · score: feLeap,,0.28,新增,
+blocks,3.1,fluxecho:nexus,通量中枢,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:library,书库 / 档案馆核心,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:module_core,模块核心 meta 0–15,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:frame,构架,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:deck,甲板,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:fitting,配件,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:supply_port,供料口,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:recycle_bin,回收箱,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:light_gate,光门,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:interior_floor,内境地面,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:interior_glass,内境玻璃,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:essentia_outlet,源质出口,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:vis_pedestal,灵气基座,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:echo_provider,AE 回响提供器,引擎,≤0.16,已发布,H 注册表
+blocks,3.1,fluxecho:hull / hull_form,舟壳（整块 / 形块）,风格,0.17,新增,R §4.8
+blocks,3.1,fluxecho:footing / footing_form,玄基（整块 / 形块）,风格,0.17,新增,R §4.8
+blocks,3.1,fluxecho:skin_script / skin_script_form,墨 / 宣（档案馆皮材）,风格,0.17,新增,R §4.8
+blocks,3.1,fluxecho:skin_garden / skin_garden_form,苔铜 / 汉白玉（生态穹皮材）,风格,0.17,新增,R §4.8
+blocks,3.1,fluxecho:drift_capsule,搁浅舱：meta 0 舱、meta 1–5 船壳碎片（「残图」是潜行看舱时地上的虚线画面，不是方块；V2-03）,中枢组,0.18,新增,R §4.10；B/nexus/drift_capsule §7、r-ledger 4；V2-03
+blocks,3.1,fluxecho:skin_rite / skin_rite_form,仪皮材,风格,0.20,新增,R §4.8
+blocks,3.1,fluxecho:skin_flux / skin_flux_form,共鸣晶皮材,风格,0.20,新增,R §4.8
+blocks,3.1,fluxecho:skin_void / skin_void_form,虚皮材,风格,0.20,新增,R §4.8
+blocks,3.1,fluxecho:fixture、fixture2…fixture11,题材件方块 ID 11 个（一次注册；meta 到首发版本才注册物品，见 §1.5）,统筹 / 各组,0.20,新增,R §4.8
+blocks,3.1,fluxecho:module_port,物品口：meta 0 进、1 出（码 236 / 237）,统筹,0.20,新增,R §4.10
+blocks,3.1,fluxecho:overlay,覆层：meta 0 晶簇、1 相位板、2 共鸣窗（0.21）、3 记忆丝网（0.23）、4 显化外壳（0.25）、5 源点辉光（0.27）,中枢组,0.21,新增,R §4.10；N §4.3；L12
+blocks,3.1,fluxecho:rain_veil,雨幕（穹顶 ⑦）：只在 gtnh-P1 原型通过时注册,守护组,0.21（条件）,预留,R §4.10
+blocks,3.1,fluxecho:hunt_veil,猎场碗盒的帘,血猎组,0.24,新增,R §4.10；B/blood-hunt/hunting_ground §7
+blocks,3.1,fluxecho:skin_manifest / skin_manifest_form,显化黑金,风格,0.25,新增,R §4.8
+blocks,3.1,fluxecho:module_core2,第二个模块核心族（码 80–95）,发电 / 终局,0.27,新增,R §4.10
+blocks,3.1,fluxecho:foil_port、fluxecho:fuel_port,箔仓 / 发电组提案里的专用口 → 全城 fluxecho:module_port（236 / 237）,—,不发,作废,B/gate-vault/dual_foil_vault §3.4；B/nexus/nexus 未决 24；V1-24
+tile_entities,3.2,fluxecho:nexus,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:library,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:eco_dome,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:dome_generator,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:root,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:arcane_court,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:blood_covenant,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:hunting_ground,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:mana_fountain,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:resonance_gate,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:dual_foil_vault,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:sophon_array,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:holo_table,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:weather_station,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:sky_sails,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:observatory,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:droplet_hangar,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:supply_port,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:recycle_bin,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:light_gate,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:essentia_outlet,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:vis_pedestal,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:echo_provider,0.16 已注册的 TE,引擎 / 各楼,≤0.16,已发布,H 注册表
+tile_entities,3.2,fluxecho:drift_capsule,搁浅舱,中枢组,0.18,新增,R §4.10
+tile_entities,3.2,fluxecho:module_port,物品口（ISidedInventory + PortAdapter）,统筹,0.20,新增,R §4.10
+tile_entities,3.2,fluxecho:manifest_deck,显化台面代理（fitting 10）,中枢组,0.21,新增,R §4.10
+tile_entities,3.2,fluxecho:mana_heart,泉心（题材件 320）,魔法组,0.22,新增,R §4.10
+tile_entities,3.2,fluxecho:dew_pad,收魔垫（题材件 322）,魔法组,0.22,新增,R §4.10
+tile_entities,3.2,fluxecho:aspect_urn,墨瓮（题材件 323）,魔法组,0.23,新增,R §4.10
+tile_entities,3.2,fluxecho:ward_inlet,铭文口（题材件 326）,魔法组,0.23,新增,R §4.10
+tile_entities,3.2,fluxecho:orbital_anchor,轨道锚 / 源点之冠（module_core · 15）,终局组,0.27,新增,R §4.10
+tile_entities,3.2,fluxecho:source_heart,源点之心（module_core2 · 0）,发电组,0.27,新增,R §4.10
+tile_entities,3.2,fluxecho:leap_ring,跃迁环（module_core2 · 1；合拢后接手）,终局组,0.28,新增,R §4.10
+items,3.3,fluxecho:codex,回响图鉴 / 典籍,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:bee_imprint,蜂印记,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:gene_sample,基因样本,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:crop_imprint,作物印记,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:mob_imprint,生物印记,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:flux_grit,通量碎屑,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:flux_crystal,通量结晶,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:echo_crystal,回响晶,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:phase_alloy,相位合金,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:resonant_glass,共鸣玻璃,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:phase_alloy_wire,相位合金丝,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:memory_filament,记忆丝,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:manifest_matter,显化物质,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:anti_gravity_lattice,反重力晶格,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:vis_module,灵气模块,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:library_card,借阅卡,引擎,≤0.16,已发布,H 注册表
+items,3.3,fluxecho:phase_core meta 0–6,相位核 I–V（0–4）、源核 I–II（5–6）；配方随研究可见,叙事 / 中枢组,0.21,新增,N §4.3；R §4.10；L17
+items,3.3,fluxecho:blank_foil,空白箔,门与仓,0.22,新增,R §4.10
+items,3.3,fluxecho:foil,二向箔（NBT 见 §5.5）,门与仓,0.22,新增,R §4.10
+items,3.3,fluxecho:rift_foil,破界箔,门与仓,0.22,新增,R §4.10
+items,3.3,fluxecho:pitch_pipe,律管,门与仓（阙）,0.22,新增,R §4.10
+items,3.3,fluxecho:resonance_fork,定音叉,门与仓（阙）,0.22,新增,R §4.10
+items,3.3,fluxecho:rite_tally,仪轨筹,血猎组,0.24,新增,R §4.10
+items,3.3,fluxecho:covenant_note,血契书,血猎组,0.24,新增,R §4.10
+items,3.3,fluxecho:sail_panel,帆面（显化 sail_mend）,发电组,0.25,新增,N §4.2；L17
+items,3.3,fluxecho:star_plate,星轨刻片,算力组,0.25,新增,N §4.2；L17
+items,3.3,fluxecho:star_coordinate meta 0–6,七颗星坐标（NBT 带定星日）；丢了在观星台补回：已定的那颗星晴夜在目镜里对准 2 分钟，目镜座补发一件，定星日照抄 voyage CoordDay；不占一夜一颗，不改 Coords / CoordDay / Xiang，不加键、不加消息（B/compute/observatory §3.6「补发」；R4-10）,算力组,0.25,新增,N §4.2；L17；B/compute/observatory §3.6
+items,3.3,fluxecho:root_card,根须卡（NBT：采集器坐标）,发电组,0.25,新增,N §4.2；L17
+items,3.3,fluxecho:droplet,水滴（NBT 见 §5.5）,守护组,0.26,新增,R §4.10
+items,3.3,fluxecho:satellite meta 0–3,卫星：0 测绘、1 中继、2 授时、3 映日（meta 3 由轨道锚稿只增）,终局组,0.27,新增,N §4.2；B/endgame/orbital_anchor §3.3；L15
+items,3.3,fluxecho:source_matter,源点物质,发电组,0.27,新增,N §4.2；L17
+items,3.3,fluxecho:source_echo,源点残响,终局组,0.27,新增,R §4.10
+items,3.3,fluxecho:traveler_book,旅人之书,中枢组（档案馆）,0.27,新增,R §4.10
+items,3.3,fluxecho:home_bearing,归航坐标（与研究 id 同名，两张表互不相干）；丢了在观星台再合一次星补回（T0 之前，材料照扣；B/compute/observatory §3.6「补发」；R4-10）,算力组,0.28,新增,N §4.2；L17；B/compute/observatory §3.6
+entities,3.4,echo_dragon（模组实体 id 0，类 EntityEchoDragon）,猎场守门者亲战的回响龙。签字前不注册：0.24 不写 EntityEchoDragon、不调 registerModEntity，FluxEcho 0.24 起仍一个模组实体都不注册（同 rain_veil 的条件注册；IdFreezeTest 断言预留值没被注册）；用户签猎场未决 11（BRIEF §5「不做敌人」的例外）后由 0.X.1 注册，注册名、id、类名照本行，那时改「新增」（§21 未解决 26）,血猎组,0.X.1（条件：用户签猎场未决 11）,预留,R §4.10；L14；B/blood-hunt/hunting_ground §6.5、§8 #26、未决 11；R4-02
+entities,3.4,GT 机器 ID 24530–24569（general.firstMachineId + offset；offset 3、12 已退役）,FluxEcho 的 GT 机器；本轮一个都不加,引擎,≤0.16,已发布,H core/MachineId；R §4.10
+entities,3.4,GT 机器 ID 24520–24529,FluxDepths 的 GT 机器（任务书引用）,FluxDepths,≤0.16,已发布,H quests/build_quests.py
+facades,3.5,RecordGate,"meets(teams, gate)、count(teams, cat)；冻结 0.18",底座,0.18,新增,R §4.3 #1
+facades,3.5,RingState,"segment(ship, j)、lit(ship)；空值 段 = 缺；冻结 0.19",跃迁环,0.19,新增,R §4.3 #2
+facades,3.5,CityDispatch,"awake(team, key, t)；空值 恒 true；冻结 0.23",全息沙盘,0.19（草签）,新增,R §4.3 #3
+facades,3.5,PowerBook,upkeepOf(kit)、net(team)；generator(PowerSource) 0.21 加；冻结 0.20,底座（包 GTWirelessBackend）、各发电楼,0.20,新增,R §4.3 #4
+facades,3.5,ComputeBudget,"source(ComputeSource)、rate(team, Sink)；冻结 0.20",底座、智子、观星台,0.20,新增,R §4.3 #5
+facades,3.5,ShipTide（含 TideBank）,"level(ship, worldTime)（本船潮位，含稳潮）、mode(ship)、windowTide(ship, worldTime)（海的潮位：唤潮之后，稳潮 / 锁潮 / 放大潮之前；起航窗口、乡忆 ③、井壁起航线与潮尺只读它，任何情况下不拿 level 代替——开着稳潮满月午夜 level 只到 1.10）、nextAbove(threshold, from)（下一次潮位过阈值的世界时）、factor(level, mode, m)（楼的潮系数 τ楼）；lock / amp 0.22 加；call(ship) 0.26 加；冻结 0.20",底座、阙、气象站,0.20,新增,R §4.3 #6；N §9.4；B/endgame/ascension §3.5；B/power/README §3.1、§3.9；R4-01
+facades,3.5,ChecklistRows,"row(n) → ChecklistRow{progress, ready, explainKey}；冻结 0.20",每座楼一行,0.20,新增,R §4.3 #7
+facades,3.5,VaultIntake,"offer(team, dim, ItemStack, Source, simulate) → Result、offerFluid(...)；空值 NO_VAULT；冻结 0.22",二向箔仓,0.20（草签）,新增,R §4.3 #8
+facades,3.5,ResonanceBoost,"speed(team, key)、parallel、surcharge、tideMode、inPhase；冻结 0.22",谐振塔（阙）,0.20（草签）,新增,R §4.3 #9
+facades,3.5,PetalSink,"offer(team, petals)、price(team)；空值 拒收；冻结 0.22",魔力泉阵,0.20（草签）,新增,R §4.3 #10
+facades,3.5,ShieldLedger,"sp(team)、spend(team, kind, cost)、full(team)；overcharge 0.23 加；列阵 0.26 加；冻结 0.21",回响穹顶,0.21,新增,R §4.3 #11
+facades,3.5,AspectStores,"take(team, aspect, n)；冻结 0.23",秘法庭,0.22（草签）,新增,R §4.3 #12
+facades,3.5,HostileCensus / WardVolume,"census(dim)、inside(team, x, y, z)；冻结 0.24",回响穹顶,0.21（草签）,新增,R §4.3 #13
+facades,3.5,Greenwood,active(team)；冻结 0.24,血契坛,0.20（草签）,新增,R §4.3 #14
+facades,3.5,SailState,rigged(team)、nightBonus(team)；冻结 0.25,天光帆阵,0.20（草签）,新增,R §4.3 #15
+facades,3.5,RainCover,"covered(team, box)；冻结 0.25",回响穹顶,0.21（草签）,新增,R §4.3 #16
+facades,3.5,IgnitionStands,"stand(ship, k)；unlock(ship, k, player) 0.28 加；冻结 0.25",跃迁环,0.20（草签）,新增,R §4.3 #17
+facades,3.5,CovenantLink、HuntLink、ArchiveLink,"血猎组要的三个跨楼读数（offerMeat(team, n)、pearlsPerHour(team)、isShelved(team, mobKey)）；名和方法待 0.24 接口提交前 RFC（未解决 16）",血契坛 / 猎场 / 档案馆,—,预留,B/blood-hunt/README 未决 6；B/blood-hunt/hunting_ground 未决 16
+facades,3.5,ShieldBook、ComputeBook、TideBook、FoilVault、VaultInput,提案二与旧楼稿的门面名 → ShieldLedger / ComputeBudget / ShipTide；取料走 VaultIntake 的追加方法（未解决 16）,—,不发,作废,R §4.12；B/nexus/nexus 未决 26
+net_messages,4.1,C→S 0 ASK_MAP,payload: 要园区地图,引擎,≤0.16,已发布,H NexusNet
+net_messages,4.1,C→S 1 START,payload: 开始研究（载荷 中枢位置 Dim X Y Z + 研究 Id；NexusNet.handle → startResearch；不是「开工」，V1-01）,引擎,≤0.16,已发布,H NexusNet
+net_messages,4.1,C→S 2 CANCEL,payload: 取消研究（载荷只有中枢位置；NexusNet.handle → cancelResearch；不是营造的取消，那个走 VIEW_ACT 的 build.cancel，§17.2；V1-01）,引擎,≤0.16,已发布,H NexusNet
+net_messages,4.1,C→S 3 LIFT,payload: 光梯,引擎,≤0.16,已发布,H NexusNet
+net_messages,4.1,C→S 4 ASK_VIEW,"payload: {target(x,y,z,dim), view, page, rev}",界面组,0.18,新增,U §2.9.1；R §4.4
+net_messages,4.1,C→S 5 VIEW_ACT,"payload: {target, view, action, args(NBT)}：全部按钮、ctl.set、各楼动作键",界面组,0.18,新增,U §2.9.1；R §4.4
+net_messages,4.1,C→S 6 NEXUS_LOOK,payload: {GLANCE | BEARING}：仰头右键的退路，原型不过才注册,中枢组,—（默认不注册）,预留,U §2.9.1；R §4.4
+net_messages,4.1,S→C 0 MAP,payload: 园区地图；只增字段 Rev、Obs、Xiang、Coords、RouteN（已解算航段数 0–7）（0.18）；航段字段不叫 Seg：Seg 是 fluxecho_voyage 的「已补环段」位集（§5.6），同名异义（V1-02）,引擎 / 界面,≤0.16,已发布,H；U §2.9.1；V1-02
+net_messages,4.1,S→C 1 RESULT,payload: 结果,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 2 BUILD_FX,payload: 施工特效（码 ≤ 127，byte）,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 3 BUILD_STATE,payload: 施工状态,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 4 LIB_DELTA,payload: 书库增量,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 5 UNIT_DELTA,payload: 单元增量,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 6 LIFT_RIDE,payload: 光梯乘坐,引擎,≤0.16,已发布,H
+net_messages,4.1,S→C 7 SKIN_TABLE,payload: 512 格内全部园区的盒子表,风格组,0.17,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 8 SKIN_DELTA,payload: 一条盒子表条目,风格组,0.17,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 9 VIEW,"payload: {view, page, rev, ic, nbt}",界面组,0.18,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 10 TOAST,"payload: {kind, langKey, args, severity, sigilKey, pos?}",界面组,0.18,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 11 HIGHLIGHT,"payload: {pos, color, seconds}",界面组,0.18,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 12 BUILD_FX2,payload: 同 BUILD_FX，码用 short[]（码 ≥ 128 才走）,风格组,0.20,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 13 DOME_HIT,"payload: {种类, 守护号, 方位, 仰角, 强度, 位置}",守护组,0.21,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 14 ROOT_NET,payload: 本队本维度被扎根的采集器坐标表（原「暂记 11」作废）,发电组,0.25,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 15 DROPLET_LEG,"payload: {机库坐标, 序号, 种类, 起点, 终点, 起始 tick, 时长, 镜面档}",守护组,0.26,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 16 LEAP,"payload: {T0, ShipId, tier, stage, index, part[]}（原 {stage, index, t} 作废）",终局组,0.28,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 17 起 —,payload: 下一个新号；只在本账登记后才可用,—,—,预留,本账
+net_messages,4.1,（不是消息） — VOYAGE 段,payload: 中枢 SkinTable 条目 extra 里的一段（池子、点火台、阶段、T0、ShipId、档位、钟）；字节 15–18 是 ShipId（string dim:x:y:z，§5.6）的 32 位散列，完整值走 LEAP（散列算法见 §21 未解决 24）；环的段态是环条目 extra 24 字节,终局组,0.19 起,新增,U §2.9.1；B/endgame/leap_ring §3.16、修订 F；V2-08
+net_messages,4.1,（不加） — RING_STATE、ORBIT、WHISPER、HOLO_PICK、HOLO_MAPS、SCOPE_AIM、SITE_SURVEY,payload: 各提案曾要的种类，已并进描述包 / SkinTable / 视图，永不注册,—,—,作废,B/endgame/README §3；B/compute/README §4；B/nexus/drift_capsule
+net_other,4.2,fluxecho（EchoNet） 0–2,回响机器的现有种类,引擎,≤0.16,已发布,H；R §4.4
+net_other,4.2,fluxecho_gate 现有,光门,引擎,≤0.16,已发布,H
+net_other,4.2,FluxLite fluxlite C→S 0–4,CONNECTOR_REQUEST、CONNECTOR_EDIT、CC_REQUEST、CC_ACTION、TERM_REQUEST（FluxLite 仓库）,FluxLite,≤0.16,已发布,H（FluxLite）
+net_other,4.2,FluxLite fluxlite S→C 0–3,CONNECTOR_DATA、CC_DATA、HOLO_DATA、TERM_DATA,FluxLite,≤0.16,已发布,H（FluxLite）
+net_other,4.2,FluxLite 终端页号 0–4,NETWORK、MACHINES、CODEX、RESEARCH、NEXUS,FluxLite,≤0.16,已发布,H（FluxLite TerminalView）
+net_other,4.2,FluxLite 终端页号 5,潮汐,界面组,0.18,新增,U §6（U3b）；R §4.4
+net_other,4.2,FluxLite 终端页号 6,典籍,界面组,0.18,新增,U §6（U3b）；R §4.4
+net_other,4.2,FluxLite 终端页号 7,归途,界面组,0.18,新增,U §6（U3b）；R §4.4
+nbt_base,5.1,F On T O Sh Facing Formed FormedTime Shape OwnerLeast OwnerMost OwnerName,TileMultiblock 基类键（Sh = 形状名）,引擎,≤0.16,已发布,H nexus/TileMultiblock
+nbt_base,5.1,P Dk Rv Ep Samples Unit Renovated Dim X Y Z,TileCityModule 基类键,引擎,≤0.16,已发布,H city/TileCityModule
+nbt_base,5.1,B Bi E（书本栈内 At）,BookPacket 写进 TileCityModule / 书库描述包的样本书,引擎,≤0.16,已发布,H library/BookPacket；L13
+nbt_base,5.1,Docked Nexus Slot,TileModule 基类键,引擎,≤0.16,已发布,H
+nbt_base,5.1,Ov（描述包）,覆层种类（4 座灯座 / 4 个锚点各 1 字节）：全城模块的描述包保留给覆层,中枢组 / 统筹,0.21,新增,R §4.5；B/nexus/nexus §7；L09
+nbt_campus,5.2,Ac Bl BuildIn Campus Declined Dim F Fb Fe Ft Gk Gl Gn Gq Hint Job K Ko Kr Ledger Md Mi N Nb Nc Nq Nr Ns Oc Ol Op P Pa Parts Ph Pk Pl Pos Pq Ps Pv Queue R Raw Rc Recycle Rj Ro S Sg Sites Sk Skip Sn Spoils St Te To V W,中枢 tile Campus 子表与 Campus.writeSync 的现有键（Sk = 跳过受阻位）,引擎,≤0.16,已发布,H campus/Campus
+nbt_campus,5.2,Skn,每座楼最后已知的盒子表状态和供电位（不能叫 Sk）,风格组,0.17,新增,R §4.5；S §3.8.3(f)
+nbt_campus,5.2,Mp,总图版本：0 旧图（缺省）、1 一叶归舟,总平面,0.19,新增,R §4.5
+nbt_campus,5.2,Rk,有重铸记录的模块键列表（记录本体在 fluxecho_recast）,总平面,0.19（字段）/ 0.22（写入）,新增,R §4.5
+nbt_campus,5.2,Ledger.LegAcct,腿账：穹顶记腿、机库扣腿,守护组,0.21,新增,B/guard/README §4
+nbt_campus,5.2,Dispatch、HoloAwake,沙盘调度表；沙盘醒着的位,算力组（沙盘）,0.23,新增,B/compute/holo_table §7
+nbt_campus,5.2,核心物品 Campus 复合：Mp、Rk,拆核心带走，放回原处接着用,总平面,0.19,新增,R §4.5
+nbt_campus,5.2,Bc Bl ByL ByM C Cc Cl Cy D Fd Fe Fl Fr Fs Ft Go Gw I K Kc Ko Kr L Mc Na Nb Nc Nq Nr Op P Pa Pd Pf Pk Ps Ro Rs S Sc Sd Sg Sk St Te Tf To Ts Tu U Un V,BuildJob 任务 NBT 的现有键（V = 3、GRADE_V = 2，本轮不提）,引擎,≤0.16,已发布,H campus/BuildJob
+nbt_campus,5.2,任务 Fl2,飞行中格子的码（short），只在出现 ≥ 128 时写,风格组,0.20,新增,R §4.5
+nbt_campus,5.2,任务 Form.Sn（物理键 Fsn）,"原地换形的目标形状名（reform:<号>），string；缺 = 老计划。BuildJob.Form 平铺写进任务 NBT（BuildJob.write）和 Campus.writeSync 的同步复合（客户端 Campus.View.read 用 Form.read 读同一个复合）；不能叫 Sn——Sn 是 writeSync 已发布的计划阶段数（byte，View.read 用 getByte(""Sn"") 读）。Fsn 已对 §5.2 的 BuildJob 任务键（含新增 Fl2）和 Campus.writeSync 的现有键查过不撞，TaskKeysTest（R3-01 的 FormKeysTest 扩名，R4-09）守（§22.4）；各稿写「Form.Sn」的都指这个字段，NBT 里的键一律是 Fsn",重构组,0.21,新增,R §4.5；H BuildJob.Form.write、Campus.writeSync / View.read；R3-01
+nbt_campus,5.2,任务 Form.Ab,重燃计划：byte，1 = 舱重燃来的 establish（舱格 keep-out + 最后一步 ABSORB）；缺 / 0 = 老计划。BuildJob.Form 平铺写进任务 NBT，物理键 Ab，不撞 §5.2 的 BuildJob 现有键；也不撞 Campus.writeSync 的现有键（Form.write 同样平铺进同步复合，TaskKeysTest 守，R3-01、R4-09）；不是 Pf（Pf = 0.16 已发布的吊舱浮空基准高度 F）,中枢组,0.19,新增,B/nexus/drift_capsule §3.7.4、未决 14；B/nexus/nexus §3.3；H BuildJob.Form；V1-03；R3-01
+nbt_campus,5.2,账本 Parts2,成品部件（short 码），只在出现 ≥ 128 时写；读档两个键都读,风格组,0.20,新增,R §4.5
+nbt_campus,5.2,Rx,"玩家二次确认可拆的外来机器：list [{P: long 打包坐标, B: string 方块注册名}]。外来机器 = Probe.te 为真（有 TE、不是矿、不是补给口 / 回收箱）且不是本 mod 城市部件；矿石（Probe.gtOre）永不进。TerrainRule 重铸分支只对坐标和注册名都命中 Rx 的外来机器判 CLEAR，其余外来机器 BLOCKED；同一坐标换了方块即失效；每项任务完成时删掉落在它范围里的条目；由动作 build.allow_foreign（§17.2，C14 两次确认）写入。只在中枢 tile 的 Campus 子表：不进核心物品（Campus.Carried）、不进 Campus.writeSync（P03 要显示的确认状态随勘测摘要下发，M §10.2.1 一「同步」行）。已对 §5.2 Campus 现有键（含 R Rc Rj Raw Recycle Ro）、核心物品 Campus 复合的键、writeSync 键、BuildJob 任务键（含 Fl2）、Form 键（Pf Pd Sd Rs Ab Fsn Gts）查过不撞，仓库 0.16.0 源码没有 ""Rx"" 字面量",总平面,0.19,新增,M §10.2.1 三与「版本」段、§10.3 Campus 行；R4-04
+nbt_campus,5.2,任务 Form.Gts,"削顶段 grade:top:<k>（§13.1）的边界：int[5] = aFrom aTo rFrom rTo yTo（园区 A / R 坐标，含两端；整行成段时 rFrom / rTo 取掩膜在这几行的 R 全幅；yTo = 这一段勘测到的最高实心格的 Y）。勘测完成、提供这一段时确定性地算出并写入，之后不再变；planFor 只读它，不按现场地形重算——削到一半重新加载，计划和进度位集都不错位（facts/campus §1.8）；缺 = 不是削顶任务。GroundSplit 只靠计划键后缀 #k、不存 NBT，削顶段不能照搬：它的边界取决于削之前的地形。放在 BuildJob.Form（客户端照同一组字段算出和服务端一样的计划，投影要它；L22），所以同 Ab / Fsn 一样平铺进任务 NBT 和 Campus.writeSync 的同步复合；物理键 Gts 已对 §5.2 BuildJob 任务键（0.16 的 52 个 + Fl2）、writeSync 键（0.16 的 33 个）、Form 键（Pf Pd Sd Rs Ab Fsn）、Campus 子表键（含 Gl Gn Gq Gk）查过不撞，仓库 0.16.0 源码没有 ""Gts"" 字面量；TaskKeysTest 守（§22.4）",总平面,0.22,新增,M §10.2.1 二「计划」行、§10.3.1；facts/campus §1.8；H BuildJob.Form；L22；R4-05
+nbt_core,5.3,中枢 tile 现有：A Bound C Cp D DC Do DoC Ds DsC Gr Grown H Holo Inv M Manifest ManifestMax ManifestTicks Op OpenBinding Pending R RD Research ResearchDone ResearchTeam U,TileNexus 现有键,引擎,≤0.16,已发布,H nexus/TileNexus
+nbt_core,5.3,中枢 tile ManifestPin,显化台钉住的配方,中枢组,0.18,新增,R §4.5
+nbt_core,5.3,中枢 tile Capsule,舱格坐标（舱并进中枢）,中枢组,0.19,新增,R §4.5
+nbt_core,5.3,中枢 tile CmpS、Paused,研究 / 航线的算力分配比 s（默认 0.5）；P04 里暂停的持续消费者,中枢组,0.20,新增,R §4.5
+nbt_core,5.3,中枢 tile HeartRoom,舰心的光门对（由中枢 TE 持有）,中枢组,0.21,新增,R §4.5
+nbt_core,5.3,中枢 tile Bearing,晶核座里的归航坐标,中枢组,0.28,新增,R §4.5
+nbt_core,5.3,中枢 tile Asc、HomeRoom,跃升态（leap 授予后 = 1，归门门框受保护）；原乡之门房号,中枢组 / 终局组,0.28,新增,R §4.5；B/endgame/ascension §7
+nbt_core,5.3,中枢描述包 Rc,记录数,中枢组,0.19,新增,R §4.5
+nbt_core,5.3,中枢描述包 Ov Mx Mq Hgk Hrt,覆层种类、显化、门环 20 道刻度（Hgk，原 Gk 撞键已改）、舰心门,中枢组,0.21,新增,R §4.5；B/nexus/nexus §7
+nbt_core,5.3,中枢描述包 Asc,跃升,中枢组,0.28,新增,R §4.5
+nbt_core,5.3,舱 TE / 物品 Owner Day0 Veins Sonar Glance,主人、搁浅日、矿脉、声呐、看过的件,中枢组,0.18,新增,R §4.5；B/nexus/drift_capsule §7
+nbt_core,5.3,舱 TE / 物品 Site Rk RkIn,残图、重燃进度、重燃已投材料,中枢组,0.19,新增,R §4.5
+nbt_core,5.3,舱描述包 Day0 Dt Sonar,搁浅日、补丁档、声呐,中枢组,0.18,新增,R §4.5
+nbt_core,5.3,舱描述包 Rk Rc,重燃进度、记录数,中枢组,0.19,新增,R §4.5
+nbt_core,5.3,书库现有：Desk Dim Dk Ep L P Refilled Rv S Samples Selected Unit X Y Z,TileLibrary 现有键,引擎,≤0.16,已发布,H library/TileLibrary
+nbt_core,5.3,书库 Lc Tb Bd Lp Ln,读经台的物品、装订进度等（存在书库核心里）；Ln = 702 槽各自的借出次数,中枢组（档案馆）,0.19,新增,R §4.5；B/nexus/library §7
+nbt_core,5.3,书库描述包 Rd Ix Shw Lec Lp Bd Ov,就绪位图、种数、书影台（Sh 已占，改 Shw）、读经台、装订、覆层,中枢组（档案馆）,0.19（Ov 0.21 起有值）,新增,R §4.5、§4.12；B/nexus/library §7
+nbt_module,5.4,Eco*、Ark*（前缀）,生态穹全部新键,生态组,0.20,新增,R §4.5；B/eco/eco_dome §7
+nbt_module,5.4,Valves Burn Pool Sluice Fuel Lever Store Furnace Cap Charge Bell,根位：潮汐井的阀档 Valves、阀芯余能 Burn、潮池 Pool、潮闸 Sluice、燃料缓冲 Fuel、钟 Bell；Lever（「烧 / 存」拨杆）、Furnace（炉）、Cap Charge（电容环）、Store（存料格 / 源料口）到 0.27（地脉核、触底 source_reach）才用，随井一并登记，0.21 起空着（V2-10）,发电组,0.21,新增,B/power/tidal_well §7、A ⑤；V2-10
+nbt_module,5.4,NetSeen,根位：根网已见,发电组,0.25,新增,B/power/tidal_well §7
+nbt_module,5.4,DrillAcc,根位：地脉核钻井累计,发电组,0.27,新增,B/power/tidal_well §7
+nbt_module,5.4,Sp Sov Wd Ws Gr Sl Bk Tn Lg Ct Hk Wx Gs,回响穹顶：SP（×100）、超充（原稿 Ov，改 Sov）、七项守护档位 / 待位、罩径、减载线、破盾到期、张力、日志、今日计数、最近拦截方位…,守护组,0.21,新增,B/guard/dome_generator §7；L09
+nbt_module,5.4,穹顶描述包 Sp Wd Ws Bk Gr Tn Hk,同步给吊舱与 HUD,守护组,0.21,新增,B/guard/dome_generator §7
+nbt_module,5.4,"Wall{Lv, Lf[{It/Fl, N}], Cp, Fg} Bq Bk Md Hl Hn Tb Ks Rf Ws",二向箔仓：43 幅箔墙、来源缓冲、箔匣、印 / 密度 / 去向、化录、二维化名单、升维台页、保量表、破界压进、…,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+nbt_module,5.4,箔仓描述包 Wl Pr Ff Cr Md Dr,箔墙同步,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+nbt_module,5.4,Fnt、Fns（子复合）,魔力泉阵全部新键（原稿 Sh 并进来）,魔法组,0.22,新增,R §4.5、§4.12；B/magic/mana_fountain §7
+nbt_module,5.4,Str Ch Al Pd Hm Ord DrD PinW,谐振塔：弦、通道、分配、律管、潮摆、订单、漂移日、定音窗,门与仓,0.22,新增,B/gate-vault/resonance_gate §7
+nbt_module,5.4,谐振塔描述包 Str Ch Al At Pd Hm Dt Rs Ev,同步,门与仓,0.22,新增,B/gate-vault/resonance_gate §7
+nbt_module,5.4,Crt、Crs（子复合）,秘法庭全部新键,魔法组,0.23,新增,R §4.5；B/magic/arcane_court §7
+nbt_module,5.4,Fil UT UA UOpt UHold,智子：丝、展开度目标 / 实际 / 自动 / 保持,算力组,0.23,新增,B/compute/sophon_array §7
+nbt_module,5.4,智子描述包 Su Sm Sf Sc Sr Sx Sd,同步,算力组,0.23,新增,B/compute/sophon_array §7
+nbt_module,5.4,Lay Reh Maps,沙盘：图层、预演、海图,算力组,0.23,新增,B/compute/holo_table §7
+nbt_module,5.4,沙盘描述包 Hl Hr Hm Ha Hh Hk,同步,算力组,0.23,新增,B/compute/holo_table §7
+nbt_module,5.4,Cb Ce Cm Cr Cp Cd Cf Cw,血契坛：缓冲、托管、牲仓、肉余数、分配策略、脉的流向、保底、签契窗口,血猎组,0.24,新增,B/blood-hunt/blood_covenant §7
+nbt_module,5.4,血契坛描述包 Bf Mt Al Ob Lp Rp Nm Cg,同步,血猎组,0.24,新增,B/blood-hunt/blood_covenant §7
+nbt_module,5.4,"Pn Pl Bg{…, Pv, Ba} Rt Tr Tm",猎场：12 栏、珍珠、首领（已证、自动）、去向、猎痕、亲猎计时,血猎组,0.24,新增,B/blood-hunt/hunting_ground §7
+nbt_module,5.4,猎场描述包 Pn Bt Wr Bg Tr,同步,血猎组,0.24,新增,B/blood-hunt/hunting_ground §7
+nbt_module,5.4,Aim Fix Night Tray Moon Conj,观星台：对准、定星进度、夜、刻片托盘、月、合星,算力组,0.25,新增,B/compute/observatory §7
+nbt_module,5.4,观星台描述包 Oa Om Ofp Oc Oe Ot Ocj,同步,算力组,0.25,新增,B/compute/observatory §7
+nbt_module,5.4,Order Helm Pitch Furl Oil OilBuf Berth StoreLight LightStore SunAligned,天光帆阵：帆序、舵、仰角、收帆、光脂、夜泊、存光、追光,发电组,0.25,新增,B/power/sky_sails §7
+nbt_module,5.4,Wf,气象站：现有同步键,引擎,≤0.16,已发布,H TileWeatherStation
+nbt_module,5.4,Cd Cn Wo Dl Tc Sc,气象站：三种冷却、催晨冷却、最后一道天令、天气盘、唤潮槽 EU、预约,守护组,0.26,新增,B/guard/weather_station §7
+nbt_module,5.4,气象站描述包 Wfc,日程摘要（8–12 天 × 4 段，≈ 200 字节，只发给 64 格内的人；不撞已发布的 Wf）,守护组,0.26,新增,B/guard/weather_station §7.3、未决 15；V1-14
+nbt_module,5.4,Dp Sa Sc Pn Md Lv Hd Xp Fl Kn Gf,"水滴机库：Dp 8 颗水滴各 {状态, 当前航段, 货舱}、Sa 各扇颗数（byte[8]）、Sc 32 格 × 2 位的格状态（long）、Pn 钉住掩码（byte[8]）、Md 巡态 0–3（驻巢 / 夜巡 / 常巡 / 列阵）、Lv 闸（0 收回 / 1 放出）、Hd 暂存 ≤ 27 组、Xp 经验点（int）、Fl 滤网（模式 byte + ≤ 9 物品）、Kn 今夜清理（int）、Gf 已赠送（byte）（V2-06）",守护组,0.26,新增,B/guard/droplet_hangar §7.3、修订 27；V2-06
+nbt_module,5.4,"Sat[4]{T, St, At} Srv{P, D, F} Rly[16]{Dim, X, Y, Z, Port} RlyBuf[2] Chain Ap ApM Dust{Night} Rt Edge Core2 WhT",轨道锚 / 冠：卫星、测绘、中继、锚链、孔径、承尘、去向、边匣、源核座、窗语计时,终局组,0.27,新增,B/endgame/orbital_anchor §7；B/endgame/README §3
+nbt_module,5.4,RlyEu[4],中继口电口的缓冲 → 电口已删（锚稿玩法评审 #4），从未发布,—,不发,作废,B/endgame/orbital_anchor 修订记录 #22；V1-15
+nbt_module,5.4,BeatAt BeatN Partial SkipMask StableSince Lit Altar Cap Charge Target AutoFeed,源点之心：心跳、瓣、承尘坛、池子、目标、自动喂,发电组,0.27,新增,B/power/source_heart §7
+nbt_module,5.4,（无新键）,跃迁环控制器只存核心和覆层（基类键）；状态在 fluxecho_voyage,终局组,0.28,新增,B/endgame/README §3
+nbt_item,5.5,foil：Lv K Ls Sm Ix,二向箔：一种物品 + long 数量、封样、索引,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+nbt_item,5.5,rift_foil：Night,破界箔压成的那一夜,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+nbt_item,5.5,droplet：Mirror Kills Born,水滴：镜面、击杀、出厂日,守护组,0.26,新增,B/guard/droplet_hangar §7
+nbt_item,5.5,"resonance_fork：Gate{x, y, z, dim} Team",定音叉：绑定的阙、团队,门与仓,0.22,新增,B/gate-vault/resonance_gate §3.4.3、§7.3；V1-14
+nbt_item,5.5,root_card：Dim X Y Z Kind Team Veins,根须卡：采集器坐标、种类（采集器 / 流体泵）、团队、矿脉,发电组,0.25,新增,B/power/tidal_well §3.4；V1-14
+nbt_item,5.5,source_echo：Night Moon Wh,源点残响：Night 落下那一夜的世界日、Moon 那一夜的月相（冠写，心按 Night 去重、按 Moon 分瓣）；Wh byte = 1：窗语残响（举晶落下的 4 颗，第 17 夜起的回声夜也写；孔径按小时出的不写），箔仓的破界压只收带 Wh 的（V2-01）。物品上的 Wh 是旗标，和 fluxecho_voyage.Wh（已落窗语句数，§5.6）不是一张表,终局组,0.27,新增,B/endgame/orbital_anchor §3.8；B/power/source_heart §3.3；B/gate-vault/dual_foil_vault §3.4、§3.10、E5；V1-14、V2-01
+nbt_item,5.5,实体数据 feBout,"猎场亲猎真身的 ""<场地号>:<场次号>""（随实体存盘；MobEvents 见它就跳过）",血猎组,0.24,新增,B/blood-hunt/hunting_ground §3、§7
+nbt_voyage,5.6,ShipId,string dim:x:y:z；舱阶段先用舱坐标，重燃时改写成中枢坐标,叙事,0.18,新增,N §3.6
+nbt_voyage,5.6,Team,UUID：中枢主人团队,叙事,0.18,新增,N §3.6
+nbt_voyage,5.6,Day0,long：放下搁浅舱的世界总时间,叙事,0.18,新增,N §3.6
+nbt_voyage,5.6,Xiang,"list {N, Day}：七段乡忆和恢复的那一天。老存档按已达状态补授 ①②（团队并集里 recall_echo 已完成 → ①、anchor 已完成 → ②；Day = 补授那天，顺序 ①②；XiangBackfill 在中枢 stood() 和第一次打开中枢时幂等调用，每段只有一条）；键与结构不变（R4-11）",叙事,0.18,新增,N §1.6.2、§3.6、§9.4；B/nexus/nexus §3.3
+nbt_voyage,5.6,Glance,24 位掩码：看过的件（舱 1–12、中枢 13–24；位号永不改）,中枢组,0.18,新增,B/nexus/drift_capsule §3
+nbt_voyage,5.6,Built,"list {Key, Day}：每座建筑（形态）第一次成型的日子，按先后（S03 / S18、沙盘预演、露台画廊读这个顺序）；Key = 总平面位置表的 key：Buildings 键（§2），同一行多形态的用 键:形态（root:tidal_well root:deep_root root:ley_core orbital_anchor:source_crown；单写 orbital_anchor = 轨道锚），写进存档后不改（V2-07）",叙事,0.18,新增,N §3.6；M 位置表；V2-07
+nbt_voyage,5.6,Shares[20],byte[]：跃升清单 20 行的进度 0–100,叙事,0.19,新增,N §3.6
+nbt_voyage,5.6,Seg,位集：已补的段,终局组,0.19,新增,B/endgame/leap_ring §7
+nbt_voyage,5.6,SegSub,位集：按替代来源补的段,终局组,0.19,新增,B/endgame/leap_ring §3、§7
+nbt_voyage,5.6,Bell,上次自鸣的世界日,终局组,0.20,新增,B/endgame/leap_ring §7
+nbt_voyage,5.6,TideMode / TideSteady,byte / bool：全船默认的读潮方式（常态 / 锁潮 / 放大潮；按楼的锁 / 放大潮在阙 NBT Al，经 ResonanceBoost.tideMode 读）、稳潮开关（ctl.set 目标 voyage.steady）,叙事 / 发电组,0.21,新增,N §3.6、§5.9
+nbt_voyage,5.6,Route[7],long[]：每段航线已解算的 FC（智子 RouteSolver 写）,叙事 / 算力组,0.23,新增,N §3.6；B/compute/sophon_array §7
+nbt_voyage,5.6,Rehearsed / Rehearsals / RehRow,bool / int / 行：预演成功、成功次数、给环读的行,算力组（沙盘）,0.23,新增,N §3.6；B/compute/holo_table §7
+nbt_voyage,5.6,Signed,"list {U, Name, T}：签了契的人（T = 世界时；搁浅天数由 T 与 Day0 算）",叙事 / 血猎组 / 终局组,0.24,新增,N §3.6；B/endgame/ascension；L06
+nbt_voyage,5.6,Coords / CoordDay[7],int 位掩码 / long[]：七颗航标与定星日,叙事 / 算力组,0.25,新增,N §3.6；B/compute/observatory §7
+nbt_voyage,5.6,MoonDay,满月夜记录,算力组,0.25,新增,B/compute/observatory §7
+nbt_voyage,5.6,TideCall,long：唤潮生效到哪一个世界日,叙事 / 守护组,0.26,新增,N §3.6；B/guard/weather_station §7
+nbt_voyage,5.6,Escort,int：团队水滴累计击杀（第 17 行护航）,守护组,0.26,新增,B/guard/droplet_hangar §7
+nbt_voyage,5.6,Wh / WhD,byte 0–16 / long：已落窗语句数、最后一句的日子（WhisperRite 写；观星台只读）,终局组,0.27,新增,B/endgame/README §3；L06
+nbt_voyage,5.6,Xiang5,乡忆 ⑤「海岸」的锚侧旗标,终局组,0.27,新增,B/endgame/README §3
+nbt_voyage,5.6,Capacitor,long：跃升电容汇总读数（上限 2×10¹²）,叙事,0.27,新增,N §3.6
+nbt_voyage,5.6,CapP / CapR / CapG,long[2] / byte[2] / bool：两墩池子、充能闸档、护城,终局组,0.27,新增,B/endgame/leap_ring §7
+nbt_voyage,5.6,BankOn,两墩电容启用（ring:bank 完成）,终局组,0.27,新增,B/endgame/leap_ring §7
+nbt_voyage,5.6,Pads / PadBy[4],4 位：点火台已解锁（位 0 阳墩、1 阴墩、2 观星台、3 气象站）/ 谁、哪天,终局组,0.28,新增,B/endgame/leap_ring §7；B/guard/weather_station §3；L06
+nbt_voyage,5.6,"Leap{St, T0, Shot, Part[], Tier}",跃升阶段（无 / 待航 / 倒计时 / 跃升中 / 已跃升）、对齐的潮顶世界时、分镜、参与者、档位,终局组,0.28,新增,B/endgame/ascension §7；L06
+nbt_voyage,5.6,Bearing,归航坐标已合（第 14 行 = Coords 7 位全 ∧ Bearing）,算力组,0.28,新增,B/compute/observatory §7
+nbt_voyage,5.6,Cele,long：上一次满潮庆典的世界日,终局组,0.28,新增,B/endgame/ascension §7；L06
+nbt_voyage,5.6,Leaps,int：跃升次数（leap 只授予一次，给「远航」留位）,叙事,0.28,新增,N §3.6
+nbt_voyage,5.6,HomeRoom / HomeFit,原乡露台房号、生成进度,终局组,0.28,新增,B/endgame/ascension §7
+nbt_voyage,5.6,"Vol6:[{U, Day, By}] / Stay:[{U, Day}]",谁得了哪一版终卷（By = leap / gate）,终局组,0.28,新增,B/endgame/ascension §3.10、§7
+nbt_voyage,5.6,Whisper,叙事稿的窗语句数 → 用 Wh,—,不发,作废,N §3.6；L06
+nbt_voyage,5.6,State / T0（顶层）,叙事稿的跃升阶段 → 用 Leap.St / Leap.T0,—,不发,作废,N §3.6；L06
+nbt_voyage,5.6,Celebrated,→ 用 Cele,—,不发,作废,N §3.6；L06
+nbt_voyage,5.6,Pact,血契坛稿的签契名单 → 用 Signed,—,不发,作废,B/blood-hunt/blood_covenant；L06
+nbt_voyage,5.6,Ign,观星台稿的点火台位 → 用 Pads 位 2 + PadBy[2],—,不发,作废,B/compute/observatory；L06
+nbt_recast,5.7,"记录键 <dim>:<x>,<y>,<z> + 模块键",每个园区 × 模块一条，≤ 256 KB（recast.storeKb）,总平面,0.22,新增,M §10.3.2；R §4.5
+nbt_recast,5.7,"Slots[{S, I}]",按槽号存的物品,总平面,0.22,新增,M §10.3.2
+nbt_recast,5.7,Meta,楼自己的 RecastPayload（如箔墙 Wall）,总平面 / 各楼,0.22,新增,M §10.3.2
+nbt_recast,5.7,From / To,旧场地号 / 新场地号,总平面,0.22,新增,M §10.3.2
+nbt_recast,5.7,T,写入的世界时,总平面,0.22,新增,M §10.3.2
+nbt_recast,5.7,Ov,覆层（与全城 Ov 同义）,总平面,0.22,新增,M §10.3.2；L09
+nbt_wsd_fields,5.8,fluxecho_weather：Ep Rs Ts Hu Pq,预报锁日程,守护组,0.26,新增,B/guard/weather_station §7
+nbt_wsd_fields,5.8,fluxecho_rootnet,本队本维度被扎根的采集器表（字段见楼稿 §7）,发电组,0.25,新增,B/power/tidal_well §7
+nbt_wsd_fields,5.8,fluxecho_aspects 新键 Rites,秘法庭的要素仪式记忆,魔法组,0.23,新增,B/magic/arcane_court §7
+wsd,6,fluxecho_campus,CampusRegistry 园区登记,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_recycle,回收,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_ledger,EchoLedger 账本,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_gates,光门,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_vault,LibraryVault,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_research,研究（按团队）,引擎,≤0.16,已发布,H
+wsd,6,fluxecho_aspects,要素记忆,引擎,≤0.16,已发布,H
+wsd,6,fluxlite_steam,FluxLite 蒸汽网,FluxLite,≤0.16,已发布,H
+wsd,6,fluxlite_registry,FluxLite 登记,FluxLite,≤0.16,已发布,H
+wsd,6,fluxecho_voyage,每座中枢一条「船」（§5.6）,叙事,0.18,新增,R §4.5
+wsd,6,fluxecho_recast,重铸记录（§5.7）,总平面,0.22,新增,R §4.5
+wsd,6,fluxecho_rootnet,根网,发电组,0.25,新增,R §4.5
+wsd,6,fluxecho_weather,预报锁日程,守护组,0.26,新增,R §4.5
+config,7,general：firstMachineId enableDefaultRecipes,0.16 现有,引擎,≤0.16,已发布,H Config
+config,7,quests：install,0.16 现有,引擎,≤0.16,已发布,H
+config,7,bees：enabled imprintTicks imprintEuPerTick incubateTicks incubateEuPerTick assembleTicks assembleEuPerTick honeyPerPrincess dronesWithPrincess honeyPerDrones dronesPerBatch fertilizerPerSaplings saplingsPerBatch honeyPerButterfly butterfliesPerBatch,0.16 现有（15）,引擎,≤0.16,已发布,H
+config,7,thaumcraft：enabled essentiaEuPerUnit essentiaUnitsPerShard pedestalEuPerCentivis pedestalCentivisPerTick extractionModuleCentivisPerTick pedestalBufferEU wirelessModuleRange linkModuleEuPerTick hologramRange insightTicks insightEuPerTick,0.16 现有（12）,引擎,≤0.16,已发布,H
+config,7,bloodmagic：enabled lpPerTick euPerLp lpPerMeat altarRange altarHeight,0.16 现有（6）；血契坛读 lpPerMeat，不另设 covenant.lpPerMeat,引擎,≤0.16,已发布,H；L07
+config,7,mobs：enabled euPerHealth minTicks allowBosses bossMultiplier dropBlacklist,0.16 现有（6）；猎场读 euPerHealth（楼稿写的 euPerHp 不存在）,引擎,≤0.16,已发布,H；L07
+config,7,crops：enabled imprintTicks imprintEuPerTick seedTicks seedEuPerTick sticksPerSeed,0.16 现有（6）,引擎,≤0.16,已发布,H
+config,7,botania：enabled lvManaPerTick euPerMana lvManaPerPetal poolRange poolHeight hologramRange,0.16 现有（7）,引擎,≤0.16,已发布,H
+config,7,codex：tooltipHints,0.16 现有,引擎,≤0.16,已发布,H
+config,7,nexus：enabled crystalGrit upkeepEuPerTick computePerSecond manifestEuPerTick recordCooldownTicks innerRingRadius libraryUpkeepEuPerTick moduleUpkeepEuPerTick effects effectRange campusEnabled archiveEnabled buildClearPerTick buildEuPerBlock buildEuPerClear buildClearHeight buildFillDepth buildMinSpacing buildRequireSky buildKeepSpoils buildClearAll buildClearable buildBlocked buildProjection buildGhostRange buildGhostCells buildEffects buildArcs,0.16 现有（29）；moduleUpkeepEuPerTick 留作 LegacyKit.upkeep() 默认值,引擎,≤0.16,已发布,H；R §4.6
+config,7,effects：machineEffects flowTrails effectRange hologramRange,0.16 现有（4）,引擎,≤0.16,已发布,H
+config,7,ae2：enabled,0.16 现有,引擎,≤0.16,已发布,H
+config,7,gates：enableRecipe viewRange liveView realView holdBase dimensionId providerId,0.16 现有（7）,引擎,≤0.16,已发布,H
+config,7,Config.VERSION,"""0.15.0"" → ""0.19.0""（Config.upgrade 只改仍等于旧默认的值）",重构组,0.19,新增,H；R §4.6
+config,7,render.occlusion（gate）、render.skyLayer（world）,原型过了在 0.X.1 改 depth / sky,风格组,0.17,新增,R §4.6
+config,7,style.hullBrightness,舟壳亮度,风格组,0.17,新增,S §3.8.3(f)；R §4.6
+config,7,client.uiClassic、client.reduceMotion,旧界面开关（只 0.18 有效，之后保留为不起作用的键）、少动画,界面组,0.18,新增,U §6；R §4.6
+config,7,client.haze、client.uiSounds,雾白幕、界面音效（界面稿已列，重构稿漏列）,界面组,0.18,新增,U §2、§6；L07
+config,7,client.hudCapsule,P66「状态胶囊」开关：手持已绑定终端时左上角的 HUD 胶囊（不是搁浅舱；原写「舱 HUD」是误读，V1-04）；跟 U5b 走，U5b 被砍挪 0.24 时同挪（R §2.2）,界面组,0.23（U5b）,新增,U §5 P66、§6.1 U5b；R §2.2；V1-04
+config,7,starmap.key（M）、starmap.homeKey（Home）,航图热键,界面组 / 叙事,0.18,新增,N §9.5；R §4.6
+config,7,route.*、ui.xiangSeen.*,航线显示、乡忆已读,界面组,0.18,新增,R §4.6
+config,7,research.costProfile（gt / strict）,选 research.json 的花费档,叙事,0.18,新增,N §9.5；R §4.6
+config,7,voyage.enabled（true）、voyage.capsuleOnFirstJoin（true）,跃升总开关；新玩家首次进入领舱（老存档补发共用「已发」位）,叙事,0.18,新增,N §9.5；R §4.6
+config,7,capsule.sonarRadiusChunks（3）、capsule.sonarCooldownTicks（24000）,回声定位,中枢组,0.18,新增,B/nexus/drift_capsule §6；R §4.6
+config,7,capsule.rekindleTicks（600）、capsule.patchDays、capsule.surveyColumnsPerTick（2048）,重燃；勘测（残图、勘测卡随 refactor B00b 在 0.19 交付，V2-02）,中枢组,0.19,新增,B/nexus/drift_capsule §6；R §4.6、§3.2 B00b；V2-02
+config,7,campus.newMap（true）、campus.safeGround（true）、campus.antiFreeze（true）、campus.hills（refuse）,新总图开关与地面。campus.hills 是取值表（R4-06）：refuse（默认，0.19）= 新园区掩膜里有截顶以上的悬山时舱判「不宜」、[重燃] 禁用、提示换址；重铸（老园区，没有址可换）里 refuse 按 grade 读；0.19–0.21 只有 refuse（读到别的值按 refuse）；grade（0.22）见本节末行；「未知」列两边都挡（新园区挡重燃，重铸挡第 0 批）,总平面,0.19,新增,M §10.3、§10.2.1 四；R §4.6
+config,7,ui.interactChips,交互芯片,界面组,0.19,新增,R §4.6
+config,7,nexus.libraryUpkeepEuPerTick,默认 128 → 64（迁移）,中枢组,0.19,新增,B/nexus/library §6；R §4.6
+config,7,archive.*：cardUpkeepEuPerTick activeCardTicks writeTicks writeEuPerTick pressCooldownTicks indexStep indexDiscount indexCap bindCrystals bindCategories bindTicks crossDimFcPerCard shoreAutoShelved,档案馆（压印 / 索引随 0.21、装订随 0.27 起作用）,中枢组,0.19,新增,B/nexus/library §6；L07
+config,7,compute.*：capsule（1）nexusPerPhase（20）sophonPerRack（10 / 20 / 40 / 80）nightBonus（1.25）clockBonus（1.05）manifestFC（33）routeShare（0.5）,算力来源；智子产量只用 sophonPerRack,叙事 / 中枢组,0.20,新增,N §9.5；R §4.6、§4.12
+config,7,generators（节）,发电额定、燃料值、时段 / 天气系数、潮池秒数；按楼分子节 generators.root.*、generators.sails.*、generators.heart.*,发电组,0.20,新增,N §9.5；B/power/README §6
+config,7,upkeep.*：idleFraction（0.125）workFraction（0.25）tierDoubling（true）,统一电规则,叙事,0.20,新增,N §9.5
+config,7,tides.*：enabled spring（0.2）neap（0.05）wellFactor（2）steadyFactor（0.5）echoMachines（true）,潮汐,叙事,0.20,新增,N §9.5；D
+config,7,build.remoteSupply,远程补给（supply_from_inv 随 U3 在 0.18 交付，开关同版，V1-19）,界面组,0.18,新增,U §1.5.4、§2.9.3；R §4.6；V1-19
+config,7,nexus.tideClock,潮钟,中枢组,0.20,新增,R §4.6
+config,7,eco.*（55 键，含 gardenBoost 1.0）,生态穹（键表见楼稿 §6）,生态组,0.20,新增,B/eco/eco_dome §6
+config,7,overlay.*：nexusWindowCompute archiveWindowFee archiveMeshPress …,覆层加成,中枢组,0.21,新增,B/nexus/nexus §6；B/nexus/library §6
+config,7,nexus.deckShow,显化台面秀,中枢组,0.21,新增,R §4.6
+config,7,shield.*：base regen price.* wardEU.* tensionTargets tensionCurrents tensionDefault holdFactor shedLine shedOrder breakSeconds wardOvercharge（0.15）dropletBonus（25000）radiusStep rainShield pushUpperOnly spawnerExemptRadius fireCapPerSec glowSocket,回响穹顶,守护组,0.21,新增,B/guard/dome_generator §7；N §9.5
+config,7,generators.root.*（井）：wellAmps crystalEU sluiceBurn poolSecondsWell releaseShare fuelBufferStacks leverSteps valveRefillBelow valveRefillTo furnaceBuffer poolScanTicks autoFeedMinutes bellTicks grateTiers,潮汐井（重构稿写的 well.* 作废）；leverSteps furnaceBuffer 是地脉核（0.27）的键，随井一并登记，0.21 起不起作用（V2-10）,发电组,0.21,新增,B/power/tidal_well §6、A ⑤；L07；V2-10
+config,7,foil.*：autoClaim beatTicks blacklist bufferPerSource flattenBlacklist fluidBufferPerSource fluids foilNbtMax intakeTeamOnly itemNbtMax linkRequireChannel lockWhisperDust meShareMax mendBlacklist mendGregTech remoteTake wallNbtBudget magazineMax（4096）sealFeeBase（4096）keep（4 / 6 / 8）flatten（1）unfold（16 / 24 / 32）remount（64）mend（64）riftAmps（0.5）,二向箔仓（后 8 键 V1-13 补登，楼稿 §7.3 价目）,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §6、§7.3；V1-13
+config,7,"fountain.*：spring.pressure（buffer）spring.maxTier（6）spring.uvParallel（2）spring.pressureEU（16,000,000）spring.busyAmps（0.5）heartMana（2,000,000）flowTicks（20）flowFactor（2）overflow（branch_until_done）bloomEUt（64）bloomBays（2）bloomBaysResearched（4）bloomBaysMax（8）replant（true）replantEU（4,096）replantTicks（600）remotePools（4, 8, 16, 16）petalBuffer（4,096）seedBuffer（64）censusTicks（100）censusMinTicks（20）edgeManaPerMin（1,000）",魔力泉阵（22 键，照楼稿 §6.5 草案登记，V1-12）,魔法组,0.22,新增,B/magic/mana_fountain §6.5；V1-12
+config,7,resonance.*：drift driftFullMoonChance driftTideBase pinCharges orderBuffer forkRange leaseTicks ringRadiusMax perUnit maxPerBuilding allowParallel affectGregTech,谐振塔,门与仓,0.22,新增,B/gate-vault/resonance_gate §6；N §9.5
+config,7,resonance.machines,单方块机器加速：等用户批准才加,门与仓,—,预留,R §4.6；B/gate-vault/resonance_gate
+config,7,recast.storeKb（256）,每条重铸记录上限,总平面,0.22,新增,R §4.6
+config,7,voyage.branchBayMin（1e6）、voyage.dewRequired,行 7 花湾下限；泉阵收露,叙事 / 魔法组,0.22,新增,N §9.5；B/magic/mana_fountain §6
+config,7,"court.*：urnBase（512）linesPerDesk（1）lineMinTicks（20）kilnTicks（40, 20, 10, 10）kilnHeat（200）kilnHeatEUt（64）kilnWaterMb（1,000）kilnIdleSeconds（60）stillEUt（1,024）stillDefault（true）stillDrainAt（99）inkEuPerPoint（64）paperStock（16）wardSpPerUnit（50）wardUnitsPerSecond（20）wardBuffer（4,096）equationKnown（40）equationUnits（512）equationAspects（iter, alienis, permutatio, vacuos）",秘法庭（19 键，照楼稿 §6 登记，V1-12）,魔法组,0.23,新增,B/magic/arcane_court §6；V1-12
+config,7,sophon.*：rackFilaments（16）unfoldPowerDivisor coreSlotSaving coreSlotMax overlayFcCap overlayEuCap autoStepDown raiseBufferSeconds raiseBufferMinSeconds raiseHoldSeconds warnBufferSeconds nightBoostBufferSeconds canopyY（34）canopyBase canopyPerUnfold probePeriodSeconds probeSeconds insertTicks insertReleaseTicks,智子阵列（不含 sophon.yield）,算力组,0.23,新增,B/compute/sophon_array §6；L07
+config,7,holo.*：standbyFactor factorFloor rehearsalFloor scale tableRadius heightScale maxLayers mapSlots mapSyncSeconds mapBytesPerSecond remoteOffBlacklist remoteConfirmSeconds dispatchMinHoldSeconds dispatchScope dispatchModes loadTargets pickRange launchHoldTicks launchGapTicks alertBeamSeconds,全息沙盘（含调度；重构稿的 dispatch.* 作废；不含 holo.rehearsalFc）,算力组,0.23,新增,B/compute/holo_table §6；L07
+config,7,voyage.routeSegmentFC（2e7）、voyage.rehearsalFC（1e7）,航段、预演,叙事,0.23,新增,N §9.5
+config,7,hunt.*：standbyEUt lanesBase lanesCap penPowerBase minTicks bossMinTicks bossCooldown bossCooldownMin edgeDiscountPerLevel edgeDiscountCap lootingCap fireCooks guardDurability holdHysteresis tossScanTicks visibleBouts meatPerDrop trials duels trialCostFactor trialTicks duelTicks trialMarksCap duelWinFactor duelRetryCooldown leaveGraceTicks duelBosses trialBlacklist echoDragonXp,回响猎场,血猎组,0.24,新增,B/blood-hunt/hunting_ground §6
+config,7,covenant.*：standbyEUt bufferBase meatStoreBase strokeLp riteFloorDefault tallyCost lpPerHealth remoteMax remoteLoss riteRangeExtra projectionCells meatFromVault idleBpm runBpm riteKeys ritePrepaySeconds,血契坛（不含 signLp、lpPerMeat）,血猎组,0.24,新增,B/blood-hunt/blood_covenant §6；L07
+config,7,voyage.signLp（1e6）,签契划进托管的 LP（血契坛读它）,叙事,0.24,新增,N §9.5；L07
+config,7,observatory.*（25 键：researchFactor exposurePerPlate fullMoonFactor … seventhStarWhispers（10））,观星台（键表见楼稿 §6；researchFactor 叙事无同义键，保留）,算力组,0.25,新增,B/compute/observatory §6
+config,7,generators.sails.*：peakAmps lightDay lightTwilight lightNight rain thunder thunderCatch ratchetDeg pitchDegPerSec helmDegPerSec wearPer10Min rainWear thunderWear dimBelow oilEU oilDuty oilBufferLuV oilBufferZPM oilBufferUV lightStoreShare alignDeg alignTicks alignFrom alignTo rainCovered（0.8）,天光帆阵（重构稿的 sails.* 作废；rainCovered = 穹顶护帆时的雨系数，V1-13 补进键表）,发电组,0.25,新增,B/power/sky_sails §6；L07
+config,7,generators.root.*（深根、根网）：deepAmps deepCrystalEU reachTicks poolSecondsDeep netCards netGrit netStaleTicks netRecheckTicks,深根与根网（重构稿的 rootnet.* 作废）,发电组,0.25,新增,B/power/tidal_well §6；L07
+config,7,weather.*：control（auto）leapOverride（true）commandEU（1e6）cooldown dawnBell durationFactors durations forecastDays forecastLock forecastMaxDays vaneSpin vaneTint,天穹气象站,守护组,0.26,新增,B/guard/weather_station §6；N §9.5
+config,7,tides.callEU（5e9）callPlates（4）callCooldownDays（8）callBlendTicks callHoldTicks callSplit,唤潮,叙事 / 守护组,0.26,新增,N §9.5；B/guard/weather_station §6
+config,7,droplet.*：cargo cruiseBase diveSpeed escort gift hold huntCells killCostPerHp loopSeconds maxTargetHp nightPatrol noFlyRadius pickupAge strikeCooldown wearPerHp xpCapture,水滴机库,守护组,0.26,新增,B/guard/droplet_hangar §6
+config,7,orbit.*：launchEu radius period surveyRadius relayStacks relayBuffer relayPickupTicks relayPassDeg portsPerSat mirrorNightAdd mirrorMax,轨道锚,终局组,0.27,新增,B/endgame/orbital_anchor §7
+config,7,crown.*：aperture.* edgeRefillMinutes whisperStart whisperEnd cardSeconds,源点之冠,终局组,0.27,新增,B/endgame/orbital_anchor §7
+config,7,generators.heart.*：amps baseBpm residueEuUHV residueEuUEV residueEuUIV petalCap altarCap quarterPetals stopAfterSkips restartPetals paceMinPetals stableSeconds nightsRequired residueRequired autoTarget acceptAmplify,源点之心（重构稿的 heart.* 作废）,发电组,0.27,新增,B/power/source_heart §6；L07
+config,7,generators.root.*（地脉核）：coreAmps sourceEU drillPerHourUV drillPerHourUHV drillAmps drillFcUV drillFcUHV sourcePortStacks coreAutoFeed,地脉核钻井,发电组,0.27,新增,B/power/tidal_well §6
+config,7,ring.*：arcSeconds dimPercent stallPercent instrumentRange,跃迁环（断环电弧、段光缝亮度、仪表门限：随断环与补段就用，V1-16 按键拆首发）,终局组,0.19,新增,B/endgame/leap_ring §6、修订记录 B；V1-16
+config,7,ring.bellDusk,跃迁环的钟（随 ring:fit）,终局组,0.20,新增,B/endgame/leap_ring §6；V1-16
+config,7,ring.keystoneSeconds,拱心合拢演出,终局组,0.28,新增,B/endgame/leap_ring §6；V1-16
+config,7,voyage.capacitorEU（2e12）capacitorShares capacitorMaxAmps chargeReserve（1e10）cityBattery（true）loadInner（auto）launchDoor（table）,电容与充能（ring:bank、心、地脉核在 0.27 起充）,叙事 / 发电组 / 终局组,0.27,新增,N §9.5；B/power/README §6；B/endgame/README §3
+config,7,voyage.* 其余：shieldRequired recordsRequired categoriesRequired shoreRequired cinematic launchers celebrationBy celebrationFraction celebrationPads loadRing loadTerrace（false）maxLoadedShips（8）lateStart leapRadius homewardFitPerTick,跃升,叙事 / 终局组,0.28,新增,N §9.5；B/endgame/ascension §6；R §4.6
+config,7,voyage.windowTide（1.15）、voyage.requireFullMoon（true）,起航窗口潮位、满月要求（潮汐井 0.21 起读：起航线、潮尺、乡忆 ③；V1-17 从「其余」拆出提前）,叙事 / 发电组,0.21,新增,N §9.5；B/power/tidal_well §3.2、修订记录 A②；V1-17
+config,7,voyage.capsuleOnly,只给搁浅舱开局的保险开关（总平面未决 #21）,总平面,—,预留,M 未决 #21
+config,7,sophon.yield,→ compute.sophonPerRack,—,不发,作废,R §4.12
+config,7,holo.rehearsalFc,→ voyage.rehearsalFC,—,不发,作废,B/compute/holo_table §6；L07
+config,7,covenant.signLp,→ voyage.signLp,—,不发,作废,L07
+config,7,covenant.lpPerMeat,→ 已发布的 bloodmagic.lpPerMeat,—,不发,作废,L07
+config,7,mobs.euPerHp,→ 已发布的 mobs.euPerHealth,—,不发,作废,L07
+config,7,ring.pulseSeconds、ring.stallBlink,环稿上一轮已删（运转不再有自己的周期、停摆不再闪），从未发布,—,不发,作废,B/endgame/leap_ring 修订记录 #1、r-ledger A；V1-15
+config,7,orbit.portLoss,中继口电口的损耗 → 电口已删（锚稿玩法评审 #4），从未发布,—,不发,作废,B/endgame/orbital_anchor 修订记录 #22；V1-15
+config,7,well.*、sails.*、heart.*、rootnet.*、dispatch.*,重构稿 §4.6 的节名 → generators.root.* / generators.sails.* / generators.heart.* / generators.root.net* / holo.dispatch*,—,不发,作废,L07
+config,7,campus.hills 取值 grade,新园区：悬山只出软警告「削顶 n 段 · 约 x M EU」、[重燃] 不禁用，重燃后先跑 grade:top:<k>（§13.1，排在全部 ground:* 和 establish:ring 之前）；重铸：与 refuse 同读，有悬山时削顶是第 0 批之前的必经一步。键不变、默认仍 refuse，只多一个取值,总平面,0.22,新增,M §10.2.1 四、选址「地形」行、§10.3；B/nexus/drift_capsule §3.3；R4-06
+lang_prefixes,8,0.16 现有前缀,"fluxecho.build.*（263）fluxecho.research.* fluxecho.library.* fluxecho.status.* fluxecho.nexus.* fluxecho.spring.* fluxecho.city.* fluxecho.gene.* fluxecho.unit.*（24 种类）fluxecho.recycle_bin.* fluxecho.codex.* fluxecho.nei.* fluxecho.holo.* fluxecho.module.* fluxecho.cmd.* fluxecho.gate.* fluxecho.supply_port.* fluxecho.deck.* fluxecho.waila.* fluxecho.recipe.* fluxecho.frame.* fluxecho.gui.* fluxecho.fitting.* fluxecho.dock.*、各机器 / 物品名前缀、tile.fluxecho.* item.fluxecho.* gt.blockmachines.* itemGroup.fluxecho（每份 1,155 键）",引擎,≤0.16,已发布,H lang/en_US.lang
+lang_prefixes,8,fluxecho.skin.*,材质、形,风格组（渲染）,0.17,新增,R §4.7
+lang_prefixes,8,fluxecho.ui.*、fluxecho.issue.*,界面；问题码（含 fluxecho.issue.module.<楼键>.*）,界面组,0.18,新增,R §4.7；U
+lang_prefixes,8,fluxecho.codex.vol.*（含 vol.6.stay）、.glance.*、.drift.*,典籍卷、看过的件、舱志,叙事,0.18,新增,R §4.7；B/endgame/README §4
+lang_prefixes,8,fluxecho.codex.hall.<楼键>,舱志（每座楼一条；含 hall.leap_ring.broken）,叙事 / 各楼,0.19 起,新增,N §1.7.1；L08
+lang_prefixes,8,fluxecho.codex.xiang.<n>、fluxecho.codex.shore.<dim>,乡忆、别的岸,叙事,0.18,新增,N §1.7.1；L08
+lang_prefixes,8,fluxecho.codex.whisper.<n>（n = 1…16）,窗语（叙事 §4.4 标题、重构稿 §4.7 写的 voyage.whisper.1…16 作废）,叙事,0.27,新增,N §1.7.1；L08
+lang_prefixes,8,fluxecho.voyage.*,跃升、航线的其余文字（不含窗语）,叙事,0.18,新增,R §4.7
+lang_prefixes,8,fluxecho.research.branch.<星座>、.node.<id>、.node.<id>.desc、.star,9 星座（route recall keel memory outland compass hull furnace hold）与 83 颗星,叙事,0.18,新增,R §4.7
+lang_prefixes,8,fluxecho.capsule.*,搁浅舱,中枢组,0.18,新增,R §4.7
+lang_prefixes,8,fluxecho.build.job.recast / .reform / .ground.*,新计划键的任务名,总平面,0.19,新增,R §4.7；M §10.3.1
+lang_prefixes,8,fluxecho.build.job.ring / .crown / .core / .source,环、冠、地脉核、心的计划键任务名（重构稿漏列）,终局组 / 发电组,0.19 起,新增,B/power/tidal_well §7；B/endgame；L08
+lang_prefixes,8,fluxecho.site.<号>,场地名,总平面,0.19,新增,R §4.7
+lang_prefixes,8,"fluxecho.module.<楼键>.{run, ws, point, log, status}.*",各楼页、世界卡、交互点、日志、状态,各楼,随楼,新增,R §4.7
+lang_prefixes,8,fluxecho.module.<楼键>.*（其余）,楼专属文字一律收在这里：生态穹 module.eco_dome.*、泉口档位 module.mana_fountain.nozzle.*、芯片 module.sophon_array.chip,各楼,随楼,新增,L08
+lang_prefixes,8,fluxecho.unit.<新种类>,新单元种类名：ark fold_rack bay2 rite_lamp hunt_hook warden sat_cradle crown_core crown_edge dust petal,各楼,随楼,新增,R §4.7；§16
+lang_prefixes,8,fluxecho.fixture.<楼键>.*,题材件名,各楼,0.20 起,新增,R §4.7
+lang_prefixes,8,tile.fluxecho.<注册名>…name、item.fluxecho.…,方块、物品名（放进主人的分片）,各自主人,随注册,新增,R §4.7
+lang_prefixes,8,fluxecho.eco.*,→ fluxecho.module.eco_dome.*,—,不发,作废,B/eco/eco_dome §7；L08
+lang_prefixes,8,fluxecho.fountain.nozzle.*,→ fluxecho.module.mana_fountain.nozzle.*,—,不发,作废,B/magic/mana_fountain §3；L08
+lang_prefixes,8,unit.memory_rack.chip,→ fluxecho.module.sophon_array.chip（fluxecho.unit.<kind> 只给种类名，LangKeys.dynamic() 会把它当种类）,—,不发,作废,B/compute/sophon_array §7；L08
+lang_prefixes,8,fluxecho.unit.fountain.spring、fluxecho.unit.urn.spring,→ fluxecho.module.mana_fountain.unit.fountain / .unit.urn（新形状的显示名；理由同 unit.memory_rack.chip）,—,不发,作废,B/magic/mana_fountain §3、修订记录 r-ledger 2；V1-24
+lang_prefixes,8,voyage.whisper.<n>,→ fluxecho.codex.whisper.<n>,—,不发,作废,N §4.4；R §4.7；L08
+lang_prefixes,8,fluxecho.build.job.grade,削顶计划键 grade:top:<k> 的任务名「削顶 · k / n」（M §6.1 队列显示名句；L08 的 fluxecho.build.job.<前缀>；0.16 的 lang 里没有这个键）,总平面,0.22,新增,M §6.1、§10.2.1、§10.3；L08；R4-07
+research,9,anchor,name: 锚定 · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 1 行；R §2.3
+research,9,inner_ring,name: 龙骨 · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 2 行；R §2.3
+research,9,phase_2,name: 相位 II · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 3 行；R §2.3
+research,9,phase_3,name: 相位 III · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 4 行；R §2.3
+research,9,outer_ring,name: 外舷 · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 5 行；R §2.3
+research,9,phase_4,name: 相位 IV · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 6 行；R §2.3
+research,9,sky_ring,name: 立桅 · branch: ROUTE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 7 行；R §2.3
+research,9,phase_5,name: 相位 V · branch: ROUTE · visible: 0.25 · mvp: 是 · narrative_tag: 新,,0.25,新增,RT 第 8 行；R §2.3
+research,9,source_reach,name: 触底 · branch: ROUTE · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 9 行；R §2.3
+research,9,third_ring,name: 破界环 · branch: ROUTE · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 10 行；R §2.3
+research,9,home_bearing,name: 归航坐标 · branch: ROUTE · visible: 0.28 · mvp: 是 · narrative_tag: 新,,0.28,新增,RT 第 11 行；R §2.3
+research,9,leap,name: 跃升 · branch: ROUTE · visible: 0.28 · mvp: 是 · narrative_tag: 新,,0.28,新增,RT 第 12 行；R §2.3
+research,9,crossing,name: 往返 · branch: ROUTE · visible: 0.28 · mvp: 是 · narrative_tag: 新,,0.28,新增,RT 第 13 行；R §2.3
+research,9,recall_shore,name: 醒来 · branch: RECALL · visible: 0.18 · mvp: 是 · narrative_tag: 新,,0.18,新增,RT 第 14 行；R §2.3
+research,9,recall_sonar,name: 回声定位 · branch: RECALL · visible: 0.18 · mvp: 是 · narrative_tag: 新,,0.18,新增,RT 第 15 行；R §2.3
+research,9,grit_yield,name: 碎屑富集 · branch: RECALL · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 16 行；R §2.3
+research,9,recall_echo,name: 初醒 · branch: RECALL · visible: 0.18 · mvp: 是 · narrative_tag: 新,,0.18,新增,RT 第 17 行；R §2.3
+research,9,rekindle,name: 重燃 · branch: RECALL · visible: 0.19 · mvp: 是 · narrative_tag: 新,,0.19,新增,RT 第 18 行；R §2.3
+research,9,resonance_gate,name: 谐振塔 · branch: KEEL · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 19 行；R §2.3
+research,9,gate_chorus,name: 合唱 · branch: KEEL · visible: 0.22 · mvp:  · narrative_tag: 新,,0.22,新增,RT 第 20 行；R §2.3
+research,9,overlay_crystal,name: 晶簇覆层 · branch: KEEL · visible: 0.21 · mvp: 是 · narrative_tag: 新,,0.21,新增,RT 第 21 行；R §2.3
+research,9,overlay_plate,name: 相位板 · branch: KEEL · visible: 0.21 · mvp: 是 · narrative_tag: 新,,0.21,新增,RT 第 22 行；R §2.3
+research,9,overlay_window,name: 共鸣窗 · branch: KEEL · visible: 0.21 · mvp: 是 · narrative_tag: 新,,0.21,新增,RT 第 23 行；R §2.3
+research,9,overlay_mesh,name: 记忆丝网 · branch: KEEL · visible: 0.23 · mvp:  · narrative_tag: 新,,0.23,新增,RT 第 24 行；R §2.3
+research,9,overlay_shell,name: 显化外壳 · branch: KEEL · visible: 0.25 · mvp:  · narrative_tag: 新,,0.25,新增,RT 第 25 行；R §2.3
+research,9,overlay_glow,name: 源点辉光 · branch: KEEL · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 26 行；R §2.3
+research,9,echo_crystal,name: 回响结晶 · branch: MEMORY · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 27 行；R §2.3
+research,9,library,name: 回响档案馆 · branch: MEMORY · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 28 行；R §2.3
+research,9,library_reach,name: 跨维度借阅 · branch: MEMORY · visible: ≤0.16 · mvp:  · narrative_tag: 保留,,≤0.16,已发布,RT 第 29 行；R §2.3
+research,9,record_press,name: 压印 · branch: MEMORY · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 30 行；R §2.3
+research,9,archive_index,name: 索引 · branch: MEMORY · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 31 行；R §2.3
+research,9,traveler_book,name: 旅人之书 · branch: MEMORY · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 32 行；R §2.3
+research,9,eco_dome,name: 生态穹 · branch: OUTLAND · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 33 行；R §2.3
+research,9,eco_swarm,name: 群落 · branch: OUTLAND · visible: 0.20 · mvp:  · narrative_tag: 新,,0.20,新增,RT 第 34 行；R §2.3
+research,9,mana_fountain,name: 魔力泉阵 · branch: OUTLAND · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 35 行；R §2.3
+research,9,mana_bloom,name: 繁茂 · branch: OUTLAND · visible: 0.22 · mvp:  · narrative_tag: 新,,0.22,新增,RT 第 36 行；R §2.3
+research,9,arcane_court,name: 秘法庭 · branch: OUTLAND · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 37 行；R §2.3
+research,9,arcane_ward,name: 护法铭文 · branch: OUTLAND · visible: 0.23 · mvp:  · narrative_tag: 新,,0.23,新增,RT 第 38 行；R §2.3
+research,9,arcane_still,name: 宁定 · branch: OUTLAND · visible: 0.23 · mvp:  · narrative_tag: 新,,0.23,新增,RT 第 39 行；R §2.3
+research,9,blood_covenant,name: 血契坛 · branch: OUTLAND · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 40 行；R §2.3
+research,9,blood_rite,name: 仪轨 · branch: OUTLAND · visible: 0.24 · mvp:  · narrative_tag: 新,,0.24,新增,RT 第 41 行；R §2.3
+research,9,hunting_ground,name: 回响猎场 · branch: OUTLAND · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 42 行；R §2.3
+research,9,hunt_warden,name: 守门者 · branch: OUTLAND · visible: 0.24 · mvp:  · narrative_tag: 新,,0.24,新增,RT 第 43 行；R §2.3
+research,9,seed_ark,name: 方舟 · branch: OUTLAND · visible: 0.25 · mvp: 是 · narrative_tag: 新,,0.20,新增,RT 第 44 行；R §2.3
+research,9,compute_1,name: 算力校准 · branch: COMPASS · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 45 行；R §2.3
+research,9,sophon_array,name: 智子阵列 · branch: COMPASS · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 46 行；R §2.3
+research,9,holo_table,name: 全息沙盘 · branch: COMPASS · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 47 行；R §2.3
+research,9,observatory,name: 观星台 · branch: COMPASS · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 48 行；R §2.3
+research,9,unfold_2,name: 低维展开·二 · branch: COMPASS · visible: 0.23 · mvp: 是 · narrative_tag: 新,,0.23,新增,RT 第 49 行；R §2.3
+research,9,unfold_3,name: 低维展开·三 · branch: COMPASS · visible: 0.25 · mvp: 是 · narrative_tag: 新,,0.23,新增,RT 第 50 行；R §2.3
+research,9,unfold_4,name: 低维展开·四 · branch: COMPASS · visible: 0.27 · mvp:  · narrative_tag: 新,,0.27,新增,RT 第 51 行；R §2.3
+research,9,star_etch,name: 星轨 · branch: COMPASS · visible: 0.25 · mvp: 是 · narrative_tag: 新,,0.25,新增,RT 第 52 行；R §2.3
+research,9,orbital_anchor,name: 天锚 · branch: COMPASS · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 53 行；R §2.3
+research,9,sat_survey,name: 测绘卫星 · branch: COMPASS · visible: 0.27 · mvp:  · narrative_tag: 新,,0.27,新增,RT 第 54 行；R §2.3
+research,9,sat_relay,name: 中继卫星 · branch: COMPASS · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 55 行；R §2.3
+research,9,source_crown,name: 源点之冠 · branch: COMPASS · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 56 行；R §2.3
+research,9,dome,name: 回响穹顶 · branch: HULL · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 57 行；R §2.3
+research,9,dome_calm,name: 静域 · branch: HULL · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 58 行；R §2.3
+research,9,dome_blast,name: 镇爆 · branch: HULL · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 59 行；R §2.3
+research,9,dome_sky,name: 天幕 · branch: HULL · visible: 0.26 · mvp:  · narrative_tag: 新,,0.26,新增,RT 第 60 行；R §2.3
+research,9,weather_station,name: 天穹气象站 · branch: HULL · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 61 行；R §2.3
+research,9,tide_chart,name: 潮汐表 · branch: HULL · visible: 0.26 · mvp:  · narrative_tag: 新,,0.26,新增,RT 第 62 行；R §2.3
+research,9,tide_call,name: 唤潮 · branch: HULL · visible: 0.26 · mvp:  · narrative_tag: 新,,0.26,新增,RT 第 63 行；R §2.3
+research,9,droplet_hangar,name: 水滴机库 · branch: HULL · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 64 行；R §2.3
+research,9,droplet_escort,name: 护航 · branch: HULL · visible: 0.26 · mvp:  · narrative_tag: 新,,0.26,新增,RT 第 65 行；R §2.3
+research,9,upkeep_1,name: 节流 · branch: FURNACE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 66 行；R §2.3
+research,9,tidal_well,name: 潮汐井 · branch: FURNACE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 67 行；R §2.3
+research,9,tide_bank,name: 蓄潮 · branch: FURNACE · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 68 行；R §2.3
+research,9,tide_steady,name: 稳潮 · branch: FURNACE · visible: 0.21 · mvp:  · narrative_tag: 新,,0.21,新增,RT 第 69 行；R §2.3
+research,9,deep_root,name: 深根 · branch: FURNACE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 70 行；R §2.3
+research,9,root_net,name: 根网 · branch: FURNACE · visible: 0.25 · mvp: 是 · narrative_tag: 新,,0.25,新增,RT 第 71 行；R §2.3
+research,9,sky_sails,name: 天光帆阵 · branch: FURNACE · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留·0.16,,≤0.16,已发布,RT 第 72 行；R §2.3
+research,9,upkeep_2,name: 省流 · branch: FURNACE · visible: 0.20 · mvp:  · narrative_tag: 新,,0.20,新增,RT 第 73 行；R §2.3
+research,9,ley_core,name: 地脉核 · branch: FURNACE · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 74 行；R §2.3
+research,9,source_heart,name: 源点之心 · branch: FURNACE · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 75 行；R §2.3
+research,9,leap_pylon,name: 拱心（csv 已改，r-ledger） · branch: FURNACE · visible: 0.28 · mvp: 是 · narrative_tag: 新,,0.28,新增,RT 第 76 行；R §2.3
+research,9,heart_2,name: 心率·激昂 · branch: FURNACE · visible: 0.28 · mvp:  · narrative_tag: 新,,0.28,新增,RT 第 77 行；R §2.3
+research,9,heart_3,name: 心率·狂澜 · branch: FURNACE · visible: 0.28 · mvp:  · narrative_tag: 新,,0.28,新增,RT 第 78 行；R §2.3
+research,9,dual_foil_vault,name: 二向箔仓 · branch: HOLD · visible: ≤0.16 · mvp: 是 · narrative_tag: 保留,,≤0.16,已发布,RT 第 79 行；R §2.3
+research,9,foil_unfold,name: 升维 · branch: HOLD · visible: 0.22 · mvp: 是 · narrative_tag: 新,,0.22,新增,RT 第 80 行；R §2.3
+research,9,foil_mend,name: 逆熵门 · branch: HOLD · visible: 0.22 · mvp:  · narrative_tag: 新,,0.22,新增,RT 第 81 行；R §2.3
+research,9,foil_link,name: 接驳 · branch: HOLD · visible: 0.22 · mvp:  · narrative_tag: 新,,0.22,新增,RT 第 82 行；R §2.3
+research,9,leap_foil,name: 破界箔 · branch: HOLD · visible: 0.27 · mvp: 是 · narrative_tag: 新,,0.27,新增,RT 第 83 行；R §2.3
+quest_lines,10.1,line/lazyae,slug: LazyAE · title: 私货 · 懒人 AE（工具线，不进叙事）,引擎,≤0.16,已发布,H quests/build_quests.py
+quest_lines,10.1,line/shards,slug: FluxDepthsShards · title: 拾遗 · 船的灰（改标题）,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_bees,slug: FluxEchoBees · title: 拾遗 · 蜂,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_thaum,slug: FluxEchoThaum · title: 拾遗 · 要素,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_blood,slug: FluxEchoBlood · title: 拾遗 · 血,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_prey,slug: FluxEchoPrey · title: 拾遗 · 猎物,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_crops,slug: FluxEchoCrops · title: 拾遗 · 作物,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_mana,slug: FluxEchoMana · title: 拾遗 · 魔力,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_general,slug: FluxEchoGeneral · title: 卷二 · 回响（1 → 6）,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/echo_nexus,slug: FluxEchoNexus · title: 卷三 · 锚定（33 旧 + 7 新 + 挂载 city/ring）,叙事,≤0.16,已发布,H；N §7.1
+quest_lines,10.1,line/drift,slug: FluxEchoDrift · title: 卷一 · 搁浅（11 新 + 挂载 echo_nexus/grit、crystal）,叙事,0.18,新增,N §7.1；R §4.11
+quest_lines,10.1,line/city,slug: FluxEchoCity · title: 城志（29 新：叙事已签 L10，含 city/hunt_trial、city/hunt_duel）,叙事,0.19,新增,N §7.1；R §4.11
+quest_lines,10.1,line/manifest,slug: FluxEchoManifest · title: 卷四 · 显化（10 新 + 13 挂载）,叙事,0.21,新增,N §7.1；R §4.11
+quest_lines,10.1,line/source,slug: FluxEchoSource · title: 卷五 · 源点（16 新）,叙事,0.27,新增,N §7.1；R §4.11
+quest_lines,10.1,line/leap,slug: FluxEchoLeap · title: 终卷 · 跃升（11 新）,叙事,0.28,新增,N §7.1；R §4.11
+quest_lines,10.1,line/after,slug: FluxEchoAfter · title: 后记 · 往返（6 新，1 个隐藏到 1.x）,叙事,0.28,新增,N §7.1；R §4.11
+quest_keys_old,10.2,core crafting cables echo_provider,group: lazyae/*（4）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,depths imprinter first steam lv mv drill hologram handover fluid_imprint pump_lv pump_mv pump_hv,group: shards/*（13）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore imprinter first_imprint edit splice assembler incubator trees,group: echo_bees/*（8）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore memory essentia_echo outlet vis_charger vis_modules insight_echo crucible_echo infusion_echo,group: echo_thaum/*（9）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore first_orb blood_echo network,group: echo_blood/*（4）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore imprint mob_echo bosses,group: echo_prey/*（4）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore imprinter first_imprint seed_echo,group: echo_crops/*（4）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore mana_echo tiers,group: echo_mana/*（3）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,codex,group: echo_general/*（1）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_old,10.2,lore grit crystal frame core research echo_crystal library card terminal supply_port deck eco_dome phase_2 dome_generator root arcane_court blood_covenant hunting_ground mana_fountain resonance_gate dual_foil_vault phase_3 outer_ring sophon_array holo_table phase_4 sky_ring weather_station sky_sails observatory droplet_hangar deep_root（后 7 个是 0.16 的）,group: echo_nexus/*（33）,叙事 / 引擎,≤0.16,已发布,H quests/build_quests.py；N §7.3
+quest_keys_new,10.3,drift/wake,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/capsule,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/pinhole,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/sea,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/dredge,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/sonar,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/enrich,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/first_echo,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/other_shore,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/awake,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
+quest_keys_new,10.3,drift/rekindle,condition: feB00 ≥ 3 · line: line/drift（挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,echo_general/drift,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_general/tools,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_general/ten,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_general/kinds,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_general/forty,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/xiang_2,condition: feXiang ≥ 2；总图 · line: line/echo_nexus,,0.19,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/outline,condition: feXiang ≥ 2；总图 · line: line/echo_nexus,,0.19,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/phase_core,condition: 相位核、乡忆 ③、覆层、极光 · line: line/echo_nexus,,0.21,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/xiang_3,condition: 相位核、乡忆 ③、覆层、极光 · line: line/echo_nexus,,0.21,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/overlay,condition: 相位核、乡忆 ③、覆层、极光 · line: line/echo_nexus,,0.21,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/aurora,condition: 相位核、乡忆 ③、覆层、极光 · line: line/echo_nexus,,0.21,新增,N §7.2
+quest_keys_new,10.3,echo_nexus/first_foil,condition: 第一张箔 · line: line/echo_nexus,,0.22,新增,N §7.2
+quest_keys_new,10.3,manifest/rack_full,condition: feB10 ≥ 2 / 3 · line: line/manifest,,0.23,新增,N §7.2
+quest_keys_new,10.3,manifest/unfold,condition: feB10 ≥ 2 / 3 · line: line/manifest,,0.23,新增,N §7.2
+quest_keys_new,10.3,manifest/first_star,condition: feXiang ≥ 4、刻片、feB04 ≥ 4、fePhase ≥ 5、feCoord ≥ 3 · line: line/manifest,,0.25,新增,N §7.2
+quest_keys_new,10.3,manifest/star_plate,condition: feXiang ≥ 4、刻片、feB04 ≥ 4、fePhase ≥ 5、feCoord ≥ 3 · line: line/manifest,,0.25,新增,N §7.2
+quest_keys_new,10.3,manifest/root_net,condition: feXiang ≥ 4、刻片、feB04 ≥ 4、fePhase ≥ 5、feCoord ≥ 3 · line: line/manifest,,0.25,新增,N §7.2
+quest_keys_new,10.3,manifest/phase_5,condition: feXiang ≥ 4、刻片、feB04 ≥ 4、fePhase ≥ 5、feCoord ≥ 3 · line: line/manifest,,0.25,新增,N §7.2
+quest_keys_new,10.3,manifest/three_stars,condition: feXiang ≥ 4、刻片、feB04 ≥ 4、fePhase ≥ 5、feCoord ≥ 3 · line: line/manifest,,0.25,新增,N §7.2
+quest_keys_new,10.3,manifest/anchor,condition: feB18 ≥ 1、feXiang ≥ 5、feB18 ≥ 2 · line: line/manifest,,0.27,新增,N §7.2
+quest_keys_new,10.3,manifest/coast,condition: feB18 ≥ 1、feXiang ≥ 5、feB18 ≥ 2 · line: line/manifest,,0.27,新增,N §7.2
+quest_keys_new,10.3,manifest/satellite,condition: feB18 ≥ 1、feXiang ≥ 5、feB18 ≥ 2 · line: line/manifest,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/touch,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/matter,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/ley,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/crown,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/voice,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/third,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/heart,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/book,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/ark,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/rift_foil,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/tune,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/permit,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/whispers,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/dipper,condition: 见叙事 §7.2 · line: line/source,,0.27,新增,N §7.2
+quest_keys_new,10.3,source/pylon,condition: feB20 ≥ 4（拱心合拢）；feRoute ≥ 11 · line: line/source,,0.28,新增,N §7.2
+quest_keys_new,10.3,source/bearing,condition: feB20 ≥ 4（拱心合拢）；feRoute ≥ 11 · line: line/source,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/force,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/memory,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/hull,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/heading,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/checklist,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/rehearse,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/tide,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/bridge,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/ignite,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/leap,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,leap/home,condition: 四段弧（各 5 个 feBxx 份额级）、feLeap 1–6 · line: line/leap,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/return,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/echo_city,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/letter,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/heartbeat,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/celebrate,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,after/far,condition: feLeap ≥ 6 等 · line: line/after,,0.28,新增,N §7.2
+quest_keys_new,10.3,city/capsule,condition: feB00 ≥ 2 · line: line/city,,0.18,新增,N §7.2
+quest_keys_new,10.3,city/core,condition: feB01 ≥ 2；feB20 ≥ 1 / 2 / 3；feB02 ≥ 2 · line: line/city（city/ring 同时挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,city/ring,condition: feB01 ≥ 2；feB20 ≥ 1 / 2 / 3；feB02 ≥ 2 · line: line/city（city/ring 同时挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,city/segment,condition: feB01 ≥ 2；feB20 ≥ 1 / 2 / 3；feB02 ≥ 2 · line: line/city（city/ring 同时挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,city/half,condition: feB01 ≥ 2；feB20 ≥ 1 / 2 / 3；feB02 ≥ 2 · line: line/city（city/ring 同时挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,city/lectern,condition: feB01 ≥ 2；feB20 ≥ 1 / 2 / 3；feB02 ≥ 2 · line: line/city（city/ring 同时挂进 line/echo_nexus）,,0.19,新增,N §7.2
+quest_keys_new,10.3,city/eco_bed,condition: feB03 ≥ 2 · line: line/city,,0.20,新增,N §7.2
+quest_keys_new,10.3,city/tap,condition: feB04 ≥ 2；feB05 ≥ 2 · line: line/city,,0.21,新增,N §7.2
+quest_keys_new,10.3,city/guard,condition: feB04 ≥ 2；feB05 ≥ 2 · line: line/city,,0.21,新增,N §7.2
+quest_keys_new,10.3,city/press,condition: feB06 / feB07 / feB09 ≥ 2 · line: line/city,,0.22,新增,N §7.2
+quest_keys_new,10.3,city/flower,condition: feB06 / feB07 / feB09 ≥ 2 · line: line/city,,0.22,新增,N §7.2
+quest_keys_new,10.3,city/chord,condition: feB06 / feB07 / feB09 ≥ 2 · line: line/city,,0.22,新增,N §7.2
+quest_keys_new,10.3,city/altar,condition: feB08 / feB10 / feB11 ≥ 2 · line: line/city,,0.23,新增,N §7.2
+quest_keys_new,10.3,city/rack,condition: feB08 / feB10 / feB11 ≥ 2 · line: line/city,,0.23,新增,N §7.2
+quest_keys_new,10.3,city/layers,condition: feB08 / feB10 / feB11 ≥ 2 · line: line/city,,0.23,新增,N §7.2
+quest_keys_new,10.3,city/bay,condition: feB12 / feB13 ≥ 2 · line: line/city,,0.24,新增,N §7.2
+quest_keys_new,10.3,city/release,condition: feB12 / feB13 ≥ 2 · line: line/city,,0.24,新增,N §7.2
+quest_keys_new,10.3,city/root,condition: feB04 ≥ 4；feB14 / feB15 ≥ 2 · line: line/city,,0.25,新增,N §7.2
+quest_keys_new,10.3,city/night,condition: feB04 ≥ 4；feB14 / feB15 ≥ 2 · line: line/city,,0.25,新增,N §7.2
+quest_keys_new,10.3,city/trim,condition: feB04 ≥ 4；feB14 / feB15 ≥ 2 · line: line/city,,0.25,新增,N §7.2
+quest_keys_new,10.3,city/weather,condition: feB16 / feB17 ≥ 2 · line: line/city,,0.26,新增,N §7.2
+quest_keys_new,10.3,city/drop,condition: feB16 / feB17 ≥ 2 · line: line/city,,0.26,新增,N §7.2
+quest_keys_new,10.3,city/melt,condition: feB04 ≥ 6；feB19 ≥ 2；feB18 ≥ 2 / 4 · line: line/city,,0.27,新增,N §7.2
+quest_keys_new,10.3,city/beat,condition: feB04 ≥ 6；feB19 ≥ 2；feB18 ≥ 2 / 4 · line: line/city,,0.27,新增,N §7.2
+quest_keys_new,10.3,city/launch,condition: feB04 ≥ 6；feB19 ≥ 2；feB18 ≥ 2 / 4 · line: line/city,,0.27,新增,N §7.2
+quest_keys_new,10.3,city/offer,condition: feB04 ≥ 6；feB19 ≥ 2；feB18 ≥ 2 / 4 · line: line/city,,0.27,新增,N §7.2
+quest_keys_new,10.3,city/ignite,condition: feB20 ≥ 5 · line: line/city,,0.28,新增,N §7.2
+quest_keys_new,10.3,city/hunt_trial,condition: feHunt ≥ 1（第一次试猎赢）；用户签猎场未决 11 之前 hunt.trials 默认关，这条「完成后才显示」，签字后改常显（key、条件不变；R4-02） · line: line/city,,0.24,新增,B/blood-hunt/hunting_ground §7、§8 #26；L10
+quest_keys_new,10.3,city/hunt_duel,condition: feHunt ≥ 2（守门者之证）；用户签猎场未决 11 之前 hunt.duels 默认关，这条「完成后才显示」，签字后改常显（key、条件不变；R4-02） · line: line/city,,0.24,新增,B/blood-hunt/hunting_ground §7、§8 #26；L10
+scoreboard,11,feRec,记录总数（并集）,叙事,0.17,新增,N §7.4
+scoreboard,11,feCat,有记录的类别数,叙事,0.17,新增,N §7.4
+scoreboard,11,feShore,「滩」记录数,叙事,0.17,新增,N §7.4
+scoreboard,11,feXiang,乡忆段数 0–7,叙事,0.17,新增,N §7.4
+scoreboard,11,feCoord,星坐标数 0–7,叙事,0.17,新增,N §7.4
+scoreboard,11,fePhase,中枢相位 0–5,叙事,0.17,新增,N §7.4
+scoreboard,11,feRes,研究完成总数,叙事,0.17,新增,N §7.4
+scoreboard,11,feRoute,航线主干进度 0–13（anchor 1 … crossing 13）,叙事,0.17,新增,N §7.4
+scoreboard,11,feLeap,跃升阶段 0–6,叙事 / 终局组,0.17,新增,N §7.4
+scoreboard,11,feList,清单完成行数 0–20（实时，可降）,叙事,0.17,新增,N §7.4
+scoreboard,11,feB00,舱：1 放下、2 回声定位用过、3 重燃,叙事,0.17,新增,N §7.4
+scoreboard,11,feB01,中枢：1 成型、2 第一次显化、3 份额备齐,叙事,0.17,新增,N §7.4
+scoreboard,11,feB02、feB03、feB05–feB09、feB11–feB17,1 成型、2 第一次真正使用（城志）、3 份额备齐,叙事 / 各楼,0.17（随楼有值）,新增,N §7.4
+scoreboard,11,feB04,根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐,叙事 / 发电组,0.17,新增,N §7.4
+scoreboard,11,feB10,智子 4 级：成型、插满一架、展开度 2、份额备齐,叙事 / 算力组,0.17,新增,N §7.4
+scoreboard,11,feB18,桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐,叙事 / 终局组,0.17,新增,N §7.4
+scoreboard,11,feB19,心 5 级：成型、第一次运转、份额备齐、heart_2、heart_3,叙事 / 发电组,0.17,新增,N §7.4
+scoreboard,11,feB20,跃迁环 6 级：断环立起、第一次补段、≥ 12 段、拱心合拢、第一次解锁点火台、份额备齐,叙事 / 终局组,0.17,新增,N §7.4
+scoreboard,11,feHunt,猎场亲猎：1 第一次试猎赢、2 守门者之证（feB13 不插级）,血猎组,0.24,新增,B/blood-hunt/hunting_ground §7；L10
+site_families,12.1,GATE,sites: 0,引擎,≤0.16,已发布,H SiteFamily
+site_families,12.1,PAVILION,sites: 1、3、5、7,引擎,≤0.16,已发布,H
+site_families,12.1,HALL,sites: 2、4、6,引擎,≤0.16,已发布,H
+site_families,12.1,ZENITH,sites: 8,引擎,≤0.16,已发布,H
+site_families,12.1,ROOT,sites: 9,引擎,≤0.16,已发布,H
+site_families,12.1,OUTER_DIAG,sites: 11、13、15、17,引擎,≤0.16,已发布,H
+site_families,12.1,OUTER_FLANK,sites: 20–27（只有枚举；新图不用）,引擎,≤0.16,已发布,H；M §10.1
+site_families,12.1,SKY,sites: 30–37,引擎,≤0.16,已发布,H
+site_families,12.1,SKY 族地面标记 pod:floating,sites: 字符串常量 SiteFamily.POD_FLOATS（不是计划键、不是场地号；V1-20 补登已发布值）,引擎,≤0.16,已发布,H logic/SiteFamily；M §10.3
+site_families,12.1,ORBIT,sites: 40,引擎,≤0.16,已发布,H
+site_families,12.1,THIRD,sites: 50–65（只有枚举；新图不用，establish:third 永不提供）,引擎,≤0.16,已发布,H；M §10.1
+site_families,12.1,PLOT,sites: 70–91（末尾追加）,总平面,0.19,新增,R §4.11
+site_numbers,12.2,0–65,0.16 的全部场地号，含义不变（见族表）,引擎,≤0.16,已发布,H；R §4.11
+site_numbers,12.2,70,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,71,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,72,档案馆,总平面,0.19,新增,R §4.11
+site_numbers,12.2,73,生态穹,总平面,0.20,新增,R §4.11
+site_numbers,12.2,74,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,75,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,76,二向箔仓,总平面,0.22,新增,R §4.11
+site_numbers,12.2,77,魔力泉阵,总平面,0.22,新增,R §4.11
+site_numbers,12.2,78,秘法庭,总平面,0.23,新增,R §4.11
+site_numbers,12.2,79,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,80,智子阵列,总平面,0.23,新增,R §4.11
+site_numbers,12.2,81,全息沙盘,总平面,0.23,新增,R §4.11
+site_numbers,12.2,82,血契坛,总平面,0.24,新增,R §4.11
+site_numbers,12.2,83,回响猎场,总平面,0.24,新增,R §4.11
+site_numbers,12.2,84,观星台（天台）,总平面,0.25,新增,R §4.11
+site_numbers,12.2,85,天光帆阵（天台）,总平面,0.25,新增,R §4.11
+site_numbers,12.2,86,天穹气象站（天台）,总平面,0.26,新增,R §4.11
+site_numbers,12.2,87,水滴机库（天台）,总平面,0.26,新增,R §4.11
+site_numbers,12.2,88,PLOT 预留（不提供）,总平面,—,预留,R §4.11
+site_numbers,12.2,89,源点之心,总平面,0.27,新增,R §4.11
+site_numbers,12.2,90,跃迁环,总平面,0.19（断环）,新增,R §4.11
+site_numbers,12.2,91,乡忆室：预留不提供，属 90,总平面,—,预留,R §4.11、§4.12
+site_numbers,12.2,92–127,留空；≥ 128 不可用（场地号按有符号 byte 同步）,—,—,预留,H Campus.writeSync
+plan_keys,13.1,establish、forum、library、establish:<p>、grow:<p>、establish:outer、establish:third、refresh、repair:establish、repair:<场地>、module:<键>@<场地>、release、deepen,0.16 的计划键（establish:third 永不提供）,引擎,≤0.16,已发布,H BuildPlan / BuildJob
+plan_keys,13.1,retire:<slot>,只指 0.9.2 书库大厅退役；含义永远不变,引擎,≤0.16,已发布,H；R §4.12
+plan_keys,13.1,repair:ground:<名>（如 repair:ground:keel）,地面任务被拆后的修复（沿 0.16 BuildJob.REPAIR + 计划键的写法；归门 / 舰心门站位件缺格时排它）,总平面 / 中枢组,0.21,新增,B/nexus/nexus §3.14.3、未决 26 ②；H BuildJob.REPAIR；V1-06
+plan_keys,13.1,establish:ring,断环壳（只引用 R1 码）,终局组,0.19,新增,R §4.11
+plan_keys,13.1,ground:keel、ground:aft、ground:berth:1、ground:plot@72,龙骨地面、后舷（aft）、船位 1、档案馆地块（显示名照 M §6.1：aft「后舷」、stern「船尾」、berth「船位」；「泊位」是 0.16 SKY 31/33/35/37 的旧称，不给 berth 用）,总平面,0.19,新增,R §4.11；M §6.1；V1-08
+plan_keys,13.1,ring:<段号>,补段（段 = 环段号；ring:12 单列）,终局组,0.19,新增,R §4.11
+plan_keys,13.1,ground:plot@73,生态穹地块,总平面,0.20,新增,R §4.11
+plan_keys,13.1,ring:fit,墩内件（establish:ring 完成后自动排队）,终局组,0.20,新增,R §4.11；B/endgame/leap_ring §3
+plan_keys,13.1,ground:bow、ground:bay:n / ground:bay:s、ground:berth:2、ground:aft:water,船首、两湾、船位 2、后舷放水,总平面,0.21,新增,R §4.11
+plan_keys,13.1,reform:<场地号>,原地换形：reform:9（井 0.21 / 根 0.25）、reform:8（带腿穹顶 0.21）、reform:0（阙 0.22）；将来的 PLOT 原地换形同理（如 reform:73）。目标形状名记在任务的 Form 字段，物理键 Fsn（§5.2，不是 Sn；R3-01）,总平面 / 各楼,0.21,新增,R §4.11；M §10.3.1
+plan_keys,13.1,recast:<旧场地号>,换场地重铸：HALL 2 / 4 / 6、PAV 1 / 3 / 5 / 7、OUTER_DIAG 11 / 13 / 15 / 17、SKY 30 / 32 / 34 / 36,总平面,0.22,新增,R §4.11、§4.12；M §10.3.1
+plan_keys,13.1,ground:unlay,拆塔柱和新图不要的铺地（代替 recast:outer）,总平面,0.22,新增,M §10.3.1
+plan_keys,13.1,ground:plot@76、ground:plot@77,箔仓、泉阵地块,总平面,0.22,新增,R §4.11
+plan_keys,13.1,ground:berth:3、ground:plot@78、@80、@81,船位 3、秘法庭、智子、沙盘地块,总平面,0.23,新增,R §4.11
+plan_keys,13.1,ground:plot@82、@83,血契坛、猎场地块,总平面,0.24,新增,R §4.11
+plan_keys,13.1,ground:sky,天台（天光池、机库池、雨池、南盆落点；对角栈桥归各楼模块任务）,总平面,0.25,新增,R §4.11；M §11.1
+plan_keys,13.1,ground:plot@84、@85、@86、@87,天台四座的「庭院」地面任务：总平面没有内容（天台的地面全在 ground:sky，M 未决 24），号留着、不提供（V1-05 由「新增」改「预留」）,总平面,—,预留,R §4.11；M §6.1、未决 24；V1-05
+plan_keys,13.1,ground:stern、ground:ley、ground:berth:4、ground:plot@89,船尾（回望丘）、地脉线、船位 4（心的门前石与心光桥）（以上三项挂研究 third_ring，显示「破界环」；ley 另要 04c 地脉核已成型，M §11.1）；心地块 plot@89（source_heart 研究 + 18b 已建，M §6.1 第 23 号；不挂 third_ring）,总平面,0.27,新增,R §4.11；M §6.1 第 22、23 号、§11.1；V1-08、V1-09
+plan_keys,13.1,ring:bank,两墩电容（third_ring ∧ ring:fit 后提供）,终局组,0.27,新增,R §4.11
+plan_keys,13.1,crown,桅顶生长：轨道锚 → 源点之冠,终局组,0.27,新增,R §4.11；B/endgame/README §4
+plan_keys,13.1,core,根位生长：深根 → 地脉核,发电组,0.27,新增,R §4.11；B/power/tidal_well §7
+plan_keys,13.1,source:base、source:arms,源点之心两段,发电组,0.27,新增,R §4.11；S §3.8.3(f)
+plan_keys,13.1,ring:12,拱心合拢、乡忆室、控制器、全城锚泊,终局组,0.28,新增,R §4.11
+plan_keys,13.1,后缀 #1 / #2,地面任务超 2 M EU 的 A 带拆分（勘测完成时由 GroundSplit 确定性地算出）,重构组,0.19,新增,R §4.11
+plan_keys,13.1,recast:outer、recast:8、recast:9,非数字的 outer 改 ground:unlay；原地换形一律 reform:<号>,—,不发,作废,M §10.3.1；R §4.12
+plan_keys,13.1,site.*、job.swap、plaza.*,永不加（玩家不选场地；NoSiteChoiceTest）,—,不发,作废,U §2.9.3；R §4.11
+plan_keys,13.1,grade:top:<k>,"削顶：只清不放（检查格 0、步数 0、不成型、不铺地；清场柱 T + 1 → 段的 yTo，不是 grade 柱）。k = 1…n 从 −A 端数起，按 A 累加切段，每段截顶以上的实心格 ≤ 31,250、≤ 2 M EU（单个 A 行就超的再按 R 切）；段边界存任务 Form.Gts（§5.2），勘测完成时写入、之后不变，planFor 重算逐格不变（不是 GroundSplit 那种只靠键后缀的拆法）。重铸：勘测完成后就提供（不等形状门槛），k 依次跑完第 0 批才开放；新园区 campus.hills = grade：重燃后随 anchor 提供，排在全部 ground:* 和 establish:ring 之前。地形走重铸分支（外来机器默认 BLOCKED，矿石按地形清）。grade: 是新前缀，0.16 的计划键里没有",总平面,0.22,新增,M §10.2.1、§10.3.1；R4-03
+step_kinds,13.2,0,HARD,引擎,≤0.16,已发布,H BuildJob
+step_kinds,13.2,1,SOFT,引擎,≤0.16,已发布,H
+step_kinds,13.2,2,AIR,引擎,≤0.16,已发布,H
+step_kinds,13.2,3,DIG,引擎,≤0.16,已发布,H
+step_kinds,13.2,4,DRAIN,引擎,≤0.16,已发布,H
+step_kinds,13.2,5,ABSORB（舱并进中枢）,中枢组,0.19,新增,R §4.11
+step_kinds,13.2,BuildJob.V,3（GRADE_V 2）：本轮任何一版都不提；追加的单元不进旧形状,引擎,≤0.16,已发布,H；R §4.12、§⑤ 5.5
+module_status,14,0,NEEDS_RESEARCH,引擎,≤0.16,已发布,H Campus.ModuleStatus
+module_status,14,1,QUEUED,引擎,≤0.16,已发布,H
+module_status,14,2,BUILDING,引擎,≤0.16,已发布,H
+module_status,14,3,BUILT,引擎,≤0.16,已发布,H
+module_status,14,4,NO_ROOM,引擎,≤0.16,已发布,H
+module_status,14,5,RING_FULL,引擎,≤0.16,已发布,H
+module_status,14,6,AWAITING_SHAPE（「等 <版本>：还没有新形状」）,重构组,0.19,新增,R §4.11、§4.12
+module_status,14,7,REFORMING（原地换形中，算已建）,重构组,0.19,新增,R §4.11、§4.12
+module_status,14,8,RECASTING（重铸中，算已建）,重构组,0.19,新增,R §4.11、§4.12
+module_status,14,9,MOORED（停泊 / 调度休眠）,重构组,0.19,新增,R §4.11、§4.12
+module_status,14,NOT_YET,提案一的写法，作废,—,不发,作废,R §4.12
+shapes,15,main,TileMultiblock.MAIN：各楼 0.16 形状,引擎,≤0.16,已发布,H
+shapes,15,hall,书库大厅,引擎,≤0.16,已发布,H TileLibrary
+shapes,15,phase1…phase5（前缀 phase）,中枢五相位,引擎,≤0.16,已发布,H NexusShape
+shapes,15,well、well_20、well_14、well_8、root、root_7、root_in、root_in_20、root_in_14、root_in_8、core,根位 0.16 形状名（core 是 0.16 已有常量 RootShape.CORE，0.27 起给地脉核用）,引擎,≤0.16,已发布,H logic/RootShape
+shapes,15,moored、floating、moored_36、moored_32、moored_28,回响穹顶 0.16 形状,引擎,≤0.16,已发布,H DomeGeneratorShape
+shapes,15,lantern,档案馆（main、hall 照旧能用）,中枢组,0.19,新增,R §4.11
+shapes,15,garden,生态穹,生态组,0.20,新增,R §4.11
+shapes,15,well_v2、well_v2_20、well_v2_14、well_v2_8,潮汐井新形,发电组,0.21,新增,B/power/tidal_well §7
+shapes,15,pod_v2、pod_v2_36、pod_v2_32、pod_v2_28、pod_v2_float,回响穹顶新形,守护组,0.21,新增,B/guard/dome_generator §7
+shapes,15,stele,二向箔仓,门与仓,0.22,新增,R §4.11
+shapes,15,que,谐振塔（阙）,门与仓,0.22,新增,R §4.11
+shapes,15,spring,魔力泉阵,魔法组,0.22,新增,B/magic/mana_fountain §7
+shapes,15,spire,秘法庭,魔法组,0.23,新增,B/magic/arcane_court §7
+shapes,15,sphere,智子阵列,算力组,0.23,新增,R §4.11
+shapes,15,pyramid,全息沙盘,算力组,0.23,新增,R §4.11
+shapes,15,mirror,血契坛,血猎组,0.24,新增,R §4.11
+shapes,15,arena,回响猎场,血猎组,0.24,新增,R §4.11
+shapes,15,root_v2、root_v2_7、root_v2_in、root_v2_in_20、root_v2_in_14、root_v2_in_8,深根新形,发电组,0.25,新增,B/power/tidal_well §7
+shapes,15,armillary,观星台,算力组,0.25,新增,R §4.11
+shapes,15,rig、rig_t,天光帆阵（旧形状名不动）,发电组,0.25,新增,R §4.11
+shapes,15,leaf_tower,天穹气象站,守护组,0.26,新增,R §4.11
+shapes,15,weather_low,天穹气象站的矮座退路（Y0 > 208 的园区；只在 0.26 接口提交时选了这条退路才发，否则作废）,守护组,—,预留,R §2.1 0.26、B16；B/guard/weather_station 未决 13；V1-14
+shapes,15,palm,水滴机库,守护组,0.26,新增,R §4.11
+shapes,15,core_9、core_in、core_in_7、core_in_w、core_in_w20、core_in_w14、core_in_w8,地脉核（与已有的 core 一族）,发电组,0.27,新增,B/power/tidal_well §7
+shapes,15,orbital_anchor、source_crown、source_crown_low、anchor_low、anchor_low_crown、anchor_in、anchor_in_crown,轨道锚 / 源点之冠,终局组,0.27,新增,B/endgame/README §4
+shapes,15,heart,源点之心,发电组,0.27,新增,B/power/source_heart §7
+shapes,15,leap_ring（外半径 32 = 外径 64 档）、leap_ring_28、leap_ring_24、leap_ring_20、leap_ring_16,跃迁环五档：后缀 = 外半径（V1-07：原写「外径 32」错，DECISIONS A1 是 64 格外径）,终局组,0.28,新增,B/endgame/leap_ring §7；L11
+units,16,eco_dome,frozen_prefix: G-RB G-RF G-R G-LB G-LF G-L G-B I-F I-B U-R U-L C（种类 planter × 3 槽，12 个） · appended: 13–20：ark-1…8（种类 ark，各 9 槽；V1-14） · sample_slots: 108,,0.20,新增,H EcoDomeShape；R §4.9
+units,16,dual_foil_vault,frozen_prefix: canvas × 42（层 + L/R-k）+ foil × 1（43 槽） · appended: fold_rack × 8，槽 43–50 · sample_slots: 51,,0.22,新增,H；R §4.9
+units,16,root,frozen_prefix: tap-1…8（tap）、bay-1…8（bay） · appended: 16–23：bay2 · sample_slots: 24,,0.21,新增,H RootShape；R §4.9
+units,16,blood_covenant,frozen_prefix: cradle-1…8（种类 cradle，宝珠托）+ bay-1…4（种类 ritual，显示名改「契龛」） · appended: 12–19：rite_lamp-1…8（种类 rite_lamp） · sample_slots: 20,,0.24,新增,H BloodCovenantShape；R §4.9
+units,16,hunting_ground,frozen_prefix: imprint-1…12（imprint） · appended: 12–19：hunt_hook-1…8（种类 hunt_hook）；20：warden · sample_slots: 21,,0.24,新增,H；R §4.9
+units,16,sky_sails,frozen_prefix: mast-1…6（槽 0–5 = 下帆 6 片） · appended: mast-7…18（槽 6–17） · sample_slots: 18,,0.25,新增,H；R §4.9、§4.12
+units,16,resonance_gate,frozen_prefix: resonator-1…6（种类 resonator，2 槽）+ rack-7…10（种类 rack，3 槽；序号接着 resonator 往下数，仓库 ResonanceGateShape） · appended: 不加（只换位置） · sample_slots: 24,,—,已发布,H；R §4.9
+units,16,sophon_array,frozen_prefix: rack-1…48（memory_rack，3 槽） · appended: 不加 · sample_slots: 144,,—,已发布,H；R §4.9
+units,16,holo_table,frozen_prefix: table（9 槽）+ layer-1…9（console，0 槽） · appended: 不加 · sample_slots: 9,,—,已发布,H；R §4.9
+units,16,library,frozen_prefix: 78 书架 × 9 · appended: 不加（LanternUnits 重映射位置） · sample_slots: 702,,—,已发布,H；R §4.9
+units,16,weather_station,frozen_prefix: weather-1…4（1 槽） · appended: 不加 · sample_slots: 4,,—,已发布,H；R §4.9
+units,16,observatory,frozen_prefix: lens-1…7（1 槽） · appended: 不加 · sample_slots: 7,,—,已发布,H；R §4.9
+units,16,droplet_hangar,frozen_prefix: cradle-1…8（种类 droplet_cradle，1 槽） · appended: 不加 · sample_slots: 8,,—,已发布,H；R §4.9
+units,16,arcane_court,frozen_prefix: infusion（8 槽）+ cauldron-1…4（1）+ aspect-1…8（pillar，3）+ desk-1…8（1） · appended: 不加（重映射位置） · sample_slots: 44,,—,已发布,H ArcaneCourtShape；B/magic/README
+units,16,mana_fountain,frozen_prefix: fountain-1…8（1）+ urn-1…8（1） · appended: 不加（重映射位置） · sample_slots: 16,,—,已发布,H ManaFountainShape；B/magic/README
+units,16,dome_generator,frozen_prefix: ward-1…7（ward，1 槽） · appended: 不加 · sample_slots: 7,,—,已发布,H DomeGeneratorShape
+units,16,orbital_anchor（首发即冻结）,frozen_prefix: — · appended: sat-1…4（种类 sat_cradle，1 槽）、crown_core（1）、crown_edge（1）、dust（9） · sample_slots: 15,,0.27,新增,B/endgame/orbital_anchor §3.11；L05
+units,16,source_heart（首发即冻结）,frozen_prefix: — · appended: petal-1…4（petal，各 4 槽） · sample_slots: 16,,0.27,新增,B/power/source_heart §3
+units,16,leap_ring,frozen_prefix: — · appended: 无单元（只存核心和覆层） · sample_slots: 0,,0.28,新增,B/endgame/README §3
+views,17.1,nexus/overview nexus/build nexus/power nexus/leap nexus/city nexus/log nexus/bind nexus/issues,舰桥各页,界面组,0.18,新增,U §2.9.2
+views,17.1,module/overview module/run module/links module/upgrade module/log,建筑控制台（15 座旧楼的后备运转页）,界面组,0.19,新增,U §2.9.2
+views,17.1,capsule/site capsule/overview,搁浅舱勘测（P71 船图页）、总览,中枢组,0.18（capsule/site 0.19，V2-02）,新增,B/nexus/drift_capsule §7；R §3.2 B00b；V2-02
+views,17.1,nexus/compute,算力,中枢组,0.20,新增,B/nexus/nexus §7
+views,17.1,vault/wall,箔墙,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+views,17.1,sophon/run,智子运转,算力组,0.23,新增,B/compute/sophon_array §7
+views,17.1,holo/run holo/maps,沙盘运转、海图,算力组,0.23,新增,B/compute/holo_table §7
+views,17.1,observatory/run observatory/eye,观星台运转、目镜,算力组,0.25,新增,B/compute/observatory §7
+actions,17.2,build.start build.pause build.cancel build.skip_blocked build.repair build.take_out supply_from_inv manifest_pin manifest_unpin manifest_fill open_object reopen locate ctl.set issue.refresh,舰桥 / 控制台通用动作,界面组,0.18,新增,U §2.9.3
+actions,17.2,capsule.sonar capsule.survey capsule.research capsule.rekindle,舱,中枢组,0.18（survey、rekindle 0.19，V2-02）,新增,B/nexus/drift_capsule §7；V2-02
+actions,17.2,lectern.page archive.locate archive.queue archive.bindFill archive.bindCancel,档案馆（装订 0.27 起有效）,中枢组,0.19,新增,B/nexus/library §7
+actions,17.2,compute.share compute.pause,算力分配,中枢组,0.20,新增,B/nexus/nexus §7
+actions,17.2,sophon.fill_inv sophon.fill_vault,智子补丝,算力组,0.23,新增,B/compute/sophon_array §7
+actions,17.2,holo.layer holo.solo holo.focus holo.search holo.pick holo.dispatch holo.dispatch_u holo.rehearse holo.celebrate,沙盘（holo.celebrate 常量 0.23、处理器 0.28：庆典要环的两墩与 Cele）,算力组,0.23,新增,B/compute/holo_table §7；B/compute/README
+actions,17.2,observatory.tray.split observatory.tray.take_all,观星台刻片托盘,算力组,0.25,新增,B/compute/observatory §7
+actions,17.2,launch.arm launch.commit,起航（舵台 / 心门）,算力组 / 发电组,0.28,新增,B/compute/holo_table；B/power/source_heart
+actions,17.2,leap.seat leap.unseat,晶核座,中枢组,0.28,新增,B/nexus/nexus §7
+actions,17.2,ctl.set 目标：sophon.u sophon.autoDown sophon.autoUp sophon.nightBoost sophon.followDispatch,智子控件,算力组,0.23,新增,B/compute/sophon_array §7
+actions,17.2,ctl.set 目标：root.sluice root.store root.charge root.autofeed root.card.<n>.pause；sails.autotrack sails.berth sails.storelight sails.autofeed；heart.target heart.charge heart.autofeed,发电控件,发电组,0.21 / 0.25 / 0.27,新增,B/power/README §6
+actions,17.2,ctl.set 目标：voyage.steady,稳潮 · 全船（研究 tide_steady；写 fluxecho_voyage.TideSteady）,发电组,0.21,新增,B/power/tidal_well §3.6；B/power/README §6；V1-14
+actions,17.2,ctl.set 目标：observatory.target observatory.etch observatory.pullFromVault,观星台（对准、刻台开关、从箔仓取坯；pullFromVault 的默认值读同名配置键，两个名空间）；observatory.target 的取值含 reissue（补回丢了的星坐标，观星台 r-p0-1；只是新值、不是新键，R4-10）,算力组,0.25,新增,B/compute/observatory §3.6、§3.7、§7.4；V1-14
+actions,17.2,ctl.set 目标：weather.kind weather.dur weather.sched.<n>；动作 weather.issue weather.dawn,天穹气象站 P16（天令种类、时长、预约；发令、催晨；只在现场打开时受理）,守护组,0.26,新增,B/guard/weather_station 未决 16；V1-14
+actions,17.2,ctl.set 目标：spring floor target target.workshop prio remote.unbind remote.target workshop eco aim replant nozzle,魔力泉阵 P16（泉涌模式、保底、池目标、优先序、远池、泉边、瞄准、补种、泉口档位；不带楼前缀，同谐振塔、箔仓）,魔法组,0.22,新增,B/magic/mana_fountain §3.11、修订记录 r-ledger 3；V1-14
+actions,17.2,ctl.set 目标：aspect.order still ward.target kiln.<k> kiln.<k>.sign inkwell vis,秘法庭 P16（要素优先、宁定、护法目标、炉工开关与签名、墨池、补灵；不带楼前缀，同泉阵）,魔法组,0.23,新增,B/magic/arcane_court §3.12、未决 19；V2-04
+actions,17.2,ctl.set 目标：alloc.<target> mode.<target> ordo fill_all recall_all,谐振塔,门与仓,0.22,新增,B/gate-vault/resonance_gate §7
+actions,17.2,ctl.set 目标：sort seal density dest fold_k src.<id> pull.<id> keep.<i> pri lock.<kind> flatkind.<kind> cap.<c>.<l> overflow.<c>.<l> mount unmount take.<kind>.<n> page.<kind>,二向箔仓,门与仓,0.22,新增,B/gate-vault/dual_foil_vault §7
+actions,17.2,site.move site.prev site.next job.swap plaza.lay,永不加（NoSiteChoiceTest）,—,不发,作废,U §2.9.3
+actions,17.2,build.allow_foreign,P03 [拆进回收箱]、备份卡 [拆掉这些]：把外来机器（逐台或整批；坐标 + 方块注册名）写进中枢 Campus 子表 Rx（§5.2），之后 TerrainRule 重铸分支对它们判 CLEAR，机器里的东西由 DropCapture 接进回收箱；C14 两次确认；矿石不受理（永不进 Rx）,总平面 / 界面组,0.19,新增,M §10.2.1 三与「版本」段、r-p0-1 需同步表 §17.2 行（总平面建议名）；L22；R4-08
+actions,17.2,recast.survey recast.backed_up recast.abandon,重铸：[重新勘测]（重跑 RecastSurvey，结果不存档）；备份卡 [我已备份]（C14 两次确认后才解锁 P03 的重铸按钮；本账不为它加存档键，要跨重启记住须先登 §5.2）；[放弃重建 · 取回]（P03「重铸中」那一行，P20 旧园区记录的 [取回到回收箱] 同受理：整条 fluxecho_recast 记录按溢出去处倒出后删除，C14 两次确认）,总平面 / 界面组,0.22,新增,M §10.2.1 一、§10.3.2；R §3.2 C03、§5.9；L22；R4-08
+issue_codes,17.3,nexus_no_power nexus_unformed research_paused route_next_missing manifest_output_full manifest_records_resting manifest_phase build_missing build_no_power build_blocked build_incomplete recycle_full module_no_power module_unformed module_full chunk_unloaded,通用问题码（lang fluxecho.issue.<码>）,界面组,0.18,新增,U §2.9.4
+issue_codes,17.3,module.<楼键>.<码>,楼专属问题码（如 module.observatory.need_whispers、crown_edge_empty）；「停摆级」只认 err,各楼,随楼,新增,U §2.9.4；B/endgame/leap_ring §7
+issue_codes,17.3,machine_<status>、net_<alert>,机器与网络,界面组,0.18,新增,U §2.9.4
+commands,18,/fluxecho research all | reset [player],研究调试（OP）,引擎,≤0.16,已发布,H cmd
+commands,18,/fluxecho build free on | off、/fluxecho build finish、/fluxecho build status,营造调试（OP）,引擎,≤0.16,已发布,H cmd
+commands,18,/fluxecho_nei,NEI 导出,引擎,≤0.16,已发布,H
+commands,18,/fluxecho swatch [2]、/fluxecho swatch clear,样板墙（创造 / OP）,风格组,0.17,新增,R §4.11；S §3.8.3(f)
+commands,18,/fluxecho probe depth | sky | sun | bed,探测,风格组,0.17,新增,R §4.11
+commands,18,/fluxecho cam <A–E>,机位,总平面,0.17,新增,R §4.11
+commands,18,/fluxecho proto plaza,广场样地,总平面,0.18,新增,R §4.11
+commands,18,/fluxecho_ui gallery,界面组件库,界面组,0.18,新增,R §4.11
+commands,18,/fluxecho_ui <页>,客户端命令：聊天链接打开指定页,界面组,0.23（U5b）,新增,U §6.1 U5b；V1-14
+commands,18,NEI 处理器 fluxecho.research、fluxecho.building；Waila 渲染器 fluxecho.chip、fluxecho.bar,客户端注册名（不进存档；别的模组配置会按名引用，照只增管）,界面组,0.23（U5a / U5b）,新增,U §6.1；R C04；V1-14
+commands,18,/fluxecho proto look、/fluxecho proto rainveil,原型,中枢组 / 守护组,0.20,新增,R §4.11
+commands,18,/fluxecho proto court,原型,魔法组,0.22,新增,R §4.11
+commands,18,/fluxecho proto arena,原型,血猎组,0.23,新增,R §4.11
+commands,18,/fluxecho proto forecast、/fluxecho proto droplet,原型,守护组,0.24,新增,R §4.11
+commands,18,/fluxecho proto rift,原型,终局组,0.26,新增,R §4.11
+commands,18,hall garden gallery sanctum altar arena spring datavoid canvas observatory,光门房间模板（RoomPlan）,引擎,≤0.16,已发布,H logic/RoomPlan
+commands,18,homeward,原乡露台（系统专用，不进光门物品循环）,终局组,0.28,新增,B/endgame/README §4
