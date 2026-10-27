@@ -1,4 +1,4 @@
-# 开发手册 · 回响之城：城市模块框架、新部件、生态穹（0.11.0 起）、天顶和根（0.12.0）、四亭（0.13.0）、门与仓（0.14.0）、0.14.1 修正（每座建筑都能建、随地势调整、楼梯）、外环（0.15.0）、天环（0.16.0）
+# 开发手册 · 回响之城：城市模块框架、新部件、生态穹（0.11.0 起）、天顶和根（0.12.0）、四亭（0.13.0）、门与仓（0.14.0）、0.14.1 修正（每座建筑都能建、随地势调整、楼梯）、外环（0.15.0）、天环（0.16.0）；0.17.0「白舟」：旧楼的过渡态和灯窗、每楼图例
 
 > 改 `city/`、`city/client/`、`logic/` 里的城市类（`SiteFamily`、`ShapeKit`、`UnitLayout`、`CityBuild`、`EcoDomeShape`、`DomeGeneratorShape`、`RootShape`、`ArcaneCourtShape`、`BloodCovenantShape`、`HuntingGroundShape`、`ManaFountainShape`、`ResonanceGateShape`、`DualFoilVaultShape`、`ModuleCores`、`ModuleLook`、`DomeLook`、`RootLook`、`ArcaneLook`、`BloodLook`、`HuntingLook`、`ManaLook`、`CanvasLook`、`VaultLook`、`GateLook`、`Tide`、`XRay`、`ModuleMap`、`UnitBrowse`、`PreviewSites`，0.14.1 的 `CityOffer`、`CampusBand`、`Renovation`，0.15.0 的 `OuterRing`、`CampusSplit`、`OuterLook`、`SophonArrayShape`、`HoloTableShape`、`SophonLook`、`HoloLook`，0.16.0 的 `SkyRing`、`WeatherStationShape`、`SkySailsShape`、`ObservatoryShape`、`DropletHangarShape`、`SkyLook`、`WeatherLook`、`SailLook`、`ObservatoryLook`、`DropletLook`、`PodView`、`CircuitTiers`），或者要给城里加一座新建筑之前读这一篇。园区、建造引擎、投影、地形判定、回响档案馆在 [campus.md](campus.md)；中枢、研究、显化、多方块框架、**相位生长和光梯**在 [nexus.md](nexus.md)（§4.1、§4.2）；画在世界里的东西先守 [gates.md](gates.md) §5；总览见 `CLAUDE.md`。
 > **方案在仓库外**：建筑方案 `D:\Code\FluxEcho-campus\city\CITY.md`（下文「CITY §x」）和它的生成器 `city/gen/`（`kit.py` 图例和自检、`b_hall.py` 生态穹和二向箔仓、`b_pav.py` 四座亭子、`b_gate.py` 谐振塔、`b_outer.py` 智子阵列和全息沙盘（0.15.0）、`b_sky.py` 穹顶发生器的吊舱和腿（0.14.1 起 `dome_legs(F)` 按天顶基准高度）、天环的平台和栈桥（`platform`、`hut`、`catwalk`）和四座空中建筑（0.16.0 建：`weather_station()`、`sail_array()`、`observatory()`、`droplet_hangar()`）、`b_root.py` 潮汐井（0.14.1 起 `tidal_well(D)`、`well_into(s, base, D)` 按井深）、深根（0.16.0 起按地方大小长：`chamber(y0, D)`、`deep_root(h)` 的 13 层和 7 层根室、长进井里的 `deep_root_in(D)`、`deep_root_for`）、地脉核、`siteplan.py` 场地检查、`report.py` 计数和用料、`plans/<形状>.txt` 每个形状的每一层——0.17.0 起一个形状一个文件，`plans/INDEX.txt` 记着顺序，0.16.0 及以前是一个 `plans.txt`，等于 `INDEX.txt` 的第一行后面依次接空两行和每个形状的文件）；每个版本的合同在 `D:\Code\FluxEcho-campus\spec\M<n>.md`（0.11.0 是 `M8.md`，0.12.0 是 `M9.md`，0.13.0 是 `M10.md`，0.14.0 是 `M11.md`，0.14.1 是 `M11.1.md`，0.15.0 是 `M12.md`，0.16.0 是 `M13.md`）。**文字和生成器对不上时以生成器为准**，Java 逐行移植生成器（像 `ArchiveShape` 移植 `spec/gen/archive.py`），改了生成器就把 CITY.md 的文字改过来。
@@ -40,7 +40,7 @@
 - **体量套件**（每座楼全用）：地基环（frame FOUNDATION，占地边上的 y0；里面是 FLOOR 阶段铺的软地面，同档案馆的 824 格）；**墙裙** PANEL_DARK 在 y1 一圈（亭子、空中小屋也有）；墙是 PANEL 加**按楼不同节奏**的 PANEL_LIT 壁柱（生态穹门厅 4、二向箔仓长边 4 短边 5、秘法庭 3、血契坛 4、猎场 3、魔力回廊 2、大门 4、智子 3、沙盘 3、源点之心 4——邻居之间最先不同的就是节奏）；**光檐带**（deck CORNICE）在每座楼自己的高度：y5 空中小屋，y6 魔力/智子/吊舱，y7 生态穹鼓座/源点之心，y8 猎场，y10 沙盘，y12 档案馆/秘法庭/生态穹门厅，y16 大门，y24 二向箔仓——同一条轴上的邻居不同高；每座楼有**自己的顶**（生态穹的玻璃穹顶、二向箔仓的锯齿碑、秘法庭的八角尖塔……）。
 - **光只走线**：壁柱、檐口、门槛、0/45/90° 线上的肋、亮的回廊边、LIT 地面脊线；不打泛光、没有发光的墙；室内靠亮线加渲染的吊灯和光晕。特效也守这条。
 - **平面干净**：只用 0° 和 45°，八角 `oct(h, round(4h/3))`（12/16、15/20、20/27…），圆只用于穹顶、环和球（半径 ≥ 6），1:2 只用于路；蓝图沿跨向镜像（StructureLib 的规矩），镜不了的（螺旋坡道、种子装饰）做 SOFT（不检查，§1 形状规则）。
-- **一种材料、多种光色**：只用 0.10.0 的部件和锁定的调色板（campus.md §3：地砖 `#3E4C58`、地缝钢 `#101C28`、墙板 `#45525E`、深色 `#2C3842`、钢 `#2C5470`、光 `#C8F8FF` 在 `#1C3446` 上、青 `#4FE3FF`；玻璃是钢框镂空的 GLAZE）。**模块的主题色只出现在渲染的光里**（墙裙光线、脉络、全息、室内特效、名牌、投影），永远不做方块染色——用户要的「每座建筑风格一致」（深蓝钢 + 细青光线），也让部件数保持很少。主题色：档案馆 `0x8A5CFF` · 生态穹 `0x7BE08A` · 二向箔仓 `0xF2EBDD` · 秘法庭 `0xC77DFF` · 血契坛 `0xE0344A` · 回响猎场 `0xFF9A3C` · 魔力泉阵 `0x6AA8FF` · 谐振塔 `0x5CF2C2` · 穹顶发生器 `0x7DB8FF` · 潮汐井 `0x3FC8E8` → 深根 `0x5FD3A8` → 地脉核 `0xFF7A3C` · 智子阵列 `0xFF8CE6` · 全息沙盘 `0x66F0FF` · 天光帆阵 `0xFFD27A` · 观星台 `0xB9C8FF` · 水滴机库 `0xD8E4F0` · 天穹气象站 `0x9AD0FF` · 轨道锚 `0xFFFFFF` · 源点之心 `0xF6E7FF`。
+- **一种材料、多种光色**（**0.17.0 起作废**：重新设计里每座楼按自己的题材用自己的材质（新材质族，[skin.md](skin.md)），旧楼先换成「白骨 + 浅暖灰墙 + 玄基墙裙 + 本色光线」的过渡态，见下面「0.17.0 的旧楼」；下面是 0.11–0.16 的规则，留作旧形状的记录）：只用 0.10.0 的部件和锁定的调色板（campus.md §3：地砖 `#3E4C58`、地缝钢 `#101C28`、墙板 `#45525E`、深色 `#2C3842`、钢 `#2C5470`、光 `#C8F8FF` 在 `#1C3446` 上、青 `#4FE3FF`；玻璃是钢框镂空的 GLAZE）。**模块的主题色只出现在渲染的光里**（墙裙光线、脉络、全息、室内特效、名牌、投影），永远不做方块染色——用户要的「每座建筑风格一致」（深蓝钢 + 细青光线），也让部件数保持很少。主题色：档案馆 `0x8A5CFF` · 生态穹 `0x7BE08A` · 二向箔仓 `0xF2EBDD` · 秘法庭 `0xC77DFF` · 血契坛 `0xE0344A` · 回响猎场 `0xFF9A3C` · 魔力泉阵 `0x6AA8FF` · 谐振塔 `0x5CF2C2` · 穹顶发生器 `0x7DB8FF` · 潮汐井 `0x3FC8E8` → 深根 `0x5FD3A8` → 地脉核 `0xFF7A3C` · 智子阵列 `0xFF8CE6` · 全息沙盘 `0x66F0FF` · 天光帆阵 `0xFFD27A` · 观星台 `0xB9C8FF` · 水滴机库 `0xD8E4F0` · 天穹气象站 `0x9AD0FF` · 轨道锚 `0xFFFFFF` · 源点之心 `0xF6E7FF`。
 - **入口**：朝前的楼（大厅、大门、外环侧位、第三环、空中小屋）用**套件门**（`ShapeKit.portal`）：两扇 3×4 的门（`x = MID−3…MID−1`、`MID+1…MID+3`，y1–4，两格深必须是空气），门间柱里自下而上是控制台座（y1）、控制器（y2，眼睛高度）、两节立柱（y3–4），y5 光檐门楣，门外两格的悬浮环段雨棚（y5，decor）——和档案馆的门一模一样（大门照生成器不用套件门：两座翼楼各一道 3 宽、两格深的正门和 y5 门楣，控制器在桥下路中间的亭里，§6.8）。中心对称的楼（亭子、外环对角位）开四个切角门（离对角线 2 格内的切角格，4 高，两格深空气，y5 门楣，亮门框），控制器在中心的控制台上：从中枢那边沿对角线走进去、在楼的中心操作。外环对角位的楼（0.15.0，`ShapeKit.octoShell`）的切角门没有亮门框，控制器按楼放：智子阵列在中心天眼下的控制台上，全息沙盘在圆桌正面（往蓝图正面 6 格）的控制台上（§4.15）。竖向的（吊舱、轨道锚、根）坐光梯进，控制器在梯台旁的控制台上、眼睛高度。
 - **名牌**：门口雨棚上方（中心对称的楼在中心控制台上方）一块朝相机的名牌，模块色，48 格内（§4.10）；铺砖的箭头指着每扇门。
 
@@ -194,6 +194,8 @@
 - **外环对角位的辅助函数**（0.15.0，`b_outer.py` 的移植）：`OUT_SIZE` 31、`OUT_C` 15、`OUT_HALF`/`OUT_K` 15/20（平面 `oct(15,20)`，外斜角位的外形）；`octoShell(s, n, c, half, k, top, rhythm, glazeRows, chamferDoors, plinth)`（生成器的 `octo_shell`，亭子 `shell` 的外环变体：y0 的地基环 `F` 和里面的软地面 `.`；墙 y1 到 `top`，y1 深色墙裙，四个平面上每 `rhythm` 格和 0/45 度八条线上（平面的正中、切角的对角线）各一根亮壁柱，`glazeRows` 层是窗格，其余墙板；`chamferDoors` 时四个切角门：切角边上离对角线 2 格内、`|du|+|dv|` ≥ `k − 1` 的格子再往里一格，y1–4 必须是空气、y5 光檐门楣——**没有亮门框**，和亭子不一样）；`outerStarts()`（行走从四个门外出发，生成器的 `st31`）；`degrees`（Python 的 `math.degrees`：乘 `180/π` 一次；Java 8 的 `Math.toDegrees` 先乘后除，最后一位可能不一样）、`pyMod`（Python 浮点 `%`，余数跟除数的符号）。全息沙盘的取整用 `Math.rint`（Python 的 `round` 把一半取到偶数）。两座的校验和照生成器钉着（`SophonArrayShapeTest`、`HoloTableShapeTest`）。
 - 和生成器逐格一致：上面的 `hypot`/`atan2` 换法给出和 Python 一样的格子；每个形状测试比对整层的 CRC 校验和（`EcoDomeShapeTest`）。
 
+- **每楼图例**（0.17.0，[skin.md](skin.md) §3.3）：基础图例（上面的 `partOf(ch)`）冻结，留给旧形状；新形状用 `Shape.legend(ch, code[, soft])` 声明本楼字符（新材质族的形、活物料、构架、地板、配件、任意部件码；不许用基础图例的字符和 `~ - 空格`、不许重复；活物料永远是软格，藤、睡莲、花可以穿过；舟壳和玄基的半、阶按半格站）。`partOf(Shape, ch)` 先查本楼图例再查基础图例，`soft(Shape, ch)`、`checked(Shape, ch)`；`legendName(code)`（`hull:2`、`live:0`、`deck:13`、`fitting:14`、`frame:6`、`part:53`）、`legendText(Shape)`、`crc(Shape)`（各层 + 有图例时空一行再接图例文本）；`Summary.unknown` 列出两张图例都查不到的字符。`checked / soft / symmetric / solid / passable / floors / idleTreads / blueprint` 都改用形状自己的字符集；没有图例的形状逐格、逐个计数都和以前一样。`CityBuild` 的部件和 DECOR 走 `partOf(shape, ch)`、软格问 `shape.isSoft`，`BuildPlan.ModuleBuild` 加了 `default soft(x, y, z, ch)`。**`TileCityModule.define` 还用 `partOf(char)`**：第一座带图例的新形状（0.19.0 档案馆 `lantern`）上线时改成 `partOf(shape, ch)` / `soft(shape, ch)`。生成器：`kit.py` 的 `LEGEND_BASE`（`LEGEND` 是别名）冻结，`Shape(name, W, H, D, legend={字符: (族, 号[, 'soft'])})`，`FORM_CODES` 抄 `FormCodes`，`legend_code`、`legend_name`、`layers`、`legend_text`、`crc` 和 Java 逐字一致，`report.py` 打印每个形状的 CRC（`LegendTest` 比 `0xc95d43cb` 的样例和 `EcoDomeShapeTest` 的 913267591）。新族的碰撞盒在行走测试里走 `ShapeGeo.boxes()`（`KitClimbTest.cellBoxes`）。
+
 ### 4.2 `UnitLayout`
 
 - 从 `Shape.units()` 按生成器声明的顺序建：`Unit{index, name, kind, cells, sockets, slots, firstSlot, face, floor}`；槽号一个单元接一个单元连续排（单元 i 的槽紧跟单元 i−1 的）；`sockets` 是单元格里的样本座 `o`（按生成器列格子的顺序），槽 `firstSlot + k` 显示在第 k 个样本座里；样本座少于槽数时多出来的槽不在哪个格子上显示（画布的一个槽画满整面），多于槽数、一格属于两个单元 → 构造时抛 `IllegalStateException`。`floor` = 单元最低一格的 y。
@@ -298,6 +300,7 @@
 - **档位** `ModuleLook.tier(在里面, 离盒子的距离, NEAR 24, effectRange)`：`NEAR`（相机在里面或离盒子 ≤ 24 格）、`MID`（≤ `effectRange`）、`FAR`（更远）。
 - **每座城市模块都有**：
   1. **墙裙光线**（`ModuleLook.course`：y1 的 `w` 格（和门位的软墙裙 `[`，同一种方块）朝外的面——0.14.0 起「朝外」也包括朝着一条通到外面的路的面（`ModuleLook.outside`：从盒子外面在墙裙那一层穿过空格往里灌，不穿过门洞的必须是空气、不穿过立着的东西；谐振塔桥下的通道算外面，虽然门楼的地面从下面铺过去；大厅里面只有门通着，不算），谐振塔因此 92 个面（两翼一圈 64，加通道两边的墙 28，朝通道的门那几格没有），别的模块逐面不变（`GateLookTest.thePlinthLineRunsAlongThePassageToo`）——按绕楼的角度排序，从正面中间开始、往走进门的人的右手边绕；门洞没有墙裙，线在门口断开；门位开成光门之前线照样连着）：停靠有电 = 模块色，一道脉冲绕一圈（每 tick 走 0.4 个面，生态穹约 16 秒一圈）；停靠没电 = 琥珀色呼吸；没停靠 = 暗灰蓝；未成型 = 更暗，只亮墙裙方块真的立着的面（逐格看世界，独立的核心和盖到一半的楼不会有悬空的线）。每面一条芯，NEAR 再加光晕；FAR 不画（细于一个像素）。
+     0.17.0 起「停靠有电」那一处的颜色取 `SkinPalette.accentOr(moduleKey, shapeName, moduleColor())`（全城本色，根位按形状名分潮青 / 根绿 / 熔橙；不认识的键退回旧色），所以潮汐井（`#3FC8E8` → 潮青 `#2E9FB8`）、全息沙盘（`#66F0FF` → 冰蓝 `#A8E0FF`）、天穹气象站（`#9AD0FF` → 霞 `#FF9E8A`）、秘法庭（`#C77DFF` → `#B07CFF`）的墙裙光线变了；名牌、扫光、`CityGui` / `CityScreen` 的强调色、各楼自己的渲染和模块核心贴图还读 `TileX.COLOR`（各楼绿区，随各楼那一版改）。墙裙光线是世界画完后的光，**不跟灯规则**（灯窗见下面「0.17.0 的旧楼」）。
   2. **成型扫光**：模块色平面加白边升过 `bounds()`（`SWEEP_MS` 2 秒内；迟到的客户端不重播）。穹顶发生器的扫光换成它自己的（`DomeGeneratorRender.sweep`：沿六条腿往上、再穿过吊舱）；二向箔仓在通用的之上再加一层（`VaultRender.sweep`：正面的画布跟着一道亮线被洗成羊皮纸白，§6.9）。
   3. **名牌**（`ModuleLook.plates(build)`，0.12.0 起一座模块可以有几块，按模块键缓存在 `CityRender.PLATES`，0.14.1 起和墙裙光线的 `COURSES` 一样按 `moduleKey@形状名`）：有门的模块一块（`ModuleLook.plate`：控制器轴上、雨棚中间的上方 1.75；没有雨棚就在控制器上方 3.6、门外 1.5）；**中心对称的楼**（0.13.0，`ModuleLook.central`：控制器在盒子正中那一列，就是亭子）没有雨棚，名牌浮在中心控制台上方（`overCentre`）：控制器上方 3.6，控制器上面立着一根柱子时（魔力泉阵的方尖碑）在柱顶上方 `OVER_COLUMN` 1.75——秘法庭和猎场在 y5.6、血契坛 y6.6、泉阵 y9.75（模块坐标，y0 是地基层）；0.15.0 的智子阵列照这条在中心控制台上方 3.6（(15.5, 5.6, 15.5)，天眼下面）；全息沙盘的控制台在圆桌正面、不在正中，照这条名牌会浮在鼓座前面、也会压着桌上的缩微模型，所以 `plates` 按模块键给它 `HoloLook.plate`：正中、光环上方 (15.5, 11.6, 15.5)（`PLATE_Y` = 9 + 2.6，在穹顶敞开的中间下面）；**坐光梯进的模块**（形状里有光梯台 `^`，`ModuleLook.liftPad` 找最低的一个：天顶的吊舱、根）没有门，名牌浮在控制台座上的控制器上方（控制器方块脚下往上 `OVER_CONSOLE` 1.4，在天花板下面）；**悬在空中的**（`CityBuild.offset()[1] > 0`，蓝图往下伸出自己的地面，像吊舱的腿）再在舱底下面、光梯井正上方挂第二块（光梯台往下 `BELLY` 2.2），给广场上的人看。相机离某块名牌水平 `PLATE_CLEAR` 1.5、竖直 `PLATE_CLEAR_Y` 4 以内就不画这一块（乘梯穿过舱底的人会从名牌里穿过去）。48 格内朝相机，最后 16 格淡出；第一行模块名（`module.<key>`，模块色，1.5 倍），第二行运行时是 `city.plate.on`（运行中 · n/m 个样本，白色），否则是停靠状态（`dock.*`，琥珀色）。
   4. **样本座里的物品**（只在 NEAR）：离相机 24 格内最近的 256 个有样本的样本座（每座模块各算各的），每个不贴着整块方块或别的样本座的侧面一份：凹槽里一个模块色光点（`Motes`）和一张物品图（先方块图集再物品图集，每个渲染 pass 一层颜色），轻轻浮动；取不到图的物品跳过。凹槽和图的位置是 `ModuleLook` 的常量（`RECESS_LOW/HIGH` 11/16–15/16、`RECESS_IN` 2.7/16、`PICTURE_MID` 13/16、`PICTURE_HALF` 0.1），`FittingRender` 和 `CityRender` 共用：站在种植床的地面上，从池沿外 0.3 到 24 格都能越过池沿和唇边看到样本的中间和上沿，8 格内整张（`ModuleLookTest.aSocketsSampleShowsOverTheRim`）。**0.15.0 起只画朝相机的面**（`ModuleLook.socketSideFacing(ox, oz, dx, dz)`：相机在这一面凹槽里那张图所在的平面外面——离样本座中心半格减 `RECESS_IN`——才画，否则样本座的柱子挡着它；相对的两面最多一面朝相机，所以一个样本座最多画 `SOCKET_SIDES_SEEN` 2 面）：智子阵列的 144 个样本座四面都画要 1,728 quads（`ModuleLookTest.aSocketShowsOnTheSidesTurnedToTheCamera`）。
@@ -426,6 +429,18 @@
 - **提供和停靠**：照 `CityOffer`（§2）——研究了、中枢相位 IV、吊舱浮着（`groundLaid(POD_FLOATS)`）、它的候选场地有一个空着；提供时带上吊舱的楼面（`deckAt`）。`TileNexus.campusSite` 按控制器格精确收编（`spec.hasSite` 不认泊位），不占内环；中枢描述包写 `Ds`（停着空中建筑的场地，一个 slot 一位）和 `DsC`（它们的颜色），只在有一座停着时写，`send()` 的键加了 `skyDocked() << 22`（`SkyDockSyncTest`）；总图的天环靠它（§4.11）。浮着的空中建筑不当成地面上散落的模块（`Campus.floatsOverGround`）。
 - **栈桥能走**：`SkyRingTest.fromThePodsPadThroughItsDoorAndOverTheCatwalkToEveryUnit` 把吊舱（开着这扇门）、栈桥和平台拼成一个形状，从吊舱的光梯台出发走到每个单元和控制器；`aFloatingPodLeavesAnOpenDoorsCatwalkStanding`：浮空吊舱的修复不碰开着的门外的栈桥。`KitClimbTest` 按真实的碰撞箱再走一遍（§1）。
 - **画面**（`city/client/SkyRender`，位置是 `SkyLook` 的；在 `CityRender` 之上、各自的画面之下）：平台底面自己会亮（浮空地基的发光层在区块网格里，§5）。**成型**：平台中间下面（`CX`/`CZ` 10.5）一根柔和的光柱落到它下面的地面（每次画时从客户端世界往下找这一列第一个立着的方块，最多 `SCAN` 64 格，什么都不记），落地处最亮、往上淡（`FOOT_ALPHA` 0.3 → `HEAD_ALPHA` 0.06），里面一根光芯、6 个光点慢慢往下沉（`FALL_MOTES`、`FALL_T` 160），落地处一团光；大门上方的那根（S0）在谐振塔的尖塔离它的轴 `LINK_REACH` 4 格以内时落在尖塔顶上，画成两种颜色的谐振连线（谐振塔的尖塔在空中平台下面也变矮，§6.8）。光柱是地标（CITY §1.3「天空光柱」）：超出范围后 `SkyRender.landmark` 画光柱、光芯和落地的光到 `LANDMARK` 512 格，最后 `LANDMARK_FADE` 64 格淡出，范围内照自己的距离淡，两段接得上。**栈桥的亮边**：桥面外侧的下沿和桥面上贴着栏杆的两条光带，一排一排、只画世界里这一排桥面还立着的（断了的栈桥空中不留线），一道光脉冲从吊舱跑到平台（`WALK_T` 60、`WALK_REST` 40）；MID 只有线、没有光晕；FAR 不画。停靠有电是模块色，停靠没电琥珀色呼吸，否则暗灰蓝 `0x4A6A80`。**预算**（`SkyLook.quads`）：光柱近、中 16，远和地标 9；栈桥近 66、中 44；地标上限 `SkyLook.BUDGET` 400。光影安全照 `CityRender`：模块坐标里、相对相机、只用 quads、朝观察者的法线、加法混合不写深度、动画只按世界时间；光柱和栈桥各自单独失败。
+
+### 4.17 0.17.0 的旧楼：过渡态和灯窗（`LEGACY`，style §3.9.9、refactor §5.6）
+
+0.17.0 起，0.11–0.16 的 15 座楼、中枢和书库（共 35 个旧形状）在重铸之前都是**过渡态**：旧形状、旧部件、旧单元一格不动，只是部件的贴图换成七行调色（campus.md §3：白构架、浅暖灰墙板、玄基墙裙、银灰岩地面、舟壳白配件），再加两样——墙裙光线取全城本色（§4.10 第 1 条），和**灯窗**：
+
+- **盒子表里每座旧楼一条**（`SkinProfiles.LEGACY` 档案，[skin.md](skin.md) §4）：服务端 `campus/SkinFeed` 按 (楼键, 形状名) 记状态、供电、本色和灯窗盒（遮罩的外盒），同步给客户端。
+- **灯部件**：deck 9 光缝墙板（壁柱）、deck 11 光檐、`FITTING_LIGHT > 0` 的配件（书架立柱、底座、顶檐、栏杆、踏板、全息底座、样本座、池沿、光梯），着楼的本色；另外**并进遮罩的常亮光**：中枢的构架 `BASE_LIT`（亮辐条）和 `RING`，书库长厅的 `FOUNDATION`（地基），天环四座的 `FLOAT`（浮空地基）——这几种只开关、不着色。遮罩 = 旧形状蓝图里这些部件的格子（运行时 `SkinProfiles.legacyMask` 从蓝图算、缓存；35 个遮罩的格数和 CRC 钉在 `LegacyGlowShareTest` 里，例：`arcane_court:main` 617 / `17ba3378`、`library:main` 1815 / `257a9b6d`）。
+- **规则**（G6）：成型（或散架保持、纪念）∧ 停靠有电（去抖 10 秒）∧ 世界时间 ∈ [12500, 23500) 时亮；按控制器到园区中心的水平距离每 32 格晚 1 秒，一波从中枢往外；一座楼整座一起翻；节流每楼 10 秒、全城每秒 4 盒。**所以这些光白天是暗的**（光梯的光圈、中枢的辐条和环、长厅地基、天环平台底面白天都不亮），黎明 23,500 起熄。
+- **渲染**：`campus/client/DeckRender`、`FittingRender`（灯部件的辉光层多收一个颜色参数）、`frame/client/FrameRender`（并进遮罩的构架部件灯暗时跳过发光面那一圈）问 `client/skin/ClientSkin.glow(w, x, y, z, part)`：`UNTOUCHED` 照 0.16 画、`DARK` 只画底层、否则画着色的辉光层。都在区块网格里，世界画完后什么都不画；不在任何条目灯窗盒里的格子照 0.16 一直亮；客户端没收到表时旧城和 0.16 一样。旧贴图是单层辉光，着本色后白芯也被染色（G6 的白芯彩边等各楼的新贴图）。
+- **闸**：`LegacyGlowShareTest`——每个旧形状白天发光面积 / 外表面积 ≤ 3%（最高 2.79% `library:hall`；只用基本灯部件时中枢 5.69–6.35%、长厅 5.85%、水滴机库 5.43%、气象站 5.64%、帆阵 4.48%、观星台 3.54% 超标，所以并进了上面的构架光），夜里 ≤ 12%（最高 11.90% `mana_fountain`，离线很近：改它的贴图或形状前先跑这个测试）。`LampRuleTest` 有 LEGACY 的用例。0.17.0 发布说明里「黄昏时老城的灯窗一盏盏亮」就靠这两条。
+- **NEI 预览**按正午画（`SkinTable.putPreview`），所以预览里旧楼的灯窗和并进遮罩的光是暗的。
+- 新形状（0.19 起）不走 `LEGACY`：各楼在自己那一版 `SkinProfiles.register` 自己的档案（显影、变体、灯部件），墙裙光线也不再画（墙裙就是玄基石基，光在网格的光缝里，style §7.2）。
 
 ## 5. 新部件（CITY §1.4、附录 C）
 
@@ -951,6 +966,8 @@
 
 ## 8. 测试
 
+0.17.0 加的（细节见 [skin.md](skin.md) §13）：`logic/LegendTest`（基础图例冻结、每楼图例和 CRC = `kit.py`）、`logic/KitClimbTest` 多一条（新族的碰撞盒走 `ShapeGeo.boxes()`）、`logic/PlantOrderTest`（活物料排在投运前最后一段的末尾）、`logic/skin/LampRuleTest` 和 `LegacyGlowShareTest`（旧楼的灯部件、遮罩、白天 ≤ 3% / 夜里 ≤ 12%）、`logic/skin/PaletteTest`（全城本色，墙裙光线读它）；存档护栏 `save/OldShapesCrcTest`（35 个旧形状 × 3 个 CRC、68 个旧计划 × 2 个 CRC）和 `UnitFreezeTest`（0.16.0 的单元表只能在末尾追加）——**旧形状、旧单元、旧计划一格都不能动**（platform.md §11）。
+
 | 测试 | 守住什么 |
 |---|---|
 | `logic/ShapeKitTest` | 图例唯一且完整（和 `kit.py` 一致）、软格的孪生字符放同一个部件、内境门位（墙换成软格、不用镜像、不是墙就抛）、螺旋就是档案馆的（一格一级、半格、整格墙板）、套件门、角度和八分、边界和球壳、行走走半格台阶和光梯（不走整格台阶）、单元要有格子；0.14.1 `theWalkKeepsTheHeadClearWhereTheStepIsTakenAndDropsOntoTheFirstFloor`（两列各自的净空、落到第一层楼面上） |
@@ -1033,6 +1050,7 @@
 
 ## 9. 已知问题、只能进游戏看的
 
+- **0.17.0 只能进游戏看**（验收卡 `refactor/v0.17/ingame.md` 第 6、7、12 项）：LuV 老档每座楼的过渡态（白天，Complementary 正午白构架会不会过曝）；黄昏灯窗的光波（12,500 起按离中枢的距离每 32 格晚 1 秒、整座一起亮、断电 10 秒后灭、换维度和重生之后照常）；白天暗下来的光（**光梯的光圈白天找不找得到**是唯一可能碍事的一处）；配件染本色；四座楼的墙裙光线和名牌颜色不一致；宣纸画布上的画还读不读得出来；机位 A、B、C 的组图。
 - **已知问题和与方案的出入**：
   - 样本座物品的上限按模块算：每座模块各自最近 256 个、24 格内，不是整帧共用一个预算（整帧计数会破坏「光门后面同一帧再画一遍」的幂等规则）。
   - M8 的「分页同步」实际是客户端分页：样本整份在描述包和增量包里（`BookPacket` 的预算，< 28 kB），窗口只同步选择和状态。
@@ -1149,6 +1167,8 @@
 - **`Builder.QUIET`**：新方块的 `onBlockAdded/breakBlock` 要守；新的核心方块经 `BlockNexus.quiet()`。
 
 ## 11. 批次（CITY §5）
+
+> **0.17.0 起这张表的 0.17.0「归一」及以后作废**：路线换成重新设计的 12 个版本（0.17.0「白舟」… 0.28.0「跃升」，`D:/Code/FluxEcho-campus/redesign/refactor/FINAL.md` §2.1、§2.6，CLAUDE.md §5）。下面留作 0.11–0.16 的记录。
 
 每批最多是 0.10.0 档案馆那样大（一块引擎 + 一到四座建筑），单独发布（CI、CHANGELOG、README 的表、两份 lang、手册和 BLUEPRINT §3.14 同一个提交），发布后城是完整一致的。
 
