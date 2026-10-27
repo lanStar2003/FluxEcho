@@ -10,7 +10,9 @@ package com.fluxecho.logic;
  * is only ever appended, never renumbered or reused. 0.11.0 appends the frame's cladding anchor (9), the fittings'
  * socket (39) and basin rim (40), water (53) and the module cores of {@code fluxecho:module_core} (64 + meta); 0.12.0
  * the fittings' light-lift pad (41); 0.14.0 the deck's canvas (28), the wall a module's units paint their items on;
- * 0.16.0 the frame's floating foundation (10), the anti-gravity lattice cube the sky platforms are decked with.
+ * 0.16.0 the frame's floating foundation (10), the anti-gravity lattice cube the sky platforms are decked with; 0.17.0
+ * the deck's hull-number tile (29), the fittings' planting bed (46), the live materials (54 to 58) and the first batch
+ * of the new material families' shapes (59 to 62, 96 to 127, {@code logic.shape.FormCodes}).
  */
 public final class Parts {
 
@@ -48,7 +50,27 @@ public final class Parts {
         "socket", "basin", "lift" };
     public static final int[] FITTING_LIGHT = { 6, 9, 10, 6, 7, 0, 8, 8, 4, 12 };
 
+    /**
+     * 0.17.0 (style FINAL §3.7, §3.8.3 (d); ids.md §1.2): deck meta 13, the hull-number tile in front of every
+     * building's door (code 29), and fitting meta 14, the planting bed (code 46). Each is the one use of its bound
+     * meta; deck 14 and 15, fitting 10 to 13 and 15 stay unregistered until their own versions. {@code DECK_TYPES}
+     * and {@code FITTING_TYPES} still count the unbroken runs of 0.16.0.
+     */
+    public static final int D_HULL_NUMBER = 13, F_BED = 14;
+
+    /**
+     * 0.17.0 (style FINAL §3.7, §3.8.1; ids.md §1.2): the live materials, vanilla blocks laid only in soft cells of a
+     * plan: white birch log, oak leaves that never decay, vine, lily pad, flower ({@link LiveParts}). The new
+     * families' shapes of the same batch (96 to 127 and 59 to 62) are {@code logic.shape.FormCodes}.
+     */
+    public static final int BIRCH = 54, OAK_LEAVES = 55, VINE = 56, LILY = 57, FLOWER = 58;
+
     private Parts() {}
+
+    /** Whether the part is a live material (0.17.0): a soft cell, never ours ({@link LiveParts}). */
+    public static boolean isLive(int code) {
+        return code >= BIRCH && code <= FLOWER;
+    }
 
     public static int frame(int meta) {
         return FRAME + meta;
