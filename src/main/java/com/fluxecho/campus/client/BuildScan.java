@@ -19,11 +19,11 @@ import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.PartBlocks;
 import com.fluxecho.campus.Terrain;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.CampusPlan;
@@ -555,13 +555,13 @@ public final class BuildScan {
 
     private static void tick(Minecraft mc, World w) {
         Entity viewer = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
-        if (viewer == null || "off".equals(Config.buildProjection)) {
+        if (viewer == null || "off".equals(CampusConfig.buildProjection)) {
             if (!TRACKS.isEmpty()) clear();
             return;
         }
         long now = w.getTotalWorldTime();
         double vx = viewer.posX, vy = viewer.posY, vz = viewer.posZ;
-        boolean full = "full".equals(Config.buildProjection);
+        boolean full = "full".equals(CampusConfig.buildProjection);
         int dim = w.provider.dimensionId;
         Set<BuildClient.Key> seen = new HashSet<>();
         for (TileMultiblock m : ClientTiles.all()) {
@@ -582,7 +582,7 @@ public final class BuildScan {
             seen.add(key);
             boolean live = full && showsGhost(state(n))
                 && t.bounds.all != null
-                && boxDistance(t.bounds.all, vx, vy, vz) <= Config.buildGhostRange + SCAN_MARGIN;
+                && boxDistance(t.bounds.all, vx, vy, vz) <= CampusConfig.buildGhostRange + SCAN_MARGIN;
             if (live) scan(t, w, now, vx, vy, vz, stage(n));
             else rest(t);
             // what the job takes down of ours (0.16.0): again every second, in range of the outlines
@@ -779,7 +779,7 @@ public final class BuildScan {
     private static void rebuild(Track t, World w, long now, double vx, double vy, double vz, int stage) {
         GhostCells.Cells c = t.cells;
         int[] sel = GhostCells
-            .select(c, t.hidden, vx, vy, vz, Config.buildGhostRange, Math.max(0, Config.buildGhostCells));
+            .select(c, t.hidden, vx, vy, vz, CampusConfig.buildGhostRange, Math.max(0, CampusConfig.buildGhostCells));
         int[] faces = GhostCells.faces(c, sel, (x, y, z) -> opaque(w, x, y, z));
         GhostCells.Layer layer = GhostCells.lowestLayer(c, t.hidden, stage, vx, vy, vz, LAYER_CELLS);
         IIcon[] icons = new IIcon[PARTS * 6];

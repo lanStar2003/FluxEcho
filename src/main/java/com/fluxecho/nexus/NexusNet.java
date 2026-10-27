@@ -9,8 +9,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTTagString;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.CampusNet;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.ResearchTree;
 import com.fluxecho.research.Research;
@@ -154,14 +154,14 @@ public final class NexusNet {
         t.setFloat("Done", n.researchFraction());
         t.setString("Owner", n.ownerName());
         t.setInteger("Bound", n.boundCount());
-        t.setDouble("Scale", Config.researchScale);
+        t.setDouble("Scale", NexusConfig.researchScale);
         NBTTagList open = new NBTTagList();
         for (String id : n.unlocked()) open.appendTag(new NBTTagString(id));
         t.setTag("Open", open);
         // the costs as the server reads them, so a changed tree on the server shows right
         NBTTagCompound compute = new NBTTagCompound();
         for (ResearchTree.Node node : ResearchTree.all())
-            compute.setLong(node.id, ResearchTree.computeFor(node, Config.researchScale));
+            compute.setLong(node.id, ResearchTree.computeFor(node, NexusConfig.researchScale));
         t.setTag("Cost", compute);
         return t;
     }

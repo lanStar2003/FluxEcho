@@ -22,7 +22,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
@@ -30,6 +29,8 @@ import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.ArchiveShape;
 import com.fluxecho.logic.Blueprint;
@@ -102,8 +103,9 @@ import cpw.mods.fml.relauncher.SideOnly;
  * round the nexus centre the core would get, its front the way the core would face. It turns red, with the reason
  * over the core, when the client can already tell the server will refuse: the base outside the campus band (the nexus
  * would reach past the top of the world, or since 0.14.1 no well fits over the bedrock; {@link CampusBand}, never for
- * a core put back where it stood), no sky over the core ({@code Config.buildRequireSky}), the dais on a module, or
- * another nexus it knows of closer than {@code Config.buildMinSpacing}. Nothing when the campus is off.
+ * a core put back where it stood), no sky over the core ({@code CampusConfig.buildRequireSky}), the dais on a module,
+ * or
+ * another nexus it knows of closer than {@code CampusConfig.buildMinSpacing}. Nothing when the campus is off.
  * <p>
  * Shader-safe like {@link Shapes} (drawn after the world, skipped in the shadow pass, relative to the camera, quads
  * with a normal towards the viewer, additive, no depth writes); the outlines are drawn twice, once faintly through
@@ -212,7 +214,7 @@ public final class Masterplan {
                 fail(PLAN, x);
             }
         }
-        if (core && !OFF[PREVIEW] && Config.nexusEnabled && Config.campusEnabled) {
+        if (core && !OFF[PREVIEW] && NexusConfig.nexusEnabled && CampusConfig.campusEnabled) {
             try {
                 preview(mc, w, p, t, signs);
             } catch (Throwable x) {
@@ -401,7 +403,7 @@ public final class Masterplan {
             // turned away) keeps that diagonal's sign in the octagon's middle, clear of its walls, as in 0.12.0. It
             // is kept apart from standing, so the site's caption and colour stay as they were.
             int[] mc = mod.centre();
-            int k = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz);
+            int k = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], NexusConfig.innerRadius, fx, fz);
             if (k % 2 == 1 && mod.formed() && !isPavilion) ringStanding[k] = true;
             int s = axisSiteOf(mod, c, fx, fz);
             if (s < 0) {
@@ -1019,7 +1021,7 @@ public final class Masterplan {
         boolean putBack) {
         String band = CampusBand.refusal(c[1], putBack);
         if (band != null) return EchoText.t(band);
-        if (Config.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z)) return EchoText.t("build.no_sky");
+        if (CampusConfig.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z)) return EchoText.t("build.no_sky");
         int[] p0 = b.world(0, 0, 0, x, cy, z, f.offsetX, f.offsetZ);
         int[] p1 = b.world(b.width() - 1, b.height() - 1, b.depth() - 1, x, cy, z, f.offsetX, f.offsetZ);
         int[] box = { Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.min(p0[2], p1[2]), Math.max(p0[0], p1[0]),
@@ -1030,7 +1032,7 @@ public final class Masterplan {
                 return EchoText.t("build.on_module");
         }
         // a core put back where it stood keeps only the inner discs' spacing (0.15.0), as the item's check does
-        int spacing = putBack ? com.fluxecho.campus.Campus.innerSpacing() : Config.buildMinSpacing;
+        int spacing = putBack ? com.fluxecho.campus.Campus.innerSpacing() : CampusConfig.buildMinSpacing;
         if (spacing <= 0) return null;
         for (TileMultiblock m : tiles) {
             if (!(m instanceof TileNexus n) || m.isInvalid() || m.getWorldObj() != w) continue;

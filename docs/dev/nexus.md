@@ -325,7 +325,7 @@
 | `recordCooldownTicks` | 24000 | 同一条记录再压的间隔（20 分钟） |
 | `innerRingRadius` | 32 | 改了会挪动已建中枢的槽位（园区的模块位不受影响） |
 | `libraryUpkeepEuPerTick` | 128 | `librarySamples` 0.9.2 删了（`Config.upgrade` 移除） |
-| `moduleUpkeepEuPerTick` | 128 | 0.11.0：中枢自建的城市模块（生态穹和以后的）停靠时每 tick 从团队无线电网扣的 EU（`Config.moduleUpkeep`）；扣不到就没电，单元里的东西照样在（city.md §4.6） |
+| `moduleUpkeepEuPerTick` | 128 | 0.11.0：中枢自建的城市模块（生态穹和以后的）停靠时每 tick 从团队无线电网扣的 EU（`NexusConfig.moduleUpkeep`）；扣不到就没电，单元里的东西照样在（city.md §4.6） |
 | `effects` / `effectRange` | true / 128 | 客户端；`effectRange` 也决定营造包和书增量包的接收范围（+64） |
 | `campusEnabled` / `archiveEnabled` | true / true | 营造开关、回响档案馆开关（0.10.0） |
 | `build*`（18 个） | — | 营造的速度、EU、成本倍率、平整、间距、投影和特效：表在 campus.md §14 |

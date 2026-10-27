@@ -9,12 +9,12 @@ import net.minecraft.world.World;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Lift;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.LiftLook;
 import com.fluxecho.render.Shapes;
 
@@ -71,7 +71,7 @@ public final class LiftRender {
 
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
-        if (ShaderCompat.shadowPass() || !Config.buildEffects) return;
+        if (ShaderCompat.shadowPass() || !CampusConfig.buildEffects) return;
         World w = Minecraft.getMinecraft().theWorld;
         if (w == null) return;
         List<LiftScan.Shaft> shafts = LiftScan.shafts();

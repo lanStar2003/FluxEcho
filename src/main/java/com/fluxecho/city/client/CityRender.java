@@ -24,7 +24,6 @@ import net.minecraft.world.World;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.PartBlocks;
@@ -46,6 +45,7 @@ import com.fluxecho.city.TileSophonArray;
 import com.fluxecho.city.TileWeatherStation;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.ModuleLook;
 import com.fluxecho.logic.Parts;
@@ -149,7 +149,7 @@ public final class CityRender {
         try {
             CityFrame f = new CityFrame(m);
             double[] cam = CityFrame.camera(m);
-            int tier = ModuleLook.tier(f.inside(cam), f.boxDistance(cam), NEAR, Config.nexusEffectRange);
+            int tier = ModuleLook.tier(f.inside(cam), f.boxDistance(cam), NEAR, NexusConfig.nexusEffectRange);
             boolean nearby = tier == ModuleLook.NEAR;
             if (!m.formed()) {
                 if (tier != ModuleLook.FAR && !OFF[COURSE]) try {

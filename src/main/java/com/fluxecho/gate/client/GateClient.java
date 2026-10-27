@@ -36,10 +36,10 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.GatesConfig;
 import com.fluxecho.gate.GateNet;
 import com.fluxecho.gate.TileLightGate;
 import com.fluxecho.logic.GateGeometry;
@@ -154,10 +154,10 @@ public final class GateClient {
     private static void views(Minecraft mc) {
         EntityPlayer p = mc.thePlayer;
         if (p == null || mc.theWorld == null) return;
-        double range = Config.gateViewRange + 8;
+        double range = GatesConfig.gateViewRange + 8;
         Set<Long> keep = new HashSet<>();
         // the real view needs none
-        if (Config.gateViewRange > 0 && Config.gateLiveView && !broken && !Portal.real())
+        if (GatesConfig.gateViewRange > 0 && GatesConfig.gateLiveView && !broken && !Portal.real())
             for (TileLightGate t : gates(mc.theWorld)) {
                 if (!t.linked || t.far == null) continue;
                 double dx = t.xCoord + 0.5 - p.posX, dy = t.yCoord + 1.5 - p.posY, dz = t.zCoord + 0.5 - p.posZ;
@@ -322,7 +322,7 @@ public final class GateClient {
                 pictured = k;
                 drawn = true;
             } else if (v != null && !real
-                && Config.gateLiveView
+                && GatesConfig.gateLiveView
                 && !broken
                 && transit == null
                 && front > 0

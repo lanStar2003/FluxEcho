@@ -12,9 +12,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Terrain;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.nexus.ClientTiles;
@@ -95,7 +95,7 @@ public final class WellScan {
             return;
         }
         if (++ticks % EVERY != 0) return;
-        if (!Config.buildEffects) {
+        if (!CampusConfig.buildEffects) {
             wells = Collections.emptyList();
             return;
         }

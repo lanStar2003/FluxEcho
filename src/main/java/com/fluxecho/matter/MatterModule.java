@@ -4,8 +4,9 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -109,7 +110,7 @@ public final class MatterModule {
      * the nexus coats it with an echo crystal ({@code nexus.Manifests}).
      */
     public static void postInit() {
-        if (!Config.defaultRecipes) return;
+        if (!GeneralConfig.defaultRecipes) return;
         try {
             EchoRecipes.wiremill(
                 "phase alloy wire",
@@ -141,7 +142,7 @@ public final class MatterModule {
         try {
             GTValues.RA.stdBuilder()
                 .itemInputs(
-                    new ItemStack(grit, Config.crystalGrit),
+                    new ItemStack(grit, NexusConfig.crystalGrit),
                     GTOreDictUnificator.get(OrePrefixes.dust, Materials.EnderPearl, 1))
                 .fluidInputs(GTModHandler.getDistilledWater(250))
                 .itemOutputs(new ItemStack(crystal))

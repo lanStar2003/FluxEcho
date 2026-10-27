@@ -3,9 +3,10 @@ package com.fluxecho.frame;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.PartBlocks;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
@@ -39,7 +40,7 @@ public final class FrameModule {
      * the table cannot name, so it is registered here by hand.
      */
     public static void postInit() {
-        if (!Config.defaultRecipes || !Config.nexusEnabled) return;
+        if (!GeneralConfig.defaultRecipes || !NexusConfig.nexusEnabled) return;
         for (PartRecipes.Recipe r : PartRecipes.all()) {
             if (!Parts.isFrame(r.part)) continue;
             try {

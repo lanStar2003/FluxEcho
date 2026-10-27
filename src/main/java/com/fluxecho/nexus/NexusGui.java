@@ -19,12 +19,13 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.FluxMachineGui;
@@ -670,7 +671,7 @@ public final class NexusGui {
 
     /** Why the player may not use the build page's buttons (a lang key), or null when they may. */
     static String refuse(TileNexus n, EntityPlayer p) {
-        if (!Config.nexusEnabled || !Config.campusEnabled) return P + "disabled";
+        if (!NexusConfig.nexusEnabled || !CampusConfig.campusEnabled) return P + "disabled";
         if (n.isInvalid() || n.getWorldObj() == null) return "";
         if (!n.member(p)) return P + "not_member";
         if (p.getDistanceSq(n.xCoord + 0.5, n.yCoord + 0.5, n.zCoord + 0.5) > REACH_SQ) return P + "too_far";
@@ -749,7 +750,7 @@ public final class NexusGui {
     static NBTTagCompound tag(TileNexus n, long eu) {
         Campus c = n.campus();
         NBTTagCompound t = new NBTTagCompound();
-        t.setBoolean("En", Config.nexusEnabled && Config.campusEnabled);
+        t.setBoolean("En", NexusConfig.nexusEnabled && CampusConfig.campusEnabled);
         t.setBoolean("Ac", c.active());
         t.setBoolean("Sk", c.skipBlocked());
         t.setBoolean("Rp", c.active() && c.canRepair());
@@ -1077,6 +1078,6 @@ public final class NexusGui {
 
     /** The cooldown of a codex entry in minutes, for the GUI. */
     public static int cooldownMinutes() {
-        return Math.max(1, Config.recordCooldown / 1200);
+        return Math.max(1, NexusConfig.recordCooldown / 1200);
     }
 }

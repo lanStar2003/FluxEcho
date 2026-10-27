@@ -18,7 +18,6 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
@@ -27,6 +26,7 @@ import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.CampusPlan;
 import com.fluxecho.logic.Compact;
@@ -88,12 +88,12 @@ public final class NexusRender {
 
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
-        if (!Config.nexusEffects || ShaderCompat.shadowPass()) return;
+        if (!NexusConfig.nexusEffects || ShaderCompat.shadowPass()) return;
         Minecraft mc = Minecraft.getMinecraft();
         World w = mc.theWorld;
         if (w == null) return;
         double t = w.getTotalWorldTime() + e.partialTicks;
-        double range = Config.nexusEffectRange;
+        double range = NexusConfig.nexusEffectRange;
         boolean hints = holdsHint(mc.thePlayer);
         for (TileMultiblock m : ClientTiles.all()) {
             if (m.getWorldObj() != w || m.isInvalid()) continue;
@@ -468,7 +468,7 @@ public final class NexusRender {
         if (active) hints = false;
         List<TileMultiblock> tiles = campus ? ClientTiles.all() : null;
         for (int k = 0; k < RingSlots.SLOTS; k++) {
-            int[] o = RingSlots.offset(k, Config.innerRadius, fx, fz);
+            int[] o = RingSlots.offset(k, NexusConfig.innerRadius, fx, fz);
             double len = Math.hypot(o[0], o[1]);
             double ux = o[0] / len, uz = o[1] / len;
             double sx = cx + o[0], sz = cz + o[1];
@@ -542,7 +542,8 @@ public final class NexusRender {
             // the gatehouse's kiosk lies within the 0.9.2 ring's slot 0: its family, not its place, tells it (0.14.0)
             if (SiteFamily.of(k) == SiteFamily.GATE && gatehouse(mod)) return CampusPlan.GATE_DOOR;
             int[] mc = mod.centre();
-            if (RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz) == k) return -1;
+            if (RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], NexusConfig.innerRadius, fx, fz) == k)
+                return -1;
             // a pavilion's door is its inner chamfer portal on the diagonal, not the corner of its box (0.13.0)
             if (SiteFamily.of(k) == SiteFamily.PAVILION) return CampusPlan.PAVILION_DOOR;
             int[] b = mod.bounds();

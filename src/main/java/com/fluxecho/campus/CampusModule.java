@@ -2,8 +2,9 @@ package com.fluxecho.campus;
 
 import net.minecraft.block.Block;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 
@@ -58,7 +59,7 @@ public final class CampusModule {
      * registered). Each one on its own, so one an addon breaks does not take the rest with it.
      */
     public static void postInit() {
-        if (!Config.defaultRecipes || !Config.nexusEnabled) return;
+        if (!GeneralConfig.defaultRecipes || !NexusConfig.nexusEnabled) return;
         for (PartRecipes.Recipe r : PartRecipes.all()) {
             boolean fixture = r.part == Parts.SUPPLY_PORT || r.part == Parts.RECYCLE_BIN;
             if (!Parts.isDeck(r.part) && !Parts.isFitting(r.part) && !fixture) continue;

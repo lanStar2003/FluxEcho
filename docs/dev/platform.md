@@ -27,9 +27,10 @@
 - **serverStopped**：`EchoLedger.reset`、`ResearchData.reset`、`Formed.clearServer`、`FrameEvents.clear`、`NexusModule.serverStopped`、`Terrain.serverStopped`（营造记住的原木判定和它弱引用的世界）、`GateModule.serverStopped`、（神秘在场）`TCModule.serverStopped`。`Directory.clear()` 存在但没人调用。
 - **`ClientProxy.init()`**：`CodexTooltips`（Forge + FML 总线）→ `MachineFx` → `FrameClient` → `CampusClient`（地板/配件的 ISBRH、建造投影、发射特效、总图，0.12.0 起还有光梯的 `LiftClient`（FML `PlayerTickEvent` START、`FOVUpdateEvent`、`WorldEvent.Unload`）和 `LiftRender`（`RenderWorldLastEvent` + `FarDraw`，它的 `LiftScan` 挂 client tick 和世界卸载），见 [campus.md](campus.md) §11、[nexus.md](nexus.md) §4.2）→ `TileMultiblock.clientWorld = WorldClient.class` → `NexusRender` → `EchoCrystalRender` → `MachineHolo` → `FlowFx` → `GateClient` → （神秘）`TCClient.init`、（植物魔法）`ManaHolo` → NEI 在场时注册客户端命令 `NeiCheck`。
 
-## 2. 配置约定（`Config.java`）
+## 2. 配置约定（`Config.java` 和 `config/*Config.java`）
 
-- 类别名是 `private static final String` 常量；字段 `public static` 带默认值；`load()` 里 `c.getInt/getBoolean(key, CAT, 当前值, min, max, "英文说明")`；double 用 `c.get(...).getDouble()`；long 用字符串 + `parseLong`（带回退）。
+- **分节登记**（0.17.0 起）：`config/fluxecho.cfg` 的每一节（每个子系统，以后每座楼）是 `com.fluxecho.config` 里的一个类 `XConfig`：`public static final String CATEGORY`、自己的 `public static` 字段（名字沿用 0.16.0，如 `BeesConfig.beesEnabled`、`CampusConfig.buildClearAll`）、`static void load(Configuration c)`。`Config.java` 只剩登记表 `SECTIONS`（按加载顺序；Forge 写文件时按类别和键排序，顺序不影响文件）、`VERSION`、`load(File)` 和 `upgrade()`。现有 14 节：`GeneralConfig`、`QuestsConfig`、`BeesConfig`、`ThaumConfig`（`thaumcraft`）、`BloodConfig`（`bloodmagic`）、`MobsConfig`、`CropsConfig`、`ManaConfig`（`botania`）、`CodexConfig`、`NexusConfig`（`nexus` 的中枢部分）、`CampusConfig`（`nexus` 的营造部分，键还在 `nexus` 类别里）、`EffectsConfig`、`AeConfig`、`GatesConfig`。新的一节 = 新类 + `SECTIONS` 末尾一行（登记表是红区，在那一版的接口提交里加）；分节前后第一次启动写出的 cfg 和 0.16.0 逐字节相同（`ConfigTest`）。
+- 类别名是各节的 `CATEGORY` 常量；字段 `public static` 带默认值；`load()` 里 `c.getInt/getBoolean(key, CAT, 当前值, min, max, "英文说明")`；double 用 `c.get(...).getDouble()`；long 用字符串 + `parseLong`（带回退）。
 - 每个类别要 `setCategoryComment`；只在客户端生效的项说明以 "Client:" 开头。
 - **删除某项或改默认值**：把 `VERSION` 提到新版本，在 `upgrade()` 里用 `older(was, "x.y.z")` 删掉旧 key（加载时按新默认值重建）。现有迁移：0.5.0 删 `enchanting` 类别和若干 thaum key；0.6.0 删 `manaPerTick`、`manaPerPetal`；0.9.2 删 `nexus.librarySamples`；0.10.1 把还是旧默认 `"2"` 的 `nexus.buildFillDepth` 删掉、按新默认 4 重建（`bumpsFillDepth`，玩家改过的数保留）；0.15.0 把还是旧默认 `"144"` 的 `nexus.buildMinSpacing` 删掉、按新默认 312 重建（`bumpsMinSpacing`，同样保留玩家改过的数）。`ConfigTest` 测 `older()`、0.10.1 的默认值和 `bumpsFillDepth`，0.15.0 的 `buildMinSpacing` 和 `bumpsMinSpacing`。
 - README「配置」一节的中文表要同步。
@@ -182,7 +183,7 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 | `LangShardTest`（0.17.0） | 提交的两份 fluxecho lang 就是 `tools/LangMerge.java` 合并 `lang/src` 分片的结果（逐字节）；两种语言每个区的键（和顺序）相同；一个键只在一个分片；每个键在它前缀所属的区（自己读 `areas.txt`，不借工具的判定）；`order.txt` 是 0.16.0 的 1,155 个键、都还在（见 §10「lang 分片」） |
 | `IsolationTest` | 读 `build/classes/java/main` 常量池：`forestry/`→`bees`、`thaumcraft/`→`thaumcraft`、`WayofTime/`→`blood`、`betterquesting/`→`quest/bq`、`com/kuba6000/mobsinfo/`→`mobs`、`ic2/`→`crops`、`vazkii/botania/`→`mana`、`appeng/`→`ae`。只看 `com/fluxecho/`（"The dev classpath always has Forestry (GT pulls it in), so a leak would never show in a dev run"） |
 | `plan/IdsCsvTest`、`plan/BatchPlanTest`（0.17.0） | `docs/dev/ids.csv` 就是 `tools/IdsCsv.java` 从 `ids.md` 导出的、每行有类和值、状态只取 已发布/新增/本版/预留/作废；`plan/batches.csv` 的格式（0.17.0–0.28.0 各一行）、楼按总平面顺序号首发、每版新形状的楼不超过 3 座（同一座楼的两种形态算一座）、环段和星只增不减、每版 main 估值不过 21,741 和计划线 20,000、0.17.0 那一行（以后每版补自己那一行的断言，refactor §2.5）。测试里编译 `tools/*.java` 用 `com.fluxecho.Tools`（JDK 自带的编译器，输出到 `build/tmp/tools-test/`） |
-| `ConfigTest` | `older()` 版本比较；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth`；0.15.0 的 `buildMinSpacing` 312 和 `bumpsMinSpacing`（`campusSpacingOf0150`：只有存的 "144" 改成 312） |
+| `ConfigTest` | 0.17.0 起：`config/fluxecho-0.16.0.cfg`（0.16.0 第一次启动写出的文件，冻结）里的 101 个设置现在照样写出、键、类型、默认值、范围都不变（`ConfigFiles` 在测试里给 FML 一个 Minecraft 目录、调 `Config.load` 写一份全默认的文件再逐项读回）；`older()` 版本比较；0.10.1 的默认值（`buildClearAll` 开、`buildFillDepth` 4）和 `bumpsFillDepth`；0.15.0 的 `buildMinSpacing` 312 和 `bumpsMinSpacing`（`campusSpacingOf0150`：只有存的 "144" 改成 312） |
 | `core/MachineIdTest` | offset 唯一且 < 40；不碰 FluxDepths |
 | `core/EchoRecipesTest` | `forForge` |
 | `nei/CatalystLookupTest`、`HandlerCopyTest`、`PageLayoutTest` | transfer rect、`newInstance()`、输出不压 NEI 按钮 |

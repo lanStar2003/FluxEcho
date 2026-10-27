@@ -5,13 +5,14 @@ import java.util.Map;
 
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.GeneralConfig;
 
 import gregtech.api.GregTechAPI;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 
 /**
- * FluxEcho's GT machines, each on its fixed id from {@link Config#firstMachineId}. The modules create their machines
+ * FluxEcho's GT machines, each on its fixed id from {@link GeneralConfig#firstMachineId}. The modules create their
+ * machines
  * and hand them over here; this class never touches an optional mod.
  */
 public final class Machines {
@@ -25,7 +26,7 @@ public final class Machines {
      * machines into ours.
      */
     public static int claim(MachineId m) {
-        int id = m.id(Config.firstMachineId);
+        int id = m.id(GeneralConfig.firstMachineId);
         IMetaTileEntity taken = GregTechAPI.METATILEENTITIES[id];
         if (taken != null) throw new IllegalStateException(
             "FluxEcho: GT machine id " + id

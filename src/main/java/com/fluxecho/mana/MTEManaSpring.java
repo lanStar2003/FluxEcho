@@ -18,9 +18,9 @@ import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.client.MachineFx;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.ManaConfig;
 import com.fluxecho.core.CoreCircuits;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.ManaSpring;
@@ -139,23 +139,23 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
     }
 
     public int manaPerTick() {
-        return ManaSpring.manaPerTick(Config.manaPerTick, tier());
+        return ManaSpring.manaPerTick(ManaConfig.manaPerTick, tier());
     }
 
     public long euPerTick() {
-        return ManaSpring.euPerTick(Config.manaPerTick, Config.euPerMana, tier());
+        return ManaSpring.euPerTick(ManaConfig.manaPerTick, ManaConfig.euPerMana, tier());
     }
 
     public long petalWorth() {
-        return ManaSpring.manaPerPetal(Config.manaPerPetal, tier());
+        return ManaSpring.manaPerPetal(ManaConfig.manaPerPetal, tier());
     }
 
     public int range() {
-        return ManaSpring.range(Config.manaRange, tier());
+        return ManaSpring.range(ManaConfig.manaRange, tier());
     }
 
     public int height() {
-        return ManaSpring.height(Config.manaHeight, tier());
+        return ManaSpring.height(ManaConfig.manaHeight, tier());
     }
 
     public int petalSlot() {
@@ -267,7 +267,7 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
 
     @Override
     public int checkRecipe() {
-        if (!Config.manaEnabled) return idle(State.DISABLED);
+        if (!ManaConfig.manaEnabled) return idle(State.DISABLED);
         if (tier() <= 0) return idle(State.NO_CORE);
         if (pools().isEmpty() && chargeRoom() <= 0) return idle(State.NO_POOL);
         int amount = manaPerTick() * CYCLE;
@@ -323,13 +323,13 @@ public class MTEManaSpring extends MTEBasicMachine implements IBindPlayerInvento
             survey();
             if (state == State.POOL_FULL || state == State.NO_POOL) base.markInventoryBeenModified();
         }
-        if (hologram && Config.manaHologramRange > 0 && tick % 10 == 0)
-            EchoNet.holo(base, EchoNet.HOLO_MANA, holoData(), Config.manaHologramRange);
+        if (hologram && ManaConfig.manaHologramRange > 0 && tick % 10 == 0)
+            EchoNet.holo(base, EchoNet.HOLO_MANA, holoData(), ManaConfig.manaHologramRange);
     }
 
     /** Hands the buffer on: the charge item first, then the pools nearest first, as much as each takes. */
     private void flush() {
-        if (buffer <= 0 || !Config.manaEnabled) return;
+        if (buffer <= 0 || !ManaConfig.manaEnabled) return;
         int room = chargeRoom();
         if (room > 0) {
             ItemStack s = mInventory[chargeSlot()];

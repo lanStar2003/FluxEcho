@@ -3,8 +3,8 @@ package com.fluxecho.crops;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.CropsConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -51,12 +51,12 @@ public class MTESeedImprinter extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.cropsEnabled;
+        return CropsConfig.cropsEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { EchoText.seconds(Config.cropImprintTicks), Config.cropImprintEut };
+        return new Object[] { EchoText.seconds(CropsConfig.cropImprintTicks), CropsConfig.cropImprintEut };
     }
 
     @Override
@@ -86,6 +86,6 @@ public class MTESeedImprinter extends MTEEchoMachine {
         in.stackSize--;
         mOutputItems[0] = out;
         if (CropImprints.isSeedBag(sample)) remember(Categories.CROP, CropImprints.key(crop));
-        return start(Config.cropImprintEut, Config.cropImprintTicks);
+        return start(CropsConfig.cropImprintEut, CropsConfig.cropImprintTicks);
     }
 }

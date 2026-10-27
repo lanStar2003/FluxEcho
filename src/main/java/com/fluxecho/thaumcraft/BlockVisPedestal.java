@@ -13,8 +13,8 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.ThaumConfig;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -135,7 +135,7 @@ public class BlockVisPedestal extends BlockContainer {
                 t.energy(),
                 TileVisPedestal.capacity(),
                 t.rate() * 20 / 100.0,
-                (long) t.rate() * 20 * Config.visEuPerCentiVis * 6,
+                (long) t.rate() * 20 * ThaumConfig.visEuPerCentiVis * 6,
                 t.installed(),
                 TileVisPedestal.MODULE_SLOTS));
     }

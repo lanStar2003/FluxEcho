@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Owners;
 import com.fluxecho.research.Research;
 
@@ -20,7 +20,7 @@ public final class Grit {
     /** One flux grit to go with the ore just condensed, or null. */
     public static ItemStack roll(Random rand, UUID owner) {
         if (MatterModule.grit == null) return null;
-        double chance = Config.gritChance;
+        double chance = NexusConfig.gritChance;
         if (chance <= 0) return null;
         if (Research.teamHas(Owners.team(owner), Research.GRIT_YIELD)) chance *= 1.5;
         return rand.nextDouble() < chance ? MatterModule.grit(1) : null;

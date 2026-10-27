@@ -12,11 +12,11 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.HoloStore;
 import com.fluxecho.client.ShaderCompat;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.ManaConfig;
 import com.fluxecho.core.CoreCircuits;
 import com.fluxecho.logic.Compact;
 
@@ -46,7 +46,7 @@ public final class ManaHolo {
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        int range = Config.manaHologramRange;
+        int range = ManaConfig.manaHologramRange;
         if (mc.theWorld == null || range <= 0 || ShaderCompat.shadowPass()) return;
         float t = mc.theWorld.getTotalWorldTime() + e.partialTicks;
         for (HoloStore.Shown s : HoloStore.current(EchoNet.HOLO_MANA, mc.theWorld.provider.dimensionId)) {

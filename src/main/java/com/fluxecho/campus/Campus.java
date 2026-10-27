@@ -29,8 +29,8 @@ import net.minecraft.util.IChatComponent;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPace;
@@ -2057,7 +2057,7 @@ public final class Campus {
      * gives even past its soft limit, so nothing is lost.
      */
     void recycle(List<ItemStack> drops) {
-        if (drops == null || !Config.buildKeepSpoils) return;
+        if (drops == null || !CampusConfig.buildKeepSpoils) return;
         for (ItemStack d : drops) recycle.add(d);
     }
 
@@ -2066,7 +2066,7 @@ public final class Campus {
      * the online members once, until it has room again.
      */
     boolean recycleFull() {
-        if (!Config.buildKeepSpoils || !recycle.full()) {
+        if (!CampusConfig.buildKeepSpoils || !recycle.full()) {
             recycleTold = false;
             return false;
         }
@@ -2410,7 +2410,7 @@ public final class Campus {
      * and then PROJECTING; nothing is touched before a member presses 开始.
      */
     public String establish(EntityPlayer placer) {
-        if (!Config.campusEnabled) return P + "legacy_only";
+        if (!CampusConfig.campusEnabled) return P + "legacy_only";
         if (active && job != null && job.raisesNexus()) return P + "already_running";
         active = true;
         hinted = true;
@@ -2425,14 +2425,15 @@ public final class Campus {
     /**
      * 铺设广场 on a legacy nexus: the campus becomes active and the forum job is made (grading, floor, fixtures).
      * Refused when another campus lies so near that their inner discs would overlap ({@link #innerSpacing}; up to
-     * 0.14.2 the whole {@code Config.buildMinSpacing}, whose default 0.15.0 raised for new campuses: the nexus stands
+     * 0.14.2 the whole {@code CampusConfig.buildMinSpacing}, whose default 0.15.0 raised for new campuses: the nexus
+     * stands
      * here already, and the outer rings share their ground, {@link CampusSplit}); and since 0.14.1 when its base lies
      * outside the campus band ({@link CampusBand}): a nexus built by hand may stand anywhere, but a campus over Y0 225
      * could not grow, one under Y0 14 has no room for its well.
      */
     public String layForum(EntityPlayer p) {
         if (!nexus.member(p)) return NOT_MEMBER;
-        if (active || !Config.campusEnabled) return P + "legacy_only";
+        if (active || !CampusConfig.campusEnabled) return P + "legacy_only";
         int[] c = centre();
         String band = CampusBand.refusal(c[1], false);
         if (band != null) return "fluxecho." + band;
@@ -2454,7 +2455,8 @@ public final class Campus {
      * ({@code ItemBlockNexusCore}); refusing a campus that stands would only take its campus away.
      */
     public static int innerSpacing() {
-        return Config.buildMinSpacing <= 0 ? 0 : Math.min(Config.buildMinSpacing, CampusSplit.INNER_SPACING);
+        return CampusConfig.buildMinSpacing <= 0 ? 0
+            : Math.min(CampusConfig.buildMinSpacing, CampusSplit.INNER_SPACING);
     }
 
     /**
@@ -2472,7 +2474,7 @@ public final class Campus {
         if (spec != null && !job.repair()
             && !creative
             && !free(job)
-            && BuildLedger.clamp(Config.buildCostScale) > 0
+            && BuildLedger.clamp(CampusConfig.buildCostScale) > 0
             && ledger.part(spec.corePart) < 1
             && !coreBuilt(job)) return P + "need_core";
         if (job.state == BuildState.State.SURVEY) {
@@ -3011,7 +3013,7 @@ public final class Campus {
         resumeRefused = false;
         Carried c = Carried.read(tag);
         World w = world();
-        if (c == null || w == null || w.isRemote || active || !Config.campusEnabled) return null;
+        if (c == null || w == null || w.isRemote || active || !CampusConfig.campusEnabled) return null;
         if (!c.at(w.provider.dimensionId, nexus.xCoord, nexus.yCoord, nexus.zCoord)) return null;
         // back on its own dais: it faces the way it did, whichever way the player stood
         if (nexus.front()
@@ -3283,7 +3285,7 @@ public final class Campus {
         if (needDirty || needJob != job) {
             needJob = job;
             needDirty = false;
-            need = ledger.need(unbuilt(job), Config.buildCostScale);
+            need = ledger.need(unbuilt(job), CampusConfig.buildCostScale);
         }
         return need;
     }
@@ -3380,8 +3382,12 @@ public final class Campus {
             if (!job.done(i) && !job.skipped(i) && !BuildPlan.digs(pl.steps.get(i).kind)) rem[pl.steps.get(i).stage]++;
         long clears = Math.max(0, job.natural - (job.cleared - job.clearedAtSurvey))
             + Math.max(0, job.toFill - (job.filled - job.filledAtSurvey));
-        eta = BuildPace
-            .etaTicks(rem, job.campusJob() || job.grows(), Config.buildBlocksPerTick, clears, Config.buildClearPerTick);
+        eta = BuildPace.etaTicks(
+            rem,
+            job.campusJob() || job.grows(),
+            CampusConfig.buildBlocksPerTick,
+            clears,
+            CampusConfig.buildClearPerTick);
         return eta;
     }
 

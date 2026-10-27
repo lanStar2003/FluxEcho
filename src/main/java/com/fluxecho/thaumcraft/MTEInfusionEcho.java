@@ -7,8 +7,8 @@ import java.util.UUID;
 
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoPattern;
 import com.fluxecho.core.MachineId;
 
@@ -48,12 +48,12 @@ public class MTEInfusionEcho extends MTEThaumMachine {
 
     @Override
     protected int unitsPerShard() {
-        return Config.essentiaPerShard;
+        return ThaumConfig.essentiaPerShard;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { Config.essentiaEuPerUnit, Config.essentiaPerShard };
+        return new Object[] { ThaumConfig.essentiaEuPerUnit, ThaumConfig.essentiaPerShard };
     }
 
     /** Primal units an option costs: the essentia's units, or one per vis. */
@@ -111,7 +111,7 @@ public class MTEInfusionEcho extends MTEThaumMachine {
                 if (in[i] != null && in[i].stackSize <= 0) mInventory[getInputSlot() + i] = null;
             mOutputItems[0] = out;
             remember(Categories.INFUSION, ThaumRecipes.key(sample()));
-            long eu = units * Config.essentiaEuPerUnit;
+            long eu = units * ThaumConfig.essentiaEuPerUnit;
             int maxEut = (int) GTValues.V[mTier];
             int ticks = (int) Math.max(20, (eu + maxEut - 1) / maxEut);
             return start((int) Math.max(1, (eu + ticks - 1) / ticks), ticks);
@@ -124,7 +124,8 @@ public class MTEInfusionEcho extends MTEThaumMachine {
     public List<EchoPattern> echoPatterns() {
         UUID owner = getBaseMetaTileEntity().getOwnerUuid();
         UUID team = team();
-        if (!Config.thaumEnabled || owner == null || team == null || sample() == null) return Collections.emptyList();
+        if (!ThaumConfig.thaumEnabled || owner == null || team == null || sample() == null)
+            return Collections.emptyList();
         List<ThaumRecipes.Option> options = unlocked(owner, team);
         if (options.isEmpty()) return Collections.emptyList();
         ThaumRecipes.Option o = options.get(0);

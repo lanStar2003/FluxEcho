@@ -5,9 +5,10 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.BloodConfig;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
@@ -47,14 +48,14 @@ public final class BloodModule {
     private static void neiPages() {
         Block altar = GameRegistry.findBlock("AWWayofTime", "Altar");
         ItemStack[] out = altar == null ? new ItemStack[0] : new ItemStack[] { new ItemStack(altar) };
-        ItemStack[] in = Config.lpPerMeat > 0 ? new ItemStack[] { new ItemStack(Items.rotten_flesh) }
+        ItemStack[] in = BloodConfig.lpPerMeat > 0 ? new ItemStack[] { new ItemStack(Items.rotten_flesh) }
             : new ItemStack[0];
         for (String name : ORBS) {
             Item orb = GameRegistry.findItem("AWWayofTime", name);
             if (!(orb instanceof IBloodOrb o)) continue;
-            int rate = BloodRates.lpPerTick(Config.lpPerTick, o.getOrbLevel());
+            int rate = BloodRates.lpPerTick(BloodConfig.lpPerTick, o.getOrbLevel());
             if (rate > 0)
-                EchoRecipeMaps.page(MachineId.BLOOD_ECHO, new ItemStack(orb), in, out, rate * Config.euPerLp, 20);
+                EchoRecipeMaps.page(MachineId.BLOOD_ECHO, new ItemStack(orb), in, out, rate * BloodConfig.euPerLp, 20);
         }
     }
 
@@ -79,12 +80,12 @@ public final class BloodModule {
      * The recipe takes a blood altar and a sacrificial knife: the machine repeats what you did with them by hand.
      */
     public static void postInit() {
-        if (Config.bloodEnabled) neiPages();
+        if (BloodConfig.bloodEnabled) neiPages();
         Categories.register(new Categories.Category(Categories.ORB, BloodModule::stack, key -> {
             ItemStack s = stack(key);
             return s == null ? key : s.getDisplayName();
         }, s -> s != null && s.getItem() instanceof IBloodOrb ? key(s) : null));
-        if (!Config.bloodEnabled || !Config.defaultRecipes) return;
+        if (!BloodConfig.bloodEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             Block altar = GameRegistry.findBlock("AWWayofTime", "Altar");
             Item knife = GameRegistry.findItem("AWWayofTime", "sacrificialKnife");

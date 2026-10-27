@@ -10,7 +10,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.GatesConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.FoldedZone;
 import com.fluxecho.logic.RoomPlan;
@@ -57,7 +57,7 @@ public class ItemBlockLightGate extends ItemBlock {
     @Override
     public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World w, int x, int y, int z, int side, float hx,
         float hy, float hz, int meta) {
-        if (FoldedZone.contains(x, z) || w.provider.dimensionId == Config.gateDimension) {
+        if (FoldedZone.contains(x, z) || w.provider.dimensionId == GatesConfig.gateDimension) {
             if (!w.isRemote && player != null)
                 player.addChatMessage(new ChatComponentTranslation("fluxecho.gate.not_inside"));
             return false;

@@ -16,8 +16,8 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GatesConfig;
 import com.fluxecho.logic.FoldedZone;
 import com.fluxecho.logic.GateGeometry;
 import com.fluxecho.logic.GatePins;
@@ -211,10 +211,10 @@ public final class Gates {
         MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
         for (GateRegistry.Entry e : r.all()) {
-            if (!e.inside || e.dim != Config.gateDimension) continue;
+            if (!e.inside || e.dim != GatesConfig.gateDimension) continue;
             GateRegistry.Entry outer = r.partnerOf(e);
             r.remove(e);
-            if (outer == null || outer.dim == Config.gateDimension) continue;
+            if (outer == null || outer.dim == GatesConfig.gateDimension) continue;
             WorldServer w = server.worldServerForDimension(outer.dim);
             if (w == null) continue;
             GateRegistry.Entry inner = makeRoom(

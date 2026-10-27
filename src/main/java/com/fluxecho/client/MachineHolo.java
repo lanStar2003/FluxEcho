@@ -14,8 +14,8 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.EffectsConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -46,7 +46,7 @@ public final class MachineHolo {
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        int range = Config.machineHologramRange;
+        int range = EffectsConfig.machineHologramRange;
         if (mc.theWorld == null || range <= 0 || ShaderCompat.shadowPass()) return;
         float t = mc.theWorld.getTotalWorldTime() + e.partialTicks;
         for (HoloStore.Shown s : HoloStore.current(EchoNet.HOLO_MACHINE, mc.theWorld.provider.dimensionId)) {

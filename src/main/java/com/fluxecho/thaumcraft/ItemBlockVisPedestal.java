@@ -7,7 +7,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoText;
 
 import cpw.mods.fml.relauncher.Side;
@@ -28,9 +28,9 @@ public class ItemBlockVisPedestal extends ItemBlock {
         tip.addAll(
             EchoText.lines(
                 "vis_pedestal.tip",
-                Config.visPedestalRate * 20 / 100.0,
-                Config.visEuPerCentiVis * 100,
-                Config.visPedestalBuffer,
+                ThaumConfig.visPedestalRate * 20 / 100.0,
+                ThaumConfig.visEuPerCentiVis * 100,
+                ThaumConfig.visPedestalBuffer,
                 TileVisPedestal.MODULE_SLOTS));
     }
 }

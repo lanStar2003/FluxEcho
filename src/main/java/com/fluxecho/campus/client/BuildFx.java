@@ -27,13 +27,14 @@ import net.minecraftforge.event.world.WorldEvent;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.PartBlocks;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.logic.LaunchPhase;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileMultiblock;
@@ -66,7 +67,7 @@ import cpw.mods.fml.relauncher.SideOnly;
  * ({@code RenderManager.renderPos*}), quads only, every vertex with a normal towards the viewer, additive, no depth
  * writes, the block atlas bound for the textured parts as {@code LibraryRender} does. Each part (arcs, cargo, prints,
  * flashes, clear outlines, particles, sounds) fails on its own: an error is logged once and turns that part off for
- * the session, and the GL state is restored whatever happens. Off with {@code Config.buildEffects}.
+ * the session, and the GL state is restored whatever happens. Off with {@code CampusConfig.buildEffects}.
  */
 @SideOnly(Side.CLIENT)
 public final class BuildFx {
@@ -167,7 +168,7 @@ public final class BuildFx {
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
         if (ShaderCompat.shadowPass()) return;
-        if (!Config.buildEffects || OFF[ALL]) return;
+        if (!CampusConfig.buildEffects || OFF[ALL]) return;
         World w = Minecraft.getMinecraft().theWorld;
         if (w == null) return;
         try {
@@ -187,7 +188,7 @@ public final class BuildFx {
         ny = (float) Math.sin(pitch);
         nz = (float) (-Math.cos(yaw) * Math.cos(pitch));
         int dim = w.provider.dimensionId;
-        double range = Config.nexusEffectRange + EXTRA_RANGE;
+        double range = NexusConfig.nexusEffectRange + EXTRA_RANGE;
         for (TileMultiblock m : ClientTiles.all()) {
             if (!(m instanceof TileNexus n) || m.getWorldObj() != w || m.isInvalid()) continue;
             Campus.View v = n.clientCampus;
@@ -240,7 +241,7 @@ public final class BuildFx {
         // the arcs and their cargo: launches not landed yet, at most buildArcs of them
         List<Shown> arcs = new ArrayList<>();
         for (Shown l : live) {
-            if (arcs.size() >= Config.buildArcs) break;
+            if (arcs.size() >= CampusConfig.buildArcs) break;
             if (now < l.land) arcs.add(l);
         }
         List<Shown> cells = live.size() > MAX_CELLS ? live.subList(0, MAX_CELLS) : live;
@@ -588,7 +589,7 @@ public final class BuildFx {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         World w = mc.theWorld;
-        if (w == null || !Config.buildEffects) {
+        if (w == null || !CampusConfig.buildEffects) {
             forget();
             return;
         }

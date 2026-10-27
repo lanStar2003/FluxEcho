@@ -7,8 +7,9 @@ import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GatesConfig;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -41,9 +42,9 @@ public final class GateModule {
 
     public static void init() {
         try {
-            if (!DimensionManager.registerProviderType(Config.gateProvider, InteriorProvider.class, false))
-                throw new IllegalStateException("world provider id " + Config.gateProvider + " is taken");
-            DimensionManager.registerDimension(Config.gateDimension, Config.gateProvider);
+            if (!DimensionManager.registerProviderType(GatesConfig.gateProvider, InteriorProvider.class, false))
+                throw new IllegalStateException("world provider id " + GatesConfig.gateProvider + " is taken");
+            DimensionManager.registerDimension(GatesConfig.gateDimension, GatesConfig.gateProvider);
             oldInterior = true;
         } catch (RuntimeException e) {
             FluxEcho.LOG.warn(
@@ -60,7 +61,7 @@ public final class GateModule {
 
     /** Glass to look through, ender pearls for the link to the flux layer, obsidian to stand on. */
     public static void postInit() {
-        if (!Config.defaultRecipes || !Config.gateRecipe) return;
+        if (!GeneralConfig.defaultRecipes || !GatesConfig.gateRecipe) return;
         try {
             EchoRecipes.shaped(
                 "Light Gate",

@@ -20,7 +20,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.BlockDeck;
 import com.fluxecho.campus.BlockFitting;
 import com.fluxecho.campus.BuildJob;
@@ -28,6 +27,8 @@ import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.CampusRegistry;
 import com.fluxecho.campus.RecycleOverflow;
 import com.fluxecho.campus.RecycleStore;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.logic.Blueprint;
@@ -50,7 +51,8 @@ import cpw.mods.fml.relauncher.SideOnly;
  * A lifted placement is refused when the nexus could not grow there: its base outside the campus band (too close to
  * the top of the world, or since 0.14.1 too close to the bedrock for any well, {@link CampusBand}; never for a core put
  * back where it stood), no open sky over the core, its base on a module, or another campus within
- * {@code Config.buildMinSpacing}. Only the server decides a lifted placement; the client applies the same rule and
+ * {@code CampusConfig.buildMinSpacing}. Only the server decides a lifted placement; the client applies the same rule
+ * and
  * then waits for the block instead of guessing, so a refused or moved placement never leaves a ghost block or a wrong
  * stack count behind.
  * <p>
@@ -143,7 +145,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         float hz) {
         int cy = y0 + LiftRule.LIFT;
         if (!p.canPlayerEdit(x, cy, z, LiftRule.TOP, stack)) return false;
-        boolean campus = Config.nexusEnabled && Config.campusEnabled;
+        boolean campus = NexusConfig.nexusEnabled && CampusConfig.campusEnabled;
         if (campus) {
             IChatComponent no = refusal(w, p, x, cy, z, putsBack(stack, w, x, cy, z));
             if (no != null) {
@@ -189,11 +191,11 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         int[] c = b.world(b.ctrlA, b.height() - 1, b.ctrlC + b.centreBack(), x, cy, z, f.offsetX, f.offsetZ);
         String band = CampusBand.refusal(c[1], putBack);
         if (band != null) return new ChatComponentTranslation("fluxecho." + band);
-        if (Config.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z))
+        if (CampusConfig.buildRequireSky && !w.canBlockSeeTheSky(x, cy, z))
             return new ChatComponentTranslation("fluxecho.build.no_sky");
         if (onModule(w, box(b, x, cy, z, f))) return new ChatComponentTranslation("fluxecho.build.on_module");
         // a core put back where it stood keeps the spacing its campus was placed at (0.15.0, Campus.innerSpacing)
-        int[] near = tooClose(w, c, putBack ? Campus.innerSpacing() : Config.buildMinSpacing);
+        int[] near = tooClose(w, c, putBack ? Campus.innerSpacing() : CampusConfig.buildMinSpacing);
         if (near != null)
             return new ChatComponentTranslation("fluxecho.build.too_close", near[0] + ", " + near[1] + ", " + near[2]);
         return null;
@@ -252,7 +254,8 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
     /**
      * The centre of a campus, or of a loaded nexus that has none yet (a 0.9.2 nexus may lay its forum later), closer
      * than {@code spacing} (Chebyshev) to the centre {@code c}; null when there is none. A new core keeps
-     * {@code Config.buildMinSpacing} (312 by default since 0.15.0, room for both outer rings); a core put back where it
+     * {@code CampusConfig.buildMinSpacing} (312 by default since 0.15.0, room for both outer rings); a core put back
+     * where it
      * stood only the inner discs' spacing ({@link Campus#innerSpacing}).
      */
     static int[] tooClose(World w, int[] c, int spacing) {
@@ -429,7 +432,7 @@ public class ItemBlockNexusCore extends ItemBlockNexus {
         NBTTagCompound t = stack.getTagCompound();
         if (t == null) return null;
         String said = null;
-        if (t.hasKey(CAMPUS, 10) && Config.nexusEnabled) said = n.campus()
+        if (t.hasKey(CAMPUS, 10) && NexusConfig.nexusEnabled) said = n.campus()
             .resume(t.getCompoundTag(CAMPUS));
         if (t.hasKey(PENDING, 10) && n.making() == null
             && n.manifest()

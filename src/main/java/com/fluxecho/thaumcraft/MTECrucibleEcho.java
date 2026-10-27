@@ -12,7 +12,7 @@ import java.util.UUID;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoPattern;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.Choice;
@@ -60,12 +60,12 @@ public class MTECrucibleEcho extends MTEThaumMachine {
 
     @Override
     protected int unitsPerShard() {
-        return Config.essentiaPerShard;
+        return ThaumConfig.essentiaPerShard;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { Config.essentiaEuPerUnit, Config.essentiaPerShard };
+        return new Object[] { ThaumConfig.essentiaEuPerUnit, ThaumConfig.essentiaPerShard };
     }
 
     /** Every crucible recipe, in a fixed order; read once all mods have added theirs. */
@@ -125,7 +125,7 @@ public class MTECrucibleEcho extends MTEThaumMachine {
         catalyst.stackSize--;
         mOutputItems[0] = out;
         // the essentia's EU is drawn over the cycle, at most the machine's voltage per tick
-        long eu = units * Config.essentiaEuPerUnit;
+        long eu = units * ThaumConfig.essentiaEuPerUnit;
         int maxEut = (int) GTValues.V[mTier];
         int ticks = (int) Math.max(20, (eu + maxEut - 1) / maxEut);
         return start((int) Math.max(1, (eu + ticks - 1) / ticks), ticks);
@@ -150,7 +150,7 @@ public class MTECrucibleEcho extends MTEThaumMachine {
     public List<EchoPattern> echoPatterns() {
         UUID owner = getBaseMetaTileEntity().getOwnerUuid();
         UUID team = team();
-        if (!Config.thaumEnabled || owner == null || team == null) return Collections.emptyList();
+        if (!ThaumConfig.thaumEnabled || owner == null || team == null) return Collections.emptyList();
         Map<String, List<CrucibleRecipe>> byCatalyst = new LinkedHashMap<>();
         Map<String, ItemStack> examples = new HashMap<>();
         for (CrucibleRecipe r : recipes()) {

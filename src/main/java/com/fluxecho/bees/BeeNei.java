@@ -7,8 +7,8 @@ import java.util.Map;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.BeesConfig;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.logic.Chromosomes;
@@ -98,16 +98,16 @@ public final class BeeNei {
             .special(sample)
             .itemInputs(new ItemStack(Items.paper))
             .itemOutputs(BeeImprints.imprint(forest))
-            .duration(Config.imprintTicks)
-            .eut(Config.imprintEut)
+            .duration(BeesConfig.imprintTicks)
+            .eut(BeesConfig.imprintEut)
             .fake()
             .addTo(map);
         GTValues.RA.stdBuilder()
             .special(sample)
             .itemInputs(new ItemStack(Items.paper), GTUtility.getIntegratedCircuit(1))
             .itemOutputs(GeneSamples.of(Karyotype.BEES, GeneSplice.extract(forest, Chromosomes.forCircuit(1))))
-            .duration(Config.imprintTicks)
-            .eut(Config.imprintEut)
+            .duration(BeesConfig.imprintTicks)
+            .eut(BeesConfig.imprintEut)
             .fake()
             .addTo(map);
         GTValues.RA.stdBuilder()
@@ -117,8 +117,8 @@ public final class BeeNei {
                 GeneSamples.of(
                     Karyotype.BEES,
                     GeneSplice.extract(forest, Chromosomes.forCircuit(Chromosomes.CIRCUIT_ENVIRONMENT))))
-            .duration(Config.imprintTicks)
-            .eut(Config.imprintEut)
+            .duration(BeesConfig.imprintTicks)
+            .eut(BeesConfig.imprintEut)
             .fake()
             .addTo(map);
         Map<String, String> edited = Chromosomes
@@ -127,8 +127,8 @@ public final class BeeNei {
             .special(sample)
             .itemInputs(BeeImprints.imprint(meadows), GTUtility.getIntegratedCircuit(Chromosomes.CIRCUIT_ENVIRONMENT))
             .itemOutputs(BeeImprints.imprint(edited))
-            .duration(Config.imprintTicks)
-            .eut(Config.imprintEut)
+            .duration(BeesConfig.imprintTicks)
+            .eut(BeesConfig.imprintEut)
             .fake()
             .addTo(map);
     }
@@ -148,15 +148,15 @@ public final class BeeNei {
                 GeneSamples.of(Karyotype.BEES, speed),
                 GeneSamples.of(Karyotype.BEES, environment))
             .itemOutputs(BeeImprints.imprint(GeneSplice.apply(meadows, both)))
-            .duration(Config.assembleTicks)
-            .eut(Config.assembleEut)
+            .duration(BeesConfig.assembleTicks)
+            .eut(BeesConfig.assembleEut)
             .fake()
             .addTo(map);
         GTValues.RA.stdBuilder()
             .itemInputs(GeneSamples.of(Karyotype.BEES, speed), GeneSamples.of(Karyotype.BEES, environment))
             .itemOutputs(GeneSamples.of(Karyotype.BEES, both))
-            .duration(Config.assembleTicks)
-            .eut(Config.assembleEut)
+            .duration(BeesConfig.assembleTicks)
+            .eut(BeesConfig.assembleEut)
             .fake()
             .addTo(map);
     }
@@ -165,16 +165,16 @@ public final class BeeNei {
         RecipeMap<?> map = incubatorMap();
         if (map == null) return;
         int pages = 0;
-        ItemStack honey = MTEBeeIncubator.honey(Config.honeyPerPrincess);
-        ItemStack[] beeFood = Config.honeyPerPrincess > 0 && honey != null ? new ItemStack[] { honey }
+        ItemStack honey = MTEBeeIncubator.honey(BeesConfig.honeyPerPrincess);
+        ItemStack[] beeFood = BeesConfig.honeyPerPrincess > 0 && honey != null ? new ItemStack[] { honey }
             : new ItemStack[0];
         for (IAllele[] t : new HashMap<>(BeeManager.beeRoot.getGenomeTemplates()).values()) {
             Map<String, String> genes = BeeImprints.genes(BeeManager.beeRoot, t);
             IBee bee = genes.containsKey(Chromosomes.SPECIES) ? BeeImprints.bee(genes, null) : null;
             if (bee == null) continue;
             ItemStack princess = BeeImprints.stack(bee, EnumBeeType.PRINCESS, 1);
-            ItemStack[] outputs = Config.dronesWithPrincess > 0
-                ? new ItemStack[] { princess, BeeImprints.stack(bee, EnumBeeType.DRONE, Config.dronesWithPrincess) }
+            ItemStack[] outputs = BeesConfig.dronesWithPrincess > 0
+                ? new ItemStack[] { princess, BeeImprints.stack(bee, EnumBeeType.DRONE, BeesConfig.dronesWithPrincess) }
                 : new ItemStack[] { princess };
             page(map, BeeImprints.imprint(genes), beeFood, outputs);
             pages++;
@@ -182,13 +182,13 @@ public final class BeeNei {
         pages += others(
             map,
             Karyotype.TREES,
-            MTEBeeIncubator.fertilizer(Config.fertilizerPerSaplings),
-            Config.fertilizerPerSaplings);
+            MTEBeeIncubator.fertilizer(BeesConfig.fertilizerPerSaplings),
+            BeesConfig.fertilizerPerSaplings);
         pages += others(
             map,
             Karyotype.BUTTERFLIES,
-            MTEBeeIncubator.honey(Config.honeyPerButterfly),
-            Config.honeyPerButterfly);
+            MTEBeeIncubator.honey(BeesConfig.honeyPerButterfly),
+            BeesConfig.honeyPerButterfly);
         FluxEcho.LOG.info("Larva Incubator: {} species in NEI", pages);
     }
 
@@ -201,8 +201,8 @@ public final class BeeNei {
         for (IAllele[] t : new HashMap<>(r.getGenomeTemplates()).values()) {
             Map<String, String> genes = BeeImprints.genes(r, t);
             if (!genes.containsKey(Chromosomes.SPECIES)) continue;
-            ItemStack out = Karyotype.TREES.equals(root) ? BeeImprints.saplings(genes, Config.saplingsPerBatch)
-                : BeeImprints.butterflies(genes, Config.butterfliesPerBatch);
+            ItemStack out = Karyotype.TREES.equals(root) ? BeeImprints.saplings(genes, BeesConfig.saplingsPerBatch)
+                : BeeImprints.butterflies(genes, BeesConfig.butterfliesPerBatch);
             if (out == null) continue;
             page(map, BeeImprints.imprint(root, genes), in, new ItemStack[] { out });
             pages++;
@@ -215,8 +215,8 @@ public final class BeeNei {
             .special(imprint)
             .itemInputs(inputs)
             .itemOutputs(outputs)
-            .duration(Config.incubateTicks)
-            .eut(Config.incubateEut)
+            .duration(BeesConfig.incubateTicks)
+            .eut(BeesConfig.incubateEut)
             .fake()
             .addTo(map);
     }

@@ -13,8 +13,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.AeConfig;
 import com.fluxecho.core.EchoPattern;
 import com.fluxecho.core.MTEEchoMachine;
 
@@ -135,7 +135,7 @@ public class TileEchoProvider extends TileEntity implements IGridBlock, IActionH
 
     private void refreshPatterns() {
         Set<EchoPatternDetails> now = new LinkedHashSet<>();
-        if (Config.aeEnabled) for (MTEEchoMachine m : machines()) {
+        if (AeConfig.aeEnabled) for (MTEEchoMachine m : machines()) {
             try {
                 for (EchoPattern p : m.echoPatterns()) if (p.outputs.length > 0) now.add(new EchoPatternDetails(p));
             } catch (RuntimeException e) {
@@ -181,7 +181,7 @@ public class TileEchoProvider extends TileEntity implements IGridBlock, IActionH
 
     @Override
     public boolean pushPattern(ICraftingPatternDetails details, InventoryCrafting table) {
-        if (!(details instanceof EchoPatternDetails d) || !Config.aeEnabled) return false;
+        if (!(details instanceof EchoPatternDetails d) || !AeConfig.aeEnabled) return false;
         List<ItemStack> in = new ArrayList<>();
         for (int i = 0; i < table.getSizeInventory(); i++) {
             ItemStack s = table.getStackInSlot(i);

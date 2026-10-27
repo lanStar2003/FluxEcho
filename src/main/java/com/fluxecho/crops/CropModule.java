@@ -4,9 +4,10 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.CropsConfig;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
@@ -76,7 +77,7 @@ public final class CropModule {
             CropCard c = CropImprints.byKey(key);
             return c == null ? key : CropImprints.name(c);
         }, s -> CropImprints.key(CropImprints.crop(s))));
-        if (!Config.cropsEnabled || !Config.defaultRecipes) return;
+        if (!CropsConfig.cropsEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             recipes();
         } catch (Throwable t) {
@@ -107,12 +108,12 @@ public final class CropModule {
 
     /** NEI: one page per crop, crop sticks into seed bags. */
     public static void loadComplete() {
-        if (!Config.cropsEnabled) return;
+        if (!CropsConfig.cropsEnabled) return;
         RecipeMap<?> map = seedMap();
         ItemStack sticks = IC2Items.getItem("crop");
         if (map == null) return;
-        ItemStack[] in = Config.sticksPerSeed > 0 && sticks != null
-            ? new ItemStack[] { GTUtility.copyAmount(Config.sticksPerSeed, sticks) }
+        ItemStack[] in = CropsConfig.sticksPerSeed > 0 && sticks != null
+            ? new ItemStack[] { GTUtility.copyAmount(CropsConfig.sticksPerSeed, sticks) }
             : new ItemStack[0];
         int pages = 0;
         for (CropCard c : Crops.instance.getCrops()) {
@@ -123,8 +124,8 @@ public final class CropModule {
                     .special(CropImprints.imprint(c, stats))
                     .itemInputs(in)
                     .itemOutputs(CropImprints.seeds(c, stats))
-                    .duration(Config.seedTicks)
-                    .eut(Config.seedEut)
+                    .duration(CropsConfig.seedTicks)
+                    .eut(CropsConfig.seedEut)
                     .fake()
                     .addTo(map);
                 pages++;
@@ -147,8 +148,8 @@ public final class CropModule {
                     CropImprints.seeds(c, stats),
                     new ItemStack[] { new ItemStack(Items.paper) },
                     new ItemStack[] { CropImprints.imprint(c, stats) },
-                    Config.cropImprintEut,
-                    Config.cropImprintTicks);
+                    CropsConfig.cropImprintEut,
+                    CropsConfig.cropImprintTicks);
             } catch (RuntimeException e) {
                 FluxEcho.LOG.debug("No NEI imprint page for crop {}", c.name(), e);
             }

@@ -7,10 +7,11 @@ import java.util.function.Supplier;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
 import com.fluxecho.codex.CodexModule;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.matter.MatterModule;
 import com.fluxlite.block.ModBlocks;
@@ -84,7 +85,7 @@ public final class NexusModule {
      */
     public static void postInit() {
         Manifests.init();
-        if (!Config.defaultRecipes || !Config.nexusEnabled) return;
+        if (!GeneralConfig.defaultRecipes || !NexusConfig.nexusEnabled) return;
         try {
             EchoRecipes.shaped(
                 "Flux Nexus Core",

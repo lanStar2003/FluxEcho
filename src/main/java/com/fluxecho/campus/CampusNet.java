@@ -6,8 +6,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.client.BuildClient;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.gate.Sight;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.nexus.NexusNet;
@@ -113,7 +113,7 @@ public final class CampusNet {
         World w = nexus == null ? null : nexus.getWorldObj();
         if (w == null || w.isRemote) return java.util.Collections.emptyList();
         int[] c = nexus.centre();
-        return Sight.near(w, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, Config.nexusEffectRange + EXTRA_RANGE);
+        return Sight.near(w, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, NexusConfig.nexusEffectRange + EXTRA_RANGE);
     }
 
     /** Where the packet is about: the nexus's controller and its centre. */

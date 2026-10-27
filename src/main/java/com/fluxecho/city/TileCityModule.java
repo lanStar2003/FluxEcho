@@ -24,10 +24,10 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.campus.PartBlocks;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Directory;
 import com.fluxecho.frame.Formed;
 import com.fluxecho.gate.Sight;
@@ -493,7 +493,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
 
     /** The EU/t it draws while docked. */
     public long upkeep() {
-        return Config.moduleUpkeep;
+        return NexusConfig.moduleUpkeep;
     }
 
     @Override
@@ -503,7 +503,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
         boolean was = powered;
         TileNexus n = nexus();
         UUID team = team();
-        if (formed && n != null && Config.nexusEnabled && team != null) {
+        if (formed && n != null && NexusConfig.nexusEnabled && team != null) {
             long eu = upkeep();
             powered = eu <= 0 || GTWirelessBackend.INSTANCE.add(team, BigInteger.valueOf(-eu));
             if (powered && eu > 0) ServerEvents.addTeamTick(team, 0, eu, eu, true);
@@ -627,7 +627,7 @@ public abstract class TileCityModule extends TileModule implements ITileWithModu
     private Set<EntityPlayerMP> audience() {
         int[] c = centre();
         Set<EntityPlayerMP> to = new LinkedHashSet<>(
-            Sight.near(worldObj, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, Config.nexusEffectRange + 64));
+            Sight.near(worldObj, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, NexusConfig.nexusEffectRange + 64));
         if (worldObj instanceof WorldServer ws) {
             for (Object o : ws.playerEntities) if (o instanceof EntityPlayerMP p && ws.getPlayerManager()
                 .isPlayerWatchingChunk(p, xCoord >> 4, zCoord >> 4)) to.add(p);

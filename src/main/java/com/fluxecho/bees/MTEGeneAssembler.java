@@ -5,7 +5,7 @@ import java.util.List;
 
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.BeesConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -42,12 +42,12 @@ public class MTEGeneAssembler extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.beesEnabled;
+        return BeesConfig.beesEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { EchoText.seconds(Config.assembleTicks), Config.assembleEut };
+        return new Object[] { EchoText.seconds(BeesConfig.assembleTicks), BeesConfig.assembleEut };
     }
 
     @Override
@@ -65,6 +65,6 @@ public class MTEGeneAssembler extends MTEEchoMachine {
             if (--mInventory[i].stackSize <= 0) mInventory[i] = null;
         }
         mOutputItems[0] = splice.result;
-        return start(Config.assembleEut, Config.assembleTicks);
+        return start(BeesConfig.assembleEut, BeesConfig.assembleTicks);
     }
 }

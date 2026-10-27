@@ -4,11 +4,12 @@ import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.EchoLedger;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 
@@ -53,7 +54,7 @@ public final class TCModule {
 
     /** NEI pages, once every mod has added its Thaumcraft recipes. */
     public static void loadComplete() {
-        if (Config.thaumEnabled) TCNei.pages();
+        if (ThaumConfig.thaumEnabled) TCNei.pages();
     }
 
     public static void postInit() {
@@ -73,7 +74,7 @@ public final class TCModule {
             ItemStack s = ThaumRecipes.stack(key);
             return s == null ? key : s.getDisplayName();
         }, s -> ThaumRecipes.isProduct(s) ? ThaumRecipes.key(s) : null));
-        if (!Config.thaumEnabled || !Config.defaultRecipes) return;
+        if (!ThaumConfig.thaumEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             TCCrafting.register();
         } catch (Throwable t) {

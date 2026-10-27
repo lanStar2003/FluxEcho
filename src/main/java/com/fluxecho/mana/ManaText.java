@@ -7,8 +7,8 @@ import java.util.Locale;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 
-import com.fluxecho.Config;
 import com.fluxecho.client.Keys;
+import com.fluxecho.config.ManaConfig;
 import com.fluxecho.core.CoreCircuits;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.Compact;
@@ -51,16 +51,17 @@ public final class ManaText {
             + t(
                 "row",
                 ManaSpring.voltage(tier),
-                ManaSpring.manaPerTick(Config.manaPerTick, tier),
-                ManaSpring.euPerTick(Config.manaPerTick, Config.euPerMana, tier),
-                Compact.si(ManaSpring.manaPerPetal(Config.manaPerPetal, tier)),
-                ManaSpring.range(Config.manaRange, tier),
-                ManaSpring.height(Config.manaHeight, tier));
+                ManaSpring.manaPerTick(ManaConfig.manaPerTick, tier),
+                ManaSpring.euPerTick(ManaConfig.manaPerTick, ManaConfig.euPerMana, tier),
+                Compact.si(ManaSpring.manaPerPetal(ManaConfig.manaPerPetal, tier)),
+                ManaSpring.range(ManaConfig.manaRange, tier),
+                ManaSpring.height(ManaConfig.manaHeight, tier));
     }
 
     /** Petals a minute, "15.4". */
     public static String perMinute() {
-        return String.format(Locale.ROOT, "%.1f", ManaSpring.petalsPerMinute(Config.manaPerTick, Config.manaPerPetal));
+        return String
+            .format(Locale.ROOT, "%.1f", ManaSpring.petalsPerMinute(ManaConfig.manaPerTick, ManaConfig.manaPerPetal));
     }
 
     // ---- GUI and hologram lines

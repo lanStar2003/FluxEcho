@@ -6,8 +6,8 @@ import java.util.Map;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.BeesConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -57,12 +57,12 @@ public class MTEBeeImprinter extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.beesEnabled;
+        return BeesConfig.beesEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { EchoText.seconds(Config.imprintTicks), Config.imprintEut };
+        return new Object[] { EchoText.seconds(BeesConfig.imprintTicks), BeesConfig.imprintEut };
     }
 
     /** The ledger category of a root. */
@@ -111,6 +111,6 @@ public class MTEBeeImprinter extends MTEEchoMachine {
         mOutputItems[0] = out;
         if (!geneSample && !BeeImprints.isImprint(sampleStack))
             remember(category(root), sample.get(Chromosomes.SPECIES));
-        return start(Config.imprintEut, Config.imprintTicks);
+        return start(BeesConfig.imprintEut, BeesConfig.imprintTicks);
     }
 }

@@ -5,8 +5,8 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -26,7 +26,7 @@ public final class CodexModule {
 
     /** A book bound with an ender pearl, the link to the flux layer. */
     public static void postInit() {
-        if (!Config.defaultRecipes) return;
+        if (!GeneralConfig.defaultRecipes) return;
         try {
             EchoRecipes.shapeless(
                 "Echo Codex",

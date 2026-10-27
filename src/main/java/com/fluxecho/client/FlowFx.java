@@ -5,7 +5,7 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.EffectsConfig;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -26,12 +26,14 @@ public final class FlowFx {
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.theWorld == null || !Config.flowTrails || Config.effectRange <= 0 || ShaderCompat.shadowPass()) return;
+        if (mc.theWorld == null || !EffectsConfig.flowTrails
+            || EffectsConfig.effectRange <= 0
+            || ShaderCompat.shadowPass()) return;
         java.util.List<FlowStore.Flow> flows = FlowStore.current(mc.theWorld.provider.dimensionId);
         if (flows.isEmpty()) return;
         long now = System.currentTimeMillis();
         float t = mc.theWorld.getTotalWorldTime() + e.partialTicks;
-        double range = Config.effectRange + 8;
+        double range = EffectsConfig.effectRange + 8;
         boolean open = false;
         for (FlowStore.Flow f : flows) {
             double x0 = f.x + 0.5 - RenderManager.renderPosX, y0 = f.y + 1.05 - RenderManager.renderPosY,

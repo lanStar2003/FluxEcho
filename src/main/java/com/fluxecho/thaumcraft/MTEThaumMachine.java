@@ -11,7 +11,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -49,7 +49,7 @@ public abstract class MTEThaumMachine extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.thaumEnabled;
+        return ThaumConfig.thaumEnabled;
     }
 
     /** Teaches the team every aspect in the inputs (shards and essentia stay where they are). */

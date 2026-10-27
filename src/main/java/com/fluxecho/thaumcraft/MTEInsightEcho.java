@@ -8,7 +8,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Owners;
@@ -60,7 +60,7 @@ public class MTEInsightEcho extends MTEThaumMachine {
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { EchoText.seconds(Config.insightTicks), Config.insightEut };
+        return new Object[] { EchoText.seconds(ThaumConfig.insightTicks), ThaumConfig.insightEut };
     }
 
     private EntityPlayerMP owner() {
@@ -90,7 +90,7 @@ public class MTEInsightEcho extends MTEThaumMachine {
         if (in == null || in.getItem() != Items.paper) return idle("need_paper");
         in.stackSize--;
         owed.add(aspects);
-        return start(Config.insightEut, Config.insightTicks);
+        return start(ThaumConfig.insightEut, ThaumConfig.insightTicks);
     }
 
     /** Points are granted when the cycle ends. */

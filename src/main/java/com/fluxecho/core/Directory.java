@@ -10,9 +10,10 @@ import java.util.UUID;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.nexus.TileNexus;
 
@@ -126,7 +127,8 @@ public final class Directory {
     /** {@link #nexusStatus(TileNexus)} for the nexus's own status {@code own} and its campus. */
     public static String nexusStatus(String own, Campus campus) {
         // a campus that does not tick builds nothing, whatever its job says
-        BuildJob j = campus == null || !campus.active() || !Config.nexusEnabled || !Config.campusEnabled ? null
+        BuildJob j = campus == null || !campus.active() || !NexusConfig.nexusEnabled || !CampusConfig.campusEnabled
+            ? null
             : campus.job();
         if (j == null) return own;
         return nexusStatus(own, j.state(), j.pause(), j.started());

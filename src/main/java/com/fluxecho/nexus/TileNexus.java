@@ -21,13 +21,14 @@ import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.campus.PartBlocks;
 import com.fluxecho.campus.client.BuildClient;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.Owners;
 import com.fluxecho.frame.BlockFrame;
@@ -335,7 +336,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
                 z = at[2];
                 front = at[3];
             } else {
-                int[] o = RingSlots.offset(place.slot, Config.innerRadius, fx, fz);
+                int[] o = RingSlots.offset(place.slot, NexusConfig.innerRadius, fx, fz);
                 int[] f = RingSlots.facing(-o[0], -o[1]);
                 int[] cc = m.centreCell();
                 // where its controller stands for its foundation's centre to sit on the slot
@@ -497,14 +498,14 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     public float researchFraction() {
         ResearchTree.Node n = ResearchTree.get(research);
         if (n == null) return 0;
-        long cost = ResearchTree.computeFor(n, Config.researchScale);
+        long cost = ResearchTree.computeFor(n, NexusConfig.researchScale);
         return cost <= 0 ? 1 : (float) Math.min(1, researchDone / cost);
     }
 
     /** Flux compute per second it makes now. */
     public double computeRate() {
         if (!formed || !powered) return 0;
-        return Config.nexusCompute * (has(Research.COMPUTE_1) ? 1.5 : 1);
+        return NexusConfig.nexusCompute * (has(Research.COMPUTE_1) ? 1.5 : 1);
     }
 
     /**
@@ -513,8 +514,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
      * {@link Manifests#tableEut}).
      */
     public long upkeep() {
-        double base = Config.nexusUpkeep * (has(Research.UPKEEP_1) ? 0.75 : 1);
-        return (long) Math.ceil(base) + Manifests.tableEut(manifest, Config.manifestEut);
+        double base = NexusConfig.nexusUpkeep * (has(Research.UPKEEP_1) ? 0.75 : 1);
+        return (long) Math.ceil(base) + Manifests.tableEut(manifest, NexusConfig.manifestEut);
     }
 
     /**
@@ -590,8 +591,8 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
     protected void serverTick() {
         long t = worldObj.getTotalWorldTime();
         // the campus first, formed or not: the establish job raises the nexus round its own core
-        if (Config.nexusEnabled && Config.campusEnabled) campus.tick();
-        if (!formed || !Config.nexusEnabled) {
+        if (NexusConfig.nexusEnabled && CampusConfig.campusEnabled) campus.tick();
+        if (!formed || !NexusConfig.nexusEnabled) {
             status = formed ? "disabled" : "unformed";
             powered = false;
             if (t % 100 == 0) {
@@ -645,7 +646,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         }
         status = "researching";
         researchDone += computeRate() / 20.0;
-        if (researchDone < ResearchTree.computeFor(n, Config.researchScale)) return;
+        if (researchDone < ResearchTree.computeFor(n, NexusConfig.researchScale)) return;
         UUID team = researchTeam != null ? researchTeam : team();
         Research.grant(team, research);
         tell(team, "fluxecho.research.done", "fluxecho.research.node." + research);
@@ -703,7 +704,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
             if (out == null) continue;
             String[] rec = null;
             if (r.record) {
-                rec = Records.next(team(), now, Config.recordCooldown);
+                rec = Records.next(team(), now, NexusConfig.recordCooldown);
                 if (rec == null) {
                     status = "records_resting";
                     continue;
@@ -789,7 +790,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
                 slot = site;
                 rank = 1;
             } else {
-                slot = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], Config.innerRadius, fx, fz);
+                slot = RingSlots.slotAt(mc[0] - c[0], mc[1] - c[1], mc[2] - c[2], NexusConfig.innerRadius, fx, fz);
                 rank = 2;
             }
             if (slot < 0) continue;
@@ -943,7 +944,7 @@ public class TileNexus extends TileMultiblock implements ISidedInventory, ITileW
         if (now - recordsAt < 20) return;
         recordsAt = now;
         records = Records.count(team());
-        resting = Records.resting(team(), now, Config.recordCooldown);
+        resting = Records.resting(team(), now, NexusConfig.recordCooldown);
     }
 
     /** Entries in the owner team's codex (counted once a second). */

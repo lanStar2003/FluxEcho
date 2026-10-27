@@ -12,13 +12,13 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.BuildJob;
 import com.fluxecho.campus.Campus;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.FluxDraw;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.FxCodec;
@@ -149,7 +149,7 @@ public final class BuildRender {
             viewNormal();
             // the wells' light belongs to the campus, not to the projection: drawn in every projection mode, and off
             // with the builder's other effects (buildEffects)
-            if (Config.buildEffects && !OFF[WELLS]) try {
+            if (CampusConfig.buildEffects && !OFF[WELLS]) try {
                 wells(t);
             } catch (Throwable x) {
                 recover();
@@ -157,8 +157,8 @@ public final class BuildRender {
             } finally {
                 close();
             }
-            if ("off".equals(Config.buildProjection)) return;
-            boolean full = "full".equals(Config.buildProjection);
+            if ("off".equals(CampusConfig.buildProjection)) return;
+            boolean full = "full".equals(CampusConfig.buildProjection);
             for (TileMultiblock m : ClientTiles.all()) {
                 if (!(m instanceof TileNexus n) || m.getWorldObj() != w || m.isInvalid()) continue;
                 Campus.View v = n.clientCampus;
@@ -190,7 +190,7 @@ public final class BuildRender {
             && g.live
             && BuildScan.showsGhost(s)
             && g.bounds != null
-            && dist <= Config.buildGhostRange;
+            && dist <= CampusConfig.buildGhostRange;
 
         if (ghost) {
             float a = breath(t, amber);
@@ -310,7 +310,7 @@ public final class BuildRender {
         } finally {
             close();
         }
-        if (Config.buildEffects && s == BuildState.State.DONE
+        if (CampusConfig.buildEffects && s == BuildState.State.DONE
             && v.finishedAt >= 0
             && g != null
             && g.bounds != null

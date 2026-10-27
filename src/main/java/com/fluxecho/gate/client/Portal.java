@@ -28,9 +28,9 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.GatesConfig;
 import com.fluxecho.gate.TileLightGate;
 import com.fluxecho.logic.GateGeometry;
 import com.fluxecho.logic.PortalMath;
@@ -150,12 +150,12 @@ public final class Portal {
     }
 
     private static boolean usable(Minecraft mc) {
-        return !broken && Config.gateRealView && mc.theWorld != null && mc.thePlayer != null && Angelica.ready();
+        return !broken && GatesConfig.gateRealView && mc.theWorld != null && mc.thePlayer != null && Angelica.ready();
     }
 
     /** The far side can be drawn for real: no shader pack. */
     private static boolean drawing() {
-        return Config.gateLiveView && Config.gateViewRange > 0
+        return GatesConfig.gateLiveView && GatesConfig.gateViewRange > 0
             && OpenGlHelper.isFramebufferEnabled()
             && !ShaderCompat.packInUse();
     }
@@ -341,7 +341,7 @@ public final class Portal {
             ? PortalMath.perspective(mc.entityRenderer.getFOVModifier(pt, true), w / (double) h, 0.05, 512)
             : null;
         double[] view = PortalMath.view(v.yaw, v.pitch);
-        double range = Config.gateViewRange + 4;
+        double range = GatesConfig.gateViewRange + 4;
         List<Seen> seen = new ArrayList<>();
         for (TileLightGate t : GateClient.gates(mc.theWorld)) {
             if (!t.linked || t.far == null) continue;

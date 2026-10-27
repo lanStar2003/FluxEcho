@@ -9,8 +9,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoText;
 
 import cpw.mods.fml.relauncher.Side;
@@ -86,9 +86,9 @@ public class ItemVisModule extends Item {
         Kind k = Kind.of(s);
         if (k == null) return;
         Object[] args = switch (k) {
-            case EXTRACTION -> new Object[] { Config.visModuleRate * 20 / 100.0 };
-            case WIRELESS -> new Object[] { Config.visWirelessRange };
-            case LINK -> new Object[] { Config.visLinkEut };
+            case EXTRACTION -> new Object[] { ThaumConfig.visModuleRate * 20 / 100.0 };
+            case WIRELESS -> new Object[] { ThaumConfig.visWirelessRange };
+            case LINK -> new Object[] { ThaumConfig.visLinkEut };
         };
         tip.addAll(EchoText.lines("vis_module." + k.key() + ".tip", args));
         tip.addAll(EchoText.lines("vis_module.install"));

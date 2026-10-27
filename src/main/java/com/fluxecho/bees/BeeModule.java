@@ -3,9 +3,10 @@ package com.fluxecho.bees;
 import net.minecraft.item.Item;
 import net.minecraftforge.oredict.RecipeSorter;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.BeesConfig;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
 import com.fluxecho.logic.Karyotype;
@@ -43,14 +44,14 @@ public final class BeeModule {
         category(Categories.BEE, Karyotype.BEES);
         category(Categories.TREE, Karyotype.TREES);
         category(Categories.BUTTERFLY, Karyotype.BUTTERFLIES);
-        if (!Config.beesEnabled) return;
+        if (!BeesConfig.beesEnabled) return;
         RecipeSorter.register(
             FluxEcho.MODID + ":gene_splice",
             GeneSpliceRecipe.class,
             RecipeSorter.Category.SHAPELESS,
             "after:minecraft:shapeless");
         GameRegistry.addRecipe(new GeneSpliceRecipe());
-        if (!Config.defaultRecipes) return;
+        if (!GeneralConfig.defaultRecipes) return;
         try {
             BeeCrafting.register();
         } catch (Throwable t) {
@@ -69,6 +70,6 @@ public final class BeeModule {
     }
 
     public static void loadComplete() {
-        if (Config.beesEnabled) BeeNei.addPages();
+        if (BeesConfig.beesEnabled) BeeNei.addPages();
     }
 }

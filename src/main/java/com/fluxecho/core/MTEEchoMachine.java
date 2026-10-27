@@ -13,10 +13,10 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.client.MachineFx;
 import com.fluxecho.codex.EchoLedger;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.EffectsConfig;
 import com.fluxecho.library.Lending;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
@@ -265,8 +265,8 @@ public abstract class MTEEchoMachine extends MTEBasicMachine implements IBindPla
                 MachineFx.seen(kind, base.getWorld(), base.getXCoord(), base.getYCoord(), base.getZCoord());
             return;
         }
-        if (hologram && Config.machineHologramRange > 0 && tick % 10 == 0)
-            EchoNet.holo(base, EchoNet.HOLO_MACHINE, holoData(), Config.machineHologramRange);
+        if (hologram && EffectsConfig.machineHologramRange > 0 && tick % 10 == 0)
+            EchoNet.holo(base, EchoNet.HOLO_MACHINE, holoData(), EffectsConfig.machineHologramRange);
         if (tick % 100 == 0) {
             String st = shownStatus();
             Directory.report(

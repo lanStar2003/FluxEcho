@@ -5,7 +5,7 @@ import java.util.List;
 
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.CropsConfig;
 import com.fluxecho.core.EchoPattern;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
@@ -44,12 +44,12 @@ public class MTESeedEcho extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.cropsEnabled;
+        return CropsConfig.cropsEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { Config.sticksPerSeed, EchoText.seconds(Config.seedTicks), Config.seedEut };
+        return new Object[] { CropsConfig.sticksPerSeed, EchoText.seconds(CropsConfig.seedTicks), CropsConfig.seedEut };
     }
 
     private ItemStack seeds() {
@@ -64,22 +64,22 @@ public class MTESeedEcho extends MTEEchoMachine {
         ItemStack out = seeds();
         if (out == null) return idle("unknown_crop");
         ItemStack in = input(0);
-        int sticks = Config.sticksPerSeed;
+        int sticks = CropsConfig.sticksPerSeed;
         if (sticks > 0 && (!CropImprints.isSticks(in) || in.stackSize < sticks)) return idle("no_sticks");
         if (!canOutput(out)) return blocked();
 
         if (sticks > 0) in.stackSize -= sticks;
         mOutputItems[0] = out;
-        return start(Config.seedEut, Config.seedTicks);
+        return start(CropsConfig.seedEut, CropsConfig.seedTicks);
     }
 
     @Override
     public List<EchoPattern> echoPatterns() {
-        ItemStack out = Config.cropsEnabled ? seeds() : null;
+        ItemStack out = CropsConfig.cropsEnabled ? seeds() : null;
         if (out == null) return Collections.emptyList();
         ItemStack sticks = IC2Items.getItem("crop");
-        ItemStack[] in = Config.sticksPerSeed > 0 && sticks != null
-            ? new ItemStack[] { withSize(sticks, Config.sticksPerSeed) }
+        ItemStack[] in = CropsConfig.sticksPerSeed > 0 && sticks != null
+            ? new ItemStack[] { withSize(sticks, CropsConfig.sticksPerSeed) }
             : new ItemStack[0];
         return Collections.singletonList(new EchoPattern(in, new ItemStack[] { out }));
     }

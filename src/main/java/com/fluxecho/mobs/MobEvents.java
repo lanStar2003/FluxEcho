@@ -9,9 +9,9 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.EchoLedger;
+import com.fluxecho.config.MobsConfig;
 import com.fluxecho.core.Owners;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -24,7 +24,7 @@ public final class MobEvents {
 
     @SubscribeEvent
     public void onDeath(LivingDeathEvent e) {
-        if (!Config.mobsEnabled || e.entityLiving == null || e.entityLiving.worldObj.isRemote) return;
+        if (!MobsConfig.mobsEnabled || e.entityLiving == null || e.entityLiving.worldObj.isRemote) return;
         if (!(e.source.getEntity() instanceof EntityPlayerMP p) || p instanceof FakePlayer) return;
         String mob = MobImprints.name(e.entityLiving);
         if (mob == null || MobImprints.recipe(mob) == null) return;
@@ -38,7 +38,7 @@ public final class MobEvents {
 
     /** Right-click on a living mob with a blank imprint: written when the statistics show a kill of its kind. */
     static void writeFromStats(EntityPlayerMP p, ItemStack blank, EntityLivingBase target) {
-        if (!Config.mobsEnabled) return;
+        if (!MobsConfig.mobsEnabled) return;
         String mob = MobImprints.name(target);
         if (mob == null) return;
         if (MobImprints.recipe(mob) == null) {

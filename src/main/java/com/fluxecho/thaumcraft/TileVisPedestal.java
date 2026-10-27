@@ -16,8 +16,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.Owners;
 import com.fluxecho.logic.VisFlow;
 
@@ -72,7 +72,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     }
 
     public static long capacity() {
-        return Config.visPedestalBuffer;
+        return ThaumConfig.visPedestalBuffer;
     }
 
     /** As the server last told (the client's own config may differ). */
@@ -131,7 +131,8 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
 
     /** Centivis per primal per tick. */
     public int rate() {
-        return VisFlow.rate(Config.visPedestalRate, Config.visModuleRate, count(ItemVisModule.Kind.EXTRACTION));
+        return VisFlow
+            .rate(ThaumConfig.visPedestalRate, ThaumConfig.visModuleRate, count(ItemVisModule.Kind.EXTRACTION));
     }
 
     public void placedBy(EntityPlayer p) {
@@ -208,7 +209,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
             PedestalHolo.seen(this);
             return;
         }
-        if (!Config.thaumEnabled) return;
+        if (!ThaumConfig.thaumEnabled) return;
         long t = worldObj.getTotalWorldTime();
         if (count(ItemVisModule.Kind.LINK) > 0 && t % LINK_PERIOD == 0) link();
         if (wand != null) chargeOne(wand, rate());
@@ -248,7 +249,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
 
     /** Charges one wand, staff or amulet; whether any vis went in. */
     private boolean chargeOne(ItemStack s, int rate) {
-        VisFlow f = VisItems.charge(s, rate, Config.visEuPerCentiVis, energy);
+        VisFlow f = VisItems.charge(s, rate, ThaumConfig.visEuPerCentiVis, energy);
         if (f.eu <= 0) return false;
         energy -= f.eu;
         outputAcc += f.eu;
@@ -261,7 +262,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     private void wireless() {
         UUID team = team();
         if (team == null) return;
-        double range = Config.visWirelessRange, r2 = range * range;
+        double range = ThaumConfig.visWirelessRange, r2 = range * range;
         int rate = rate() * WIRELESS_PERIOD;
         for (Object o : worldObj.playerEntities) {
             if (!(o instanceof EntityPlayer p) || !team.equals(Owners.team(p.getUniqueID()))) continue;
@@ -284,7 +285,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
     /** The link module: tops the buffer up from the team's GT wireless network. */
     private void link() {
         if (owner == null || energy >= capacity() / 2) return;
-        long want = Math.min(capacity() - energy, (long) Config.visLinkEut * LINK_PERIOD);
+        long want = Math.min(capacity() - energy, (long) ThaumConfig.visLinkEut * LINK_PERIOD);
         try {
             WirelessNetworkManager.strongCheckOrAddUser(owner);
             long have = WirelessNetworkManager.getUserEU(owner)
@@ -398,7 +399,7 @@ public class TileVisPedestal extends TileEntity implements IEnergyConnected {
         t.setLong("feIn", avgInput);
         t.setLong("feOut", avgOutput);
         t.setInteger("feRate", rate());
-        t.setInteger("feEuPerCv", Config.visEuPerCentiVis);
+        t.setInteger("feEuPerCv", ThaumConfig.visEuPerCentiVis);
         t.setByte("feState", state);
         t.setInteger("feExtraction", count(ItemVisModule.Kind.EXTRACTION));
         t.setBoolean("feWireless", count(ItemVisModule.Kind.WIRELESS) > 0);

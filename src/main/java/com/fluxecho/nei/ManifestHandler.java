@@ -10,10 +10,10 @@ import net.minecraft.item.ItemStack;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.client.Motifs;
 import com.fluxecho.codex.ClientLedger;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.ResearchTree;
@@ -197,7 +197,7 @@ public class ManifestHandler extends TemplateRecipeHandler {
             .contains(c.recipe.research);
         int y = TOP + AREA + 5, width = (int) ((WIDTH - 22) / 0.6f);
         // the table's share and (0.16.0) the recipe's own power on top
-        long eut = c.recipe.tableEut(Config.manifestEut), ticks = c.recipe.ticks;
+        long eut = c.recipe.tableEut(NexusConfig.manifestEut), ticks = c.recipe.ticks;
         small(
             fit(
                 EchoText.t("nei.stats", Compact.si(eut), EchoText.seconds((int) ticks), Compact.si(eut * ticks)),
@@ -213,7 +213,13 @@ public class ManifestHandler extends TemplateRecipeHandler {
         small(fit(lock, width), 5, y, 0.6f, open ? GREEN : RED, 1f);
         if (c.recipe.record) {
             y += 7;
-            small(fit(EchoText.t("nei.manifest.record", Config.recordCooldown / 1200), width), 5, y, 0.6f, DIM, 1f);
+            small(
+                fit(EchoText.t("nei.manifest.record", NexusConfig.recordCooldown / 1200), width),
+                5,
+                y,
+                0.6f,
+                DIM,
+                1f);
         }
         // a recipe that waits for a later phase of the nexus (0.16.0: manifest matter, phase III)
         if (c.recipe.minPhase > 1) {

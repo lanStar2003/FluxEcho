@@ -11,8 +11,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.ManaConfig;
 import com.fluxecho.core.CoreCircuits;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
@@ -152,7 +152,7 @@ public class SpringNei extends TemplateRecipeHandler {
     }
 
     private void addAll() {
-        if (!Config.manaEnabled) return;
+        if (!ManaConfig.manaEnabled) return;
         for (int t = ManaSpring.MIN_TIER; t <= ManaSpring.MAX_TIER; t++) arecipes.add(new CachedTier(t));
     }
 
@@ -175,7 +175,7 @@ public class SpringNei extends TemplateRecipeHandler {
         }
         // a core circuit: the page of the tier it gives the spring
         int tier = CoreCircuits.tier(ingredient);
-        if (Config.manaEnabled && tier >= ManaSpring.MIN_TIER && tier <= ManaSpring.MAX_TIER)
+        if (ManaConfig.manaEnabled && tier >= ManaSpring.MIN_TIER && tier <= ManaSpring.MAX_TIER)
             arecipes.add(new CachedTier(tier));
     }
 
@@ -237,9 +237,9 @@ public class SpringNei extends TemplateRecipeHandler {
         text(ManaText.coreLabel(tier), 5, 4, color, 1f);
         right(ManaText.t("nei.tag"), WIDTH - 5, 4, DIM, 1f);
 
-        int mana = ManaSpring.manaPerTick(Config.manaPerTick, tier);
-        long eu = ManaSpring.euPerTick(Config.manaPerTick, Config.euPerMana, tier);
-        long petal = ManaSpring.manaPerPetal(Config.manaPerPetal, tier);
+        int mana = ManaSpring.manaPerTick(ManaConfig.manaPerTick, tier);
+        long eu = ManaSpring.euPerTick(ManaConfig.manaPerTick, ManaConfig.euPerMana, tier);
+        long petal = ManaSpring.manaPerPetal(ManaConfig.manaPerPetal, tier);
         double x = 103;
         stat(ManaText.t("nei.mana"), Compact.si(mana), x, 19, MANA);
         stat(ManaText.t("nei.eu"), Compact.si(eu), x, 28, WHITE);
@@ -247,7 +247,7 @@ public class SpringNei extends TemplateRecipeHandler {
         stat(ManaText.t("nei.petals"), ManaText.perMinute(), x, 46, DIM);
         stat(
             ManaText.t("nei.reach"),
-            ManaSpring.range(Config.manaRange, tier) + " / ±" + ManaSpring.height(Config.manaHeight, tier),
+            ManaSpring.range(ManaConfig.manaRange, tier) + " / ±" + ManaSpring.height(ManaConfig.manaHeight, tier),
             x,
             55,
             CYAN);

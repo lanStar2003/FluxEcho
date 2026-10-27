@@ -25,7 +25,7 @@ import net.minecraftforge.common.IShearable;
 import net.minecraftforge.fluids.IFluidBlock;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.TerrainRule;
 import com.fluxecho.nexus.NexusRegistry;
@@ -116,7 +116,7 @@ public final class Terrain {
             p.otherNexusArea = campus.otherCampusAt(x, z);
         }
 
-        boolean listedBlocked = TerrainRule.listed(k.name, Arrays.asList(Config.buildBlocked));
+        boolean listedBlocked = TerrainRule.listed(k.name, Arrays.asList(CampusConfig.buildBlocked));
         p.listed = listedBlocked;
         boolean rawGtStone = TerrainRule.rawGtStone(k.className, meta);
         boolean wood = b.isWood(w, x, y, z);
@@ -125,7 +125,7 @@ public final class Terrain {
         p.plant = k.plant;
         p.crafted = listedBlocked || k.vanillaCrafted || (k.craftedName && !rawGtStone) || (k.gtStone && !rawGtStone);
         // the clear-all rule never asks whether a player built it, so the search through a log's tree is skipped
-        if (!p.crafted && !p.hasTile && !Config.buildClearAll && builtByHand(w, x, y, z, b, meta, k, wood))
+        if (!p.crafted && !p.hasTile && !CampusConfig.buildClearAll && builtByHand(w, x, y, z, b, meta, k, wood))
             p.crafted = true;
 
         TerrainRule.Nature n = new TerrainRule.Nature();
@@ -139,7 +139,7 @@ public final class Terrain {
         n.rock = m == Material.rock;
         n.shaped = !b.isOpaqueCube() || !b.renderAsNormalBlock();
         n.crafted = p.crafted;
-        n.clearable = TerrainRule.listed(k.name, Arrays.asList(Config.buildClearable));
+        n.clearable = TerrainRule.listed(k.name, Arrays.asList(CampusConfig.buildClearable));
         n.blocked = listedBlocked;
         if (n.rock) {
             // rock is natural only when it is known to be generated (the rest may be a player's)

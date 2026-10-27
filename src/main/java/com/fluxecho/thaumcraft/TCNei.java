@@ -9,8 +9,8 @@ import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.MachineId;
 
@@ -60,13 +60,13 @@ final class TCNei {
             new ItemStack(Items.diamond),
             new ItemStack[] { new ItemStack(Items.paper) },
             book == null ? new ItemStack[0] : new ItemStack[] { new ItemStack(book) },
-            Config.insightEut,
-            Config.insightTicks);
+            ThaumConfig.insightEut,
+            ThaumConfig.insightTicks);
     }
 
     /** The EU a tick and ticks for {@code units} of essentia, as the machines draw it. */
     private static int[] power(long units, int tier) {
-        long eu = units * Config.essentiaEuPerUnit;
+        long eu = units * ThaumConfig.essentiaEuPerUnit;
         int maxEut = (int) GTValues.V[tier];
         int ticks = (int) Math.max(20, (eu + maxEut - 1) / maxEut);
         return new int[] { (int) Math.max(1, (eu + ticks - 1) / ticks), ticks };
@@ -74,7 +74,7 @@ final class TCNei {
 
     /** Balanced shards for {@code units}, as one stack. */
     private static ItemStack shards(long units) {
-        long n = (units + Config.essentiaPerShard - 1) / Math.max(1, Config.essentiaPerShard);
+        long n = (units + ThaumConfig.essentiaPerShard - 1) / Math.max(1, ThaumConfig.essentiaPerShard);
         return new ItemStack(ConfigItems.itemShard, (int) Math.max(1, Math.min(64, n)), BALANCED_SHARD);
     }
 

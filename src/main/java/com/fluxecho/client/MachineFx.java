@@ -10,7 +10,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.EffectsConfig;
 import com.fluxecho.core.MachineId;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -65,8 +65,8 @@ public final class MachineFx {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || SEEN.isEmpty()) return;
         long now = mc.theWorld.getTotalWorldTime();
-        int dim = mc.theWorld.provider.dimensionId, range = Config.effectRange;
-        boolean draw = Config.machineEffects && range > 0 && !ShaderCompat.shadowPass();
+        int dim = mc.theWorld.provider.dimensionId, range = EffectsConfig.effectRange;
+        boolean draw = EffectsConfig.machineEffects && range > 0 && !ShaderCompat.shadowPass();
         float t = now + e.partialTicks;
         int drawn = 0;
         boolean open = false;

@@ -11,9 +11,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.EchoNet;
+import com.fluxecho.config.BloodConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -84,14 +84,14 @@ public class MTEBloodEcho extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.bloodEnabled;
+        return BloodConfig.bloodEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        int[] r = Config.lpPerTick;
-        return new Object[] { BloodRates.lpPerTick(r, 1), BloodRates.lpPerTick(r, 6), Config.euPerLp, Config.lpPerMeat,
-            Config.altarRange, Config.altarHeight };
+        int[] r = BloodConfig.lpPerTick;
+        return new Object[] { BloodRates.lpPerTick(r, 1), BloodRates.lpPerTick(r, 6), BloodConfig.euPerLp,
+            BloodConfig.lpPerMeat, BloodConfig.altarRange, BloodConfig.altarHeight };
     }
 
     private boolean network() {
@@ -124,7 +124,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
         if (orb == null) return idle("no_orb");
         String owner = orbOwner();
         if (owner == null) return idle("orb_unbound");
-        int rate = BloodRates.lpPerTick(Config.lpPerTick, orb.getOrbLevel());
+        int rate = BloodRates.lpPerTick(BloodConfig.lpPerTick, orb.getOrbLevel());
         if (rate <= 0) return idle("disabled");
         int amount = rate * CYCLE;
 
@@ -133,17 +133,17 @@ public class MTEBloodEcho extends MTEEchoMachine {
         } else if (altar() == null) return idle("no_altar");
         if (buffer >= amount * BUFFERED_CYCLES) return idle(network() ? "network_full" : "altar_full");
 
-        int meat = BloodRates.meatNeeded(credit, amount, Config.lpPerMeat);
+        int meat = BloodRates.meatNeeded(credit, amount, BloodConfig.lpPerMeat);
         if (meat > 0) {
             ItemStack in = input(0);
             if (!isMeat(in) || in.stackSize < meat) return idle("no_meat");
             in.stackSize -= meat;
-            credit += meat * Config.lpPerMeat;
+            credit += meat * BloodConfig.lpPerMeat;
         }
         credit -= amount;
         pending = amount;
         remember(Categories.ORB, BloodModule.key(sample()));
-        return start(rate * Config.euPerLp, CYCLE);
+        return start(rate * BloodConfig.euPerLp, CYCLE);
     }
 
     @Override
@@ -169,7 +169,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
 
     /** Hands the buffer to the altar or network, as much as fits. */
     private void flush() {
-        if (buffer <= 0 || !Config.bloodEnabled) return;
+        if (buffer <= 0 || !BloodConfig.bloodEnabled) return;
         if (network()) {
             IBloodOrb orb = orb();
             String owner = orbOwner();
@@ -197,7 +197,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
         if (w.getTotalWorldTime() < nextScan) return null;
         nextScan = w.getTotalWorldTime() + RESCAN_TICKS;
         int x0 = te.getXCoord(), y0 = te.getYCoord(), z0 = te.getZCoord();
-        int r = Config.altarRange, h = Config.altarHeight;
+        int r = BloodConfig.altarRange, h = BloodConfig.altarHeight;
         IBloodAltar best = null;
         int bestDist = Integer.MAX_VALUE;
         for (int dy = -h; dy <= h; dy++) {
@@ -223,7 +223,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
     @Override
     protected String info() {
         IBloodOrb orb = orb();
-        int rate = orb == null ? 0 : BloodRates.lpPerTick(Config.lpPerTick, orb.getOrbLevel());
+        int rate = orb == null ? 0 : BloodRates.lpPerTick(BloodConfig.lpPerTick, orb.getOrbLevel());
         return encode(network() ? "blood_echo.gui_network" : "blood_echo.gui_altar", rate, buffer);
     }
 
@@ -248,7 +248,7 @@ public class MTEBloodEcho extends MTEEchoMachine {
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
         IBloodOrb orb = orb();
-        tag.setInteger("feRate", orb == null ? 0 : BloodRates.lpPerTick(Config.lpPerTick, orb.getOrbLevel()));
+        tag.setInteger("feRate", orb == null ? 0 : BloodRates.lpPerTick(BloodConfig.lpPerTick, orb.getOrbLevel()));
         tag.setInteger("feBuffer", buffer);
         tag.setBoolean("feNetwork", network());
     }

@@ -4,8 +4,9 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.ManaConfig;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
 import com.fluxecho.core.Machines;
@@ -34,7 +35,7 @@ public final class ManaModule {
      * the spring comes without a core, and the circuit put in it (LV to LuV) sets its tier.
      */
     public static void postInit() {
-        if (!Config.manaEnabled || !Config.defaultRecipes) return;
+        if (!ManaConfig.manaEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             Block pool = GameRegistry.findBlock("Botania", "pool");
             Block spreader = GameRegistry.findBlock("Botania", "spreader");

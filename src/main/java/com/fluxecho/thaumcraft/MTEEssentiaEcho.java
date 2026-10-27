@@ -6,7 +6,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.IChatComponent;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.MachineId;
 
 import gregtech.api.enums.GTValues;
@@ -49,7 +49,7 @@ public class MTEEssentiaEcho extends MTEThaumMachine {
 
     @Override
     protected int unitsPerShard() {
-        return Config.essentiaPerShard;
+        return ThaumConfig.essentiaPerShard;
     }
 
     /** Room for a whole infusion: GT's basic machines keep only 64 packets. */
@@ -65,7 +65,7 @@ public class MTEEssentiaEcho extends MTEThaumMachine {
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { Config.essentiaEuPerUnit, Config.essentiaPerShard, AMPERES };
+        return new Object[] { ThaumConfig.essentiaEuPerUnit, ThaumConfig.essentiaPerShard, AMPERES };
     }
 
     @Override
@@ -89,14 +89,14 @@ public class MTEEssentiaEcho extends MTEThaumMachine {
 
     /** Whether {@code amount} essentia of the aspect can be made right now; with {@code pay}, makes it. */
     public boolean pay(Aspect a, int amount, boolean pay) {
-        if (!Config.thaumEnabled || a == null || amount <= 0) return false;
+        if (!ThaumConfig.thaumEnabled || a == null || amount <= 0) return false;
         IGregTechTileEntity te = getBaseMetaTileEntity();
         if (te == null || !te.isAllowedToWork()) return false;
         UUID team = team();
         if (team == null || !AspectMemory.get()
             .knows(team, a)) return false;
         long units = (long) AspectSamples.units(a) * amount;
-        long eu = units * Config.essentiaEuPerUnit;
+        long eu = units * ThaumConfig.essentiaEuPerUnit;
         if (te.getStoredEU() < eu || !credit(units, false)) return false;
         if (pay) {
             credit(units, true);
@@ -110,7 +110,7 @@ public class MTEEssentiaEcho extends MTEThaumMachine {
         if (!pay(a, 1, false)) return 0;
         IGregTechTileEntity te = getBaseMetaTileEntity();
         long units = AspectSamples.units(a);
-        long byEu = te.getStoredEU() / (units * Config.essentiaEuPerUnit);
+        long byEu = te.getStoredEU() / (units * ThaumConfig.essentiaEuPerUnit);
         long byCredit = (credit + (long) shardsInInputs() * unitsPerShard()) / units;
         return (int) Math.max(0, Math.min(max, Math.min(byEu, byCredit)));
     }

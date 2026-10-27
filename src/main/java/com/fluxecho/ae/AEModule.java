@@ -4,8 +4,9 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.AeConfig;
+import com.fluxecho.config.GeneralConfig;
 import com.fluxecho.core.EchoRecipes;
 
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -31,7 +32,7 @@ public final class AEModule {
 
     /** An ME interface and a molecular assembler: what you would otherwise wire up for every echo machine. */
     public static void postInit() {
-        if (!Config.aeEnabled || !Config.defaultRecipes) return;
+        if (!AeConfig.aeEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             ItemStack iface = GameRegistry.findItemStack("appliedenergistics2", "tile.BlockInterface", 1);
             ItemStack assembler = GameRegistry.findItemStack("appliedenergistics2", "tile.BlockMolecularAssembler", 1);

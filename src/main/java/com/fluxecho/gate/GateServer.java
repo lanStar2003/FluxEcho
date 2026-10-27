@@ -12,8 +12,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.world.WorldServer;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.GatesConfig;
 import com.fluxecho.logic.FoldedZone;
 import com.fluxecho.logic.GateGeometry;
 import com.fluxecho.logic.GatePins;
@@ -42,7 +42,7 @@ public final class GateServer {
 
     /** Blocks within which the far side of a gate is kept for a player: a little past where they can see it. */
     static double keepRange() {
-        return Math.max(16, Config.gateViewRange) + 16;
+        return Math.max(16, GatesConfig.gateViewRange) + 16;
     }
 
     @SubscribeEvent
@@ -84,7 +84,7 @@ public final class GateServer {
     private static void player(GateRegistry r, EntityPlayerMP p) {
         UUID id = p.getUniqueID();
         int dim = p.dimension;
-        if (dim == Config.gateDimension && GateModule.oldInterior) {
+        if (dim == GatesConfig.gateDimension && GateModule.oldInterior) {
             leaveOldInterior(p);
             return;
         }
@@ -167,7 +167,7 @@ public final class GateServer {
             if (o != null && o.dim == p.dimension) outside = o.gate();
         }
         WorldServer w = p.getServerForPlayer();
-        int hold = Config.gateHoldBase ? w.getPlayerManager().playerViewRadius + 1 : 0;
+        int hold = GatesConfig.gateHoldBase ? w.getPlayerManager().playerViewRadius + 1 : 0;
         Set<Long> wanted = GatePins
             .wanted(p.posX, p.boundingBox.minY, p.posZ, linked, keepRange(), room, outside, hold);
         Pins.set(p, wanted);

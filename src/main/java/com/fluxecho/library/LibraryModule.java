@@ -3,9 +3,9 @@ package com.fluxecho.library;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.ArchiveShape;
 import com.fluxecho.logic.BuildPlan;
 import com.fluxecho.logic.CampusPlan;
@@ -65,7 +65,7 @@ public final class LibraryModule {
             TileLibrary.COLOR,
             BuildPlan::archive,
             BuildPlan::archiveController,
-            () -> Config.archiveEnabled);
+            () -> CampusConfig.archiveEnabled);
     }
 
     /**

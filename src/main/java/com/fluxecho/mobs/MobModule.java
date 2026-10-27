@@ -11,10 +11,11 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
 import com.fluxecho.codex.Categories;
+import com.fluxecho.config.GeneralConfig;
+import com.fluxecho.config.MobsConfig;
 import com.fluxecho.core.EchoRecipeMaps;
 import com.fluxecho.core.EchoRecipes;
 import com.fluxecho.core.MachineId;
@@ -68,7 +69,7 @@ public final class MobModule {
     public static void postInit() {
         Categories.register(
             new Categories.Category(Categories.MOB, MobImprints::egg, MobImprints::displayName, MobImprints::keyOf));
-        if (!Config.mobsEnabled || !Config.defaultRecipes) return;
+        if (!MobsConfig.mobsEnabled || !GeneralConfig.defaultRecipes) return;
         try {
             EchoRecipes.shapeless(
                 "Prey Imprint",
@@ -91,7 +92,7 @@ public final class MobModule {
      * Echo's page after that.
      */
     public static void loadComplete() {
-        if (Config.mobsEnabled) EchoRecipeMaps.later(MachineId.MOB_ECHO, MobModule::neiPages);
+        if (MobsConfig.mobsEnabled) EchoRecipeMaps.later(MachineId.MOB_ECHO, MobModule::neiPages);
     }
 
     /** Makes the pages; false while MobsInfo has no drop tables yet. */
@@ -102,7 +103,7 @@ public final class MobModule {
             MobRecipe r = e.getValue();
             if (r == null || r.mOutputs == null) continue;
             boolean boss = r.entity instanceof IBossDisplayData;
-            if (boss && !Config.mobBosses) continue;
+            if (boss && !MobsConfig.mobBosses) continue;
             List<ItemStack> drops = new ArrayList<>();
             for (MobDrop d : r.mOutputs) {
                 if (d == null || d.stack == null || d.stack.getItem() == null || MTEMobEcho.banned(d.stack)) continue;
@@ -112,10 +113,10 @@ public final class MobModule {
             if (drops.isEmpty()) continue;
             KillCost cost = KillCost.of(
                 r.maxEntityHealth,
-                Config.mobEuPerHealth,
-                boss ? Config.mobBossMultiplier : 1,
+                MobsConfig.mobEuPerHealth,
+                boss ? MobsConfig.mobBossMultiplier : 1,
                 (int) GTValues.V[MachineId.MOB_ECHO.tier],
-                Config.mobMinTicks);
+                MobsConfig.mobMinTicks);
             EchoRecipeMaps.page(
                 MachineId.MOB_ECHO,
                 MobImprints.imprint(e.getKey()),

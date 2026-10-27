@@ -10,11 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.client.renderer.Tessellator;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.city.TileDomeGenerator;
 import com.fluxecho.client.Motes;
 import com.fluxecho.client.Motifs;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.logic.DomeGeneratorShape;
 import com.fluxecho.logic.DomeLook;
 import com.fluxecho.logic.ModuleLook;
@@ -143,7 +143,7 @@ final class DomeGeneratorRender {
         boolean moored = DomeGeneratorShape.moored(d.shapeName()) != null;
         Axes ax = axes(d.datum());
         if (moored && !OFF[LEG_PART]) try {
-            int legTier = ModuleLook.tier(false, legDistance(cam, ax), CityRender.NEAR, Config.nexusEffectRange);
+            int legTier = ModuleLook.tier(false, legDistance(cam, ax), CityRender.NEAR, NexusConfig.nexusEffectRange);
             double below = sweep == Double.MAX_VALUE ? Double.MAX_VALUE : f.local(sweep);
             // far, faded as the landmark is rather than by the effects' range, so the legs carry on unbroken into
             // the landmark's drawing past that range

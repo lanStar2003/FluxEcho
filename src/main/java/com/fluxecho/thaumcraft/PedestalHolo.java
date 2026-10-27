@@ -17,9 +17,9 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.opengl.GL11;
 
-import com.fluxecho.Config;
 import com.fluxecho.client.FarDraw;
 import com.fluxecho.client.ShaderCompat;
+import com.fluxecho.config.ThaumConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.logic.Compact;
 
@@ -58,7 +58,7 @@ public final class PedestalHolo {
     @SubscribeEvent
     public void onRenderLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        int range = Config.visHologramRange;
+        int range = ThaumConfig.visHologramRange;
         if (mc.theWorld == null || SEEN.isEmpty() || range <= 0 || ShaderCompat.shadowPass()) return;
         float t = mc.theWorld.getTotalWorldTime() + e.partialTicks;
         for (TileVisPedestal p : new ArrayList<>(SEEN)) {

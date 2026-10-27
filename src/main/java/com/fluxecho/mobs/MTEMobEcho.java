@@ -8,8 +8,8 @@ import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.boss.IBossDisplayData;
 import net.minecraft.item.ItemStack;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.MobsConfig;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
 import com.fluxecho.core.MachineId;
@@ -54,16 +54,17 @@ public class MTEMobEcho extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.mobsEnabled;
+        return MobsConfig.mobsEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { Config.mobEuPerHealth, EchoText.seconds(Config.mobMinTicks), Config.mobBossMultiplier };
+        return new Object[] { MobsConfig.mobEuPerHealth, EchoText.seconds(MobsConfig.mobMinTicks),
+            MobsConfig.mobBossMultiplier };
     }
 
     private static synchronized ItemFilter blacklist() {
-        if (blacklist == null) blacklist = new ItemFilter(Config.mobDropBlacklist);
+        if (blacklist == null) blacklist = new ItemFilter(MobsConfig.mobDropBlacklist);
         return blacklist;
     }
 
@@ -118,7 +119,7 @@ public class MTEMobEcho extends MTEEchoMachine {
         MobRecipe r = MobImprints.recipe(mob);
         if (r == null) return idle("no_mob_drops");
         boolean boss = r.entity instanceof IBossDisplayData;
-        if (boss && !Config.mobBosses) return idle("boss_disabled");
+        if (boss && !MobsConfig.mobBosses) return idle("boss_disabled");
 
         ItemStack weapon = input(0);
         int looting = weapon == null ? 0 : EnchantmentHelper.getEnchantmentLevel(Enchantment.looting.effectId, weapon);
@@ -133,10 +134,10 @@ public class MTEMobEcho extends MTEEchoMachine {
         for (int i = 0; i < mOutputItems.length; i++) mOutputItems[i] = i < out.length ? out[i] : null;
         KillCost cost = KillCost.of(
             r.maxEntityHealth,
-            Config.mobEuPerHealth,
-            boss ? Config.mobBossMultiplier : 1,
+            MobsConfig.mobEuPerHealth,
+            boss ? MobsConfig.mobBossMultiplier : 1,
             (int) GTValues.V[mTier],
-            Config.mobMinTicks);
+            MobsConfig.mobMinTicks);
         return start(cost.eut, cost.ticks);
     }
 }

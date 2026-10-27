@@ -7,7 +7,7 @@ import java.util.Map;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.BeesConfig;
 import com.fluxecho.core.EchoPattern;
 import com.fluxecho.core.EchoText;
 import com.fluxecho.core.MTEEchoMachine;
@@ -62,14 +62,15 @@ public class MTEBeeIncubator extends MTEEchoMachine {
 
     @Override
     protected boolean moduleEnabled() {
-        return Config.beesEnabled;
+        return BeesConfig.beesEnabled;
     }
 
     @Override
     protected Object[] tooltipArgs() {
-        return new Object[] { EchoText.seconds(Config.incubateTicks), Config.incubateEut, Config.honeyPerPrincess,
-            Config.dronesWithPrincess, Config.honeyPerDrones, Config.dronesPerBatch, Config.fertilizerPerSaplings,
-            Config.saplingsPerBatch, Config.honeyPerButterfly, Config.butterfliesPerBatch };
+        return new Object[] { EchoText.seconds(BeesConfig.incubateTicks), BeesConfig.incubateEut,
+            BeesConfig.honeyPerPrincess, BeesConfig.dronesWithPrincess, BeesConfig.honeyPerDrones,
+            BeesConfig.dronesPerBatch, BeesConfig.fertilizerPerSaplings, BeesConfig.saplingsPerBatch,
+            BeesConfig.honeyPerButterfly, BeesConfig.butterfliesPerBatch };
     }
 
     static boolean isHoney(ItemStack s) {
@@ -114,20 +115,20 @@ public class MTEBeeIncubator extends MTEEchoMachine {
     /** The batch for the sample and circuit; null when its species is unknown here. */
     private Batch batch(String root, Map<String, String> genes) {
         if (Karyotype.TREES.equals(root)) {
-            ItemStack saplings = BeeImprints.saplings(genes, Config.saplingsPerBatch);
-            return saplings == null ? null : new Batch(false, Config.fertilizerPerSaplings, saplings, null);
+            ItemStack saplings = BeeImprints.saplings(genes, BeesConfig.saplingsPerBatch);
+            return saplings == null ? null : new Batch(false, BeesConfig.fertilizerPerSaplings, saplings, null);
         }
         if (Karyotype.BUTTERFLIES.equals(root)) {
-            ItemStack b = BeeImprints.butterflies(genes, Config.butterfliesPerBatch);
-            return b == null ? null : new Batch(true, Config.honeyPerButterfly, b, null);
+            ItemStack b = BeeImprints.butterflies(genes, BeesConfig.butterfliesPerBatch);
+            return b == null ? null : new Batch(true, BeesConfig.honeyPerButterfly, b, null);
         }
         IBee bee = BeeImprints.bee(genes, world());
         if (bee == null) return null;
         boolean drones = circuit() == CIRCUIT_DRONES;
-        int droneCount = drones ? Config.dronesPerBatch : Config.dronesWithPrincess;
+        int droneCount = drones ? BeesConfig.dronesPerBatch : BeesConfig.dronesWithPrincess;
         ItemStack princess = drones ? null : BeeImprints.stack(bee, EnumBeeType.PRINCESS, 1);
         ItemStack droneStack = droneCount > 0 ? BeeImprints.stack(bee, EnumBeeType.DRONE, droneCount) : null;
-        return new Batch(true, drones ? Config.honeyPerDrones : Config.honeyPerPrincess, princess, droneStack);
+        return new Batch(true, drones ? BeesConfig.honeyPerDrones : BeesConfig.honeyPerPrincess, princess, droneStack);
     }
 
     @Override
@@ -145,14 +146,14 @@ public class MTEBeeIncubator extends MTEEchoMachine {
         if (b.food > 0) in.stackSize -= b.food;
         mOutputItems[0] = b.outputs[0];
         mOutputItems[1] = b.outputs[1];
-        return start(Config.incubateEut, Config.incubateTicks);
+        return start(BeesConfig.incubateEut, BeesConfig.incubateTicks);
     }
 
     /** One batch of what the sample grows, for the Echo ME Provider. */
     @Override
     public List<EchoPattern> echoPatterns() {
         ItemStack s = sample();
-        Map<String, String> genes = Config.beesEnabled ? BeeImprints.genes(s) : null;
+        Map<String, String> genes = BeesConfig.beesEnabled ? BeeImprints.genes(s) : null;
         Batch b = genes == null ? null : batch(BeeImprints.root(s), genes);
         if (b == null) return Collections.emptyList();
         ItemStack food = b.food > 0 ? b.foodStack() : null;

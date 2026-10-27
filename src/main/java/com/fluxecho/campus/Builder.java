@@ -22,8 +22,8 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.event.world.BlockEvent;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.frame.FrameEvents;
 import com.fluxecho.logic.BuildLedger;
 import com.fluxecho.logic.BuildPace;
@@ -209,8 +209,8 @@ public final class Builder {
         // a growth (0.12.0) runs in the establish job's stage numbers
         boolean nexusStages = job.campusJob() || job.grows();
         double stagePace = nexusStages ? BuildPace.establishPace(job.stage) : BuildPace.modulePace(job.stage);
-        pace.refill(Config.buildBlocksPerTick, stagePace);
-        pace.refillClear(Config.buildClearPerTick);
+        pace.refill(CampusConfig.buildBlocksPerTick, stagePace);
+        pace.refillClear(CampusConfig.buildClearPerTick);
     }
 
     /** The steps looked at ahead, the cells in the air and the right cells marked done per tick. */
@@ -408,14 +408,14 @@ public final class Builder {
      */
     private int surveyGrade(BuildJob job, BuildPlan.Column c, World w, int y0) {
         if (campus.otherCampusAt(c.x, c.z)) return GLANCE;
-        int bottom = Math.max(0, y0 - Math.max(0, Config.buildFillDepth));
+        int bottom = Math.max(0, y0 - Math.max(0, CampusConfig.buildFillDepth));
         int n = Math.max(0, y0 - bottom + 1);
         TerrainRule.Probe[] seen = new TerrainRule.Probe[n];
         TerrainRule.Verdict[] v = TerrainRule.gradeColumn(i -> {
             int y = y0 - i;
             if (y > 255 || job.stepAt(c.x, y, c.z) >= 0) return null;
             return seen[i] = gradeProbe(w, c.x, y, c.z, y0);
-        }, n, job.module() != null, Config.buildClearAll, job.retires());
+        }, n, job.module() != null, CampusConfig.buildClearAll, job.retires());
         int used = GLANCE;
         for (int i = 0; i < n; i++) {
             if (seen[i] != null) used += LOOK;
@@ -437,7 +437,7 @@ public final class Builder {
      */
     private static int top(BuildJob job, BuildPlan.Column c, int y0) {
         if (!job.grades()) return c.yTo;
-        return Math.min(c.yTo, y0 + Math.max(0, Config.buildClearHeight));
+        return Math.min(c.yTo, y0 + Math.max(0, CampusConfig.buildClearHeight));
     }
 
     // ---- building
@@ -765,7 +765,7 @@ public final class Builder {
                 job.clearY--;
             }
             if (c.grade && !campus.otherCampusAt(c.x, c.z)) {
-                int bottom = Math.max(0, y0 - Math.max(0, Config.buildFillDepth));
+                int bottom = Math.max(0, y0 - Math.max(0, CampusConfig.buildFillDepth));
                 // the clearing stops just over the floor level, so the run starts at the floor cell
                 if (job.clearY > y0) job.clearY = y0;
                 while (job.clearY >= bottom) {
@@ -820,8 +820,8 @@ public final class Builder {
      */
     private static TerrainRule.Verdict gradeVerdict(BuildJob job, TerrainRule.Probe p, boolean floor) {
         if (job.retires()) return floor ? TerrainRule.forRetireFloor(p) : TerrainRule.forFill(p, true);
-        return floor ? TerrainRule.forFloor(p, job.module() != null, Config.buildClearAll)
-            : TerrainRule.forFill(p, Config.buildClearAll);
+        return floor ? TerrainRule.forFloor(p, job.module() != null, CampusConfig.buildClearAll)
+            : TerrainRule.forFill(p, CampusConfig.buildClearAll);
     }
 
     /**
@@ -847,7 +847,7 @@ public final class Builder {
             o.budget = true;
             return -1;
         }
-        if (!payEu(job, Config.buildEuPerClear)) {
+        if (!payEu(job, CampusConfig.buildEuPerClear)) {
             o.power = true;
             return -1;
         }
@@ -904,7 +904,7 @@ public final class Builder {
             o.budget = true;
             return -1;
         }
-        if (!payEu(job, Config.buildEuPerClear)) {
+        if (!payEu(job, CampusConfig.buildEuPerClear)) {
             o.power = true;
             return -1;
         }
@@ -1046,7 +1046,7 @@ public final class Builder {
                 o.budget = true;
                 return DIG_STOP;
             }
-            if (!payEu(job, Config.buildEuPerClear)) {
+            if (!payEu(job, CampusConfig.buildEuPerClear)) {
                 o.power = true;
                 return DIG_STOP;
             }
@@ -1170,7 +1170,7 @@ public final class Builder {
      * ({@link Campus#free}) pays nothing.
      */
     private int launch(BuildJob job, BuildPlan.Plan plan, int[] steps, boolean[] needsBreak, long now) {
-        double scale = Config.buildCostScale;
+        double scale = CampusConfig.buildCostScale;
         boolean free = campus.free(job);
         boolean[] used = new boolean[steps.length], charged = new boolean[steps.length];
         long eu = 0;
@@ -1182,7 +1182,7 @@ public final class Builder {
                 refundAll(plan, steps, used, charged, k);
                 return SKIPPED;
             }
-            eu += stepEu(st.kind, st.part, needsBreak[k], Config.buildEuPerBlock, Config.buildEuPerClear);
+            eu += stepEu(st.kind, st.part, needsBreak[k], CampusConfig.buildEuPerBlock, CampusConfig.buildEuPerClear);
             if (free || st.kind == BuildPlan.AIR || Parts.euOnly(st.part)) continue;
             if (campus.ledger()
                 .charge(st.part, scale)) {
@@ -1227,7 +1227,7 @@ public final class Builder {
     private void refundAll(BuildPlan.Plan plan, int[] steps, boolean[] used, boolean[] charged, int upTo) {
         for (int k = 0; k < upTo; k++) {
             if (charged[k]) campus.ledger()
-                .refund(plan.steps.get(steps[k]).part, Config.buildCostScale, used[k]);
+                .refund(plan.steps.get(steps[k]).part, CampusConfig.buildCostScale, used[k]);
         }
         campus.dirty();
     }
@@ -1247,7 +1247,7 @@ public final class Builder {
         int part = f.part;
         if (part < 0 && plan != null && f.step >= 0 && f.step < plan.steps.size()) part = plan.steps.get(f.step).part;
         if (part < 0) return;
-        ledger.refund(part, f.scale >= 0 ? f.scale : Config.buildCostScale, f.usedPart);
+        ledger.refund(part, f.scale >= 0 ? f.scale : CampusConfig.buildCostScale, f.usedPart);
     }
 
     /** Refunds every launch still in flight into the ledger and forgets them (the core is being broken). */
@@ -1585,7 +1585,7 @@ public final class Builder {
      * loose supply port of ours under the conservative rule.
      */
     static TerrainRule.Verdict verdict(BuildJob job, BuildPlan.Step s, TerrainRule.Probe p) {
-        return verdict(s, p, job.module() != null, Config.buildClearAll, job.repair());
+        return verdict(s, p, job.module() != null, CampusConfig.buildClearAll, job.repair());
     }
 
     /** {@link #verdict(BuildJob, BuildPlan.Step, TerrainRule.Probe)} for a first build, the rule given. */
@@ -1620,7 +1620,7 @@ public final class Builder {
     static TerrainRule.Verdict clearVerdict(BuildJob job, TerrainRule.Probe p) {
         // a retire job (0.14.1) takes the 0.9.2 hall down whatever the rule: the members agreed to it with 开始
         if (job.retires()) return TerrainRule.forRetire(p);
-        return TerrainRule.forClear(p, job.module() != null, Config.buildClearAll);
+        return TerrainRule.forClear(p, job.module() != null, CampusConfig.buildClearAll);
     }
 
     /** Whether a verdict takes the cell's block away (CLEAR, or REPLACE for a loose block of ours). */

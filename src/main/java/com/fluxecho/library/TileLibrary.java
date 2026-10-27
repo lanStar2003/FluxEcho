@@ -26,10 +26,11 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.campus.ModuleSpecs;
 import com.fluxecho.campus.PartBlocks;
+import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.core.Directory;
 import com.fluxecho.core.Owners;
 import com.fluxecho.frame.BlockFrame;
@@ -212,7 +213,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     /** With {@code archiveEnabled} off only the hall forms. */
     @Override
     protected boolean tries(Shape s) {
-        return Config.archiveEnabled || !MAIN.equals(s.name);
+        return CampusConfig.archiveEnabled || !MAIN.equals(s.name);
     }
 
     /** Libraries saved before 0.10.0 were halls. */
@@ -671,8 +672,8 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
         boolean was = powered;
         TileNexus n = nexus();
         UUID team = team();
-        if (formed && n != null && Config.nexusEnabled && team != null) {
-            long eu = Config.libraryUpkeep;
+        if (formed && n != null && NexusConfig.nexusEnabled && team != null) {
+            long eu = NexusConfig.libraryUpkeep;
             powered = eu <= 0 || GTWirelessBackend.INSTANCE.add(team, BigInteger.valueOf(-eu));
             if (powered && eu > 0) ServerEvents.addTeamTick(team, 0, eu, eu, true);
         } else powered = false;
@@ -887,7 +888,7 @@ public class TileLibrary extends TileModule implements ITileWithModularUI {
     private Set<EntityPlayerMP> audience() {
         int[] c = centre();
         Set<EntityPlayerMP> to = new LinkedHashSet<>(
-            Sight.near(worldObj, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, Config.nexusEffectRange + 64));
+            Sight.near(worldObj, c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, NexusConfig.nexusEffectRange + 64));
         if (worldObj instanceof WorldServer ws) {
             for (Object o : ws.playerEntities) if (o instanceof EntityPlayerMP p && ws.getPlayerManager()
                 .isPlayerWatchingChunk(p, xCoord >> 4, zCoord >> 4)) to.add(p);

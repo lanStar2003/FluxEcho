@@ -4,7 +4,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 
-import com.fluxecho.Config;
+import com.fluxecho.config.CodexConfig;
 import com.fluxecho.core.EchoText;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -18,7 +18,7 @@ public final class CodexTooltips {
 
     @SubscribeEvent
     public void onTooltip(ItemTooltipEvent e) {
-        if (!Config.codexHints || e.itemStack == null) return;
+        if (!CodexConfig.codexHints || e.itemStack == null) return;
         ItemStack s = e.itemStack;
         for (Categories.Category c : Categories.all()) {
             String key;

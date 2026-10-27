@@ -22,9 +22,9 @@ import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
 
-import com.fluxecho.Config;
 import com.fluxecho.campus.ModuleSpec;
 import com.fluxecho.city.CityModule;
+import com.fluxecho.config.NexusConfig;
 import com.fluxecho.library.LibraryModule;
 
 /**
@@ -138,7 +138,7 @@ class CityOfferTest {
         }
 
         int[] hallCentre(int slot) {
-            int[] o = RingSlots.offset(slot, Config.innerRadius, fx, fz);
+            int[] o = RingSlots.offset(slot, NexusConfig.innerRadius, fx, fz);
             return new int[] { CX + o[0] + shift[0], Y0, CZ + o[1] + shift[1] };
         }
 

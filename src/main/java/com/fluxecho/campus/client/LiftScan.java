@@ -15,9 +15,9 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.campus.Lift;
+import com.fluxecho.config.CampusConfig;
 import com.fluxecho.logic.LiftLook;
 import com.fluxecho.nexus.ClientTiles;
 import com.fluxecho.nexus.TileMultiblock;
@@ -97,7 +97,7 @@ public final class LiftScan {
         Minecraft mc = Minecraft.getMinecraft();
         World w = mc.theWorld;
         Entity viewer = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
-        if (w == null || viewer == null || !Config.buildEffects) {
+        if (w == null || viewer == null || !CampusConfig.buildEffects) {
             clear();
             return;
         }

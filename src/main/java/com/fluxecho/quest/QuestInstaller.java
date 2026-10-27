@@ -19,9 +19,9 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 
-import com.fluxecho.Config;
 import com.fluxecho.FluxEcho;
 import com.fluxecho.Mods;
+import com.fluxecho.config.QuestsConfig;
 import com.fluxecho.logic.QuestOrder;
 import com.fluxecho.logic.QuestPlan;
 import com.fluxecho.quest.bq.QuestInjector;
@@ -54,7 +54,7 @@ public final class QuestInstaller {
     private QuestInstaller() {}
 
     private static boolean enabled() {
-        return Config.installQuests && Mods.betterQuesting;
+        return QuestsConfig.installQuests && Mods.betterQuesting;
     }
 
     public static void preInit(File configDir) {

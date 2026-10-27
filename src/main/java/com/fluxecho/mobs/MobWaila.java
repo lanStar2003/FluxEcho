@@ -10,9 +10,9 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 
-import com.fluxecho.Config;
 import com.fluxecho.codex.Categories;
 import com.fluxecho.codex.ClientLedger;
+import com.fluxecho.config.CodexConfig;
 import com.fluxecho.core.EchoText;
 
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -41,7 +41,7 @@ public final class MobWaila implements IWailaEntityProvider {
     @Override
     public List<String> getWailaBody(Entity entity, List<String> tip, IWailaEntityAccessor accessor,
         IWailaConfigHandler config) {
-        if (!Config.codexHints || entity instanceof EntityPlayer) return tip;
+        if (!CodexConfig.codexHints || entity instanceof EntityPlayer) return tip;
         String mob = MobImprints.name(entity);
         if (mob == null) return tip;
         if (ClientLedger.has(Categories.MOB, mob)) tip.add(EnumChatFormatting.AQUA + EchoText.t("codex.done"));
