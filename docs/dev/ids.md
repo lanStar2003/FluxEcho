@@ -1,6 +1,6 @@
 # 只增 ID 总账（`docs/dev/ids.md`）
 
-> **从此仓库里这一份是唯一的账；设计稿那份（`D:/Code/FluxEcho-campus/redesign/LEDGER.md`）冻结。** 0.17.0 开版时（refactor §③ F01，2026-10-27）由设计稿原样入库：下面从「全城唯一的 ID 账」起都是设计稿的原文，只在本段加了入库说明。以后加行、定版（「新增」→「本版」→「已发布」）都只改这一份（0.17.0 的接口提交已把首发正好是 0.17 的 76 行改成「本版」；首发写成几个版本的三行——§1.1 的码段 29–31、42–47 和 §11 的 `feB02`…`feB17`——仍是「新增」，等各自的卡定了再分行），由整合者在接口提交和标签提交里改（§22.3）；设计稿里的同名表不再更新。
+> **从此仓库里这一份是唯一的账；设计稿那份（`D:/Code/FluxEcho-campus/redesign/LEDGER.md`）冻结。** 0.17.0 开版时（refactor §③ F01，2026-10-27）由设计稿原样入库：下面从「全城唯一的 ID 账」起都是设计稿的原文，只在本段加了入库说明。以后加行、定版（「新增」→「本版」→「已发布」）都只改这一份（0.17.0 的接口提交已把首发正好是 0.17 的 76 行改成「本版」；首发写成几个版本的三行——§1.1 的码段 29–31、42–47 和 §11 的 `feB02`…`feB17`——仍是「新增」，等各自的卡定了再分行；0.17 的规则审查按实际交付把 §8 的卷与舱志、§10.3 的 `echo_general` 五个新任务、§11 的 `feB02`…`feB17` 改成「本版」，拆出 §18 的 `swatch 2`（0.20），补登探针标记牌，并给 `Skn`、`SKIN_TABLE` / `SKIN_DELTA` 写上格式），由整合者在接口提交和标签提交里改（§22.3）；设计稿里的同名表不再更新。
 >
 > **机器可读**：§19 的 JSON 由 `java tools/IdsCsv.java` 导出成同目录的 `ids.csv`（一行一个 ID：类、节、值、含义、归属、首发版本、状态、出处）；改了本文的 JSON 就重跑它，`IdsCsvTest` 守着两者一致。逐版的计划数据（首发的新形状楼、环段数、可见星数、main 估值）在 `src/test/resources/plan/batches.csv`，`BatchPlanTest` 读它。
 
@@ -582,8 +582,8 @@
 | S→C | 4 | `LIB_DELTA` | 书库增量 | 引擎 | ≤0.16 | H | 已发布 |
 | S→C | 5 | `UNIT_DELTA` | 单元增量 | 引擎 | ≤0.16 | H | 已发布 |
 | S→C | 6 | `LIFT_RIDE` | 光梯乘坐 | 引擎 | ≤0.16 | H | 已发布 |
-| S→C | 7 | `SKIN_TABLE` | 512 格内全部园区的盒子表 | 风格组 | 0.17 | U §2.9.1；R §4.4 | 本版 |
-| S→C | 8 | `SKIN_DELTA` | 一条盒子表条目 | 风格组 | 0.17 | U §2.9.1；R §4.4 | 本版 |
+| S→C | 7 | `SKIN_TABLE` | 512 格内全部园区的盒子表（载荷：NBT 键 `B` 的 byte 数组，`SkinCodec` 版本 1） | 风格组 | 0.17 | U §2.9.1；R §4.4；F05 | 本版 |
+| S→C | 8 | `SKIN_DELTA` | 一条盒子表条目（载荷同上） | 风格组 | 0.17 | U §2.9.1；R §4.4；F05 | 本版 |
 | S→C | 9 | `VIEW` | `{view, page, rev, ic, nbt}` | 界面组 | 0.18 | U §2.9.1；R §4.4 | 新增 |
 | S→C | 10 | `TOAST` | `{kind, langKey, args, severity, sigilKey, pos?}` | 界面组 | 0.18 | U §2.9.1；R §4.4 | 新增 |
 | S→C | 11 | `HIGHLIGHT` | `{pos, color, seconds}` | 界面组 | 0.18 | U §2.9.1；R §4.4 | 新增 |
@@ -628,7 +628,7 @@
 | 值 | 含义 | 归属 | 首发 | 出处 | 状态 |
 |---|---|---|---|---|---|
 | `Ac` `Bl` `BuildIn` `Campus` `Declined` `Dim` `F` `Fb` `Fe` `Ft` `Gk` `Gl` `Gn` `Gq` `Hint` `Job` `K` `Ko` `Kr` `Ledger` `Md` `Mi` `N` `Nb` `Nc` `Nq` `Nr` `Ns` `Oc` `Ol` `Op` `P` `Pa` `Parts` `Ph` `Pk` `Pl` `Pos` `Pq` `Ps` `Pv` `Queue` `R` `Raw` `Rc` `Recycle` `Rj` `Ro` `S` `Sg` `Sites` `Sk` `Skip` `Sn` `Spoils` `St` `Te` `To` `V` `W` | 中枢 tile `Campus` 子表与 `Campus.writeSync` 的现有键（`Sk` = 跳过受阻位） | 引擎 | ≤0.16 | H `campus/Campus` | 已发布 |
-| `Skn` | 每座楼最后已知的盒子表状态和供电位（不能叫 `Sk`） | 风格组 | 0.17 | R §4.5；S §3.8.3(f) | 本版 |
+| `Skn` | 每座楼最后已知的盒子表状态和供电位（不能叫 `Sk`）。byte 数组：`[版本 1][short n]{条目, long apartSince}`，条目 = `SkinCodec` 版本 1 的编码（楼行号 = §2 的行；状态码 `SkinState` 0 `BUILDING`、1 `FORMED`、2 `HOLD`、3 `DORMANT`、4 `ASCENDING`、5 `MEMORIAL`，码只增，不认识的读成 `DORMANT`）；0.16 的园区没有这个键，空表起步 | 风格组 | 0.17 | R §4.5；S §3.8.3(f)；F05 | 本版 |
 | `Mp` | 总图版本：0 旧图（缺省）、1 一叶归舟 | 总平面 | 0.19 | R §4.5 | 新增 |
 | `Rk` | 有重铸记录的模块键列表（记录本体在 `fluxecho_recast`） | 总平面 | 0.19（字段）/ 0.22（写入） | R §4.5 | 新增 |
 | `Ledger.LegAcct` | 腿账：穹顶记腿、机库扣腿 | 守护组 | 0.21 | B/guard/README §4 | 新增 |
@@ -886,8 +886,9 @@
 | 0.16 现有前缀 | `fluxecho.build.*`（263）`fluxecho.research.*` `fluxecho.library.*` `fluxecho.status.*` `fluxecho.nexus.*` `fluxecho.spring.*` `fluxecho.city.*` `fluxecho.gene.*` `fluxecho.unit.*`（24 种类）`fluxecho.recycle_bin.*` `fluxecho.codex.*` `fluxecho.nei.*` `fluxecho.holo.*` `fluxecho.module.*` `fluxecho.cmd.*` `fluxecho.gate.*` `fluxecho.supply_port.*` `fluxecho.deck.*` `fluxecho.waila.*` `fluxecho.recipe.*` `fluxecho.frame.*` `fluxecho.gui.*` `fluxecho.fitting.*` `fluxecho.dock.*`、各机器 / 物品名前缀、`tile.fluxecho.*` `item.fluxecho.*` `gt.blockmachines.*` `itemGroup.fluxecho`（每份 1,155 键） | 引擎 | ≤0.16 | H `lang/en_US.lang` | 已发布 |
 | `fluxecho.skin.*` | 材质、形 | 风格组（渲染） | 0.17 | R §4.7 | 本版 |
 | `fluxecho.ui.*`、`fluxecho.issue.*` | 界面；问题码（含 `fluxecho.issue.module.<楼键>.*`） | 界面组 | 0.18 | R §4.7；U | 新增 |
-| `fluxecho.codex.vol.*`（含 `vol.6.stay`）、`.glance.*`、`.drift.*` | 典籍卷、看过的件、舱志 | 叙事 | 0.18 | R §4.7；B/endgame/README §4 | 新增 |
-| `fluxecho.codex.hall.<楼键>` | 舱志（每座楼一条；含 `hall.leap_ring.broken`） | 叙事 / 各楼 | 0.19 起 | N §1.7.1；**L08** | 新增 |
+| `fluxecho.codex.vol.*`（含 `vol.6.stay`） | 典籍卷（卷零–卷三的 `vol.<n>`、`.title`、`.when` 随 0.17 的 N1 发；以后的卷随叙事） | 叙事 | 0.17 | R §4.7；B/endgame/README §4；T01 | 本版 |
+| `fluxecho.codex.glance.*`、`fluxecho.codex.drift.*` | 看过的件、舱志 | 叙事 | 0.18 | R §4.7；B/endgame/README §4 | 新增 |
+| `fluxecho.codex.hall.<楼键>` | 舱志（每座楼一条；舷号 01–17 的 17 条随 0.17 的 N1 发；`hall.leap_ring.broken` 0.19） | 叙事 / 各楼 | 0.17 | N §1.7.1；**L08**；T01 | 本版 |
 | `fluxecho.codex.xiang.<n>`、`fluxecho.codex.shore.<dim>` | 乡忆、别的岸 | 叙事 | 0.18 | N §1.7.1；**L08** | 新增 |
 | `fluxecho.codex.whisper.<n>`（n = 1…16） | 窗语（叙事 §4.4 标题、重构稿 §4.7 写的 `voyage.whisper.1…16` 作废） | 叙事 | 0.27 | N §1.7.1；**L08** | 新增 |
 | `fluxecho.voyage.*` | 跃升、航线的其余文字（不含窗语） | 叙事 | 0.18 | R §4.7 | 新增 |
@@ -1053,11 +1054,11 @@
 | `drift/other_shore` | `feB00` / `feRes` / `feRec` / `feShore` / `feXiang` | `line/drift` | 0.18 | N §7.2 | 新增 |
 | `drift/awake` | `feB00` / `feRes` / `feRec` / `feShore` / `feXiang` | `line/drift` | 0.18 | N §7.2 | 新增 |
 | `drift/rekindle` | `feB00` ≥ 3 | `line/drift`（挂进 `line/echo_nexus`） | 0.19 | N §7.2 | 新增 |
-| `echo_general/drift` | `feRec` / `feCat` | `line/echo_general` | 0.18 | N §7.2 | 新增 |
-| `echo_general/tools` | `feRec` / `feCat` | `line/echo_general` | 0.18 | N §7.2 | 新增 |
-| `echo_general/ten` | `feRec` / `feCat` | `line/echo_general` | 0.18 | N §7.2 | 新增 |
-| `echo_general/kinds` | `feRec` / `feCat` | `line/echo_general` | 0.18 | N §7.2 | 新增 |
-| `echo_general/forty` | `feRec` / `feCat` | `line/echo_general` | 0.18 | N §7.2 | 新增 |
+| `echo_general/drift` | `feRec` / `feCat` | `line/echo_general` | 0.17 | N §7.2；T01 | 本版 |
+| `echo_general/tools` | `feRec` / `feCat` | `line/echo_general` | 0.17 | N §7.2；T01 | 本版 |
+| `echo_general/ten` | `feRec` / `feCat` | `line/echo_general` | 0.17 | N §7.2；T01 | 本版 |
+| `echo_general/kinds` | `feRec` / `feCat` | `line/echo_general` | 0.17 | N §7.2；T01 | 本版 |
+| `echo_general/forty` | `feRec` / `feCat` | `line/echo_general` | 0.17 | N §7.2；T01 | 本版 |
 | `echo_nexus/xiang_2` | `feXiang` ≥ 2；总图 | `line/echo_nexus` | 0.19 | N §7.2 | 新增 |
 | `echo_nexus/outline` | `feXiang` ≥ 2；总图 | `line/echo_nexus` | 0.19 | N §7.2 | 新增 |
 | `echo_nexus/phase_core` | 相位核、乡忆 ③、覆层、极光 | `line/echo_nexus` | 0.21 | N §7.2 | 新增 |
@@ -1156,7 +1157,7 @@
 | `feList` | 清单完成行数 0–20（实时，可降） | 叙事 | 0.17 | N §7.4 | 本版 |
 | `feB00` | 舱：1 放下、2 回声定位用过、3 重燃 | 叙事 | 0.17 | N §7.4 | 本版 |
 | `feB01` | 中枢：1 成型、2 第一次显化、3 份额备齐 | 叙事 | 0.17 | N §7.4 | 本版 |
-| `feB02`、`feB03`、`feB05`–`feB09`、`feB11`–`feB17` | 1 成型、2 第一次真正使用（城志）、3 份额备齐 | 叙事 / 各楼 | 0.17（随楼有值） | N §7.4 | 新增 |
+| `feB02`、`feB03`、`feB05`–`feB09`、`feB11`–`feB17` | 1 成型、2 第一次真正使用（城志）、3 份额备齐 | 叙事 / 各楼 | 0.17（第 1 级 0.17 起由 `ScoreBridge` v1 写；2、3 级随楼） | N §7.4；T01 | 本版 |
 | `feB04` | 根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐 | 叙事 / 发电组 | 0.17 | N §7.4 | 本版 |
 | `feB10` | 智子 4 级：成型、插满一架、展开度 2、份额备齐 | 叙事 / 算力组 | 0.17 | N §7.4 | 本版 |
 | `feB18` | 桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐 | 叙事 / 终局组 | 0.17 | N §7.4 | 本版 |
@@ -1386,7 +1387,9 @@
 | `/fluxecho research all \| reset [player]` | 研究调试（OP） | 引擎 | ≤0.16 | H `cmd` | 已发布 |
 | `/fluxecho build free on \| off`、`/fluxecho build finish`、`/fluxecho build status` | 营造调试（OP） | 引擎 | ≤0.16 | H `cmd` | 已发布 |
 | `/fluxecho_nei` | NEI 导出 | 引擎 | ≤0.16 | H | 已发布 |
-| `/fluxecho swatch [2]`、`/fluxecho swatch clear` | 样板墙（创造 / OP） | 风格组 | 0.17 | R §4.11；S §3.8.3(f) | 本版 |
+| `/fluxecho swatch`、`/fluxecho swatch clear` | 样板墙（OP） | 风格组 | 0.17 | R §4.11；S §3.8.3(f) | 本版 |
+| `/fluxecho swatch 2` | 样板墙 2：M7–M12 与装置件的行（0.17 的墙已给它们留好格） | 风格组 | 0.20 | R §4.11；S §3.8.3(f)；F06 | 新增 |
+| 探针标记牌：原版立式告示牌，第 1 行 `[FluxEcho]`，第 2 行种类词 `swatch` / `probe depth` / `probe sky` / `probe sun` / `probe bed`，第 3 行标签，第 4 行数据（花床 `n=<床数>`、样板墙 `v0.17`）；牌在框架里的格（前, 右）：样板墙 (3, −17)、depth (2, −5)、sky (2, −2)、sun (2, −3)、bed (1, −10)；朝向 meta 按字朝的方向（南 0、西 4、北 8、东 12），字朝着操作者 | 探针和样板墙在世界里的唯一记号（`logic/probe/ProbeMarker`）：不要消息号、NBT 键、存档数据；发布后只读不改 | 风格组 | 0.17 | F06 | 本版 |
 | `/fluxecho probe depth \| sky \| sun \| bed` | 探测 | 风格组 | 0.17 | R §4.11 | 本版 |
 | `/fluxecho cam <A–E>` | 机位 | 总平面 | 0.17 | R §4.11 | 本版 |
 | `/fluxecho proto plaza` | 广场样地 | 总平面 | 0.18 | R §4.11 | 新增 |
@@ -1854,8 +1857,8 @@
       {"dir": "S→C", "num": "4", "name": "LIB_DELTA", "payload": "书库增量", "owner": "引擎", "since": "≤0.16", "source": "H", "status": "已发布"},
       {"dir": "S→C", "num": "5", "name": "UNIT_DELTA", "payload": "单元增量", "owner": "引擎", "since": "≤0.16", "source": "H", "status": "已发布"},
       {"dir": "S→C", "num": "6", "name": "LIFT_RIDE", "payload": "光梯乘坐", "owner": "引擎", "since": "≤0.16", "source": "H", "status": "已发布"},
-      {"dir": "S→C", "num": "7", "name": "SKIN_TABLE", "payload": "512 格内全部园区的盒子表", "owner": "风格组", "since": "0.17", "source": "U §2.9.1；R §4.4", "status": "本版"},
-      {"dir": "S→C", "num": "8", "name": "SKIN_DELTA", "payload": "一条盒子表条目", "owner": "风格组", "since": "0.17", "source": "U §2.9.1；R §4.4", "status": "本版"},
+      {"dir": "S→C", "num": "7", "name": "SKIN_TABLE", "payload": "512 格内全部园区的盒子表（载荷：NBT 键 B 的 byte 数组，SkinCodec 版本 1）", "owner": "风格组", "since": "0.17", "source": "U §2.9.1；R §4.4；F05", "status": "本版"},
+      {"dir": "S→C", "num": "8", "name": "SKIN_DELTA", "payload": "一条盒子表条目（载荷同上）", "owner": "风格组", "since": "0.17", "source": "U §2.9.1；R §4.4；F05", "status": "本版"},
       {"dir": "S→C", "num": "9", "name": "VIEW", "payload": "{view, page, rev, ic, nbt}", "owner": "界面组", "since": "0.18", "source": "U §2.9.1；R §4.4", "status": "新增"},
       {"dir": "S→C", "num": "10", "name": "TOAST", "payload": "{kind, langKey, args, severity, sigilKey, pos?}", "owner": "界面组", "since": "0.18", "source": "U §2.9.1；R §4.4", "status": "新增"},
       {"dir": "S→C", "num": "11", "name": "HIGHLIGHT", "payload": "{pos, color, seconds}", "owner": "界面组", "since": "0.18", "source": "U §2.9.1；R §4.4", "status": "新增"},
@@ -1887,7 +1890,7 @@
     ]},
     "nbt_campus": {"section": "5.2", "title": "园区（中枢 tile 的 Campus 子表）、核心物品、任务、账本", "cols": ["value", "meaning", "owner", "since", "source", "status"], "rows": [
       {"value": "Ac Bl BuildIn Campus Declined Dim F Fb Fe Ft Gk Gl Gn Gq Hint Job K Ko Kr Ledger Md Mi N Nb Nc Nq Nr Ns Oc Ol Op P Pa Parts Ph Pk Pl Pos Pq Ps Pv Queue R Raw Rc Recycle Rj Ro S Sg Sites Sk Skip Sn Spoils St Te To V W", "meaning": "中枢 tile Campus 子表与 Campus.writeSync 的现有键（Sk = 跳过受阻位）", "owner": "引擎", "since": "≤0.16", "source": "H campus/Campus", "status": "已发布"},
-      {"value": "Skn", "meaning": "每座楼最后已知的盒子表状态和供电位（不能叫 Sk）", "owner": "风格组", "since": "0.17", "source": "R §4.5；S §3.8.3(f)", "status": "本版"},
+      {"value": "Skn", "meaning": "每座楼最后已知的盒子表状态和供电位（不能叫 Sk）。byte 数组：[版本 1][short n]{条目, long apartSince}，条目 = SkinCodec 版本 1 的编码（楼行号 = §2 的行；状态码 SkinState 0 BUILDING、1 FORMED、2 HOLD、3 DORMANT、4 ASCENDING、5 MEMORIAL，码只增，不认识的读成 DORMANT）；0.16 的园区没有这个键，空表起步", "owner": "风格组", "since": "0.17", "source": "R §4.5；S §3.8.3(f)；F05", "status": "本版"},
       {"value": "Mp", "meaning": "总图版本：0 旧图（缺省）、1 一叶归舟", "owner": "总平面", "since": "0.19", "source": "R §4.5", "status": "新增"},
       {"value": "Rk", "meaning": "有重铸记录的模块键列表（记录本体在 fluxecho_recast）", "owner": "总平面", "since": "0.19（字段）/ 0.22（写入）", "source": "R §4.5", "status": "新增"},
       {"value": "Ledger.LegAcct", "meaning": "腿账：穹顶记腿、机库扣腿", "owner": "守护组", "since": "0.21", "source": "B/guard/README §4", "status": "新增"},
@@ -2112,8 +2115,9 @@
       {"value": "0.16 现有前缀", "meaning": "fluxecho.build.*（263）fluxecho.research.* fluxecho.library.* fluxecho.status.* fluxecho.nexus.* fluxecho.spring.* fluxecho.city.* fluxecho.gene.* fluxecho.unit.*（24 种类）fluxecho.recycle_bin.* fluxecho.codex.* fluxecho.nei.* fluxecho.holo.* fluxecho.module.* fluxecho.cmd.* fluxecho.gate.* fluxecho.supply_port.* fluxecho.deck.* fluxecho.waila.* fluxecho.recipe.* fluxecho.frame.* fluxecho.gui.* fluxecho.fitting.* fluxecho.dock.*、各机器 / 物品名前缀、tile.fluxecho.* item.fluxecho.* gt.blockmachines.* itemGroup.fluxecho（每份 1,155 键）", "owner": "引擎", "since": "≤0.16", "source": "H lang/en_US.lang", "status": "已发布"},
       {"value": "fluxecho.skin.*", "meaning": "材质、形", "owner": "风格组（渲染）", "since": "0.17", "source": "R §4.7", "status": "本版"},
       {"value": "fluxecho.ui.*、fluxecho.issue.*", "meaning": "界面；问题码（含 fluxecho.issue.module.<楼键>.*）", "owner": "界面组", "since": "0.18", "source": "R §4.7；U", "status": "新增"},
-      {"value": "fluxecho.codex.vol.*（含 vol.6.stay）、.glance.*、.drift.*", "meaning": "典籍卷、看过的件、舱志", "owner": "叙事", "since": "0.18", "source": "R §4.7；B/endgame/README §4", "status": "新增"},
-      {"value": "fluxecho.codex.hall.<楼键>", "meaning": "舱志（每座楼一条；含 hall.leap_ring.broken）", "owner": "叙事 / 各楼", "since": "0.19 起", "source": "N §1.7.1；L08", "status": "新增"},
+      {"value": "fluxecho.codex.vol.*（含 vol.6.stay）", "meaning": "典籍卷（卷零–卷三的 vol.<n>、.title、.when 随 0.17 的 N1 发；以后的卷随叙事）", "owner": "叙事", "since": "0.17", "source": "R §4.7；B/endgame/README §4；T01", "status": "本版"},
+      {"value": "fluxecho.codex.glance.*、fluxecho.codex.drift.*", "meaning": "看过的件、舱志", "owner": "叙事", "since": "0.18", "source": "R §4.7；B/endgame/README §4", "status": "新增"},
+      {"value": "fluxecho.codex.hall.<楼键>", "meaning": "舱志（每座楼一条；舷号 01–17 的 17 条随 0.17 的 N1 发；hall.leap_ring.broken 0.19）", "owner": "叙事 / 各楼", "since": "0.17", "source": "N §1.7.1；L08；T01", "status": "本版"},
       {"value": "fluxecho.codex.xiang.<n>、fluxecho.codex.shore.<dim>", "meaning": "乡忆、别的岸", "owner": "叙事", "since": "0.18", "source": "N §1.7.1；L08", "status": "新增"},
       {"value": "fluxecho.codex.whisper.<n>（n = 1…16）", "meaning": "窗语（叙事 §4.4 标题、重构稿 §4.7 写的 voyage.whisper.1…16 作废）", "owner": "叙事", "since": "0.27", "source": "N §1.7.1；L08", "status": "新增"},
       {"value": "fluxecho.voyage.*", "meaning": "跃升、航线的其余文字（不含窗语）", "owner": "叙事", "since": "0.18", "source": "R §4.7", "status": "新增"},
@@ -2261,11 +2265,11 @@
       {"key": "drift/other_shore", "condition": "feB00 / feRes / feRec / feShore / feXiang", "line": "line/drift", "since": "0.18", "source": "N §7.2", "status": "新增"},
       {"key": "drift/awake", "condition": "feB00 / feRes / feRec / feShore / feXiang", "line": "line/drift", "since": "0.18", "source": "N §7.2", "status": "新增"},
       {"key": "drift/rekindle", "condition": "feB00 ≥ 3", "line": "line/drift（挂进 line/echo_nexus）", "since": "0.19", "source": "N §7.2", "status": "新增"},
-      {"key": "echo_general/drift", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.18", "source": "N §7.2", "status": "新增"},
-      {"key": "echo_general/tools", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.18", "source": "N §7.2", "status": "新增"},
-      {"key": "echo_general/ten", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.18", "source": "N §7.2", "status": "新增"},
-      {"key": "echo_general/kinds", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.18", "source": "N §7.2", "status": "新增"},
-      {"key": "echo_general/forty", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.18", "source": "N §7.2", "status": "新增"},
+      {"key": "echo_general/drift", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.17", "source": "N §7.2；T01", "status": "本版"},
+      {"key": "echo_general/tools", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.17", "source": "N §7.2；T01", "status": "本版"},
+      {"key": "echo_general/ten", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.17", "source": "N §7.2；T01", "status": "本版"},
+      {"key": "echo_general/kinds", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.17", "source": "N §7.2；T01", "status": "本版"},
+      {"key": "echo_general/forty", "condition": "feRec / feCat", "line": "line/echo_general", "since": "0.17", "source": "N §7.2；T01", "status": "本版"},
       {"key": "echo_nexus/xiang_2", "condition": "feXiang ≥ 2；总图", "line": "line/echo_nexus", "since": "0.19", "source": "N §7.2", "status": "新增"},
       {"key": "echo_nexus/outline", "condition": "feXiang ≥ 2；总图", "line": "line/echo_nexus", "since": "0.19", "source": "N §7.2", "status": "新增"},
       {"key": "echo_nexus/phase_core", "condition": "相位核、乡忆 ③、覆层、极光", "line": "line/echo_nexus", "since": "0.21", "source": "N §7.2", "status": "新增"},
@@ -2359,7 +2363,7 @@
       {"value": "feList", "meaning": "清单完成行数 0–20（实时，可降）", "owner": "叙事", "since": "0.17", "source": "N §7.4", "status": "本版"},
       {"value": "feB00", "meaning": "舱：1 放下、2 回声定位用过、3 重燃", "owner": "叙事", "since": "0.17", "source": "N §7.4", "status": "本版"},
       {"value": "feB01", "meaning": "中枢：1 成型、2 第一次显化、3 份额备齐", "owner": "叙事", "since": "0.17", "source": "N §7.4", "status": "本版"},
-      {"value": "feB02、feB03、feB05–feB09、feB11–feB17", "meaning": "1 成型、2 第一次真正使用（城志）、3 份额备齐", "owner": "叙事 / 各楼", "since": "0.17（随楼有值）", "source": "N §7.4", "status": "新增"},
+      {"value": "feB02、feB03、feB05–feB09、feB11–feB17", "meaning": "1 成型、2 第一次真正使用（城志）、3 份额备齐", "owner": "叙事 / 各楼", "since": "0.17（第 1 级 0.17 起由 ScoreBridge v1 写；2、3 级随楼）", "source": "N §7.4；T01", "status": "本版"},
       {"value": "feB04", "meaning": "根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐", "owner": "叙事 / 发电组", "since": "0.17", "source": "N §7.4", "status": "本版"},
       {"value": "feB10", "meaning": "智子 4 级：成型、插满一架、展开度 2、份额备齐", "owner": "叙事 / 算力组", "since": "0.17", "source": "N §7.4", "status": "本版"},
       {"value": "feB18", "meaning": "桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐", "owner": "叙事 / 终局组", "since": "0.17", "source": "N §7.4", "status": "本版"},
@@ -2550,7 +2554,9 @@
       {"value": "/fluxecho research all | reset [player]", "meaning": "研究调试（OP）", "owner": "引擎", "since": "≤0.16", "source": "H cmd", "status": "已发布"},
       {"value": "/fluxecho build free on | off、/fluxecho build finish、/fluxecho build status", "meaning": "营造调试（OP）", "owner": "引擎", "since": "≤0.16", "source": "H cmd", "status": "已发布"},
       {"value": "/fluxecho_nei", "meaning": "NEI 导出", "owner": "引擎", "since": "≤0.16", "source": "H", "status": "已发布"},
-      {"value": "/fluxecho swatch [2]、/fluxecho swatch clear", "meaning": "样板墙（创造 / OP）", "owner": "风格组", "since": "0.17", "source": "R §4.11；S §3.8.3(f)", "status": "本版"},
+      {"value": "/fluxecho swatch、/fluxecho swatch clear", "meaning": "样板墙（OP）", "owner": "风格组", "since": "0.17", "source": "R §4.11；S §3.8.3(f)", "status": "本版"},
+      {"value": "/fluxecho swatch 2", "meaning": "样板墙 2：M7–M12 与装置件的行（0.17 的墙已给它们留好格）", "owner": "风格组", "since": "0.20", "source": "R §4.11；S §3.8.3(f)；F06", "status": "新增"},
+      {"value": "探针标记牌：原版立式告示牌，第 1 行 [FluxEcho]，第 2 行种类词 swatch / probe depth / probe sky / probe sun / probe bed，第 3 行标签，第 4 行数据（花床 n=<床数>、样板墙 v0.17）；牌在框架里的格（前, 右）：样板墙 (3, −17)、depth (2, −5)、sky (2, −2)、sun (2, −3)、bed (1, −10)；朝向 meta 按字朝的方向（南 0、西 4、北 8、东 12），字朝着操作者", "meaning": "探针和样板墙在世界里的唯一记号（logic/probe/ProbeMarker）：不要消息号、NBT 键、存档数据；发布后只读不改", "owner": "风格组", "since": "0.17", "source": "F06", "status": "本版"},
       {"value": "/fluxecho probe depth | sky | sun | bed", "meaning": "探测", "owner": "风格组", "since": "0.17", "source": "R §4.11", "status": "本版"},
       {"value": "/fluxecho cam <A–E>", "meaning": "机位", "owner": "总平面", "since": "0.17", "source": "R §4.11", "status": "本版"},
       {"value": "/fluxecho proto plaza", "meaning": "广场样地", "owner": "总平面", "since": "0.18", "source": "R §4.11", "status": "新增"},

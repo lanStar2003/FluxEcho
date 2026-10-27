@@ -421,8 +421,8 @@ net_messages,4.1,S→C 3 BUILD_STATE,payload: 施工状态,引擎,≤0.16,已发
 net_messages,4.1,S→C 4 LIB_DELTA,payload: 书库增量,引擎,≤0.16,已发布,H
 net_messages,4.1,S→C 5 UNIT_DELTA,payload: 单元增量,引擎,≤0.16,已发布,H
 net_messages,4.1,S→C 6 LIFT_RIDE,payload: 光梯乘坐,引擎,≤0.16,已发布,H
-net_messages,4.1,S→C 7 SKIN_TABLE,payload: 512 格内全部园区的盒子表,风格组,0.17,本版,U §2.9.1；R §4.4
-net_messages,4.1,S→C 8 SKIN_DELTA,payload: 一条盒子表条目,风格组,0.17,本版,U §2.9.1；R §4.4
+net_messages,4.1,S→C 7 SKIN_TABLE,payload: 512 格内全部园区的盒子表（载荷：NBT 键 B 的 byte 数组，SkinCodec 版本 1）,风格组,0.17,本版,U §2.9.1；R §4.4；F05
+net_messages,4.1,S→C 8 SKIN_DELTA,payload: 一条盒子表条目（载荷同上）,风格组,0.17,本版,U §2.9.1；R §4.4；F05
 net_messages,4.1,S→C 9 VIEW,"payload: {view, page, rev, ic, nbt}",界面组,0.18,新增,U §2.9.1；R §4.4
 net_messages,4.1,S→C 10 TOAST,"payload: {kind, langKey, args, severity, sigilKey, pos?}",界面组,0.18,新增,U §2.9.1；R §4.4
 net_messages,4.1,S→C 11 HIGHLIGHT,"payload: {pos, color, seconds}",界面组,0.18,新增,U §2.9.1；R §4.4
@@ -448,7 +448,7 @@ nbt_base,5.1,B Bi E（书本栈内 At）,BookPacket 写进 TileCityModule / 书�
 nbt_base,5.1,Docked Nexus Slot,TileModule 基类键,引擎,≤0.16,已发布,H
 nbt_base,5.1,Ov（描述包）,覆层种类（4 座灯座 / 4 个锚点各 1 字节）：全城模块的描述包保留给覆层,中枢组 / 统筹,0.21,新增,R §4.5；B/nexus/nexus §7；L09
 nbt_campus,5.2,Ac Bl BuildIn Campus Declined Dim F Fb Fe Ft Gk Gl Gn Gq Hint Job K Ko Kr Ledger Md Mi N Nb Nc Nq Nr Ns Oc Ol Op P Pa Parts Ph Pk Pl Pos Pq Ps Pv Queue R Raw Rc Recycle Rj Ro S Sg Sites Sk Skip Sn Spoils St Te To V W,中枢 tile Campus 子表与 Campus.writeSync 的现有键（Sk = 跳过受阻位）,引擎,≤0.16,已发布,H campus/Campus
-nbt_campus,5.2,Skn,每座楼最后已知的盒子表状态和供电位（不能叫 Sk）,风格组,0.17,本版,R §4.5；S §3.8.3(f)
+nbt_campus,5.2,Skn,"每座楼最后已知的盒子表状态和供电位（不能叫 Sk）。byte 数组：[版本 1][short n]{条目, long apartSince}，条目 = SkinCodec 版本 1 的编码（楼行号 = §2 的行；状态码 SkinState 0 BUILDING、1 FORMED、2 HOLD、3 DORMANT、4 ASCENDING、5 MEMORIAL，码只增，不认识的读成 DORMANT）；0.16 的园区没有这个键，空表起步",风格组,0.17,本版,R §4.5；S §3.8.3(f)；F05
 nbt_campus,5.2,Mp,总图版本：0 旧图（缺省）、1 一叶归舟,总平面,0.19,新增,R §4.5
 nbt_campus,5.2,Rk,有重铸记录的模块键列表（记录本体在 fluxecho_recast）,总平面,0.19（字段）/ 0.22（写入）,新增,R §4.5
 nbt_campus,5.2,Ledger.LegAcct,腿账：穹顶记腿、机库扣腿,守护组,0.21,新增,B/guard/README §4
@@ -655,8 +655,9 @@ config,7,campus.hills 取值 grade,新园区：悬山只出软警告「削顶 n 
 lang_prefixes,8,0.16 现有前缀,"fluxecho.build.*（263）fluxecho.research.* fluxecho.library.* fluxecho.status.* fluxecho.nexus.* fluxecho.spring.* fluxecho.city.* fluxecho.gene.* fluxecho.unit.*（24 种类）fluxecho.recycle_bin.* fluxecho.codex.* fluxecho.nei.* fluxecho.holo.* fluxecho.module.* fluxecho.cmd.* fluxecho.gate.* fluxecho.supply_port.* fluxecho.deck.* fluxecho.waila.* fluxecho.recipe.* fluxecho.frame.* fluxecho.gui.* fluxecho.fitting.* fluxecho.dock.*、各机器 / 物品名前缀、tile.fluxecho.* item.fluxecho.* gt.blockmachines.* itemGroup.fluxecho（每份 1,155 键）",引擎,≤0.16,已发布,H lang/en_US.lang
 lang_prefixes,8,fluxecho.skin.*,材质、形,风格组（渲染）,0.17,本版,R §4.7
 lang_prefixes,8,fluxecho.ui.*、fluxecho.issue.*,界面；问题码（含 fluxecho.issue.module.<楼键>.*）,界面组,0.18,新增,R §4.7；U
-lang_prefixes,8,fluxecho.codex.vol.*（含 vol.6.stay）、.glance.*、.drift.*,典籍卷、看过的件、舱志,叙事,0.18,新增,R §4.7；B/endgame/README §4
-lang_prefixes,8,fluxecho.codex.hall.<楼键>,舱志（每座楼一条；含 hall.leap_ring.broken）,叙事 / 各楼,0.19 起,新增,N §1.7.1；L08
+lang_prefixes,8,fluxecho.codex.vol.*（含 vol.6.stay）,典籍卷（卷零–卷三的 vol.<n>、.title、.when 随 0.17 的 N1 发；以后的卷随叙事）,叙事,0.17,本版,R §4.7；B/endgame/README §4；T01
+lang_prefixes,8,fluxecho.codex.glance.*、fluxecho.codex.drift.*,看过的件、舱志,叙事,0.18,新增,R §4.7；B/endgame/README §4
+lang_prefixes,8,fluxecho.codex.hall.<楼键>,舱志（每座楼一条；舷号 01–17 的 17 条随 0.17 的 N1 发；hall.leap_ring.broken 0.19）,叙事 / 各楼,0.17,本版,N §1.7.1；L08；T01
 lang_prefixes,8,fluxecho.codex.xiang.<n>、fluxecho.codex.shore.<dim>,乡忆、别的岸,叙事,0.18,新增,N §1.7.1；L08
 lang_prefixes,8,fluxecho.codex.whisper.<n>（n = 1…16）,窗语（叙事 §4.4 标题、重构稿 §4.7 写的 voyage.whisper.1…16 作废）,叙事,0.27,新增,N §1.7.1；L08
 lang_prefixes,8,fluxecho.voyage.*,跃升、航线的其余文字（不含窗语）,叙事,0.18,新增,R §4.7
@@ -796,11 +797,11 @@ quest_keys_new,10.3,drift/first_echo,condition: feB00 / feRes / feRec / feShore 
 quest_keys_new,10.3,drift/other_shore,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
 quest_keys_new,10.3,drift/awake,condition: feB00 / feRes / feRec / feShore / feXiang · line: line/drift,,0.18,新增,N §7.2
 quest_keys_new,10.3,drift/rekindle,condition: feB00 ≥ 3 · line: line/drift（挂进 line/echo_nexus）,,0.19,新增,N §7.2
-quest_keys_new,10.3,echo_general/drift,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
-quest_keys_new,10.3,echo_general/tools,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
-quest_keys_new,10.3,echo_general/ten,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
-quest_keys_new,10.3,echo_general/kinds,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
-quest_keys_new,10.3,echo_general/forty,condition: feRec / feCat · line: line/echo_general,,0.18,新增,N §7.2
+quest_keys_new,10.3,echo_general/drift,condition: feRec / feCat · line: line/echo_general,,0.17,本版,N §7.2；T01
+quest_keys_new,10.3,echo_general/tools,condition: feRec / feCat · line: line/echo_general,,0.17,本版,N §7.2；T01
+quest_keys_new,10.3,echo_general/ten,condition: feRec / feCat · line: line/echo_general,,0.17,本版,N §7.2；T01
+quest_keys_new,10.3,echo_general/kinds,condition: feRec / feCat · line: line/echo_general,,0.17,本版,N §7.2；T01
+quest_keys_new,10.3,echo_general/forty,condition: feRec / feCat · line: line/echo_general,,0.17,本版,N §7.2；T01
 quest_keys_new,10.3,echo_nexus/xiang_2,condition: feXiang ≥ 2；总图 · line: line/echo_nexus,,0.19,新增,N §7.2
 quest_keys_new,10.3,echo_nexus/outline,condition: feXiang ≥ 2；总图 · line: line/echo_nexus,,0.19,新增,N §7.2
 quest_keys_new,10.3,echo_nexus/phase_core,condition: 相位核、乡忆 ③、覆层、极光 · line: line/echo_nexus,,0.21,新增,N §7.2
@@ -892,7 +893,7 @@ scoreboard,11,feLeap,跃升阶段 0–6,叙事 / 终局组,0.17,本版,N §7.4
 scoreboard,11,feList,清单完成行数 0–20（实时，可降）,叙事,0.17,本版,N §7.4
 scoreboard,11,feB00,舱：1 放下、2 回声定位用过、3 重燃,叙事,0.17,本版,N §7.4
 scoreboard,11,feB01,中枢：1 成型、2 第一次显化、3 份额备齐,叙事,0.17,本版,N §7.4
-scoreboard,11,feB02、feB03、feB05–feB09、feB11–feB17,1 成型、2 第一次真正使用（城志）、3 份额备齐,叙事 / 各楼,0.17（随楼有值）,新增,N §7.4
+scoreboard,11,feB02、feB03、feB05–feB09、feB11–feB17,1 成型、2 第一次真正使用（城志）、3 份额备齐,叙事 / 各楼,0.17（第 1 级 0.17 起由 ScoreBridge v1 写；2、3 级随楼）,本版,N §7.4；T01
 scoreboard,11,feB04,根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐,叙事 / 发电组,0.17,本版,N §7.4
 scoreboard,11,feB10,智子 4 级：成型、插满一架、展开度 2、份额备齐,叙事 / 算力组,0.17,本版,N §7.4
 scoreboard,11,feB18,桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐,叙事 / 终局组,0.17,本版,N §7.4
@@ -1061,7 +1062,9 @@ issue_codes,17.3,machine_<status>、net_<alert>,机器与网络,界面组,0.18,�
 commands,18,/fluxecho research all | reset [player],研究调试（OP）,引擎,≤0.16,已发布,H cmd
 commands,18,/fluxecho build free on | off、/fluxecho build finish、/fluxecho build status,营造调试（OP）,引擎,≤0.16,已发布,H cmd
 commands,18,/fluxecho_nei,NEI 导出,引擎,≤0.16,已发布,H
-commands,18,/fluxecho swatch [2]、/fluxecho swatch clear,样板墙（创造 / OP）,风格组,0.17,本版,R §4.11；S §3.8.3(f)
+commands,18,/fluxecho swatch、/fluxecho swatch clear,样板墙（OP）,风格组,0.17,本版,R §4.11；S §3.8.3(f)
+commands,18,/fluxecho swatch 2,样板墙 2：M7–M12 与装置件的行（0.17 的墙已给它们留好格）,风格组,0.20,新增,R §4.11；S §3.8.3(f)；F06
+commands,18,"探针标记牌：原版立式告示牌，第 1 行 [FluxEcho]，第 2 行种类词 swatch / probe depth / probe sky / probe sun / probe bed，第 3 行标签，第 4 行数据（花床 n=<床数>、样板墙 v0.17）；牌在框架里的格（前, 右）：样板墙 (3, −17)、depth (2, −5)、sky (2, −2)、sun (2, −3)、bed (1, −10)；朝向 meta 按字朝的方向（南 0、西 4、北 8、东 12），字朝着操作者",探针和样板墙在世界里的唯一记号（logic/probe/ProbeMarker）：不要消息号、NBT 键、存档数据；发布后只读不改,风格组,0.17,本版,F06
 commands,18,/fluxecho probe depth | sky | sun | bed,探测,风格组,0.17,本版,R §4.11
 commands,18,/fluxecho cam <A–E>,机位,总平面,0.17,本版,R §4.11
 commands,18,/fluxecho proto plaza,广场样地,总平面,0.18,新增,R §4.11
