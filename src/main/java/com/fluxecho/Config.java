@@ -18,6 +18,8 @@ import com.fluxecho.config.ManaConfig;
 import com.fluxecho.config.MobsConfig;
 import com.fluxecho.config.NexusConfig;
 import com.fluxecho.config.QuestsConfig;
+import com.fluxecho.config.RenderConfig;
+import com.fluxecho.config.StyleConfig;
 import com.fluxecho.config.ThaumConfig;
 
 /**
@@ -42,7 +44,9 @@ public final class Config {
      */
     static final Section[] SECTIONS = { GeneralConfig::load, QuestsConfig::load, BeesConfig::load, ThaumConfig::load,
         BloodConfig::load, MobsConfig::load, CropsConfig::load, ManaConfig::load, CodexConfig::load, NexusConfig::load,
-        CampusConfig::load, EffectsConfig::load, AeConfig::load, GatesConfig::load };
+        CampusConfig::load, EffectsConfig::load, AeConfig::load, GatesConfig::load,
+        // 0.17.0
+        RenderConfig::load, StyleConfig::load };
 
     /** Written into the file; an older one is brought up to date by {@link #upgrade}. */
     private static final String VERSION = "0.15.0";

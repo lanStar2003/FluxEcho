@@ -60,6 +60,13 @@ public final class NexusNet {
      * it bumps the ceiling and sinks back ({@link com.fluxecho.campus.Lift}).
      */
     public static final int LIFT_RIDE = 6;
+    /**
+     * Server to client (0.17.0): the campuses' box table ({@code SkinTable}, style FINAL 3.9.3), the whole table of
+     * the campuses within 512 blocks on login, a change of dimension or coming near ({@code SKIN_TABLE}), and one
+     * changed entry ({@code SKIN_DELTA}). Both go to {@link com.fluxecho.client.skin.SkinPackets}. The numbers are the
+     * ID ledger's (docs/dev/ids.md section 4.1): a later kind takes the next free number there, never one of these.
+     */
+    public static final int SKIN_TABLE = 7, SKIN_DELTA = 8;
 
     private static SimpleNetworkWrapper channel;
     private static final Queue<Object[]> SERVER_INBOX = new ConcurrentLinkedQueue<>();
@@ -263,6 +270,15 @@ public final class NexusNet {
                         com.fluxecho.campus.Lift.receiveClient((NBTTagCompound) m[1]);
                     } catch (RuntimeException ex) {
                         com.fluxecho.FluxEcho.LOG.warn("Light lift packet failed", ex);
+                    }
+                    continue;
+                }
+                if (kind == SKIN_TABLE || kind == SKIN_DELTA) {
+                    // the campuses' box table, whether a screen listens or not
+                    try {
+                        com.fluxecho.client.skin.SkinPackets.receive(kind, (NBTTagCompound) m[1]);
+                    } catch (RuntimeException ex) {
+                        com.fluxecho.FluxEcho.LOG.warn("Box table packet failed", ex);
                     }
                     continue;
                 }

@@ -8,11 +8,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.config.CampusConfig;
+import com.fluxecho.config.RenderConfig;
+import com.fluxecho.config.StyleConfig;
+import com.fluxecho.plan.Csv;
 
 /**
  * The config file: version comparison and the migrations of {@link Config#upgrade}, and (0.17.0) that every setting
@@ -28,6 +36,52 @@ class ConfigTest {
             byte[] buf = new byte[8192];
             for (int n; (n = in.read(buf)) > 0;) b.write(buf, 0, n);
             return ConfigFiles.read(new String(b.toByteArray(), StandardCharsets.UTF_8));
+        }
+    }
+
+    /** 0.17.0's three keys, on the safe side until the player has looked (refactor 4.6, ids.md section 7). */
+    @Test
+    void theKeysOf017() throws IOException {
+        Map<String, ConfigFiles.Setting> now = ConfigFiles.read(ConfigFiles.fresh("keys017.cfg"));
+        ConfigFiles.Setting occlusion = now.get("render.occlusion"), sky = now.get("render.skyLayer"),
+            hull = now.get("style.hullBrightness");
+        assertEquals("S", occlusion.type);
+        assertEquals("gate", occlusion.value, "the per-piece test until probe depth says the depth buffer works");
+        assertEquals("S", sky.type);
+        assertEquals("world", sky.value, "world-fixed sky lights until probe sky says the sky layer works");
+        assertEquals("D", hull.type);
+        assertEquals("1.0", hull.value);
+        assertEquals("[range: 0.85 ~ 1.0, default: 1.0]", hull.bounds);
+        assertEquals("gate", RenderConfig.occlusion);
+        assertEquals("world", RenderConfig.skyLayer);
+        assertEquals(1.0, StyleConfig.hullBrightness);
+    }
+
+    /**
+     * A key 0.16.0 did not write is in the ID ledger's config rows (docs/dev/ids.csv, section 7) and not one of its
+     * voided keys: a key is named there by itself, or its section is named whole ({@code eco.*}), or the row lists the
+     * section and the key.
+     */
+    @Test
+    void everyNewKeyIsInTheLedger() throws IOException {
+        List<String> live = new ArrayList<>(), dead = new ArrayList<>();
+        for (List<String> r : Csv
+            .parse(new String(Files.readAllBytes(Paths.get("docs/dev/ids.csv")), StandardCharsets.UTF_8)))
+            if (r.get(0)
+                .equals("config"))
+                (r.get(6)
+                    .equals("作废") ? dead : live).add(r.get(2));
+        Map<String, ConfigFiles.Setting> old = settingsOf016(), now = ConfigFiles.read(ConfigFiles.fresh("ledger.cfg"));
+        for (String key : now.keySet()) {
+            if (old.containsKey(key)) continue;
+            String section = key.substring(0, key.indexOf('.')), name = key.substring(key.indexOf('.') + 1);
+            Pattern word = Pattern.compile("(?<![\\w.])" + Pattern.quote(name) + "(?![\\w])");
+            boolean listed = false;
+            for (String row : live) listed |= row.contains(key) || row.contains(section + ".*")
+                || row.contains(section) && word.matcher(row)
+                    .find();
+            assertTrue(listed, key + " is not in the ledger's config rows (docs/dev/ids.md section 7)");
+            for (String row : dead) assertFalse(row.contains(key), key + " is a voided key");
         }
     }
 

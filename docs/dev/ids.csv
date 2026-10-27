@@ -6,11 +6,11 @@ part_ranges,1.1,29–31,deck meta 13 舷号砖 / 14 位垫 / 15 留空,风格 / 
 part_ranges,1.1,32–41,fitting meta 0–9,引擎,≤0.16,已发布,H logic/Parts
 part_ranges,1.1,42–47,fitting meta 10 显化台面 / 11 路灯灯头 / 12、13 留空 / 14 花床 / 15 留空,中枢组 / 总平面 / — / 风格,0.21 / 0.19 / — / 0.17,新增,S §3.8.3(d)；R §4.8、§4.12
 part_ranges,1.1,48–53,书库核心、供料口、草、泥、回收箱、水,引擎,≤0.16,已发布,H logic/Parts
-part_ranges,1.1,54–62,第一批：活物料 54–58、苔铜 59–62,风格,0.17,新增,S §3.8.1；R §4.8
+part_ranges,1.1,54–62,第一批：活物料 54–58、苔铜 59–62,风格,0.17,本版,S §3.8.1；R §4.8
 part_ranges,1.1,63,空气（清场占位）,引擎,≤0.16,已发布,H logic/Parts
 part_ranges,1.1,64–79,module_core meta 0–15（码 = 64 + meta）,引擎,≤0.16,已发布,H logic/ModuleCores
 part_ranges,1.1,80–95,module_core2 meta 0–15（码 = 80 + meta；按发布顺序用，不跳号）,发电 / 终局,0.27 起,新增,S §3.8.3(a)；R §4.10
-part_ranges,1.1,96–127,第一批皮材形：舟壳 96–107、玄基 108–117、skin_script 118–125、苔铜 126–127,风格,0.17,新增,S §3.8.1
+part_ranges,1.1,96–127,第一批皮材形：舟壳 96–107、玄基 108–117、skin_script 118–125、苔铜 126–127,风格,0.17,本版,S §3.8.1
 part_ranges,1.1,128–203,扩宽批：各族其余形 128–155、skin_rite 156–171、skin_flux 172–187、skin_void 188–203（≥ 128 的码只走 BUILD_FX2）,风格,0.20,新增,R §4.8
 part_ranges,1.1,204–219,第 13 种材质「显化黑金」skin_manifest,风格,0.25,新增,R §4.8
 part_ranges,1.1,220–235,fluxecho:fixture 0–15：全城共用题材件（220 点火台，其余留空）,统筹,0.20,新增,S §3.8.3(a)(b)
@@ -43,7 +43,7 @@ part_codes_bound,1.2,25,deck · 9 panel_lit,引擎,≤0.16,已发布,H Parts.DEC
 part_codes_bound,1.2,26,deck · 10 panel_dark,引擎,≤0.16,已发布,H Parts.DECK_NAMES
 part_codes_bound,1.2,27,deck · 11 cornice,引擎,≤0.16,已发布,H Parts.DECK_NAMES
 part_codes_bound,1.2,28,deck · 12 canvas,引擎,≤0.16,已发布,H Parts.DECK_NAMES
-part_codes_bound,1.2,29,deck · 13 舷号砖,风格（地面）,0.17,新增,S §3.8.3(d)；R §4.8
+part_codes_bound,1.2,29,deck · 13 舷号砖,风格（地面）,0.17,本版,S §3.8.3(d)；R §4.8
 part_codes_bound,1.2,30,deck · 14 位垫（泉阵池位下的催化座、秘法庭坛位；软格）,魔法组,0.22,新增,S §3.8.3(d)；R §4.8
 part_codes_bound,1.2,31,deck · 15,留空（全城最后一个绑定 deck meta，只给地面计划）,—,预留,S §3.8.3(d)
 part_codes_bound,1.2,32,fitting · 0 post,引擎,≤0.16,已发布,H Parts.FITTING_NAMES
@@ -60,7 +60,7 @@ part_codes_bound,1.2,42,fitting · 10 显化台面 manifest_desk（代理 TE flu
 part_codes_bound,1.2,43,fitting · 11 路灯灯头（发电「控件」退路作废）,总平面 / 风格,0.19,新增,R §4.8、§4.12
 part_codes_bound,1.2,44,fitting · 12,留空（发电燃料口已并进 module_port）,—,预留,S §3.8.3(d)
 part_codes_bound,1.2,45,fitting · 13,留空,—,预留,S §3.8.3(d)
-part_codes_bound,1.2,46,fitting · 14 花床,风格,0.17,新增,S §3.8.3(d)；R §4.8
+part_codes_bound,1.2,46,fitting · 14 花床,风格,0.17,本版,S §3.8.3(d)；R §4.8
 part_codes_bound,1.2,47,fitting · 15,留空,—,预留,S §3.8.3(d)
 part_codes_bound,1.2,48,LIBRARY_CORE 书库核心,引擎,≤0.16,已发布,H Parts
 part_codes_bound,1.2,49,SUPPLY_PORT 供料口,引擎,≤0.16,已发布,H Parts
@@ -68,15 +68,15 @@ part_codes_bound,1.2,50,GRASS 草,引擎,≤0.16,已发布,H Parts
 part_codes_bound,1.2,51,DIRT 泥,引擎,≤0.16,已发布,H Parts
 part_codes_bound,1.2,52,RECYCLE_BIN 回收箱,引擎,≤0.16,已发布,H Parts
 part_codes_bound,1.2,53,WATER 水,引擎,≤0.16,已发布,H Parts
-part_codes_bound,1.2,54,活物料 · 白桦,风格,0.17,新增,S §3.8.1；R §4.8
-part_codes_bound,1.2,55,活物料 · 橡叶,风格,0.17,新增,S §3.8.1；R §4.8
-part_codes_bound,1.2,56,活物料 · 藤,风格,0.17,新增,S §3.8.1；R §4.8
-part_codes_bound,1.2,57,活物料 · 睡莲,风格,0.17,新增,S §3.8.1；R §4.8
-part_codes_bound,1.2,58,活物料 · 花,风格,0.17,新增,S §3.8.1；R §4.8
-part_codes_bound,1.2,59,skin_garden 苔铜 · 形 3 坡,风格（生态穹）,0.17,新增,S §3.8.1
-part_codes_bound,1.2,60,skin_garden 苔铜 · 形 4 光缝,风格（生态穹）,0.17,新增,S §3.8.1
-part_codes_bound,1.2,61,skin_garden 苔铜 · 形 5 灯窗,风格（生态穹）,0.17,新增,S §3.8.1
-part_codes_bound,1.2,62,skin_garden 苔铜 · 形 7 铜框窗,风格（生态穹）,0.17,新增,S §3.8.1
+part_codes_bound,1.2,54,活物料 · 白桦,风格,0.17,本版,S §3.8.1；R §4.8
+part_codes_bound,1.2,55,活物料 · 橡叶,风格,0.17,本版,S §3.8.1；R §4.8
+part_codes_bound,1.2,56,活物料 · 藤,风格,0.17,本版,S §3.8.1；R §4.8
+part_codes_bound,1.2,57,活物料 · 睡莲,风格,0.17,本版,S §3.8.1；R §4.8
+part_codes_bound,1.2,58,活物料 · 花,风格,0.17,本版,S §3.8.1；R §4.8
+part_codes_bound,1.2,59,skin_garden 苔铜 · 形 3 坡,风格（生态穹）,0.17,本版,S §3.8.1
+part_codes_bound,1.2,60,skin_garden 苔铜 · 形 4 光缝,风格（生态穹）,0.17,本版,S §3.8.1
+part_codes_bound,1.2,61,skin_garden 苔铜 · 形 5 灯窗,风格（生态穹）,0.17,本版,S §3.8.1
+part_codes_bound,1.2,62,skin_garden 苔铜 · 形 7 铜框窗,风格（生态穹）,0.17,本版,S §3.8.1
 part_codes_bound,1.2,63,AIR 空气,引擎,≤0.16,已发布,H Parts
 part_codes_bound,1.2,64,module_core · 0 eco_dome,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
 part_codes_bound,1.2,65,module_core · 1 dual_foil_vault,引擎 / 各楼,≤0.16,已发布,H ModuleCores.KEYS
@@ -109,39 +109,39 @@ fixture_blocks,1.3,fluxecho:fixture8,codes: 352–367 · used_meta: 0–7（8 �
 fixture_blocks,1.3,fluxecho:fixture9,codes: 368–383 · used_meta: 0–14,终局 · 桅顶（轨道锚 / 冠）,0.20,新增,
 fixture_blocks,1.3,fluxecho:fixture10,codes: 384–399 · used_meta: 0–3、5–9、11（4、10 作废）,终局 · 环（含 anchor_in 三件）,0.20,新增,
 fixture_blocks,1.3,fluxecho:fixture11,codes: 400–415 · used_meta: 0–9、11–13（10 作废）,终局 · 乡忆室与原乡露台,0.20,新增,
-skin_codes,1.4,96,舟壳 hull / hull_form · 形 0 整,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,97,舟壳 hull / hull_form · 形 1 缝,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,98,舟壳 hull / hull_form · 形 2 圆,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,99,舟壳 hull / hull_form · 形 3 坡,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,100,舟壳 hull / hull_form · 形 4 半,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,101,舟壳 hull / hull_form · 形 5 阶,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,102,舟壳 hull / hull_form · 形 6 肋,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,103,舟壳 hull / hull_form · 形 7 柱,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,104,舟壳 hull / hull_form · 形 10 光缝,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,105,舟壳 hull / hull_form · 形 11 龙骨,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,106,舟壳 hull / hull_form · 形 13 拱腹,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,107,舟壳 hull / hull_form · 形 15 饰,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,108,玄基 footing / footing_form · 形 0 整,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,109,玄基 footing / footing_form · 形 1 缝,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,110,玄基 footing / footing_form · 形 2 圆,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,111,玄基 footing / footing_form · 形 3 坡,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,112,玄基 footing / footing_form · 形 4 半,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,113,玄基 footing / footing_form · 形 5 阶,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,114,玄基 footing / footing_form · 形 6 压顶,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,115,玄基 footing / footing_form · 形 9 池沿,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,116,玄基 footing / footing_form · 形 11 水口,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,117,玄基 footing / footing_form · 形 12 种植沿,风格,0.17,新增,S §3.8.1
-skin_codes,1.4,118,skin_script · 形 0 墨 整,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,119,skin_script · 形 2 墨 圆,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,120,skin_script · 形 4 墨 光缝,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,121,skin_script · 形 7 墨 格栅,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,122,skin_script · 形 8 宣 整,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,123,skin_script · 形 9 宣 缝,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,124,skin_script · 形 12 宣 光缝,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,125,skin_script · 形 13 宣 灯笼板,风格（档案馆）,0.17,新增,S §3.8.1
-skin_codes,1.4,126,skin_garden 苔铜 · 形 0 整,风格（生态穹）,0.17,新增,S §3.8.1
-skin_codes,1.4,127,skin_garden 苔铜 · 形 2 圆,风格（生态穹）,0.17,新增,S §3.8.1
-skin_codes,1.4,（59–62）,skin_garden 苔铜 · 形 3、4、5、7（码在 59–62，见 §1.2）,风格（生态穹）,0.17,新增,S §3.8.1
+skin_codes,1.4,96,舟壳 hull / hull_form · 形 0 整,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,97,舟壳 hull / hull_form · 形 1 缝,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,98,舟壳 hull / hull_form · 形 2 圆,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,99,舟壳 hull / hull_form · 形 3 坡,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,100,舟壳 hull / hull_form · 形 4 半,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,101,舟壳 hull / hull_form · 形 5 阶,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,102,舟壳 hull / hull_form · 形 6 肋,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,103,舟壳 hull / hull_form · 形 7 柱,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,104,舟壳 hull / hull_form · 形 10 光缝,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,105,舟壳 hull / hull_form · 形 11 龙骨,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,106,舟壳 hull / hull_form · 形 13 拱腹,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,107,舟壳 hull / hull_form · 形 15 饰,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,108,玄基 footing / footing_form · 形 0 整,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,109,玄基 footing / footing_form · 形 1 缝,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,110,玄基 footing / footing_form · 形 2 圆,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,111,玄基 footing / footing_form · 形 3 坡,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,112,玄基 footing / footing_form · 形 4 半,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,113,玄基 footing / footing_form · 形 5 阶,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,114,玄基 footing / footing_form · 形 6 压顶,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,115,玄基 footing / footing_form · 形 9 池沿,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,116,玄基 footing / footing_form · 形 11 水口,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,117,玄基 footing / footing_form · 形 12 种植沿,风格,0.17,本版,S §3.8.1
+skin_codes,1.4,118,skin_script · 形 0 墨 整,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,119,skin_script · 形 2 墨 圆,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,120,skin_script · 形 4 墨 光缝,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,121,skin_script · 形 7 墨 格栅,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,122,skin_script · 形 8 宣 整,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,123,skin_script · 形 9 宣 缝,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,124,skin_script · 形 12 宣 光缝,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,125,skin_script · 形 13 宣 灯笼板,风格（档案馆）,0.17,本版,S §3.8.1
+skin_codes,1.4,126,skin_garden 苔铜 · 形 0 整,风格（生态穹）,0.17,本版,S §3.8.1
+skin_codes,1.4,127,skin_garden 苔铜 · 形 2 圆,风格（生态穹）,0.17,本版,S §3.8.1
+skin_codes,1.4,（59–62）,skin_garden 苔铜 · 形 3、4、5、7（码在 59–62，见 §1.2）,风格（生态穹）,0.17,本版,S §3.8.1
 skin_codes,1.4,128–131,舟壳其余 4 形：128 = 形 8、129 = 形 9、130 = 形 12、131 = 形 14（窗、格、灯窗、地）,风格,0.20,新增,S §3.8.2；R §4.8；L03
 skin_codes,1.4,132–137,玄基其余 6 形：132 = 形 7、133 = 8、134 = 10、135 = 13、136 = 14、137 = 15（柱、拱腹、光缝、格栅、地、饰）,风格,0.20,新增,S §3.8.2；L03
 skin_codes,1.4,138–145,skin_script 其余 8 形：138–141 = 墨 形 1、3、5、6；142–145 = 宣 形 10、11、14、15,风格（档案馆）,0.20,新增,S §3.8.2；L03
@@ -302,10 +302,10 @@ blocks,3.1,fluxecho:interior_glass,内境玻璃,引擎,≤0.16,已发布,H 注�
 blocks,3.1,fluxecho:essentia_outlet,源质出口,引擎,≤0.16,已发布,H 注册表
 blocks,3.1,fluxecho:vis_pedestal,灵气基座,引擎,≤0.16,已发布,H 注册表
 blocks,3.1,fluxecho:echo_provider,AE 回响提供器,引擎,≤0.16,已发布,H 注册表
-blocks,3.1,fluxecho:hull / hull_form,舟壳（整块 / 形块）,风格,0.17,新增,R §4.8
-blocks,3.1,fluxecho:footing / footing_form,玄基（整块 / 形块）,风格,0.17,新增,R §4.8
-blocks,3.1,fluxecho:skin_script / skin_script_form,墨 / 宣（档案馆皮材）,风格,0.17,新增,R §4.8
-blocks,3.1,fluxecho:skin_garden / skin_garden_form,苔铜 / 汉白玉（生态穹皮材）,风格,0.17,新增,R §4.8
+blocks,3.1,fluxecho:hull / hull_form,舟壳（整块 / 形块）,风格,0.17,本版,R §4.8
+blocks,3.1,fluxecho:footing / footing_form,玄基（整块 / 形块）,风格,0.17,本版,R §4.8
+blocks,3.1,fluxecho:skin_script / skin_script_form,墨 / 宣（档案馆皮材）,风格,0.17,本版,R §4.8
+blocks,3.1,fluxecho:skin_garden / skin_garden_form,苔铜 / 汉白玉（生态穹皮材）,风格,0.17,本版,R §4.8
 blocks,3.1,fluxecho:drift_capsule,搁浅舱：meta 0 舱、meta 1–5 船壳碎片（「残图」是潜行看舱时地上的虚线画面，不是方块；V2-03）,中枢组,0.18,新增,R §4.10；B/nexus/drift_capsule §7、r-ledger 4；V2-03
 blocks,3.1,fluxecho:skin_rite / skin_rite_form,仪皮材,风格,0.20,新增,R §4.8
 blocks,3.1,fluxecho:skin_flux / skin_flux_form,共鸣晶皮材,风格,0.20,新增,R §4.8
@@ -421,8 +421,8 @@ net_messages,4.1,S→C 3 BUILD_STATE,payload: 施工状态,引擎,≤0.16,已发
 net_messages,4.1,S→C 4 LIB_DELTA,payload: 书库增量,引擎,≤0.16,已发布,H
 net_messages,4.1,S→C 5 UNIT_DELTA,payload: 单元增量,引擎,≤0.16,已发布,H
 net_messages,4.1,S→C 6 LIFT_RIDE,payload: 光梯乘坐,引擎,≤0.16,已发布,H
-net_messages,4.1,S→C 7 SKIN_TABLE,payload: 512 格内全部园区的盒子表,风格组,0.17,新增,U §2.9.1；R §4.4
-net_messages,4.1,S→C 8 SKIN_DELTA,payload: 一条盒子表条目,风格组,0.17,新增,U §2.9.1；R §4.4
+net_messages,4.1,S→C 7 SKIN_TABLE,payload: 512 格内全部园区的盒子表,风格组,0.17,本版,U §2.9.1；R §4.4
+net_messages,4.1,S→C 8 SKIN_DELTA,payload: 一条盒子表条目,风格组,0.17,本版,U §2.9.1；R §4.4
 net_messages,4.1,S→C 9 VIEW,"payload: {view, page, rev, ic, nbt}",界面组,0.18,新增,U §2.9.1；R §4.4
 net_messages,4.1,S→C 10 TOAST,"payload: {kind, langKey, args, severity, sigilKey, pos?}",界面组,0.18,新增,U §2.9.1；R §4.4
 net_messages,4.1,S→C 11 HIGHLIGHT,"payload: {pos, color, seconds}",界面组,0.18,新增,U §2.9.1；R §4.4
@@ -448,7 +448,7 @@ nbt_base,5.1,B Bi E（书本栈内 At）,BookPacket 写进 TileCityModule / 书�
 nbt_base,5.1,Docked Nexus Slot,TileModule 基类键,引擎,≤0.16,已发布,H
 nbt_base,5.1,Ov（描述包）,覆层种类（4 座灯座 / 4 个锚点各 1 字节）：全城模块的描述包保留给覆层,中枢组 / 统筹,0.21,新增,R §4.5；B/nexus/nexus §7；L09
 nbt_campus,5.2,Ac Bl BuildIn Campus Declined Dim F Fb Fe Ft Gk Gl Gn Gq Hint Job K Ko Kr Ledger Md Mi N Nb Nc Nq Nr Ns Oc Ol Op P Pa Parts Ph Pk Pl Pos Pq Ps Pv Queue R Raw Rc Recycle Rj Ro S Sg Sites Sk Skip Sn Spoils St Te To V W,中枢 tile Campus 子表与 Campus.writeSync 的现有键（Sk = 跳过受阻位）,引擎,≤0.16,已发布,H campus/Campus
-nbt_campus,5.2,Skn,每座楼最后已知的盒子表状态和供电位（不能叫 Sk）,风格组,0.17,新增,R §4.5；S §3.8.3(f)
+nbt_campus,5.2,Skn,每座楼最后已知的盒子表状态和供电位（不能叫 Sk）,风格组,0.17,本版,R §4.5；S §3.8.3(f)
 nbt_campus,5.2,Mp,总图版本：0 旧图（缺省）、1 一叶归舟,总平面,0.19,新增,R §4.5
 nbt_campus,5.2,Rk,有重铸记录的模块键列表（记录本体在 fluxecho_recast）,总平面,0.19（字段）/ 0.22（写入）,新增,R §4.5
 nbt_campus,5.2,Ledger.LegAcct,腿账：穹顶记腿、机库扣腿,守护组,0.21,新增,B/guard/README §4
@@ -587,8 +587,8 @@ config,7,effects：machineEffects flowTrails effectRange hologramRange,0.16 现�
 config,7,ae2：enabled,0.16 现有,引擎,≤0.16,已发布,H
 config,7,gates：enableRecipe viewRange liveView realView holdBase dimensionId providerId,0.16 现有（7）,引擎,≤0.16,已发布,H
 config,7,Config.VERSION,"""0.15.0"" → ""0.19.0""（Config.upgrade 只改仍等于旧默认的值）",重构组,0.19,新增,H；R §4.6
-config,7,render.occlusion（gate）、render.skyLayer（world）,原型过了在 0.X.1 改 depth / sky,风格组,0.17,新增,R §4.6
-config,7,style.hullBrightness,舟壳亮度,风格组,0.17,新增,S §3.8.3(f)；R §4.6
+config,7,render.occlusion（gate）、render.skyLayer（world）,原型过了在 0.X.1 改 depth / sky,风格组,0.17,本版,R §4.6
+config,7,style.hullBrightness,舟壳亮度,风格组,0.17,本版,S §3.8.3(f)；R §4.6
 config,7,client.uiClassic、client.reduceMotion,旧界面开关（只 0.18 有效，之后保留为不起作用的键）、少动画,界面组,0.18,新增,U §6；R §4.6
 config,7,client.haze、client.uiSounds,雾白幕、界面音效（界面稿已列，重构稿漏列）,界面组,0.18,新增,U §2、§6；L07
 config,7,client.hudCapsule,P66「状态胶囊」开关：手持已绑定终端时左上角的 HUD 胶囊（不是搁浅舱；原写「舱 HUD」是误读，V1-04）；跟 U5b 走，U5b 被砍挪 0.24 时同挪（R §2.2）,界面组,0.23（U5b）,新增,U §5 P66、§6.1 U5b；R §2.2；V1-04
@@ -653,7 +653,7 @@ config,7,orbit.portLoss,中继口电口的损耗 → 电口已删（锚稿玩法
 config,7,well.*、sails.*、heart.*、rootnet.*、dispatch.*,重构稿 §4.6 的节名 → generators.root.* / generators.sails.* / generators.heart.* / generators.root.net* / holo.dispatch*,—,不发,作废,L07
 config,7,campus.hills 取值 grade,新园区：悬山只出软警告「削顶 n 段 · 约 x M EU」、[重燃] 不禁用，重燃后先跑 grade:top:<k>（§13.1，排在全部 ground:* 和 establish:ring 之前）；重铸：与 refuse 同读，有悬山时削顶是第 0 批之前的必经一步。键不变、默认仍 refuse，只多一个取值,总平面,0.22,新增,M §10.2.1 四、选址「地形」行、§10.3；B/nexus/drift_capsule §3.3；R4-06
 lang_prefixes,8,0.16 现有前缀,"fluxecho.build.*（263）fluxecho.research.* fluxecho.library.* fluxecho.status.* fluxecho.nexus.* fluxecho.spring.* fluxecho.city.* fluxecho.gene.* fluxecho.unit.*（24 种类）fluxecho.recycle_bin.* fluxecho.codex.* fluxecho.nei.* fluxecho.holo.* fluxecho.module.* fluxecho.cmd.* fluxecho.gate.* fluxecho.supply_port.* fluxecho.deck.* fluxecho.waila.* fluxecho.recipe.* fluxecho.frame.* fluxecho.gui.* fluxecho.fitting.* fluxecho.dock.*、各机器 / 物品名前缀、tile.fluxecho.* item.fluxecho.* gt.blockmachines.* itemGroup.fluxecho（每份 1,155 键）",引擎,≤0.16,已发布,H lang/en_US.lang
-lang_prefixes,8,fluxecho.skin.*,材质、形,风格组（渲染）,0.17,新增,R §4.7
+lang_prefixes,8,fluxecho.skin.*,材质、形,风格组（渲染）,0.17,本版,R §4.7
 lang_prefixes,8,fluxecho.ui.*、fluxecho.issue.*,界面；问题码（含 fluxecho.issue.module.<楼键>.*）,界面组,0.18,新增,R §4.7；U
 lang_prefixes,8,fluxecho.codex.vol.*（含 vol.6.stay）、.glance.*、.drift.*,典籍卷、看过的件、舱志,叙事,0.18,新增,R §4.7；B/endgame/README §4
 lang_prefixes,8,fluxecho.codex.hall.<楼键>,舱志（每座楼一条；含 hall.leap_ring.broken）,叙事 / 各楼,0.19 起,新增,N §1.7.1；L08
@@ -880,24 +880,24 @@ quest_keys_new,10.3,city/offer,condition: feB04 ≥ 6；feB19 ≥ 2；feB18 ≥ 
 quest_keys_new,10.3,city/ignite,condition: feB20 ≥ 5 · line: line/city,,0.28,新增,N §7.2
 quest_keys_new,10.3,city/hunt_trial,condition: feHunt ≥ 1（第一次试猎赢）；用户签猎场未决 11 之前 hunt.trials 默认关，这条「完成后才显示」，签字后改常显（key、条件不变；R4-02） · line: line/city,,0.24,新增,B/blood-hunt/hunting_ground §7、§8 #26；L10
 quest_keys_new,10.3,city/hunt_duel,condition: feHunt ≥ 2（守门者之证）；用户签猎场未决 11 之前 hunt.duels 默认关，这条「完成后才显示」，签字后改常显（key、条件不变；R4-02） · line: line/city,,0.24,新增,B/blood-hunt/hunting_ground §7、§8 #26；L10
-scoreboard,11,feRec,记录总数（并集）,叙事,0.17,新增,N §7.4
-scoreboard,11,feCat,有记录的类别数,叙事,0.17,新增,N §7.4
-scoreboard,11,feShore,「滩」记录数,叙事,0.17,新增,N §7.4
-scoreboard,11,feXiang,乡忆段数 0–7,叙事,0.17,新增,N §7.4
-scoreboard,11,feCoord,星坐标数 0–7,叙事,0.17,新增,N §7.4
-scoreboard,11,fePhase,中枢相位 0–5,叙事,0.17,新增,N §7.4
-scoreboard,11,feRes,研究完成总数,叙事,0.17,新增,N §7.4
-scoreboard,11,feRoute,航线主干进度 0–13（anchor 1 … crossing 13）,叙事,0.17,新增,N §7.4
-scoreboard,11,feLeap,跃升阶段 0–6,叙事 / 终局组,0.17,新增,N §7.4
-scoreboard,11,feList,清单完成行数 0–20（实时，可降）,叙事,0.17,新增,N §7.4
-scoreboard,11,feB00,舱：1 放下、2 回声定位用过、3 重燃,叙事,0.17,新增,N §7.4
-scoreboard,11,feB01,中枢：1 成型、2 第一次显化、3 份额备齐,叙事,0.17,新增,N §7.4
+scoreboard,11,feRec,记录总数（并集）,叙事,0.17,本版,N §7.4
+scoreboard,11,feCat,有记录的类别数,叙事,0.17,本版,N §7.4
+scoreboard,11,feShore,「滩」记录数,叙事,0.17,本版,N §7.4
+scoreboard,11,feXiang,乡忆段数 0–7,叙事,0.17,本版,N §7.4
+scoreboard,11,feCoord,星坐标数 0–7,叙事,0.17,本版,N §7.4
+scoreboard,11,fePhase,中枢相位 0–5,叙事,0.17,本版,N §7.4
+scoreboard,11,feRes,研究完成总数,叙事,0.17,本版,N §7.4
+scoreboard,11,feRoute,航线主干进度 0–13（anchor 1 … crossing 13）,叙事,0.17,本版,N §7.4
+scoreboard,11,feLeap,跃升阶段 0–6,叙事 / 终局组,0.17,本版,N §7.4
+scoreboard,11,feList,清单完成行数 0–20（实时，可降）,叙事,0.17,本版,N §7.4
+scoreboard,11,feB00,舱：1 放下、2 回声定位用过、3 重燃,叙事,0.17,本版,N §7.4
+scoreboard,11,feB01,中枢：1 成型、2 第一次显化、3 份额备齐,叙事,0.17,本版,N §7.4
 scoreboard,11,feB02、feB03、feB05–feB09、feB11–feB17,1 成型、2 第一次真正使用（城志）、3 份额备齐,叙事 / 各楼,0.17（随楼有值）,新增,N §7.4
-scoreboard,11,feB04,根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐,叙事 / 发电组,0.17,新增,N §7.4
-scoreboard,11,feB10,智子 4 级：成型、插满一架、展开度 2、份额备齐,叙事 / 算力组,0.17,新增,N §7.4
-scoreboard,11,feB18,桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐,叙事 / 终局组,0.17,新增,N §7.4
-scoreboard,11,feB19,心 5 级：成型、第一次运转、份额备齐、heart_2、heart_3,叙事 / 发电组,0.17,新增,N §7.4
-scoreboard,11,feB20,跃迁环 6 级：断环立起、第一次补段、≥ 12 段、拱心合拢、第一次解锁点火台、份额备齐,叙事 / 终局组,0.17,新增,N §7.4
+scoreboard,11,feB04,根位 7 级：井成型、大潮满阀 1 分钟、深根成型、根网绑定第一台、地脉核成型、第一颗源点物质、份额备齐,叙事 / 发电组,0.17,本版,N §7.4
+scoreboard,11,feB10,智子 4 级：成型、插满一架、展开度 2、份额备齐,叙事 / 算力组,0.17,本版,N §7.4
+scoreboard,11,feB18,桅顶 5 级：锚成型、第一颗卫星、冠成型、第一句窗语、份额备齐,叙事 / 终局组,0.17,本版,N §7.4
+scoreboard,11,feB19,心 5 级：成型、第一次运转、份额备齐、heart_2、heart_3,叙事 / 发电组,0.17,本版,N §7.4
+scoreboard,11,feB20,跃迁环 6 级：断环立起、第一次补段、≥ 12 段、拱心合拢、第一次解锁点火台、份额备齐,叙事 / 终局组,0.17,本版,N §7.4
 scoreboard,11,feHunt,猎场亲猎：1 第一次试猎赢、2 守门者之证（feB13 不插级）,血猎组,0.24,新增,B/blood-hunt/hunting_ground §7；L10
 site_families,12.1,GATE,sites: 0,引擎,≤0.16,已发布,H SiteFamily
 site_families,12.1,PAVILION,sites: 1、3、5、7,引擎,≤0.16,已发布,H
@@ -1061,9 +1061,9 @@ issue_codes,17.3,machine_<status>、net_<alert>,机器与网络,界面组,0.18,�
 commands,18,/fluxecho research all | reset [player],研究调试（OP）,引擎,≤0.16,已发布,H cmd
 commands,18,/fluxecho build free on | off、/fluxecho build finish、/fluxecho build status,营造调试（OP）,引擎,≤0.16,已发布,H cmd
 commands,18,/fluxecho_nei,NEI 导出,引擎,≤0.16,已发布,H
-commands,18,/fluxecho swatch [2]、/fluxecho swatch clear,样板墙（创造 / OP）,风格组,0.17,新增,R §4.11；S §3.8.3(f)
-commands,18,/fluxecho probe depth | sky | sun | bed,探测,风格组,0.17,新增,R §4.11
-commands,18,/fluxecho cam <A–E>,机位,总平面,0.17,新增,R §4.11
+commands,18,/fluxecho swatch [2]、/fluxecho swatch clear,样板墙（创造 / OP）,风格组,0.17,本版,R §4.11；S §3.8.3(f)
+commands,18,/fluxecho probe depth | sky | sun | bed,探测,风格组,0.17,本版,R §4.11
+commands,18,/fluxecho cam <A–E>,机位,总平面,0.17,本版,R §4.11
 commands,18,/fluxecho proto plaza,广场样地,总平面,0.18,新增,R §4.11
 commands,18,/fluxecho_ui gallery,界面组件库,界面组,0.18,新增,R §4.11
 commands,18,/fluxecho_ui <页>,客户端命令：聊天链接打开指定页,界面组,0.23（U5b）,新增,U §6.1 U5b；V1-14
