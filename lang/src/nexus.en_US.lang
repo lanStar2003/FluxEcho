@@ -59,7 +59,7 @@ fluxecho.dock.unformed=Structure incomplete
 fluxecho.dock.no_nexus=Not on any nexus's slot
 fluxecho.dock.other_team=The slot's nexus is another team's
 fluxecho.dock.slot_taken=The slot already has a module
-fluxecho.dock.ring_closed=The nexus's inner ring is closed (research Inner Ring)
+fluxecho.dock.ring_closed=The nexus's inner ring is closed (research Keel)
 fluxecho.dock.ring_full=The nexus's inner ring is full
 fluxecho.dock.no_power=No power on the team wireless network
 

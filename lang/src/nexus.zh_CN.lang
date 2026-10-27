@@ -59,7 +59,7 @@ fluxecho.dock.unformed=结构不完整
 fluxecho.dock.no_nexus=不在任何中枢的槽位上
 fluxecho.dock.other_team=槽位属于别的团队的中枢
 fluxecho.dock.slot_taken=这个槽位已经有模块了
-fluxecho.dock.ring_closed=中枢的内环还没开放（研究「内环」）
+fluxecho.dock.ring_closed=中枢的内环还没开放（研究「龙骨」）
 fluxecho.dock.ring_full=中枢的内环满了
 fluxecho.dock.no_power=团队无线电网没电
 
