@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,23 +121,19 @@ public final class SkinFeed {
         int wasDim = dim;
         id = SkinEntry.pack(c[0], c[1], c[2]);
         dim = w.provider.dimensionId;
-        if (was != Long.MIN_VALUE && (was != id || wasDim != dim)) {
-            // the nexus was moved whole: its records follow it, the old campus is gone
-            unlist(wasDim, was);
-            Map<Long, SkinTrack> moved = new LinkedHashMap<>();
-            for (Map.Entry<Long, SkinTrack> e : tracks.entrySet()) moved.put(
-                e.getKey(),
+        if (was != Long.MIN_VALUE && (was != id || wasDim != dim)) unlist(wasDim, was);
+        // records made for another centre (the nexus moved whole, here or while it was saved) follow it
+        for (Map.Entry<Long, SkinTrack> e : tracks.entrySet()) {
+            SkinTrack t = e.getValue();
+            if (t.entry().campus == id) continue;
+            e.setValue(
                 SkinTrack.saved(
-                    e.getValue()
-                        .entry()
+                    t.entry()
                         .toBuilder()
                         .campus(id)
                         .build(),
-                    e.getValue()
-                        .apartSince()));
-            tracks.clear();
-            tracks.putAll(moved);
-            told.clear();
+                    t.apartSince()));
+            told.remove(e.getKey());
         }
         Set<Long> seen = new HashSet<>();
         observe(n, "nexus", now, repairQueued(BuildJob.REPAIR + BuildPlan.ESTABLISH), seen);
@@ -376,10 +371,6 @@ public final class SkinFeed {
                 tracks.put(e.id(), SkinTrack.saved(e, apart));
                 told.put(e.id(), e);
             }
-            if (!tracks.isEmpty()) id = tracks.values()
-                .iterator()
-                .next()
-                .entry().campus;
         } catch (IOException | RuntimeException e) {
             FluxEcho.LOG.warn("The saved box table of a campus could not be read; it is made anew", e);
             tracks.clear();
@@ -412,10 +403,18 @@ public final class SkinFeed {
             .put(campus, f);
     }
 
-    private static synchronized void unlist(int dim, long campus) {
-        Map<Long, SkinFeed> m = FEEDS.get(dim);
-        if (m != null) m.remove(campus);
-        VIEWERS.forget(dim, campus);
+    /** A campus is gone from where it was: the players that have it are told its table is empty now. */
+    private static void unlist(int dim, long campus) {
+        List<Object> had;
+        synchronized (SkinFeed.class) {
+            Map<Long, SkinFeed> m = FEEDS.get(dim);
+            if (m != null) m.remove(campus);
+            had = VIEWERS.watchers(dim, campus);
+            VIEWERS.forget(dim, campus);
+        }
+        NBTTagCompound none = wrap(
+            SkinCodec.write(new SkinCodec.Table(dim, false, new long[] { campus }, new ArrayList<SkinEntry>())));
+        for (Object p : had) sender.send(p, NexusNet.SKIN_TABLE, none);
     }
 
     private static synchronized List<SkinViewers.Site> sites() {
@@ -575,26 +574,26 @@ public final class SkinFeed {
 
     /**
      * Drops the feeds of nexuses that are gone: their chunk is loaded and no nexus stands there any more (a nexus in an
-     * unloaded chunk keeps its feed, which still answers for its buildings).
+     * unloaded chunk keeps its feed, which still answers for its buildings). The players that had such a campus are
+     * told its table is empty, so its lamp windows go back to how 0.16 drew them.
      */
     private static void prune() {
+        List<long[]> gone = new ArrayList<>();
         synchronized (SkinFeed.class) {
             for (Map.Entry<Integer, Map<Long, SkinFeed>> d : FEEDS.entrySet()) {
                 // a dimension not loaded is not loaded for it
                 World w = DimensionManager.getWorld(d.getKey());
                 if (w == null) continue;
-                for (Iterator<Map.Entry<Long, SkinFeed>> it = d.getValue()
-                    .entrySet()
-                    .iterator(); it.hasNext();) {
-                    Map.Entry<Long, SkinFeed> e = it.next();
+                for (Map.Entry<Long, SkinFeed> e : d.getValue()
+                    .entrySet()) {
                     TileNexus n = e.getValue().campus.nexus();
                     if (!w.blockExists(n.xCoord, n.yCoord, n.zCoord)) continue;
                     if (w.getTileEntity(n.xCoord, n.yCoord, n.zCoord) instanceof TileNexus) continue;
-                    it.remove();
-                    VIEWERS.forget(d.getKey(), e.getKey());
+                    gone.add(new long[] { d.getKey(), e.getKey() });
                 }
             }
         }
+        for (long[] g : gone) unlist((int) g[0], g[1]);
     }
 
     // ---- the NEI preview (§3.9.7)

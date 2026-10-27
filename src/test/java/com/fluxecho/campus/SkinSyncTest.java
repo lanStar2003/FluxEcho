@@ -242,6 +242,31 @@ class SkinSyncTest {
     }
 
     @Test
+    void aMovedNexusTakesItsEntriesAlongAndEmptiesTheOldCampus() throws IOException {
+        SkinFeed f = feed(nexus);
+        f.evaluate(20);
+        int[] c = nexus.centre();
+        long old = SkinEntry.pack(c[0], c[1], c[2]);
+        SkinFeed.login("dan", 0, 0, 0);
+        assertEquals(1, sent.size());
+        // the nexus stands 8 blocks further east now, its campus with it
+        world.put(nexus, NX + 8, NY, NZ);
+        c = nexus.centre();
+        long moved = SkinEntry.pack(c[0], c[1], c[2]);
+        f.evaluate(40);
+        assertEquals(2, sent.size(), "the player that had the old campus is told it is empty");
+        SkinCodec.Table t = table(1);
+        assertEquals(1, t.campuses.length);
+        assertEquals(old, t.campuses[0]);
+        assertTrue(t.entries.isEmpty());
+        assertEquals(
+            2,
+            f.entries()
+                .size());
+        for (SkinEntry e : f.entries()) assertEquals(moved, e.campus, e.key());
+    }
+
+    @Test
     void theLampPartsOfTheOldBuildingsAreTheDecksAndFittingsOfTheirMask() {
         // the dome's pilasters and cornices are lamps; its lit floor strips are not
         assertTrue(SkinProfiles.isLamp("eco_dome", Parts.deck(Parts.D_PANEL_LIT)));
