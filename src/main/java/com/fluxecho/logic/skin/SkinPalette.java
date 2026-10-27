@@ -33,7 +33,11 @@ public final class SkinPalette {
     public static final int GLOW_CORE = 0xFFFFFF;
     /** The least lightness (CIE L* / 100) a pixel of a glow's core may have (G6: "明度 ≥ 0.9"). */
     public static final double GLOW_CORE_MIN_LIGHTNESS = 0.9;
-    /** How wide a glow's core is, and each edge beside it, in pixels of a 16-pixel texture (style §3.6: 1 to 2). */
+    /**
+     * How wide a glow's core is, and each edge beside it, in pixels of the 32-pixel material textures (style §3.5,
+     * §3.6: 1 to 2 each). The 16-pixel textures of the 0.16 parts that the seven-row recolouring redraws (0.17.0, style
+     * §7.1) keep a two-pixel core and one-pixel edges.
+     */
     public static final int GLOW_CORE_PX = 2, GLOW_EDGE_PX = 2;
     /**
      * The edge's grey ramp, from the pixel next to the core to the outermost: the edge layer is drawn in these greys
@@ -43,7 +47,7 @@ public final class SkinPalette {
 
     /** No accent: the key names no building (the ascension's placeholder row has none either). */
     public static final int NONE = -1;
-    /** The root's three forms, by the 0.16.0 shape families' names (`RootShape`): the tidal well, deep root, core. */
+    /** The root's three forms, by the 0.16.0 shape families' names ({@code RootShape}): well, deep root, ley core. */
     public static final String WELL = "well", DEEP = "root", CORE = "core";
     /** The leap ring's colour once the ship has leapt (style §3.6: the aurora violet turns white). */
     public static final int RING_ASCENDED = 0xFFFFFF;

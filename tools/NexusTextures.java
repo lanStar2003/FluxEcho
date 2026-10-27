@@ -10,14 +10,31 @@ import javax.imageio.ImageIO;
  * materials, manifest matter and the anti-gravity lattice, and the frame's floating foundation.
  * Run from the repository root: {@code java tools/NexusTextures.java}.
  * The parts that glow come as separate overlays ({@code *_glow}), drawn at full brightness by the frame's renderer.
+ * <p>
+ * 0.17.0 (the redesign's seven-row recolouring, style §7.1 rows 1 and 2): the flux frame is the hull's pearl white,
+ * the bones of the nexus and of every building already standing, its IDs, metas and light levels untouched; its light
+ * is a white core edged in the nexus cyan, the conduit's core and the seat's crystal keep their colours, and the echo
+ * shelf's books keep theirs inside a white frame. The cores, the materials and the cards are not among the seven rows
+ * and keep their 0.16 colours.
  */
 public class NexusTextures {
 
-    static final String ROOT = "src/main/resources/assets/fluxecho/textures/";
+    /**
+     * Where the textures go: the mod's assets, or (0.17.0) the folder given as the first argument, so a test can draw
+     * them aside and compare them with the committed ones.
+     */
+    static String root = "src/main/resources/assets/fluxecho/textures/";
 
     static final int DEEP = 0x0A1622, DEEPER = 0x060D15, PANE = 0x0F2231, SEAM = 0x1F3C4E, CYAN = 0x4FE3FF,
-        CYAN_DARK = 0x1C6F84, VIOLET = 0x8A5CFF, VIOLET_DARK = 0x3C2470, GOLD = 0xFFD27A, WHITE = 0xE8FBFF,
-        STEEL = 0x56606E, STEEL_LIGHT = 0x8A95A5, STEEL_DARK = 0x262C35;
+        CYAN_DARK = 0x1C6F84, VIOLET = 0x8A5CFF, VIOLET_DARK = 0x3C2470, GOLD = 0xFFD27A, WHITE = 0xE8FBFF;
+    /**
+     * The hull (0.17.0, style §3.5 M1 and §7.1 rows 1 and 2): the frame's pearl white, its seam and rivets, and the lit
+     * and shaded tones its bevels and columns are drawn in.
+     */
+    static final int HULL = 0xEDF1F3, HULL_SEAM = 0xC3CCD3, HULL_RIVET = 0xD5DCE1, HULL_LIT = 0xF8FAFB,
+        HULL_SHADE = 0xDCE2E6, HULL_DEEP = 0xB2BCC4;
+    /** The white core of every glowing line (as {@code com.fluxecho.logic.skin.SkinPalette.GLOW_CORE}). */
+    static final int GLOW_CORE = 0xFFFFFF;
     /** The Eco Dome's colour (0.11.0), shown in its core's light only. */
     static final int ECO_GREEN = 0x7BE08A;
     /** The Echo Dome Generator's accent (0.12.0), as {@code TileDomeGenerator.COLOR}. */
@@ -54,6 +71,7 @@ public class NexusTextures {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 0) root = args[0];
         String fr = "blocks/frame/";
         still(fr + "base_top", NexusTextures::baseTop);
         still(fr + "base_side", NexusTextures::baseSide);
@@ -215,114 +233,136 @@ public class NexusTextures {
         return Math.max(0, 1 - d * 5);
     }
 
-    /** The bevelled rim every frame part has. */
-    static int rim(int x, int y, int inside) {
-        if (x == 0 || y == 0) return 0x3E4856;
-        if (x == 15 || y == 15) return 0x0A0E13;
+    // ---- frame parts (0.17.0: the hull's pearl white, its light a white core edged in the nexus cyan, style §7.1
+    // rows 1 and 2; the conduit's core and the seat's crystal keep their cyan)
+
+    /** The hull's bevelled rim: its lit edge on the top and left, its seam on the bottom and right. */
+    static int hullRim(int x, int y, int inside) {
+        if (x == 0 || y == 0) return HULL_LIT;
+        if (x == 15 || y == 15) return HULL_SEAM;
         return inside;
     }
 
-    // ---- frame parts
+    /** A barely visible grain so flat areas do not look painted; {@code amount} is the largest shift. */
+    static int grain(int c, int x, int y, int seed, double amount) {
+        double h = hash(x, y, seed) - 0.5;
+        return h < 0 ? mix(c, 0x000000, -h * 2 * amount) : mix(c, 0xFFFFFF, h * 2 * amount);
+    }
 
+    /**
+     * A pixel of a glowing line (style §3.6): {@code d} pixels out from its core, the white core at 0 (white through
+     * the animation), the cyan edge at 1, lifted towards white as the band {@code w} passes, and nothing further out.
+     */
+    static int glow(int d, double w) {
+        if (d == 0) return GLOW_CORE;
+        if (d == 1) return mix(CYAN, WHITE, 0.4 * w);
+        return 0;
+    }
+
+    /** The base: a hull plate with a faint hexagon grid and a rivet near each corner. */
     static int baseTop(int x, int y, int f) {
-        int c = (x + y) % 2 == 0 ? 0x101C28 : 0x0E1924;
+        int c = grain(HULL, x, y, 3, 0.015);
         // a hexagon grid
         int hx = x % 8, hy = y % 8;
-        if (hx == 0 && hy >= 2 && hy <= 5 || (hy == 1 || hy == 6) && (hx == 1 || hx == 7)) c = 0x183042;
-        if ((x == 1 || x == 14) && (y == 1 || y == 14)) c = 0x6B7686;
-        return rim(x, y, c);
+        if (hx == 0 && hy >= 2 && hy <= 5 || (hy == 1 || hy == 6) && (hx == 1 || hx == 7)) c = HULL_RIVET;
+        if ((x == 1 || x == 14) && (y == 1 || y == 14)) c = HULL_SEAM;
+        return hullRim(x, y, c);
     }
 
     static int baseSide(int x, int y, int f) {
-        int c = y < 8 ? 0x141E29 : 0x111A24;
-        if (y == 7) c = 0x1D3A4D;
-        if (y == 8) c = 0x0A1018;
-        if ((x == 3 || x == 12) && (y == 3 || y == 12)) c = 0x5A6573;
-        return rim(x, y, c);
+        int c = y < 8 ? HULL : HULL_SHADE;
+        if (y == 7) c = HULL_RIVET;
+        if (y == 8) c = HULL_SEAM;
+        if ((x == 3 || x == 12) && (y == 3 || y == 12)) c = HULL_SEAM;
+        return hullRim(x, y, c);
     }
 
     /** The channel the lit base's light runs in. */
     static int litChannel(int x, int y, int c) {
-        if ((x == 7 || x == 8) && y > 0 && y < 15 || (y == 7 || y == 8) && x > 0 && x < 15) return 0x0A2632;
-        if ((x == 6 || x == 9) && y > 0 && y < 15 || (y == 6 || y == 9) && x > 0 && x < 15) return 0x16303E;
+        if ((x >= 6 && x <= 9) && y > 0 && y < 15 || (y >= 6 && y <= 9) && x > 0 && x < 15) return HULL_SEAM;
         return c;
     }
 
+    /** The lit base's cross: a white core two pixels wide, a cyan edge either side, a band running out from the hub. */
     static int litGlow(int x, int y, int f) {
-        boolean line = (x == 7 || x == 8) && y > 0 && y < 15 || (y == 7 || y == 8) && x > 0 && x < 15;
-        if (!line) return 0;
-        double pos = (x == 7 || x == 8) ? (y < 8 ? (7.5 - y) / 7.5 : (y - 7.5) / 7.5)
-            : (x < 8 ? (7.5 - x) / 7.5 : (x - 7.5) / 7.5);
-        double w = wave(1 - pos, f);
-        return mix(CYAN, WHITE, w);
+        if (x < 1 || x > 14 || y < 1 || y > 14) return 0;
+        boolean coreX = x == 7 || x == 8, coreY = y == 7 || y == 8;
+        if (coreX || coreY) return GLOW_CORE;
+        boolean edgeX = x == 6 || x == 9, edgeY = y == 6 || y == 9;
+        if (!edgeX && !edgeY) return 0;
+        double pos = edgeX ? (y < 8 ? (7.5 - y) / 7.5 : (y - 7.5) / 7.5) : (x < 8 ? (7.5 - x) / 7.5 : (x - 7.5) / 7.5);
+        return glow(1, wave(1 - pos, f));
     }
 
     static int litSide(int x, int y, int f) {
         int c = baseSide(x, y, f);
-        if (y == 7 && x > 0 && x < 15) c = 0x2FB5D0;
+        if (y == 7 && x > 0 && x < 15) c = mix(CYAN, HULL, 0.35);
         return c;
     }
 
+    /** A rib's post seen from above: a hull cap with a seam ring. */
     static int pillarTop(int x, int y, int f) {
         double d = dist(x, y);
-        if (d < 2) return 0x3A4452;
-        if (d < 3.2) return CYAN_DARK;
-        if (d < 5) return STEEL;
-        return rim(x, y, STEEL_DARK);
+        if (d < 2) return HULL_LIT;
+        if (d < 3.2) return HULL_SEAM;
+        if (d < 5) return HULL;
+        return hullRim(x, y, HULL_SHADE);
     }
 
+    /** A white rib's post (style §4.1), lit from the left, a band near its head and its foot. */
     static int pillarSide(int x, int y, int f) {
-        // a steel column, lit from the left
         double t = (x - 5) / 6.0;
-        int c = mix(STEEL_LIGHT, STEEL_DARK, t);
-        if (x == 7 || x == 9) c = mix(c, 0x1A1F26, 0.5);
-        if (y <= 1 || y >= 14) c = 0x3A4452;
-        if ((y == 2 || y == 13) && x >= 5 && x <= 10) c = CYAN_DARK;
+        int c = mix(HULL_LIT, HULL_DEEP, t);
+        if (x == 7 || x == 9) c = mix(c, HULL_SEAM, 0.4);
+        if (y <= 1 || y >= 14) c = HULL_SEAM;
+        if ((y == 2 || y == 13) && x >= 5 && x <= 10) c = HULL_RIVET;
         return c;
     }
 
-    /** The console stand's plate: dark glass in a steel rim, a groove for the ring of light. */
+    /** The console stand's plate: dark glass in a hull rim, a groove for the ring of light. */
     static int consoleTop(int x, int y, int f) {
         double d = dist(x, y);
         if (d < 4.2) return mix(0x16283A, DEEPER, d / 4.2);
-        if (d < 5.6) return 0x0A1A24;
-        return rim(x, y, d < 7 ? STEEL : STEEL_DARK);
+        if (d < 5.6) return HULL_SEAM;
+        return hullRim(x, y, d < 7 ? HULL : HULL_SHADE);
     }
 
-    /** The console's column and foot: steel, a channel up the middle where the light runs. */
+    /** The console's column and foot: hull white, a channel up the middle where the light runs. */
     static int consoleSide(int x, int y, int f) {
-        if (y >= 14) return x % 3 == 0 ? STEEL_LIGHT : STEEL;
-        if (x == 7 || x == 8) return 0x0A2632;
-        if (x == 6 || x == 9) return STEEL_DARK;
-        int c = mix(STEEL_LIGHT, STEEL_DARK, Math.abs(x - 7.5) / 7.5);
-        return (y == 4 || y == 10) ? mix(c, CYAN_DARK, 0.4) : c;
+        if (y >= 14) return x % 3 == 0 ? HULL_RIVET : HULL;
+        if (x >= 6 && x <= 9) return HULL_SEAM;
+        int c = mix(HULL_LIT, HULL_DEEP, Math.abs(x - 7.5) / 7.5);
+        return (y == 4 || y == 10) ? mix(c, HULL_SEAM, 0.6) : c;
     }
 
+    /** The plate's ring: a white core with a cyan edge either side, a band running round it. */
     static int consoleTopGlow(int x, int y, int f) {
         double d = dist(x, y);
-        if (d < 4.4 || d >= 5.4) return 0;
+        if (d < 4.2 || d >= 5.6) return 0;
         double a = (Math.atan2(y - 7.5, x - 7.5) / (Math.PI * 2) + 1) % 1;
-        return mix(CYAN, WHITE, wave(a, f));
+        return glow(d >= 4.6 && d < 5.2 ? 0 : 1, wave(a, f));
     }
 
     static int consoleSideGlow(int x, int y, int f) {
-        if (x != 7 && x != 8 || y >= 14) return 0;
-        return mix(CYAN, WHITE, wave((15 - y) / 16.0, f));
+        if (y >= 14) return 0;
+        if (x == 7 || x == 8) return GLOW_CORE;
+        if (x == 6 || x == 9) return glow(1, wave((15 - y) / 16.0, f));
+        return 0;
     }
 
     static int conduitTop(int x, int y, int f) {
         double d = dist(x, y);
         if (d < 1.6) return WHITE;
         if (d < 2.6) return CYAN;
-        if (d < 4.6) return STEEL;
-        return STEEL_DARK;
+        if (d < 4.6) return HULL;
+        return HULL_SHADE;
     }
 
     static int conduitSide(int x, int y, int f) {
         // used across x 4..11: posts at the edges, open windows between
-        if (y <= 1 || y >= 14) return x % 2 == 0 ? STEEL : STEEL_LIGHT;
-        if (x <= 5 || x >= 10) return mix(STEEL_LIGHT, STEEL_DARK, (x <= 5 ? x - 4 : 11 - x) / 2.0);
-        if (y == 5 || y == 10) return STEEL_DARK;
+        if (y <= 1 || y >= 14) return x % 2 == 0 ? HULL : HULL_LIT;
+        if (x <= 5 || x >= 10) return mix(HULL_LIT, HULL_DEEP, (x <= 5 ? x - 4 : 11 - x) / 2.0);
+        if (y == 5 || y == 10) return HULL_SEAM;
         return 0;
     }
 
@@ -333,38 +373,42 @@ public class NexusTextures {
         return c;
     }
 
+    /** A ring segment's slab from above: hull white with a faint seam every four rows. */
     static int ringTop(int x, int y, int f) {
-        int c = (y % 4 == 0) ? 0x2A3442 : 0x1D2530;
-        if (x == 0 || x == 15) c = 0x3E4856;
+        int c = (y % 4 == 0) ? HULL_RIVET : HULL;
+        if (x == 0 || x == 15) c = HULL_SEAM;
         return c;
     }
 
+    /** The slab's edge (rows 5 to 10 show): a lit lip, the channel the seam light runs in, a shaded underside. */
     static int ringSide(int x, int y, int f) {
-        if (y <= 5 || y >= 11) return 0x2A3442;
-        return y == 7 || y == 8 ? 0x0E3240 : 0x1A2230;
+        if (y <= 5 || y >= 11) return HULL_SEAM;
+        if (y == 6) return HULL_LIT;
+        if (y == 7 || y == 8) return HULL_SEAM;
+        return y == 9 ? HULL : HULL_DEEP;
     }
 
     static int ringGlow(int x, int y, int f) {
-        if (y != 7 && y != 8) return 0;
-        double w = wave(x / 16.0, f);
-        return mix(CYAN, WHITE, w);
+        if (y == 7 || y == 8) return GLOW_CORE;
+        if (y == 6 || y == 9) return glow(1, wave(x / 16.0, f));
+        return 0;
     }
 
     static int seatTop(int x, int y, int f) {
         double d = dist(x, y);
-        if (d < 3.4) return 0x070B10;
+        if (d < 3.4) return 0x2A2F35;
         if (d < 4.4) return CYAN_DARK;
-        if (d < 5.2) return STEEL_LIGHT;
-        return rim(x, y, (x + y) % 2 == 0 ? 0x2A3442 : 0x25303D);
+        if (d < 5.2) return HULL_SEAM;
+        return hullRim(x, y, (x + y) % 2 == 0 ? HULL : HULL_SHADE);
     }
 
     static int seatSide(int x, int y, int f) {
         // the lower half shows
-        if (y < 8) return 0x2A3442;
-        if (y == 8) return STEEL_LIGHT;
-        if (y == 15) return 0x0A0E13;
-        if (y == 11) return (x % 3 == 0) ? CYAN : 0x0E3240;
-        return 0x222B37;
+        if (y < 8) return HULL;
+        if (y == 8) return HULL_LIT;
+        if (y == 15) return HULL_SEAM;
+        if (y == 11) return (x % 3 == 0) ? CYAN : HULL_SEAM;
+        return HULL_SHADE;
     }
 
     static int seatCrystal(int x, int y, int f) {
@@ -376,35 +420,37 @@ public class NexusTextures {
     }
 
     static int foundationTop(int x, int y, int f) {
-        int c = (x + y) % 2 == 0 ? 0x16112A : 0x130F24;
+        int c = (x + y) % 2 == 0 ? HULL : grain(HULL, x, y, 5, 0.02);
         double d = dist(x, y);
-        if (d > 5.6 && d < 6.6) c = 0x2A1E52;
-        if (d < 2.2) c = 0x1E1640;
-        return rim(x, y, c);
+        if (d > 5.0 && d < 7.0) c = HULL_SEAM;
+        if (d < 2.2) c = HULL_RIVET;
+        return hullRim(x, y, c);
     }
 
+    /** The foundation's ring of light: a white core edged in cyan, a band running round it. */
     static int foundationGlow(int x, int y, int f) {
         double d = dist(x, y);
-        if (d <= 5.3 || d >= 6.6) return 0;
+        if (d <= 5.0 || d >= 7.0) return 0;
         double ang = (Math.atan2(y - 7.5, x - 7.5) + Math.PI) / (2 * Math.PI);
-        return mix(VIOLET, WHITE, wave(ang, f) * 0.8);
+        return glow(d > 5.6 && d < 6.4 ? 0 : 1, wave(ang, f));
     }
 
     static int foundationSide(int x, int y, int f) {
-        int c = y < 8 ? 0x17122C : 0x130F24;
-        if (y == 7) c = 0x3C2470;
-        return rim(x, y, c);
+        int c = y < 8 ? HULL : HULL_SHADE;
+        if (y == 7) c = HULL_SEAM;
+        return hullRim(x, y, c);
     }
 
+    /** The echo shelf from above: a hull grid (style §7.1 row 2: the shelf's frame turns white, the books do not). */
     static int shelfTop(int x, int y, int f) {
-        int c = 0x161228;
-        if (x % 5 == 0 || y % 5 == 0) c = 0x241C44;
-        return rim(x, y, c);
+        int c = HULL;
+        if (x % 5 == 0 || y % 5 == 0) c = HULL_SEAM;
+        return hullRim(x, y, c);
     }
 
-    /** Two rows of books in a dark frame; the spines' colours vary. */
+    /** Two rows of books in a white frame; the spines' colours vary and are those of 0.16. */
     static int shelfSide(int x, int y, int f) {
-        if (x == 0 || x == 15 || y == 0 || y == 15 || y == 7 || y == 8) return y == 8 ? 0x0A0812 : 0x2A2240;
+        if (x == 0 || x == 15 || y == 0 || y == 15 || y == 7 || y == 8) return y == 8 ? HULL_DEEP : HULL;
         int row = y < 8 ? 0 : 1;
         int spine = (x + row * 3) / 2;
         double h = hash(spine, row, 1);
@@ -442,33 +488,33 @@ public class NexusTextures {
     }
 
     /**
-     * A face of the cladding anchor: the frame's bevelled rim round a dark field, and on it a hexagonal steel plate,
+     * A face of the cladding anchor: the hull's rim round a white field, and on it a hexagonal plate a shade darker,
      * lit from the upper left, with a bolt at each corner, a channel round it where the light runs, and a recessed
      * socket in its middle (a stud at its bottom) where a cladding will lock in later.
      */
     static int anchorFace(int x, int y, int f) {
-        int c = (x + y) % 2 == 0 ? 0x101C28 : 0x0E1924;
+        int c = (x + y) % 2 == 0 ? HULL : HULL_SHADE;
         double h = hexDist(x, y);
         if (h < 6.4) {
             double lit = ((7.5 - x) + (7.5 - y)) / 15.0;
-            c = mix(STEEL_DARK, STEEL, 0.45 + 0.4 * lit);
-            if (h >= 5.6) c = mix(c, 0x000000, 0.35);
-            if (h >= 4.0 && h < 5.0) c = 0x0A2632;
-            if (h < 3.4) c = h < 1.3 ? STEEL_LIGHT : h < 2.0 ? 0x1A2230 : DEEPER;
+            c = mix(HULL_DEEP, HULL_LIT, 0.45 + 0.4 * lit);
+            if (h >= 5.6) c = mix(c, HULL_DEEP, 0.5);
+            if (h >= 3.8 && h < 5.2) c = HULL_SEAM;
+            if (h < 3.4) c = h < 1.3 ? HULL_LIT : h < 2.0 ? HULL_DEEP : 0x8E979F;
         }
         // the bolts at the plate's six corners
         double ang = Math.atan2(y - 7.5, x - 7.5), r = Math.hypot(x - 7.5, y - 7.5);
         double off = Math.abs(((ang / (Math.PI / 3)) % 1 + 1.5) % 1 - 0.5);
-        if (r > 5.0 && r < 6.2 && off < 0.12) c = STEEL_LIGHT;
-        return rim(x, y, c);
+        if (r > 5.0 && r < 6.2 && off < 0.12) c = HULL_RIVET;
+        return hullRim(x, y, c);
     }
 
-    /** The anchor's light: the channel round its plate, a band of light running round it. */
+    /** The anchor's light: a white core round its plate edged in cyan, a band running round it. */
     static int anchorGlow(int x, int y, int f) {
         double h = hexDist(x, y);
-        if (h < 4.0 || h >= 5.0) return 0;
+        if (h < 3.8 || h >= 5.2) return 0;
         double a = (Math.atan2(y - 7.5, x - 7.5) / (Math.PI * 2) + 1) % 1;
-        return mix(CYAN, WHITE, 0.15 + 0.85 * wave(a, f));
+        return glow(h >= 4.2 && h < 4.8 ? 0 : 1, wave(a, f));
     }
 
     // ---- the floating foundation (0.16.0)
@@ -478,13 +524,13 @@ public class NexusTextures {
         return v == 5 || v == 10;
     }
 
-    /** The deck people walk on: dark glass over the steel lattice, its nodes studded. */
+    /** The deck people walk on: a white plate over the lattice, its nodes studded. */
     static int floatTop(int x, int y, int f) {
-        int c = (x + y) % 2 == 0 ? 0x101A26 : 0x0E1722;
+        int c = (x + y) % 2 == 0 ? HULL : grain(HULL, x, y, 9, 0.02);
         boolean lx = latticeLine(x), ly = latticeLine(y);
-        if (lx || ly) c = 0x2A3644;
-        if (lx && ly) c = STEEL_LIGHT;
-        return rim(x, y, c);
+        if (lx || ly) c = HULL_SEAM;
+        if (lx && ly) c = HULL_RIVET;
+        return hullRim(x, y, c);
     }
 
     /**
@@ -492,46 +538,48 @@ public class NexusTextures {
      * the light from underneath spills out.
      */
     static int floatSide(int x, int y, int f) {
-        int c = y < 8 ? 0x111B27 : 0x0F1823;
+        int c = y < 8 ? HULL : HULL_SHADE;
         boolean lx = latticeLine(x), ly = latticeLine(y);
-        if (lx || ly || x > 0 && x < 15 && y > 0 && y < 13 && (x + y) % 5 == 0) c = 0x2A3644;
-        if (lx && ly) c = STEEL_LIGHT;
-        if (y == 13) c = STEEL_DARK;
-        if (y == 14) c = 0x0A2632;
-        return rim(x, y, c);
+        if (lx || ly || x > 0 && x < 15 && y > 0 && y < 13 && (x + y) % 5 == 0) c = HULL_SEAM;
+        if (lx && ly) c = HULL_RIVET;
+        if (y == 13) c = HULL_DEEP;
+        if (y == 14) c = HULL_SEAM;
+        return hullRim(x, y, c);
     }
 
     /** The underside: an emitter plate, its rings grooved round a hub, under the lattice. */
     static int floatBottom(int x, int y, int f) {
-        int c = (x + y) % 2 == 0 ? 0x0C1520 : 0x0B131D;
+        int c = (x + y) % 2 == 0 ? HULL_SHADE : grain(HULL_SHADE, x, y, 11, 0.02);
         double d = dist(x, y);
-        if (d >= 2.4 && d < 3.1 || d >= 4.9 && d < 5.6) c = 0x16283A;
-        if (d < 1.6) c = 0x1C2B3A;
-        if (latticeLine(x) && latticeLine(y)) c = STEEL;
-        return rim(x, y, c);
+        if (d >= 2.4 && d < 3.1 || d >= 4.9 && d < 5.6) c = HULL_SEAM;
+        if (d < 1.6) c = HULL_RIVET;
+        if (latticeLine(x) && latticeLine(y)) c = HULL_DEEP;
+        return hullRim(x, y, c);
     }
 
     /**
      * The lifting light on the underside: rings of light running out from the hub over the animation (two at a time),
-     * the hub always lit, the lattice's nodes glinting; nothing in the corners past the plate.
+     * white at their crest and edged in cyan, the hub always white, the lattice's nodes glinting cyan; nothing in the
+     * corners past the plate.
      */
     static int floatBottomGlow(int x, int y, int f) {
         double d = dist(x, y);
-        if (d < 1.4) return mix(LIFT, WHITE, 0.6);
+        if (d < 1.4) return GLOW_CORE;
         if (d > 7.2) return 0;
         double v = ((d / 3.6 - f / (double) FRAMES) % 1 + 1) % 1;
         double ring = Math.max(0, 1 - Math.min(v, 1 - v) * 7);
-        if (ring > 0.15) return mix(mix(LIFT, 0x2F6F8A, d / 9), WHITE, ring * 0.7);
-        if (latticeLine(x) && latticeLine(y)) return mix(0x2F6F8A, LIFT, 0.5);
+        if (ring > 0.55) return GLOW_CORE;
+        if (ring > 0.15) return glow(1, ring);
+        if (latticeLine(x) && latticeLine(y)) return glow(1, 0);
         return 0;
     }
 
-    /** The foot of a side: the light spilling out from underneath, a bright band running along it. */
+    /** The foot of a side: the light spilling out from underneath, a white core edged in cyan, a band along it. */
     static int floatSideGlow(int x, int y, int f) {
         if (x < 1 || x > 14) return 0;
         double w = wave(x / 16.0, f);
-        if (y == 14) return mix(mix(LIFT, 0x2F6F8A, 0.35), WHITE, 0.15 + 0.7 * w);
-        if (y == 13 && w > 0.5) return mix(0x2F6F8A, LIFT, w);
+        if (y == 14) return GLOW_CORE;
+        if (y == 13) return glow(1, w);
         return 0;
     }
 
@@ -1065,12 +1113,12 @@ public class NexusTextures {
         }
         save(img, name);
         java.nio.file.Files.write(
-            new File(ROOT + name + ".png.mcmeta").toPath(),
+            new File(root + name + ".png.mcmeta").toPath(),
             "{\n  \"animation\": { \"frametime\": 3 }\n}\n".getBytes());
     }
 
     static void save(BufferedImage img, String name) throws Exception {
-        File f = new File(ROOT + name + ".png");
+        File f = new File(root + name + ".png");
         f.getParentFile()
             .mkdirs();
         ImageIO.write(img, "png", f);
