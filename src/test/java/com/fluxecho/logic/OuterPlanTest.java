@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.logic.BuildPlan.Column;
@@ -25,6 +26,7 @@ import com.fluxecho.logic.BuildPlan.Step;
  * it never takes a cell of the establish floor, leaves every keep-out box alone, and shares the ground with a
  * neighbouring campus without either of them ever planning the other's columns.
  */
+@Tag("slow")
 class OuterPlanTest {
 
     private static final int[][] FACINGS = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };

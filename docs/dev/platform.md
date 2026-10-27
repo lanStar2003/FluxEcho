@@ -134,7 +134,7 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 - **依赖**（`dependencies.gradle`）：`api` GT5-Unofficial `5.09.51.482:dev`（带进 GTNHLib、StructureLib、ModularUI 1、NEI、IC2、AE2）；`implementation` VisualProspecting `1.4.8:dev`；`compileOnly`（`transitive=false`）Waila 1.8.14、Forestry 4.10.17、Thaumcraft 4.2.3.5、BloodMagic 1.7.52、Mobs-Info 0.5.6-GTNH、Botania 1.12.28-GTNH、BetterQuesting 3.7.15-GTNH；`testRuntimeOnly` lwjgl 2.9.4（NEI 测试要构造处理器）。
 - **构建**：`build.gradle.kts` 只用 `com.gtnewhorizons.gtnhconvention` + JUnit 5；`gradle.properties`：Forge 10.13.4.1614、`enableModernJavaSyntax=jabel`（编到 J8 字节码；可用 `instanceof X x` 和 switch 箭头/表达式，**不用 record、文本块、var**）、`usesMixins=true`、`coreModClass=asm.FluxEchoCore`、`accessTransformersFile=fluxecho_at.cfg`、`autoUpdateBuildScript=false`。`.java-version` 25（CI temurin 25）。
 - **格式**：spotless（eclipse 4.19，import 顺序 `java, javax, net, org, com`，去未用 import）；**提交前 `./gradlew --offline spotlessApply`**，`build` 会查格式。spotless 会把链式调用拆成多行（`.bus()\n.register(...)` 那种写法就是它造成的）。`.editorconfig`：UTF-8、LF、4 空格；`.lang/.md` 不去行尾空格。
-- **命令**：`./gradlew --offline build`（约 25 秒，含测试）；`./gradlew --offline spotlessApply`。
+- **命令**：`./gradlew --offline build`（约 25 秒，含测试）；`./gradlew --offline spotlessApply`；只跑快组 `./gradlew --offline test -PfastOnly`、只跑慢组 `-PslowOnly`（§11）。多代理并行时每个 gradle 加 `-Dorg.gradle.workers.max=4`（或卡上写的数），同一棵树上不同时跑两次构建。
 - **CI**：`.github/workflows/build.yml`（push/PR 到 main 跑 `build`，上传 jar）；`release.yml`（push tag `X.Y.Z` 触发：`build` → 用 awk 取 CHANGELOG 里 `## X.Y.Z` 小节作发布说明 → `gh release create` 附 `fluxecho-X.Y.Z.jar`、`-dev`、`-sources`，`--verify-tag`）。版本号来自 git tag（不带 v）。
 - **纹理生成器**（`tools/*.java`，单文件程序，仓库根目录 `java tools/X.java`，Java2D 画 PNG，动画同时写 `.mcmeta`，发光部分单独 `*_glow` 层）：
 
@@ -176,6 +176,8 @@ TE 描述包和 GUI 的同步不占频道：0.10.1 没有新频道、新消息�
 - **lang 键约定**：机器 `gt.blockmachines.fluxecho.<key>.name`；方块 `tile.fluxecho.<name>.name`；物品 `item.fluxecho.<name>.name`；创造栏 `itemGroup.fluxecho`；其余一律 `fluxecho.<area>.<…>`（`status.*`、`recipe.<key>`、`<key>.tip/.type/.gui_sample`、`nei.*`、`gui.*`、`holo.*`、`codex.*`、`waila.*`、`research.*`、`nexus.*`、`spring.*`、`gate.*`…）；文本里 `\n` 写字面量。
 
 ## 11. 测试（`src/test/java/com/fluxecho/`，JUnit 5，不需要 MC 运行时）
+
+**快慢分组**（0.17.0 起，refactor §6.5）：`build.gradle.kts` 的 `tasks.test` 永远排除 `@Tag("golden-gen")`（写金样文件的测试，只手动跑）；`-PfastOnly` 再排除 `@Tag("slow")`，`-PslowOnly` 只跑 `slow`。全量 `./gradlew --offline build` 两组都跑（发布前、每次合并后必须全绿）。开发中只跑自己的包：`./gradlew --offline -Dorg.gradle.workers.max=4 test -PfastOnly --tests 'com.fluxecho.<包>*'`，再加自己的慢组 `test -PslowOnly --tests 'com.fluxecho.<包>*'`。标 `slow` 的是假世界（`campus/FakeWorld` + 真 StructureLib）、全串、出图和跑得久的纯逻辑（每类 > 1 秒），现在 17 个类：`campus/CampusEngineTest`、`CampusTilesTest`、`DeepRootFormTest`、`DeepenJobTest`、`PodReleaseTest`、`SkyJobsTest`、`SkyModulesFormTest`，`city/StructureSkyTest`、`TileEcoDomeTest`，`nexus/DoorwayRoomTest`、`NexusGrowsTest`（假世界）；`logic/CityOfferTest`（约 7 秒）、`CampusSplitTest`（约 4 秒）、`OuterPlanTest`（约 1.3 秒）（久）；`IsolationTest`（扫编译产物，全串）；FluxLite 的 `gui/preview/PreviewTest`、`HoloPreviewTest`（出图）。新写的测试用到假世界、整条链或要跑一秒以上，就加 `@Tag("slow")`（`import org.junit.jupiter.api.Tag;`），并在这里补名字。
 
 | 测试 | 守住什么 |
 |---|---|

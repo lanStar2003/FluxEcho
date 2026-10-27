@@ -23,6 +23,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.CityModule;
@@ -43,6 +44,7 @@ import com.fluxecho.nexus.TileNexus;
  * the builder names and waits for; the controller of the well the form grows from, a hand-dug full well's over low
  * ground too; its name and stages, in both lang files; and the day's cooldown after a member cancels it.
  */
+@Tag("slow")
 class DeepenJobTest {
 
     private static final int X = 60, Z = 90, EAST = 5;

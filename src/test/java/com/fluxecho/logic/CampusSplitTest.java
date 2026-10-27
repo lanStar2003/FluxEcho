@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
  * {@link CampusSplit#ours}; and the split bends round the outer diagonals, so a campus between neighbours at the old
  * spacing keeps whole sites for both of its outer buildings, and a site a campus claims is its own from both sides.
  */
+@Tag("slow")
 class CampusSplitTest {
 
     @Test

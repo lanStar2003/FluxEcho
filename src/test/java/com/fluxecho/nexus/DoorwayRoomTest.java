@@ -22,6 +22,7 @@ import net.minecraft.block.material.Material;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.FakeWorld;
@@ -49,6 +50,7 @@ import cpw.mods.fml.common.Loader;
  * StructureLib's check needs its mod class loaded, which outside the game needs a bare FML loader standing in while it
  * loads (as {@code StructureSkyTest} does it).
  */
+@Tag("slow")
 class DoorwayRoomTest {
 
     /** A doorway over the controller, a wall block under it (layers from the top). */

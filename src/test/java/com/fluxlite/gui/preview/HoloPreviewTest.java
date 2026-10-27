@@ -15,6 +15,7 @@ import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxlite.gui.holo.HoloPanel;
@@ -24,6 +25,7 @@ import com.fluxlite.gui.holo.HoloState;
  * Previews of the floating display: the panel itself, its unfold animation, and the control center with the display
  * above it (isometric, the same geometry as the in-game renderer). Written to build/previews.
  */
+@Tag("slow")
 class HoloPreviewTest {
 
     private static final File JAR = new File(

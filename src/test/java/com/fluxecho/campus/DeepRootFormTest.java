@@ -25,6 +25,7 @@ import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.TileCityModule;
@@ -50,6 +51,7 @@ import cpw.mods.fml.common.Loader;
  * root with a broken bay keeps its form for its repair; an in-well root with a broken bay stands as its well again,
  * its bays' samples kept; and every root tile keeps 16 samples, a well's 8-slot save loading into them.
  */
+@Tag("slow")
 class DeepRootFormTest {
 
     private static final int X = 40, Z = -30, EAST = 5;

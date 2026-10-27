@@ -15,6 +15,7 @@ import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.BlockFitting;
@@ -41,6 +42,7 @@ import cpw.mods.fml.common.Loader;
  * it loads (as {@code DoorwayRoomTest} does it); the frame block and the fittings block are made here when the game has
  * not made them, and taken away again after.
  */
+@Tag("slow")
 class NexusGrowsTest {
 
     private static final int X = 40, Y = 70, Z = -30, NORTH = 2;

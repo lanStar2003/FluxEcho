@@ -11,6 +11,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.nexus.TileNexus;
@@ -20,6 +21,7 @@ import com.fluxecho.nexus.TileNexus;
  * now, so a nexus whose chunk unloaded (and came back as a new tile) is never fed or drained through a stale copy; and
  * a hopper that takes the last item of a kind from the bin and puts it back loses nothing.
  */
+@Tag("slow")
 class CampusTilesTest {
 
     private static final int NX = 100, NY = 70, NZ = 100;

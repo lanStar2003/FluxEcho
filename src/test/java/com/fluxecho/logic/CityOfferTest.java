@@ -20,6 +20,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.ModuleSpec;
@@ -35,6 +36,7 @@ import com.fluxecho.library.LibraryModule;
  * waited, so the user's campus (the Archive, the Eco Dome and two pavilions on the ring) was offered nothing more: the
  * hunting ground, the mana fountain, the gate and the vault said "the ring is full" with four sites empty.
  */
+@Tag("slow")
 class CityOfferTest {
 
     private static final int CX = 100, Y0 = 64, CZ = -200;

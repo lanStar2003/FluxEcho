@@ -17,6 +17,7 @@ import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.TileCityModule;
@@ -47,6 +48,7 @@ import cpw.mods.fml.common.Loader;
  * empties (its doorways and the pod's door), as 0.14.2's doorway lets it. A block taken out of it unforms it, and the
  * first wrong cell is named.
  */
+@Tag("slow")
 class SkyModulesFormTest {
 
     private static BlockFrame oldFrame;

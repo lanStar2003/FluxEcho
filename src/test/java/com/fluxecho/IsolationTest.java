@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Test;
  * always has Forestry (GT pulls it in), so a leak would never show in a dev run; this reads the compiled classes'
  * constant pools instead.
  */
+@Tag("slow")
 class IsolationTest {
 
     /** Package prefix of the mod's classes, and the only FluxEcho package allowed to refer to them. */

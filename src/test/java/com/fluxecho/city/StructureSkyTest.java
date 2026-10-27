@@ -12,6 +12,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.FakeWorld;
@@ -37,6 +38,7 @@ import cpw.mods.fml.common.Loader;
  * moment the class loads a bare one stands in ({@link #structureLib}): its active mod is none, as at any time no mod
  * is being loaded; it is taken away again once the class has loaded.
  */
+@Tag("slow")
 class StructureSkyTest {
 
     /** Loads StructureLib's mod class once, with a bare FML loader standing in while it does. */

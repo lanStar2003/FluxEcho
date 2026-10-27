@@ -15,6 +15,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxlite.core.PortRole;
@@ -31,6 +32,7 @@ import com.fluxlite.util.Longs;
  * Renders the screens with sample data to build/previews/*.png, using Minecraft's own font. Skipped when the vanilla
  * jar is not in the Gradle cache.
  */
+@Tag("slow")
 class PreviewTest {
 
     private static final File JAR = new File(

@@ -32,6 +32,7 @@ import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.CityModule;
@@ -63,6 +64,7 @@ import cpw.mods.fml.common.Loader;
  * form, save and sync, the controller it waits on, the zenith's protected boxes it alone is let into, the shape it
  * waits for, when it is wanted, the plans the form picks, and the cooldown after a member cancels it.
  */
+@Tag("slow")
 class PodReleaseTest {
 
     private static final int X = 40, Y = 72, Z = -30, NORTH = 2, ZENITH = SiteFamily.ZENITH_SITE;

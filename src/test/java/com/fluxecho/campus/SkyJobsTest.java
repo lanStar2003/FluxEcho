@@ -21,6 +21,7 @@ import net.minecraft.world.WorldProviderSurface;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.CityModule;
@@ -50,6 +51,7 @@ import cpw.mods.fml.common.Loader;
  * doors' catwalks; a sky module's repair is laid at the deck it stands at. On the {@code PodReleaseTest} harness, the
  * pod a floating plan with an open door lays and the module its job lays both form, and the module can be walked to.
  */
+@Tag("slow")
 class SkyJobsTest {
 
     private static final int X = 40, Y = 72, Z = -30, NORTH = 2, ZENITH = SiteFamily.ZENITH_SITE;

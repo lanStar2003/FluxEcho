@@ -15,6 +15,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.campus.FakeWorld;
@@ -32,6 +33,7 @@ import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
  * its planter, every socket its slot and back, the console stand under the controller opens the window, and a dome
  * the campus builder raised on a site has its tile's frame where the plan put the blocks.
  */
+@Tag("slow")
 class TileEcoDomeTest {
 
     private static final int X = -420, Y = 72, Z = 1310;

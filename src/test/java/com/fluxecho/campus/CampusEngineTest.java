@@ -24,6 +24,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ChatComponentTranslation;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.fluxecho.city.CityModule;
@@ -53,6 +54,7 @@ import com.fluxecho.nexus.TileNexus;
  * The parts of the campus engine that need no world: job keys and positions, the job's saved form, the plan a job
  * recomputes (the same on the client and the server), module footprints and the effect batches.
  */
+@Tag("slow")
 class CampusEngineTest {
 
     private static final int[][] FACINGS = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };
