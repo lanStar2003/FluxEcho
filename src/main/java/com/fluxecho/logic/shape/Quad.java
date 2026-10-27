@@ -98,9 +98,8 @@ public final class Quad {
     public String toString() {
         StringBuilder b = new StringBuilder(surface.name()).append(" f")
             .append(face);
-        for (int i = 0; i < 4; i++)
-            b.append(
-                String.format(java.util.Locale.ROOT, " (%.4f %.4f %.4f)", pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]));
+        for (int i = 0; i < 4; i++) b.append(
+            String.format(java.util.Locale.ROOT, " (%.4f %.4f %.4f)", pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]));
         return b.toString();
     }
 }
