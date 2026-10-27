@@ -3,6 +3,7 @@ package com.fluxecho.logic;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,10 +12,20 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.fluxecho.campus.BlockDeck;
+import com.fluxecho.campus.BlockFitting;
+import com.fluxecho.logic.shape.Family;
+import com.fluxecho.logic.shape.Form;
+import com.fluxecho.logic.shape.FormCodes;
+import com.fluxecho.logic.shape.SkinBlocks;
+
 /**
  * The part codes are saved and sent, so they are only ever appended: the codes of 0.10 stay where they were and
  * 0.11.0's new parts take the next free ones (the cladding anchor 9, the socket 39, the basin rim 40, water 53, the
- * module cores 64 to 79), all within the one byte a {@code BUILD_FX} packet gives a code.
+ * module cores 64 to 79), all within the one byte a {@code BUILD_FX} packet gives a code. 0.17.0 hands out the first
+ * batch of the redesign (style FINAL §3.7, §3.8.1; ids.md §1.2, §1.4): the hull-number tile and the planting bed on
+ * their families' bound codes, and all 41 free codes, 54 to 62 and 96 to 127, to the live materials and the new
+ * families' first shapes.
  */
 class PartsTest {
 
@@ -221,5 +232,135 @@ class PartsTest {
             assertTrue(m > last, "in meta order");
             last = m;
         }
+    }
+
+    /**
+     * 0.17.0 (style FINAL §3.7, §3.8.1): deck meta 13 the hull-number tile at code 29, fitting meta 14 the planting bed
+     * at code 46, both on their families' bound codes; the 0.16.0 runs of the deck and the fittings stay as they were.
+     */
+    @Test
+    void theBoundCodesOf017() {
+        assertEquals(13, Parts.D_HULL_NUMBER);
+        assertEquals(29, Parts.deck(Parts.D_HULL_NUMBER));
+        assertTrue(Parts.isDeck(29));
+        assertEquals(Parts.D_HULL_NUMBER, Parts.meta(29));
+        assertEquals(14, Parts.F_BED);
+        assertEquals(46, Parts.fitting(Parts.F_BED));
+        assertTrue(Parts.isFitting(46));
+        assertEquals(Parts.F_BED, Parts.meta(46));
+        assertEquals(13, Parts.DECK_TYPES, "the 0.16.0 run of the deck");
+        assertEquals(10, Parts.FITTING_TYPES, "the 0.16.0 run of the fittings");
+        assertTrue(BlockDeck.known(Parts.D_HULL_NUMBER));
+        assertFalse(BlockDeck.known(14), "deck 14 is the 0.22.0 pad's");
+        assertFalse(BlockDeck.known(15));
+        assertTrue(BlockFitting.known(Parts.F_BED));
+        for (int m = Parts.FITTING_TYPES; m < 16; m++)
+            if (m != Parts.F_BED) assertFalse(BlockFitting.known(m), "fitting " + m + " is free");
+    }
+
+    /**
+     * 0.17.0's free codes (style FINAL §3.8.1): the live materials 54 to 58, the hull 96 to 107, the footing 108 to
+     * 117,
+     * the script skin 118 to 125 and the garden skin 126, 127 and 59 to 62: each of the 41 used once, none in an old
+     * family, each family's shape number back to its code.
+     */
+    @Test
+    void theFreeCodesOf017() {
+        assertEquals(54, Parts.BIRCH);
+        assertEquals(55, Parts.OAK_LEAVES);
+        assertEquals(56, Parts.VINE);
+        assertEquals(57, Parts.LILY);
+        assertEquals(58, Parts.FLOWER);
+        Set<Integer> free = new HashSet<>();
+        for (int c = 54; c <= 62; c++) free.add(c);
+        for (int c = 96; c <= 127; c++) free.add(c);
+        assertEquals(41, free.size());
+        Set<Integer> used = new HashSet<>();
+        int[] perFamily = new int[Family.values().length];
+        for (int code = 0; code < 256; code++) {
+            boolean live = Parts.isLive(code);
+            Family f = FormCodes.family(code);
+            if (!live && f == null) continue;
+            assertFalse(live && f != null, "code " + code + " is one thing");
+            assertTrue(free.contains(code), "code " + code + " is one of the 41");
+            assertFalse(
+                Parts.isFrame(code) || Parts.isDeck(code) || Parts.isFitting(code) || Parts.isModuleCore(code),
+                "code " + code + " in no old family");
+            assertTrue(code <= Byte.MAX_VALUE, "one byte a code (BUILD_FX)");
+            used.add(code);
+            if (f != null) {
+                perFamily[f.ordinal()]++;
+                assertEquals(code, FormCodes.code(f, FormCodes.number(code)), "code " + code + " both ways");
+                assertNotNull(FormCodes.form(code), "code " + code + " has a shape");
+            }
+        }
+        assertEquals(free, used, "all 41 free codes are used");
+        assertEquals(12, perFamily[Family.HULL.ordinal()]);
+        assertEquals(10, perFamily[Family.FOOTING.ordinal()]);
+        assertEquals(8, perFamily[Family.SKIN_SCRIPT.ordinal()]);
+        assertEquals(6, perFamily[Family.SKIN_GARDEN.ordinal()]);
+        // the ledger's rows (ids.md §1.4): a few by value
+        assertEquals(98, FormCodes.code(Family.HULL, 2));
+        assertEquals(105, FormCodes.code(Family.HULL, 11), "the keel");
+        assertEquals(115, FormCodes.code(Family.FOOTING, 9), "the pool lip");
+        assertEquals(125, FormCodes.code(Family.SKIN_SCRIPT, 13), "the lantern panel");
+        assertEquals(126, FormCodes.code(Family.SKIN_GARDEN, 0));
+        assertEquals(62, FormCodes.code(Family.SKIN_GARDEN, 7), "the bronze-framed window");
+        assertEquals(-1, FormCodes.code(Family.HULL, 8), "the hull's window waits for 0.20.0");
+    }
+
+    /**
+     * The live materials (style FINAL §3.7): vanilla blocks at fixed metas (a birch log upright, oak leaves that never
+     * decay), accepted in a plan's cell in any state the world may leave them in.
+     */
+    @Test
+    void theLiveMaterials() {
+        assertEquals(2, LiveParts.meta(Parts.BIRCH));
+        assertEquals(4, LiveParts.meta(Parts.OAK_LEAVES));
+        assertEquals(0, LiveParts.meta(Parts.VINE));
+        assertEquals(0, LiveParts.meta(Parts.LILY));
+        assertEquals(0, LiveParts.meta(Parts.FLOWER));
+        assertThrows(IllegalArgumentException.class, () -> LiveParts.meta(Parts.WATER));
+        assertTrue(LiveParts.accepts(Parts.BIRCH, 2));
+        assertFalse(LiveParts.accepts(Parts.BIRCH, 0), "an oak log is not a birch log");
+        assertTrue(LiveParts.accepts(Parts.BIRCH, 6), "a birch log on its side is still a birch log");
+        assertTrue(LiveParts.accepts(Parts.OAK_LEAVES, 4));
+        assertTrue(LiveParts.accepts(Parts.OAK_LEAVES, 8), "a decay check flagged it");
+        assertFalse(LiveParts.accepts(Parts.OAK_LEAVES, 2), "birch leaves");
+        assertTrue(LiveParts.accepts(Parts.VINE, 5));
+        assertTrue(LiveParts.accepts(Parts.FLOWER, 3));
+        assertFalse(LiveParts.accepts(Parts.GRASS, 0));
+        for (int c = Parts.BIRCH; c <= Parts.FLOWER; c++) {
+            assertTrue(Parts.isLive(c));
+            assertTrue(LiveParts.is(c));
+        }
+        assertFalse(Parts.isLive(Parts.WATER));
+        assertFalse(Parts.isLive(59), "59 is the garden skin's");
+    }
+
+    /**
+     * Each family's shapes split between its two block ids by whether the shape is a whole cube; the 36 coded shapes
+     * are the listed ones, every other shape of the 64 is registered, unlisted and no part (style FINAL §3.8.1).
+     */
+    @Test
+    void theFamiliesBlockIds() {
+        int listed = 0;
+        for (Family f : Family.values()) {
+            for (int n = 0; n < 16; n++) {
+                boolean whole = SkinBlocks.inWhole(f, n);
+                assertTrue(SkinBlocks.belongs(f, whole, n));
+                assertFalse(SkinBlocks.belongs(f, !whole, n));
+                assertEquals(-1, SkinBlocks.code(f, !whole, n), f + " " + n + " in the other id is no part");
+                assertEquals(FormCodes.code(f, n), SkinBlocks.code(f, whole, n));
+                if (SkinBlocks.listed(f, whole, n)) listed++;
+                assertEquals(whole ? f.id : f.id + "_form", SkinBlocks.blockName(f, n));
+            }
+        }
+        assertEquals(36, listed);
+        assertEquals(Form.WHOLE, SkinBlocks.geometry(Family.HULL, false, 0), "a stray meta draws a whole cube");
+        assertEquals("paper_lantern", SkinBlocks.slug(Family.SKIN_SCRIPT, 13));
+        assertEquals("moss_window", SkinBlocks.slug(Family.SKIN_GARDEN, 7));
+        assertEquals("pool_lip", SkinBlocks.slug(Family.FOOTING, 9));
+        assertEquals("keel", SkinBlocks.slug(Family.HULL, 11));
     }
 }
