@@ -8,9 +8,9 @@ BM = "AWWayofTime:"
 
 def line():
     lore = quest(
-        "echo_blood/lore", "§4§l通量回响 · 血魔法",
-        ECHO_LORE + "\n\n血魔法这一边：你在祭坛里流过的每一滴血都在通量层里留着回响，"
-        "宝珠就是你流过血的凭证。宝珠做出来以后，就不用再拿小刀割自己了。",
+        "echo_blood/lore", "§4§l拾遗 · 血",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——一个拿生命当货币的地方。我在祭坛里流过的每一滴血，海里都留着纹，"
+        "宝珠就是我流过血的凭证。宝珠做出来以后，就不用再拿小刀割自己了。",
         item(BM + "weakBloodOrb"),
         [checkbox()])
     orb = quest(
@@ -41,6 +41,6 @@ def line():
         pre=["echo_blood/blood_echo"], main=False)
     placed = [(lore, (0, 24)), (orb, (48, 24)), (echo, (96, 24)), (network, (144, 24))]
     return write_line(
-        "line/echo_blood", "FluxEchoBlood", "§4通量回响 · 血魔法",
-        "第一颗宝珠亲手割出来，之后用电和一点肉产 LP：送进祭坛，或者直接补灵魂网络。",
+        "line/echo_blood", "FluxEchoBlood", "§4拾遗 · 血",
+        "从别的岸漂来的血。第一颗宝珠亲手割出来，之后用电和一点肉产 LP：送进祭坛，或者直接补灵魂网络。",
         item(BM + "weakBloodOrb"), placed, ["AWWayofTime"])

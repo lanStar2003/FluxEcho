@@ -5,8 +5,8 @@ from questkit import checkbox, echo_machine, give, item, quest, retrieval, write
 
 def line():
     lore = quest(
-        "echo_prey/lore", "§c§l通量回响 · 猎物",
-        ECHO_LORE + "\n\n猎物这一边：你亲手杀过的每一种怪，都在通量层里留着回响。"
+        "echo_prey/lore", "§c§l拾遗 · 猎物",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——滩上的怪和我一样，是同路的漂流者。我亲手杀过的每一种怪，海里都留着它的纹。"
         "末影珍珠、烈焰棒、线、火药……杀一只拓下印记，以后用电刷它的掉落，不用再建刷怪塔。",
         item("fluxecho:mob_imprint"),
         [checkbox()])
@@ -41,6 +41,6 @@ def line():
         pre=["echo_prey/mob_echo"], main=False)
     placed = [(lore, (0, 24)), (blank, (48, 24)), (echo, (96, 24)), (bosses, (144, 24))]
     return write_line(
-        "line/echo_prey", "FluxEchoPrey", "§c通量回响 · 猎物",
-        "亲手杀一只怪拓下印记，以后用电刷它的掉落。末影珍珠、烈焰棒不用再建刷怪塔。",
+        "line/echo_prey", "FluxEchoPrey", "§c拾遗 · 猎物",
+        "从别的岸漂来的同路者。亲手杀一只怪拓下印记，以后用电刷它的掉落。末影珍珠、烈焰棒不用再建刷怪塔。",
         item("fluxecho:mob_imprint"), placed, ["mobsinfo"])

@@ -1,0 +1,51 @@
+{
+  "preRequisites:9": {
+    "0:10": {
+      "questIDHigh:4": 4751465402225613577,
+      "questIDLow:4": -7570300983170896293
+    }
+  },
+  "properties:10": {
+    "betterquesting:10": {
+      "autoClaim:1": 0,
+      "desc:8": "海里有了十道纹。每一道都是一件我亲手做过的事，它记得，我也记得。\n\n[note]团队的回响图鉴里有 10 条记录（记分项 feRec，通量回响每几秒同步一次）。[/note]",
+      "globalShare:1": 1,
+      "icon:10": {
+        "Count:3": 1,
+        "Damage:2": 0,
+        "OreDict:8": "",
+        "id:8": "fluxecho:codex"
+      },
+      "isGlobal:1": 0,
+      "isMain:1": 1,
+      "isSilent:1": 0,
+      "lockedProgress:1": 0,
+      "name:8": "§3十道纹",
+      "partySingleReward:1": 0,
+      "questLogic:8": "AND",
+      "repeatTime:3": -1,
+      "repeat_relative:1": 1,
+      "simultaneous:1": 0,
+      "snd_complete:8": "random.levelup",
+      "snd_update:8": "random.levelup",
+      "taskLogic:8": "AND",
+      "visibility:8": "NORMAL"
+    }
+  },
+  "questIDHigh:4": -3292459829908188178,
+  "questIDLow:4": -8307364425924809041,
+  "rewards:9": {},
+  "tasks:9": {
+    "0:10": {
+      "operation:8": "MORE_OR_EQUAL",
+      "scoreDisp:8": "回响记录",
+      "scoreName:8": "feRec",
+      "target:3": 10,
+      "taskID:8": "bq_standard:scoreboard",
+      "type:8": "dummy",
+      "unitConversion:5": 1.0,
+      "unitSuffix:8": "",
+      "index:3": 0
+    }
+  }
+}

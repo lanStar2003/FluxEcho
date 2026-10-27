@@ -8,8 +8,8 @@ TC = "Thaumcraft:"
 
 def line():
     lore = quest(
-        "echo_thaum/lore", "§5§l通量回响 · 神秘",
-        ECHO_LORE + "\n\n神秘这一边：你亲手炼出过的每一种要素、捡到过的每一种魔力碎片，都在通量层里留着回响。"
+        "echo_thaum/lore", "§5§l拾遗 · 要素",
+        ECHO_LORE + "\n\n这些也是从别的岸漂来的——另一个时空写物质的字母。我亲手炼出过的每一种要素、捡到过的每一种魔力碎片，海里都留着它的纹。"
         "学会一次，以后用电现合成：注魔不用再炼要素，法杖不用再找节点。\n\n"
         "[note]研究：本实例的 config/Thaumcraft.cfg 里 research_difficulty 是 -1，研究直接用研究点购买，没有解谜小游戏。"
         "整合包更新可能把它改回去，记得再改一次。[/note]\n\n"
@@ -106,6 +106,6 @@ def line():
     placed = [(lore, (0, 24)), (memory, (48, 24)), (echo, (96, 0)), (outlet, (144, 0)), (charger, (96, 48)),
               (crucible, (144, 48)), (insight, (48, 72)), (infusion, (192, 48)), (modules, (96, 96))]
     return write_line(
-        "line/echo_thaum", "FluxEchoThaum", "§5通量回响 · 神秘",
-        "每种要素亲手炼一次，以后用电现合成；初始要素认识一次，以后用电充法杖。注魔不再炼要素，法杖不再找节点。",
+        "line/echo_thaum", "FluxEchoThaum", "§5拾遗 · 要素",
+        "从别的岸漂来的字母。每种要素亲手炼一次，以后用电现合成；初始要素认识一次，以后用电充法杖。注魔不再炼要素，法杖不再找节点。",
         item(TC + "ItemEssence", 1), placed, ["Thaumcraft"])
