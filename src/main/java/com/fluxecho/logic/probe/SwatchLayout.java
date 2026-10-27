@@ -20,9 +20,9 @@ import com.fluxecho.logic.skin.SkinPalette;
  * <b>Rows, bottom up.</b>
  * <ul>
  * <li>0–2, the light: every accent of style §3.6 (the twenty buildings', the root in its three forms: 22 colours) as a
- * light seam (row 0), a lamp window lit (row 1) and the same lamp dark (row 2), in groups that put each must-see
- * pair of §8.6 side by side (mana blue – guard blue ΔE 4.3 first), the revised tide teal and ice blue beside the nexus cyan, a
- * warm white column (no accent), and at the right end the evening gold of the memorial state next to the sail gold,
+ * light seam (row 0), a lamp window lit (row 1) and the same lamp dark (row 2), in groups that put each must-see pair
+ * of §8.6 side by side (mana blue – guard blue ΔE 4.3 first), the revised tide teal and ice blue beside the nexus cyan,
+ * a warm white column (no accent), and at the right end the evening gold of the memorial state next to the sail gold,
  * the memorial's warm-white keel and the nexus-cyan keel. Hull light seams and lamps, so the light is all there is to
  * compare.</li>
  * <li>3–5, the materials that have blocks in 0.17.0, a panel of five columns each: hull, footing, moss bronze, white

@@ -25,6 +25,7 @@ import com.fluxecho.core.Owners;
 import com.fluxecho.logic.BuildState;
 import com.fluxecho.logic.Compact;
 import com.fluxecho.logic.EchoCommand;
+import com.fluxecho.logic.probe.ProbeArgs;
 import com.fluxecho.nexus.NexusGui;
 import com.fluxecho.nexus.NexusRegistry;
 import com.fluxecho.nexus.TileNexus;
@@ -40,6 +41,9 @@ import com.fluxecho.research.Research;
  * {@code build finish} starts the nearest nexus's current job if needed, makes it free and runs it to the end at once
  * ({@link Campus#finishNow}); {@code build status} shows its job and counts. The nexus is the nearest loaded one
  * within {@value EchoCommand#RANGE} blocks of the sender, in the sender's dimension.</li>
+ * <li>0.17.0's check-ups, read by {@link ProbeArgs}: {@code probe depth|sky|sun|bed} sets out (or takes down) a probe
+ * rig in front of the sender ({@link ProbeCommands}), {@code swatch [clear]} the swatch wall ({@link SwatchCommand}),
+ * {@code cam <A-E>} puts the sender at a camera point of their team's nexus ({@link CamCommand}).</li>
  * </ul>
  * The arguments are read by {@link EchoCommand}; every reply, the usage and the errors are lang keys, so each player
  * reads them in their own language.
@@ -65,11 +69,33 @@ public class CommandFluxEcho extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+        if (ProbeArgs.claims(args)) {
+            probe(sender, args);
+            return;
+        }
         EchoCommand.Parsed use = EchoCommand.parse(args);
         if (use == null) throw new WrongUsageException(P + "usage");
         switch (use.action) {
             case RESEARCH_ALL, RESEARCH_RESET -> research(sender, use);
             default -> build(sender, use);
+        }
+    }
+
+    // ---- probes, swatch and camera points (0.17.0)
+
+    /** {@code probe depth|sky|sun|bed}, {@code swatch [clear]}, {@code cam <A-E>}: an operator's check-ups. */
+    private static void probe(ICommandSender sender, String[] args) {
+        ProbeArgs.Parsed use = ProbeArgs.parse(args);
+        if (use == null) throw new WrongUsageException(P + "probe.usage");
+        if (!(sender instanceof EntityPlayer p)) throw new CommandException(P + "not_player");
+        switch (use.action) {
+            case PROBE_DEPTH -> ProbeCommands.depth(p);
+            case PROBE_SKY -> ProbeCommands.sky(p);
+            case PROBE_SUN -> ProbeCommands.sun(p);
+            case PROBE_BED -> ProbeCommands.bed(p);
+            case SWATCH -> SwatchCommand.build(p);
+            case SWATCH_CLEAR -> SwatchCommand.clear(p);
+            default -> CamCommand.go(p, use.point);
         }
     }
 
@@ -202,11 +228,15 @@ public class CommandFluxEcho extends CommandBase {
     @Override
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
-        return EchoCommand.complete(
-            args,
-            Arrays.asList(
-                MinecraftServer.getServer()
-                    .getAllUsernames()));
+        if (args.length > 1 && ProbeArgs.claims(args)) return ProbeArgs.complete(args);
+        List<String> out = new ArrayList<>(
+            EchoCommand.complete(
+                args,
+                Arrays.asList(
+                    MinecraftServer.getServer()
+                        .getAllUsernames())));
+        if (args.length == 1) for (String w : ProbeArgs.complete(args)) if (!out.contains(w)) out.add(w);
+        return out;
     }
 
     @Override
