@@ -16,6 +16,7 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
 import com.fluxecho.FluxEcho;
+import com.fluxecho.client.shape.SkinIcons;
 import com.fluxecho.frame.FrameEvents;
 import com.fluxecho.logic.Parts;
 
@@ -30,7 +31,10 @@ import cpw.mods.fml.relauncher.SideOnly;
  * <p>
  * 0.14.0 adds the canvas (meta 12, CITY.md §1.4), the wall a module's unit paints its item on: units can be made of
  * deck cells now, so a use of a deck block is offered to the formed modules first ({@link #onUse}), as a frame's and a
- * fitting's is.
+ * fitting's is. 0.17.0 adds meta 13, the hull-number tile (style FINAL §3.7, code 29): a footing-dark floor tile with
+ * an
+ * octagonal badge, laid in front of every building's door on the way home, its number and whether it is lit the box
+ * table's to say; it gives no light of its own. Metas 14 and 15 stay unregistered (ids.md §1.2).
  */
 public class BlockDeck extends Block {
 
@@ -67,9 +71,14 @@ public class BlockDeck extends Block {
         setCreativeTab(FluxEcho.TAB);
     }
 
+    /** Whether the meta is a registered deck: the run of 0.16.0, and (0.17.0) the hull-number tile. */
+    public static boolean known(int meta) {
+        return meta >= 0 && meta < Parts.DECK_TYPES || meta == Parts.D_HULL_NUMBER;
+    }
+
     /** The meta clamped to a known deck type; unknown metas look like the plain deck. */
     public static int type(int meta) {
-        return meta >= 0 && meta < Parts.DECK_TYPES ? meta : Parts.D_DECK;
+        return known(meta) ? meta : Parts.D_DECK;
     }
 
     /** The light a deck of this meta gives. */
@@ -86,6 +95,7 @@ public class BlockDeck extends Block {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void getSubBlocks(Item item, CreativeTabs tab, List list) {
         for (int i = 0; i < Parts.DECK_TYPES; i++) list.add(new ItemStack(item, 1, i));
+        list.add(new ItemStack(item, 1, Parts.D_HULL_NUMBER));
     }
 
     @Override
@@ -136,6 +146,8 @@ public class BlockDeck extends Block {
         String lit = FluxEcho.MODID + ":deck/" + Parts.DECK_NAMES[Parts.D_LIT] + "_side";
         litSide = r.registerIcon(lit);
         litSideGlow = r.registerIcon(lit + "_glow");
+        // the hull-number tile's (0.17.0), drawn by tools/HullTextures.java
+        SkinIcons.registerHullNumber(r);
     }
 
     @Override
@@ -152,6 +164,7 @@ public class BlockDeck extends Block {
     @SideOnly(Side.CLIENT)
     public IIcon icon(int meta, int side) {
         int t = type(meta);
+        if (t == Parts.D_HULL_NUMBER) return SkinIcons.hullNumber(side);
         if (t == Parts.D_LIT && side != 1) return side == 0 ? icons[Parts.D_DECK] : litSide;
         return icons[t];
     }

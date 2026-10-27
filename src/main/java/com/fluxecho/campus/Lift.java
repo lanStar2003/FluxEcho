@@ -20,6 +20,7 @@ import com.fluxecho.logic.LiftInput;
 import com.fluxecho.logic.LiftShaft;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.nexus.NexusNet;
+import com.fluxecho.skin.BlockSkin;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.ObfuscationReflectionHelper;
@@ -125,7 +126,8 @@ public final class Lift {
 
     /**
      * Whether an entity passes through the block of ours at {@code (x, y, z)} ({@code pad}: a light-lift pad, else a
-     * frame or fitting block) because it rides the lift there: only a riding player (or one in its grace), only in the
+     * frame or fitting block, or (0.17.0) a block of the new material families) because it rides the lift there: only a
+     * riding player (or one in its grace), only in the
      * ride's column and span ({@link LiftShaft#passes}).
      */
     public static boolean passes(Entity e, int x, int y, int z, boolean pad) {
@@ -171,6 +173,8 @@ public final class Lift {
                 : LiftShaft.Cell.OURS;
         }
         if (b instanceof BlockFrame) return LiftShaft.Cell.OURS;
+        // 0.17.0: the new material families are ours too, so a shaft through a hull or footing course still rides
+        if (b instanceof BlockSkin) return LiftShaft.Cell.OURS;
         if (b.isAir(w, x, y, z)) return LiftShaft.Cell.OPEN;
         return b.getCollisionBoundingBoxFromPool(w, x, y, z) == null ? LiftShaft.Cell.OPEN : LiftShaft.Cell.SOLID;
     }

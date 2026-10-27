@@ -30,6 +30,7 @@ import com.fluxecho.nexus.NexusModule;
 import com.fluxecho.nexus.NexusNet;
 import com.fluxecho.quest.QuestInstaller;
 import com.fluxecho.research.ResearchData;
+import com.fluxecho.skin.SkinModule;
 import com.fluxecho.thaumcraft.TCModule;
 
 import cpw.mods.fml.common.Mod;
@@ -88,6 +89,7 @@ public class FluxEcho {
         MatterModule.preInit();
         FrameModule.preInit();
         CampusModule.preInit();
+        SkinModule.preInit();
         NexusModule.preInit();
         LibraryModule.preInit();
         CityModule.preInit();

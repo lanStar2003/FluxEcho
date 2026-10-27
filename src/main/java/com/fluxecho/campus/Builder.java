@@ -79,7 +79,10 @@ import com.mojang.authlib.GameProfile;
  */
 public final class Builder {
 
-    /** Set while the builder edits the world (server thread): our blocks then skip {@code FrameEvents.changed}. */
+    /**
+     * Set while the builder edits the world (server thread): our blocks (the frame, the deck, the fittings and, 0.17.0,
+     * the new material families' {@code skin.BlockSkin}) then skip {@code FrameEvents.changed}.
+     */
     public static boolean QUIET;
 
     /** Steps looked at ahead of the first unfinished one. */

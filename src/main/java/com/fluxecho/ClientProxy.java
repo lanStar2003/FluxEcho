@@ -10,6 +10,7 @@ import com.fluxecho.campus.client.CampusClient;
 import com.fluxecho.client.FlowFx;
 import com.fluxecho.client.MachineFx;
 import com.fluxecho.client.MachineHolo;
+import com.fluxecho.client.shape.ShapeClient;
 import com.fluxecho.codex.CodexTooltips;
 import com.fluxecho.codex.GuiCodex;
 import com.fluxecho.frame.client.FrameClient;
@@ -37,6 +38,7 @@ public class ClientProxy extends CommonProxy {
         MachineFx.register();
         FrameClient.register();
         CampusClient.register();
+        ShapeClient.register();
         TileMultiblock.clientWorld = net.minecraft.client.multiplayer.WorldClient.class;
         NexusRender.register();
         MinecraftForgeClient.registerItemRenderer(MatterModule.echoCrystal, new EchoCrystalRender());

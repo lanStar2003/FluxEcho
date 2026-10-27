@@ -26,8 +26,10 @@ import net.minecraftforge.fluids.IFluidBlock;
 import net.minecraftforge.oredict.OreDictionary;
 
 import com.fluxecho.config.CampusConfig;
+import com.fluxecho.logic.LiveParts;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.TerrainRule;
+import com.fluxecho.logic.shape.FormCodes;
 import com.fluxecho.nexus.NexusRegistry;
 import com.fluxecho.nexus.TileMultiblock;
 
@@ -105,7 +107,9 @@ public final class Terrain {
         p.unbreakable = b.getBlockHardness(w, x, y, z) < 0;
         p.gtOre = k.ore || (p.hasTile && bwOre(w.getTileEntity(x, y, z)));
         int code = PartBlocks.code(b, meta);
-        p.ours = code >= 0 && (Parts.isFrame(code) || Parts.isDeck(code) || Parts.isFitting(code));
+        // 0.17.0: the new material families' coded shapes are ours as the frame, deck and fittings are
+        p.ours = code >= 0
+            && (Parts.isFrame(code) || Parts.isDeck(code) || Parts.isFitting(code) || FormCodes.family(code) != null);
         p.port = code == Parts.SUPPLY_PORT || code == Parts.RECYCLE_BIN;
         // a machine or a chest: our own port and bin are credited as parts, not dismantled
         p.te = p.hasTile && !p.gtOre && !p.port;
@@ -319,11 +323,17 @@ public final class Terrain {
 
     /**
      * Whether the cell already holds the part (any meta for grass, the library core and the recycle bin; a water
-     * source, still or flowing, for water).
+     * source, still or flowing, for water; 0.17.0: a live material of its kind as {@link LiveParts#accepts} takes it,
+     * a dandelion for a poppy too: in the cell a plan wants it, and only there, a plant is the part).
      */
     public static boolean isTarget(Block b, int meta, int part, boolean air) {
         if (part == Parts.AIR) return air;
         if (part == Parts.WATER) return (b == Blocks.water || b == Blocks.flowing_water) && meta == 0;
+        if (Parts.isLive(part)) {
+            boolean kind = b != null && b != Blocks.air
+                && (b == PartBlocks.block(part) || part == Parts.FLOWER && b == Blocks.yellow_flower);
+            return kind && LiveParts.accepts(part, meta);
+        }
         Block want = PartBlocks.block(part);
         if (want == null || want == Blocks.air || b != want) return false;
         if (part == Parts.GRASS || part == Parts.LIBRARY_CORE || part == Parts.RECYCLE_BIN) return true;

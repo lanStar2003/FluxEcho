@@ -22,9 +22,13 @@ public class ItemBlockFitting extends ItemBlock {
         setMaxDamage(0);
     }
 
+    /** The planting bed's name (fitting 14, 0.17.0). */
+    public static final String BED = "bed";
+
     /** The part name of a stack's damage; unknown damage values read as the first part. */
     private static String name(ItemStack stack) {
         int m = stack.getItemDamage();
+        if (m == Parts.F_BED) return BED;
         return Parts.FITTING_NAMES[m >= 0 && m < Parts.FITTING_TYPES ? m : 0];
     }
 

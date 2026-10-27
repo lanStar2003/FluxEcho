@@ -14,9 +14,15 @@ import com.fluxecho.frame.BlockFrame;
 import com.fluxecho.frame.FrameModule;
 import com.fluxecho.library.LibraryModule;
 import com.fluxecho.logic.GtPattern;
+import com.fluxecho.logic.LiveParts;
 import com.fluxecho.logic.PartRecipes;
 import com.fluxecho.logic.Parts;
 import com.fluxecho.logic.ResearchTree;
+import com.fluxecho.logic.shape.Family;
+import com.fluxecho.logic.shape.FormCodes;
+import com.fluxecho.logic.shape.SkinBlocks;
+import com.fluxecho.skin.BlockSkin;
+import com.fluxecho.skin.SkinModule;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
@@ -24,6 +30,12 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * The one place a campus part code ({@link Parts}) becomes a block, a metadata, an item or a recipe ingredient, and a
  * block in the world becomes a part code again. The plans, costs and packets of the campus builder only ever carry
  * codes; everything that has to touch Minecraft goes through here.
+ * <p>
+ * 0.17.0 adds the first batch of the new material families (style FINAL §3.8.1; {@link FormCodes}: the hull 96 to
+ * 107, the footing 108 to 117, the script skin 118 to 125, the garden skin 126, 127 and 59 to 62), each code to its
+ * family's whole-block or shape-block id ({@link SkinBlocks}) at the shape number's meta and back; the deck's
+ * hull-number tile (meta 13, code 29) and the fittings' planting bed (meta 14, code 46); and the live materials (54 to
+ * 58, {@link LiveParts}), vanilla blocks that, like grass, are a part only where a plan wants them and never ours.
  */
 public final class PartBlocks {
 
@@ -37,9 +49,11 @@ public final class PartBlocks {
     public static Block block(int code) {
         int meta = Parts.meta(code);
         if (Parts.isFrame(code)) return meta < BlockFrame.TYPES ? FrameModule.frame : null;
-        if (Parts.isDeck(code)) return meta < Parts.DECK_TYPES ? CampusModule.deck : null;
-        if (Parts.isFitting(code)) return meta < Parts.FITTING_TYPES ? CampusModule.fitting : null;
+        if (Parts.isDeck(code)) return BlockDeck.known(meta) ? CampusModule.deck : null;
+        if (Parts.isFitting(code)) return BlockFitting.known(meta) ? CampusModule.fitting : null;
         if (Parts.isModuleCore(code)) return CityModule.core;
+        Family f = FormCodes.family(code);
+        if (f != null) return SkinModule.block(f, SkinBlocks.inWhole(f, FormCodes.number(code)));
         switch (code) {
             case Parts.LIBRARY_CORE:
                 return LibraryModule.core;
@@ -55,30 +69,47 @@ public final class PartBlocks {
                 return Blocks.water;
             case Parts.AIR:
                 return Blocks.air;
+            case Parts.BIRCH:
+                return Blocks.log;
+            case Parts.OAK_LEAVES:
+                return Blocks.leaves;
+            case Parts.VINE:
+                return Blocks.vine;
+            case Parts.LILY:
+                return Blocks.waterlily;
+            case Parts.FLOWER:
+                return Blocks.red_flower;
             default:
                 return null;
         }
     }
 
     /**
-     * The metadata a part code is placed with: its meta within the frame, deck, fitting or module core family, 0 for
-     * the rest (water is a source).
+     * The metadata a part code is placed with: its meta within the frame, deck, fitting or module core family, (0.17.0)
+     * its shape number within a new material family, a live material's ({@link LiveParts#meta}: a birch log upright,
+     * oak leaves that never decay), 0 for the rest (water is a source).
      */
     public static int meta(int code) {
+        if (FormCodes.family(code) != null) return FormCodes.number(code);
+        if (Parts.isLive(code)) return LiveParts.meta(code);
         return Parts.meta(code);
     }
 
     /**
-     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta, the library core, a module
-     * core (by its meta), the supply port and the recycle bin (any meta). -1 for everything that is not ours, grass,
-     * dirt, water and air included: a cell holds the part a step wants when {@link #block} and {@link #meta} of its
-     * code match, which callers test directly for those ({@code Terrain.isTarget}).
+     * The part code of one of our blocks: frame, deck and fitting blocks of a known meta (0.17.0: the hull-number tile
+     * and the planting bed too), the library core, a module core (by its meta), the supply port and the recycle bin
+     * (any meta), and (0.17.0) a block of the new material families at a meta the first batch gives a code
+     * ({@link SkinBlocks#code}; any other shape of theirs is a foreign block, style FINAL §3.8.1). -1 for everything
+     * that is not ours, grass, dirt, water, air and the live materials included: a cell holds the part a step wants
+     * when {@link #block} and {@link #meta} of its code match, which callers test directly for those
+     * ({@code Terrain.isTarget}).
      */
     public static int code(Block b, int meta) {
         if (b == null) return -1;
         if (b == FrameModule.frame) return meta >= 0 && meta < BlockFrame.TYPES ? Parts.frame(meta) : -1;
-        if (b == CampusModule.deck) return meta >= 0 && meta < Parts.DECK_TYPES ? Parts.deck(meta) : -1;
-        if (b == CampusModule.fitting) return meta >= 0 && meta < Parts.FITTING_TYPES ? Parts.fitting(meta) : -1;
+        if (b == CampusModule.deck) return BlockDeck.known(meta) ? Parts.deck(meta) : -1;
+        if (b == CampusModule.fitting) return BlockFitting.known(meta) ? Parts.fitting(meta) : -1;
+        if (b instanceof BlockSkin s) return s.code(meta);
         if (b == LibraryModule.core) return Parts.LIBRARY_CORE;
         if (b == CityModule.core) return meta >= 0 && meta < Parts.MODULE_CORES ? Parts.moduleCore(meta) : -1;
         if (b == CampusModule.supplyPort) return Parts.SUPPLY_PORT;

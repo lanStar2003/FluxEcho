@@ -22,9 +22,13 @@ public class ItemBlockDeck extends ItemBlock {
         setMaxDamage(0);
     }
 
+    /** The hull-number tile's name (deck 13, 0.17.0). */
+    public static final String HULL_NUMBER = "hull_number";
+
     /** The part name of a stack's damage; unknown damage values read as the first part. */
     private static String name(ItemStack stack) {
         int m = stack.getItemDamage();
+        if (m == Parts.D_HULL_NUMBER) return HULL_NUMBER;
         return Parts.DECK_NAMES[m >= 0 && m < Parts.DECK_TYPES ? m : 0];
     }
 
